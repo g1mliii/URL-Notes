@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URL Notes</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <div class="site-info">
+          <div class="site-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              <polyline points="3.27,6.96 12,12.01 20.73,6.96"></polyline>
+              <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+          </div>
+          <div class="site-details">
+            <div class="site-domain" id="siteDomain">Loading...</div>
+            <div class="site-url" id="siteUrl">Loading...</div>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="icon-btn settings-btn" id="settingsBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+      </div>
+      
+    </header>
+
+    <!-- Search Bar -->
+    <div class="search-container">
+      <div class="search-wrapper">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+        </svg>
+        <input type="text" class="search-input" placeholder="Search notes..." id="searchInput">
+        <button class="search-clear" id="searchClear" style="display: none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      
+      <!-- Page Filter moved here -->
+      <div class="filter-container">
+        <div class="filter-wrapper">
+          <button class="filter-option active" id="showAllBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="m4.93 4.93 4.24 4.24"></path>
+              <path d="m14.83 9.17 4.24-4.24"></path>
+              <path d="m14.83 14.83 4.24 4.24"></path>
+              <path d="m9.17 14.83-4.24 4.24"></path>
+            </svg>
+            <span>All Notes</span>
+          </button>
+          <button class="filter-option" id="showPageBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+            <span>This Page</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notes List -->
+    <div class="notes-container">
+      <div class="notes-header">
+        <h3 class="notes-title" id="notesTitle">All Notes</h3>
+        <button class="add-note-btn" id="addNoteBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>New Note</span>
+        </button>
+      </div>
+      
+      <div class="notes-list" id="notesList">
+        <!-- Notes will be dynamically inserted here -->
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14,2 14,8 20,8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10,9 9,9 8,9"></polyline>
+            </svg>
+          </div>
+          <h4>No notes yet</h4>
+          <p>Create your first note for this site</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Note Editor (Hidden by default) -->
+    <div class="note-editor" id="noteEditor" style="display: none;">
+      <div class="editor-header">
+        <button class="back-btn" id="backBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+        <input type="text" class="note-title-header" placeholder="Note title..." id="noteTitleHeader">
+        <div class="editor-actions">
+          <button class="icon-btn delete-btn" id="deleteNoteBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="m19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+          <button class="save-btn" id="saveNoteBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17,21 17,13 7,13 7,21"></polyline>
+              <polyline points="7,3 7,8 15,8"></polyline>
+            </svg>
+            <span>Save</span>
+          </button>
+        </div>
+      </div>
+      
+      <div class="editor-content">
+        <textarea class="note-content-input" placeholder="Start writing your note..." id="noteContentInput"></textarea>
+        
+        <div class="note-meta">
+          <div class="note-tags">
+            <input type="text" class="tags-input" placeholder="Add tags (comma separated)" id="tagsInput">
+          </div>
+          <div class="note-info">
+            <span class="note-date" id="noteDate"></span>
+            <span class="note-chars" id="noteChars">0 characters</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CodeFuel Ad Container -->
+    <div class="ad-container" id="adContainer">
+      <div class="ad-label">Advertisement</div>
+      <div class="ad-content" id="adContent">
+        <!-- CodeFuel ad will be inserted here -->
+        <div class="ad-placeholder">
+          <span>Ad space</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
