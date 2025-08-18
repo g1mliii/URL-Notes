@@ -1,39 +1,112 @@
 /* CSS Variables for Glassmorphism Theme */
 :root {
   /* Light Mode Colors */
-  --bg-primary: rgba(255, 255, 255, 0.8);
-  --bg-secondary: rgba(255, 255, 255, 0.6);
-  --bg-tertiary: rgba(255, 255, 255, 0.4);
-  --bg-overlay: rgba(255, 255, 255, 0.9);
-  --text-primary: rgba(0, 0, 0, 0.87);
-  --text-secondary: rgba(0, 0, 0, 0.6);
-  --text-tertiary: rgba(0, 0, 0, 0.4);
+  --bg-primary: rgba(255, 255, 255, 0.72);
+  --bg-secondary: rgba(255, 255, 255, 0.58); /* slightly stronger for separation */
+  --bg-tertiary: rgba(255, 255, 255, 0.32);
+  --bg-overlay: rgba(255, 255, 255, 0.88);
+  --text-primary: rgba(0, 0, 0, 0.82);
+  --text-secondary: rgba(0, 0, 0, 0.55);
+  --text-tertiary: rgba(0, 0, 0, 0.38);
+  --text-strong: rgba(0, 0, 0, 0.88); /* for sharper headings/inputs */
+  --placeholder: rgba(0, 0, 0, 0.5);
   --accent-primary: rgba(0, 122, 255, 1);
   --accent-secondary: rgba(0, 122, 255, 0.8);
-  --border-color: rgba(255, 255, 255, 0.3);
+  /* Light mode borders should be darker to be visible on light surfaces */
+  --border-color: rgba(0, 0, 0, 0.22);
   --shadow-light: rgba(255, 255, 255, 0.5);
-  --shadow-dark: rgba(0, 0, 0, 0.1);
+  --shadow-dark: rgba(0, 0, 0, 0.12);
   --backdrop-blur: 20px;
-  --gradient-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  --gradient-bg: linear-gradient(135deg, rgba(10, 10, 12, 0.06), rgba(0, 0, 0, 0.08));
+}
+
+/* Explicit light-mode text fixes to avoid accidental white text */
+:root[data-theme="light"] .search-input,
+:root:not([data-theme]) .search-input {
+  color: rgba(0, 0, 0, 0.9) !important;
+}
+
+:root[data-theme="light"] .search-input::placeholder,
+:root:not([data-theme]) .search-input::placeholder {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+
+:root[data-theme="light"] .notes-title,
+:root:not([data-theme]) .notes-title,
+:root[data-theme="light"] .note-title,
+:root:not([data-theme]) .note-title,
+:root[data-theme="light"] .note-title-header,
+:root:not([data-theme]) .note-title-header {
+  color: rgba(0, 0, 0, 0.9) !important;
+  -webkit-text-fill-color: rgba(0, 0, 0, 0.9) !important; /* force for WebKit inputs */
+}
+
+/* Ensure editor inputs are dark in light mode */
+:root[data-theme="light"] .editor-content .note-title-header,
+:root:not([data-theme]) .editor-content .note-title-header,
+:root[data-theme="light"] .editor-content .tags-input,
+:root:not([data-theme]) .editor-content .tags-input {
+  color: rgba(0, 0, 0, 0.9) !important;
+}
+
+:root[data-theme="light"] .editor-content .tags-input::placeholder,
+:root:not([data-theme]) .editor-content .tags-input::placeholder {
+  color: rgba(0, 0, 0, 0.6) !important;
 }
 
 /* Dark Mode Colors */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-primary: rgba(28, 28, 30, 0.9);
-    --bg-secondary: rgba(44, 44, 46, 0.8);
-    --bg-tertiary: rgba(58, 58, 60, 0.6);
-    --bg-overlay: rgba(28, 28, 30, 0.95);
-    --text-primary: rgba(255, 255, 255, 0.87);
-    --text-secondary: rgba(255, 255, 255, 0.6);
-    --text-tertiary: rgba(255, 255, 255, 0.4);
+    --bg-primary: rgba(28, 28, 30, 0.92);
+    --bg-secondary: rgba(44, 44, 46, 0.86);
+    --bg-tertiary: rgba(58, 58, 60, 0.7);
+    --bg-overlay: rgba(28, 28, 30, 0.96);
+    --text-primary: rgba(255, 255, 255, 0.84);
+    --text-secondary: rgba(255, 255, 255, 0.58);
+    --text-tertiary: rgba(255, 255, 255, 0.38);
+    --text-strong: rgba(255, 255, 255, 0.88);
+    --placeholder: rgba(255, 255, 255, 0.5);
     --accent-primary: rgba(10, 132, 255, 1);
     --accent-secondary: rgba(10, 132, 255, 0.8);
     --border-color: rgba(255, 255, 255, 0.1);
     --shadow-light: rgba(255, 255, 255, 0.1);
     --shadow-dark: rgba(0, 0, 0, 0.3);
-    --gradient-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+    --gradient-bg: linear-gradient(135deg, rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0.1));
   }
+}
+
+/* Forced theme overrides (for debug toggle) */
+:root[data-theme="light"] {
+  --bg-primary: rgba(255, 255, 255, 0.72);
+  --bg-secondary: rgba(255, 255, 255, 0.58);
+  --bg-tertiary: rgba(255, 255, 255, 0.32);
+  --bg-overlay: rgba(255, 255, 255, 0.88);
+  --text-primary: rgba(0, 0, 0, 0.82);
+  --text-secondary: rgba(0, 0, 0, 0.55);
+  --text-tertiary: rgba(0, 0, 0, 0.38);
+  --accent-primary: rgba(0, 122, 255, 1);
+  --accent-secondary: rgba(0, 122, 255, 0.8);
+  --border-color: rgba(0, 0, 0, 0.22);
+  --shadow-light: rgba(255, 255, 255, 0.5);
+  --shadow-dark: rgba(0, 0, 0, 0.12);
+  --backdrop-blur: 20px;
+  --gradient-bg: linear-gradient(135deg, rgba(10, 10, 12, 0.06), rgba(0, 0, 0, 0.08));
+}
+
+:root[data-theme="dark"] {
+  --bg-primary: rgba(28, 28, 30, 0.92);
+  --bg-secondary: rgba(44, 44, 46, 0.86);
+  --bg-tertiary: rgba(58, 58, 60, 0.7);
+  --bg-overlay: rgba(28, 28, 30, 0.96);
+  --text-primary: rgba(255, 255, 255, 0.84);
+  --text-secondary: rgba(255, 255, 255, 0.58);
+  --text-tertiary: rgba(255, 255, 255, 0.38);
+  --accent-primary: rgba(10, 132, 255, 1);
+  --accent-secondary: rgba(10, 132, 255, 0.8);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --shadow-light: rgba(255, 255, 255, 0.1);
+  --shadow-dark: rgba(0, 0, 0, 0.3);
+  --gradient-bg: linear-gradient(135deg, rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0.1));
 }
 
 /* Base Styles */
@@ -46,17 +119,19 @@
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   font-size: 14px;
-  line-height: 1.5;
   color: var(--text-primary);
-  background: var(--gradient-bg);
-  overflow: hidden;
-  user-select: none;
+  background: transparent;
+  line-height: 1.4;
+  text-rendering: optimizeLegibility; /* crisper kerning */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Ensure Chrome sizes the popup correctly */
 html, body {
   width: 380px;
   height: 600px;
+  overflow-x: hidden;
 }
 
 .app-container {
@@ -66,13 +141,46 @@ html, body {
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
   border: 1px solid var(--border-color);
-  border-radius: 16px;
+  border-radius: 20px;
   box-shadow: 
     0 8px 32px var(--shadow-dark),
     inset 0 1px 0 var(--shadow-light);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+  overflow-x: hidden;
+  contain: layout paint;
+}
+
+/* Nebulous liquid-glass background overlay for main popup */
+.app-container::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0.14)),
+    radial-gradient(140px 200px at 18% 12%, rgba(0, 122, 255, 0.18), transparent 60%),
+    radial-gradient(180px 140px at 85% 20%, rgba(255, 99, 71, 0.12), transparent 60%),
+    radial-gradient(220px 180px at 28% 82%, rgba(50, 205, 50, 0.12), transparent 60%),
+    radial-gradient(200px 220px at 92% 88%, rgba(155, 89, 182, 0.12), transparent 60%);
+  filter: blur(34px) saturate(125%);
+  opacity: 0.9;
+}
+
+@media (prefers-color-scheme: dark) {
+  .app-container::before {
+    background:
+      linear-gradient(180deg, rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0.16)),
+      radial-gradient(140px 200px at 16% 10%, rgba(10, 132, 255, 0.22), transparent 60%),
+      radial-gradient(160px 140px at 80% 18%, rgba(255, 159, 67, 0.16), transparent 60%),
+      radial-gradient(220px 160px at 26% 78%, rgba(46, 213, 115, 0.16), transparent 60%),
+      radial-gradient(200px 200px at 86% 86%, rgba(165, 94, 234, 0.18), transparent 60%);
+    filter: blur(36px) saturate(125%);
+    opacity: 0.9;
+  }
 }
 
 /* Header Styles */
@@ -81,14 +189,14 @@ html, body {
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
   border-bottom: 1px solid var(--border-color);
-  padding: 16px;
+  padding: 12px 16px; /* tighter, iOS-like */
 }
 
 .header-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 4px; /* reduce extra gap below header */
 }
 
 .site-info {
@@ -102,14 +210,35 @@ html, body {
 .site-icon {
   width: 32px;
   height: 32px;
-  background: var(--bg-tertiary);
-  border-radius: 8px;
+  border-radius: 10px;
+  overflow: hidden;
+  display: block;
+}
+
+/* Favicon should fill the bubble size with subtle rounding */
+.site-icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+/* Subtle fallback for when no favicon is available */
+.site-icon .site-fallback {
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-secondary);
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
-  box-shadow: inset 0 1px 0 var(--shadow-light);
+  color: var(--text-tertiary);
+}
+
+.site-icon .site-fallback svg {
+  width: 18px;
+  height: 18px;
 }
 
 .site-details {
@@ -119,7 +248,7 @@ html, body {
 
 .site-domain {
   font-weight: 600;
-  font-size: 15px;
+  font-size: 16px;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -144,7 +273,7 @@ html, body {
   height: 32px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -173,10 +302,11 @@ html, body {
 .filter-wrapper {
   display: flex;
   background: var(--bg-tertiary);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 4px;
   border: 1px solid var(--border-color);
   box-shadow: inset 0 2px 4px var(--shadow-dark);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .filter-option {
@@ -189,7 +319,7 @@ html, body {
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  border-radius: 8px;
+  border-radius: 12px; /* softer pill */
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 13px;
@@ -197,11 +327,25 @@ html, body {
 }
 
 .filter-option.active {
-  background: var(--bg-primary);
-  color: var(--accent-primary);
-  box-shadow: 
-    0 2px 8px var(--shadow-dark),
-    inset 0 1px 0 var(--shadow-light);
+  /* Apple-like filled accent: solid color, no inner darkening */
+  background: var(--accent-primary);
+  color: #fff;
+  border: none;
+  box-shadow: 0 1px 1px var(--shadow-dark);
+  outline: none;
+}
+
+/* Darken active chip on hover like New Note button */
+.filter-option.active:hover {
+  background: var(--accent-secondary);
+}
+
+/* Enhance glassy outline on filter group hover */
+.filter-wrapper:hover {
+  background: var(--bg-secondary);
+  box-shadow:
+    inset 0 2px 6px var(--shadow-dark),
+    0 6px 18px var(--shadow-dark);
 }
 
 .filter-option:hover:not(.active) {
@@ -210,7 +354,7 @@ html, body {
 
 /* Search Container */
 .search-container {
-  padding: 12px 16px 8px 16px;
+  padding: 8px 16px 8px 16px; /* pull search closer to header */
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -230,20 +374,17 @@ html, body {
 .search-input {
   width: 100%;
   height: 40px;
-  background: var(--bg-secondary);
+  padding: 0 36px 0 32px;
+  background: var(--bg-primary);
+  color: var(--text-strong);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 0 40px 0 40px;
-  font-size: 14px;
-  color: var(--text-primary);
-  backdrop-filter: blur(var(--backdrop-blur));
-  -webkit-backdrop-filter: blur(var(--backdrop-blur));
-  box-shadow: inset 0 2px 4px var(--shadow-dark);
-  transition: all 0.2s ease;
+  border-radius: 10px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .search-input::placeholder {
-  color: var(--text-tertiary);
+  color: var(--placeholder);
 }
 
 .search-input:focus {
@@ -251,7 +392,7 @@ html, body {
   border-color: var(--accent-primary);
   box-shadow: 
     inset 0 2px 4px var(--shadow-dark),
-    0 0 0 3px rgba(10, 132, 255, 0.1);
+    0 0 0 3px color-mix(in srgb, var(--accent-primary) 20%, transparent);
 }
 
 .search-clear {
@@ -283,43 +424,55 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 10px 16px;
+  min-height: 44px; /* ensures vertical centering within outlined area */
   border-bottom: 1px solid var(--border-color);
 }
 
 .notes-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-strong);
+  letter-spacing: -0.01em;
+  line-height: 1;
 }
-
 
 .add-note-btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
+  height: 34px;
+  padding: 0 12px;
   background: var(--accent-primary);
-  color: white;
+  color: #fff; /* enforce legible text on any accent */
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(10, 132, 255, 0.3);
+  /* Apple-like neutral glow */
+  box-shadow:
+    0 1px 2px var(--shadow-dark),
+    inset 0 1px 0 var(--shadow-light);
+}
+
+.add-note-btn span {
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .add-note-btn:hover {
   background: var(--accent-secondary);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(10, 132, 255, 0.4);
+  box-shadow:
+    0 2px 8px var(--shadow-dark),
+    inset 0 1px 0 var(--shadow-light);
 }
 
 .add-note-btn:active {
   transform: translateY(0);
 }
-
 
 /* Notes List */
 .notes-list {
@@ -350,7 +503,7 @@ html, body {
 .note-item {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 12px;
   margin-bottom: 8px;
   cursor: pointer;
@@ -381,11 +534,12 @@ html, body {
   justify-content: space-between;
   margin-bottom: 6px;
   position: relative;
+  padding-right: 32px;
 }
 
 .note-title {
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-strong);
   font-size: 14px;
   white-space: nowrap;
   overflow: hidden;
@@ -393,12 +547,17 @@ html, body {
   flex: 1;
   display: flex;
   align-items: center;
+  letter-spacing: -0.01em;
 }
 
 .note-date {
-  font-size: 11px;
-  color: var(--text-tertiary);
+  font-size: 12px;
+  color: var(--text-secondary);
   margin-right: 8px;
+}
+
+.note-info .note-chars {
+  font-size: 12px;
 }
 
 .note-delete-btn {
@@ -411,7 +570,7 @@ html, body {
   border-radius: 4px;
   transition: all 0.2s ease;
   position: absolute;
-  right: 0;
+  right: 4px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 2;
@@ -538,6 +697,9 @@ html, body {
   display: flex;
   flex-direction: column;
   z-index: 10;
+  width: 100%;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 .editor-header {
@@ -554,19 +716,24 @@ html, body {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: none;
-  border: none;
-  color: var(--accent-primary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
   cursor: pointer;
-  padding: 8px;
+  padding: 6px 10px;
+  height: 34px;
   border-radius: 8px;
   transition: all 0.2s ease;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
+  box-shadow:
+    0 1px 2px var(--shadow-dark),
+    inset 0 1px 0 var(--shadow-light);
 }
 
 .back-btn:hover {
-  background: var(--bg-tertiary);
+  background: color-mix(in srgb, var(--bg-tertiary) 70%, var(--bg-secondary));
+  border-color: color-mix(in srgb, var(--border-color) 80%, var(--accent-primary) 20%);
 }
 
 .editor-actions {
@@ -582,14 +749,17 @@ html, body {
   gap: 4px;
   padding: 6px 10px;
   background: var(--accent-primary);
-  color: white;
+  color: #fff; /* enforce legible text on any accent */
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(10, 132, 255, 0.3);
+  /* Apple-like neutral glow (no color shadow) */
+  box-shadow:
+    0 1px 2px var(--shadow-dark),
+    inset 0 1px 0 var(--shadow-light);
   white-space: nowrap;
   min-width: auto;
 }
@@ -597,7 +767,9 @@ html, body {
 .save-btn:hover {
   background: var(--accent-secondary);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(10, 132, 255, 0.4);
+  box-shadow:
+    0 2px 8px var(--shadow-dark),
+    inset 0 1px 0 var(--shadow-light);
 }
 
 .save-btn:active {
@@ -625,47 +797,61 @@ html, body {
 }
 
 .note-title-header {
-  flex: 1;
-  background: transparent;
-  border: none;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary);
-  padding: 6px 8px;
-  border-radius: 4px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--text-strong);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 10px 12px;
+  border-radius: 8px;
   outline: none;
   transition: all 0.2s ease;
   min-width: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .note-title-header:focus {
   background: var(--bg-tertiary);
-  box-shadow: 0 0 0 2px var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.16);
 }
 
 .note-title-header::placeholder {
-  color: var(--text-tertiary);
+  color: var(--placeholder);
 }
 
 .note-content-input {
   flex: 1;
-  background: transparent;
-  border: none;
+  background: var(--bg-primary); /* subtle panel behind the writing area */
+  border: 1px solid var(--border-color);
   color: var(--text-primary);
   font-size: 14px;
   line-height: 1.8;
   resize: none;
   outline: none;
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   tab-size: 2;
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  padding: 8px 0;
+  padding: 12px 10px;
+  border-radius: 8px;
 }
 
 .note-content-input::placeholder {
   color: var(--text-tertiary);
+}
+
+/* Subtle neutral focus ring for editor inputs (iOS-like) */
+.note-editor input:focus-visible,
+.note-editor textarea:focus-visible {
+  outline: none;
+}
+
+.note-content-input:focus {
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.16);
+  border-radius: 8px;
 }
 
 .note-meta {
@@ -678,7 +864,7 @@ html, body {
   width: 100%;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 8px 12px;
   font-size: 13px;
   color: var(--text-primary);
@@ -688,12 +874,27 @@ html, body {
 }
 
 .tags-input::placeholder {
-  color: var(--text-tertiary);
+  color: var(--placeholder);
+  letter-spacing: -0.01em; /* crisper placeholder */
 }
 
 .tags-input:focus {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.1);
+  border-color: rgba(0, 0, 0, 0.16);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06);
+}
+
+/* Dark mode neutral focus rings */
+@media (prefers-color-scheme: dark) {
+  .note-title-header:focus {
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18);
+  }
+  .note-content-input:focus {
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18);
+  }
+  .tags-input:focus {
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
+  }
 }
 
 .note-info {
@@ -722,7 +923,7 @@ html, body {
 .ad-content {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 16px;
   min-height: 50px;
   display: flex;
@@ -736,34 +937,34 @@ html, body {
 }
 
 /* Animations */
-@keyframes slideInRight {
+@keyframes slideInUp {
   from {
-    transform: translateX(100%);
+    transform: translateY(20px);
     opacity: 0;
   }
   to {
-    transform: translateX(0);
+    transform: translateY(0);
     opacity: 1;
   }
 }
 
-@keyframes slideOutRight {
+@keyframes slideOutDown {
   from {
-    transform: translateX(0);
+    transform: translateY(0);
     opacity: 1;
   }
   to {
-    transform: translateX(100%);
+    transform: translateY(20px);
     opacity: 0;
   }
 }
 
 .slide-in {
-  animation: slideInRight 0.3s ease-out;
+  animation: slideInUp 0.28s ease-out both;
 }
 
 .slide-out {
-  animation: slideOutRight 0.3s ease-out;
+  animation: slideOutDown 0.24s ease-out both;
 }
 
 /* Responsive adjustments */
@@ -781,6 +982,12 @@ input:focus-visible,
 textarea:focus-visible {
   outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
+}
+
+/* Selection highlight color synced with accent */
+::selection {
+  background: color-mix(in srgb, var(--accent-primary) 28%, transparent);
+  color: var(--text-primary);
 }
 
 /* Loading states */

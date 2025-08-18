@@ -3,6 +3,19 @@
 ## Overview
 A browser extension and web application for taking notes on websites, with domain/URL-specific organization, local-first storage, and premium cloud sync features.
 
+### Recent Changes (Aug 18, 2025)
+- Implemented hybrid notes model: notes saved under domain with URL context; filter between "All Notes" and "This Page".
+- UI/UX improvements in `extension/popup/`:
+  - Note title moved to editor header; compact save button.
+  - Obsidian-like editor behavior (monospace, Tab inserts spaces, auto-indent, list continuation).
+  - Page indicator badge with tooltip for current page notes.
+  - Notes list scrolling with custom scrollbar; spacing reduced.
+  - Safe delete button per note: hidden until hover; shows confirm; doesn’t trigger open.
+- Header/search spacing tightened for iOS-like compact top bar.
+- New Note button hover/background glow now derived from `--accent-*` variables (no hardcoded blue).
+- Removed copy-to-clipboard UI beside URL to keep header minimal.
+- Added uninstall notice flow (see "Uninstall Notice & Persistence Plan").
+
 ## Tech Stack & Architecture
 
 ### Backend: Supabase
@@ -15,7 +28,7 @@ A browser extension and web application for taking notes on websites, with domai
 ### Browser Extension: Manifest V3
 - **Framework**: Vanilla JavaScript/TypeScript
 - **Local Storage**: IndexedDB for notes and file attachments
-- **UI**: Modern CSS with Tailwind CSS
+- **UI**: Modern CSS using custom design tokens (see `STYLE_GUIDE.md`), glassmorphism surfaces, and accent-driven glows
 - **Performance**: Virtual scrolling, lazy loading, background indexing
 
 ### Web Application: Next.js
@@ -24,6 +37,28 @@ A browser extension and web application for taking notes on websites, with domai
 - **State Management**: Zustand + React Query
 - **Authentication**: Supabase Auth integration
 - **Deployment**: Vercel (free tier sufficient)
+
+## Uninstall Notice & Persistence Plan
+
+### Uninstall notice (pre-uninstall prompt)
+- The background service worker sets an uninstall URL via `chrome.runtime.setUninstallURL(...)` in `extension/background/background.js`.
+- The URL includes query params with estimated local note count and storage size to inform users that uninstalling clears local data.
+- Landing page (to be built) will:
+  - Explain Chrome `storage.sync` quotas and that local data is removed on uninstall.
+  - Offer Export (JSON) instructions and link to Import.
+  - Soft upsell Premium for cloud sync and unlimited history.
+
+### Persistence strategy
+- Short term: Export/Import in Settings (manual JSON backup/restore). No account required.
+- Optional: `chrome.storage.sync` for lightweight sync within quota limits (per-note keys; chunking when needed).
+- Long term (Premium): Supabase-backed encrypted cloud sync with version history.
+
+### Settings notice (later)
+- Add a Storage & Backup section in Settings explaining:
+  - Local-first behavior; uninstall clears data.
+  - Export/Import tools.
+  - Sync quotas if user enables Chrome sync.
+  - Benefits of Premium cloud sync.
 
 ## Database Schema (Supabase)
 
@@ -395,6 +430,6 @@ class NoteEncryption {
 
 ---
 
-**Last Updated**: January 17, 2025
-**Version**: 1.0
-**Status**: Ready for Development
+**Last Updated**: August 18, 2025
+**Version**: 1.1
+**Status**: In Progress

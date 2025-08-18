@@ -11,10 +11,110 @@ class URLNotesApp {
     this.init();
   }
 
+  // Derive accent color from favicon (with safe fallbacks)
+  async applyAccentFromFavicon() {
+    try {
+      const accent = await this.deriveAccentColor(this.currentSite?.favicon, this.currentSite?.domain);
+      this.setAccentVariables(accent);
+    } catch (e) {
+      console.warn('Accent derivation failed, using fallback:', e);
+      const fallback = this.hashDomainToAccent(this.currentSite?.domain || 'local');
+      this.setAccentVariables(fallback);
+    }
+  }
+
+  async deriveAccentColor(faviconUrl, domain) {
+    // If no favicon, fallback to hash-based accent
+    if (!faviconUrl) {
+      return this.hashDomainToAccent(domain || 'local');
+    }
+
+    // Attempt to load image with CORS
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    const loadPromise = new Promise((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = reject;
+    });
+    img.src = faviconUrl;
+    await loadPromise;
+
+    // Draw to canvas and sample pixels
+    const size = 24;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    try {
+      ctx.drawImage(img, 0, 0, size, size);
+      const { data } = ctx.getImageData(0, 0, size, size);
+      // Simple average color with slight saturation bias
+      let r = 0, g = 0, b = 0, count = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const alpha = data[i + 3];
+        if (alpha < 16) continue; // ignore transparent
+        r += data[i]; g += data[i + 1]; b += data[i + 2];
+        count++;
+      }
+      if (!count) throw new Error('Empty favicon pixels');
+      r = Math.round(r / count); g = Math.round(g / count); b = Math.round(b / count);
+      // Convert to HSL and normalize to tasteful accent
+      const { h, s, l } = this.rgbToHsl(r, g, b);
+      const accent = {
+        h,
+        s: Math.max(0.45, Math.min(0.88, s * 1.1)),
+        l: Math.max(0.35, Math.min(0.6, l)),
+      };
+      return accent;
+    } catch (err) {
+      // Canvas tainted or other error — fallback
+      return this.hashDomainToAccent(domain || 'local');
+    }
+  }
+
+  hashDomainToAccent(domain) {
+    // Produce a stable hue from domain; bias near blue range
+    let hash = 0;
+    for (let i = 0; i < domain.length; i++) {
+      hash = (hash * 31 + domain.charCodeAt(i)) >>> 0;
+    }
+    const baseHue = 210; // blue
+    const spread = 80;   // +/- 40 degrees range
+    const h = (baseHue - 40) + (hash % spread); // 170..250
+    return { h, s: 0.75, l: 0.5 };
+  }
+
+  setAccentVariables(hsl) {
+    const root = document.documentElement;
+    const primary = `hsl(${Math.round(hsl.h)} ${Math.round(hsl.s * 100)}% ${Math.round(hsl.l * 100)}%)`;
+    const secondary = `hsl(${Math.round(hsl.h)} ${Math.round(Math.min(1, hsl.s * 0.9) * 100)}% ${Math.round(Math.max(0, hsl.l - 0.06) * 100)}%)`;
+    root.style.setProperty('--accent-primary', primary);
+    root.style.setProperty('--accent-secondary', secondary);
+  }
+
+  rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+    if (max === min) {
+      h = s = 0;
+    } else {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
+    }
+    return { h: h * 360, s, l };
+  }
+
   async init() {
     await this.loadCurrentSite();
     this.setupEventListeners();
-    this.setupThemeDetection();
+    await this.setupThemeDetection();
+    await this.applyAccentFromFavicon();
     await this.loadNotes();
     this.render();
   }
@@ -35,12 +135,28 @@ class URLNotesApp {
         // Update site icon with real favicon
         const siteIcon = document.querySelector('.site-icon');
         if (this.currentSite.favicon) {
-          siteIcon.innerHTML = `<img src="${this.currentSite.favicon}" alt="Site icon" style="width: 16px; height: 16px; border-radius: 2px;">`;
+          // Fill the icon container with the favicon (no bubble chrome)
+          siteIcon.innerHTML = `<img src="${this.currentSite.favicon}" alt="Site favicon">`;
+        } else {
+          // Subtle fallback: neutral rounded square with a small globe icon
+          siteIcon.innerHTML = `
+            <div class="site-fallback" aria-label="No favicon available">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M3 12h18"></path>
+                <path d="M12 3a15.3 15.3 0 0 1 4 9 15.3 15.3 0 0 1-4 9 15.3 15.3 0 0 1-4-9 15.3 15.3 0 0 1 4-9z"></path>
+              </svg>
+            </div>`;
         }
         
         // Update UI
         document.getElementById('siteDomain').textContent = this.currentSite.domain;
         document.getElementById('siteUrl').textContent = this.currentSite.url;
+        // Provide tooltips for truncated values
+        const siteDomainEl = document.getElementById('siteDomain');
+        const siteUrlEl = document.getElementById('siteUrl');
+        if (siteDomainEl) siteDomainEl.title = this.currentSite.domain;
+        if (siteUrlEl) siteUrlEl.title = this.currentSite.url;
       }
     } catch (error) {
       console.error('Error loading current site:', error);
@@ -161,15 +277,58 @@ class URLNotesApp {
     });
   }
 
-  // Detect system theme and update CSS variables
-  setupThemeDetection() {
-    const updateTheme = () => {
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  // Detect system theme and manage override (auto/light/dark)
+  async setupThemeDetection() {
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    const root = document.documentElement;
+
+    // Load preference
+    const { themeMode } = await chrome.storage.local.get(['themeMode']);
+    this.themeMode = themeMode || 'auto'; // 'auto' | 'light' | 'dark'
+
+    const updateAuto = () => {
+      const isDark = mql.matches;
+      root.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      this.updateThemeToggleTitle('auto');
     };
 
-    updateTheme();
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateTheme);
+    const applyTheme = () => {
+      if (this.themeMode === 'auto') {
+        updateAuto();
+      } else if (this.themeMode === 'light') {
+        root.setAttribute('data-theme', 'light');
+        this.updateThemeToggleTitle('light');
+      } else if (this.themeMode === 'dark') {
+        root.setAttribute('data-theme', 'dark');
+        this.updateThemeToggleTitle('dark');
+      }
+    };
+
+    // Listen to system changes only in auto mode
+    const onChange = () => {
+      if (this.themeMode === 'auto') updateAuto();
+    };
+    mql.addEventListener('change', onChange);
+
+    // Wire toggle
+    const btn = document.getElementById('themeToggleBtn');
+    if (btn) {
+      btn.addEventListener('click', async () => {
+        this.themeMode = this.themeMode === 'auto' ? 'light' : this.themeMode === 'light' ? 'dark' : 'auto';
+        await chrome.storage.local.set({ themeMode: this.themeMode });
+        applyTheme();
+      });
+    }
+
+    applyTheme();
+  }
+
+  updateThemeToggleTitle(mode) {
+    const btn = document.getElementById('themeToggleBtn');
+    if (!btn) return;
+    const map = { auto: 'Theme: Auto', light: 'Theme: Light', dark: 'Theme: Dark' };
+    btn.title = map[mode] || 'Theme';
+    btn.setAttribute('aria-label', btn.title);
   }
 
   // Switch between all notes and page-specific filter
@@ -182,9 +341,8 @@ class URLNotesApp {
     });
     document.getElementById(filter === 'all' ? 'showAllBtn' : 'showPageBtn').classList.add('active');
     
-    // Update title
-    const title = filter === 'all' ? 'All Notes' : 'This Page';
-    document.getElementById('notesTitle').textContent = title;
+    // Title stays constant per Option A: always "Notes"
+    document.getElementById('notesTitle').textContent = 'Notes';
     
     // Re-render with filter
     this.render();
