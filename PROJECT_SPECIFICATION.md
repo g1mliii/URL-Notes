@@ -15,6 +15,30 @@ A browser extension and web application for taking notes on websites, with domai
 - New Note button hover/background glow now derived from `--accent-*` variables (no hardcoded blue).
 - Removed copy-to-clipboard UI beside URL to keep header minimal.
 - Added uninstall notice flow (see "Uninstall Notice & Persistence Plan").
+  Updates on Aug 18 (later session):
+  - Settings panel readability improvements in light mode (reduced transparency, clearer borders/shadows).
+    - CSS: `extension/popup/popup.css` light-mode overrides for `.settings-panel`.
+  - All Notes live-refresh on storage changes.
+    - JS: `extension/popup/popup.js` added `setupStorageChangeListener()` and cache invalidation.
+    - Force-refresh All Notes cache after save/delete when `viewMode === 'all'`.
+  - Inline two-click delete confirmations for notes (non-blocking, consistent in All Notes and Site/Page views).
+    - CSS: `.note-delete-btn.confirm`. JS: in-note delete handlers (replaced native confirm()).
+  - Domain deletion synchronized across views and caches (removes domain keys and collapse states, refreshes UI).
+  - Tag chip sizing/line-height adjusted to prevent clipping in All Notes.
+
+  Final polish (Aug 18, later):
+  - Domain bulk delete confirm renders inside the domain header's `.domain-actions` container (prevents layout jump and keeps context).
+  - View-specific compact styles applied for "This Page" and "This Site" via `:root[data-view="page|site"]` selectors (reduced paddings, tighter headers, slimmer tags).
+  - Dynamic search placeholder reflects active view: "Search All Notes" / "Search This Site" / "Search This Page".
+  - Conditional search clear after deletions: if a delete leaves 0 matches for the current query, automatically clear the search and re-render.
+  - All Notes per-note delete fixed by rendering note cards as DOM nodes (not HTML strings) to preserve event handlers.
+
+  UI copy and controls updates (Aug 18, later):
+  - Font controls removed from inline editor, restored to Settings panel.
+  - Default font label is now "Default" (system stack). "Font Family" label simplified to "Font".
+  - Font size slider track/thumb made more visible in light mode.
+  - Added live preview inside Settings showing current font and size.
+  - Behavior change: font changes no longer apply live while Settings is open; they apply when closing Settings.
 
 ## Tech Stack & Architecture
 
@@ -387,6 +411,152 @@ class NoteEncryption {
    - Documentation
    - Marketing materials
 
+## Milestone Plan (Step-by-step Implementation)
+
+### Step 1: Extension MVP (Local-only)
+- __Scaffold & Structure__
+  - Ensure folders exist: `extension/manifest.json`, `extension/popup/`, `extension/background/`, `extension/content/`, `extension/lib/`.
+  - Core libs: `extension/lib/storage.js` (IndexedDB wrapper), `extension/lib/encryption.js` (local only for now), `extension/lib/ads.js` (placeholder CodeFuel), `extension/lib/api.js` (stub for Supabase client).
+- __Context detection__
+  - `extension/content/content.js`: collect `domain`, `url`, `title`; send to popup via `chrome.runtime` messaging.
+- __Storage & Schema__
+  - `storage.js`: schema keyed by `domain`, optional `url`, boolean `is_url_specific`, fields: `title`, `content`, `tags[]`, `createdAt`, `updatedAt`, `version`.
+  - Indexes: by `domain`, by `url`, by `updatedAt`, by `tags` (aux table or composite index technique).
+- __UI (Popup)__
+  - Domain vs URL toggle (“This Site” / “This Page”).
+  - Notes list (virtualized for perf) and editor pane.
+  - Basic search within current domain: debounce input, query secondary index, highlight terms.
+  - CodeFuel ad slot in footer (placeholder during dev) in `popup.html` with container `#adContainer`.
+  - Versioning: keep last 5 versions per note (local-first). Implement compact history storage table in IndexedDB.
+- __Performance__
+  - Debounced autosave (≈500ms), lazy-load note bodies, background index build for search, avoid layout thrash.
+  - Virtualization for list (windowing) and minimal DOM updates.
+- __Polish & Accessibility__
+  - Theme tokens in `popup.css` with clear light/dark contrast.
+  - Keyboard focus outlines, ARIA labels on buttons, proper button semantics.
+  - Back button outlined style, consistent headers, crisp placeholder text.
+- __Uninstall & Backup Messaging__
+  - Add Settings notice (Storage & Backup) copy about local-only data and export/import.
+  - Plan Export/Import UI (actual implementation in Step 1.1 below if time allows).
+
+__Step 1.1: Export/Import (JSON)__
+- __Export__ all notes to JSON (schema versioned). File naming: `url-notes-backup-YYYYMMDD.json`.
+- __Import__ from JSON with schema validation; choose Merge vs Replace; show counts and errors.
+- UI in Settings → Storage & Backup: buttons, status text, and warnings.
+
+### Step 2: Supabase (Auth + Schema)
+- __Project setup__
+  - Create Supabase project; apply `supabase/migrations/001_initial_schema.sql`.
+- __Auth__
+  - Enable Email + Google/GitHub providers.
+  - Add Supabase client in `extension/lib/api.js` (initialized but sync disabled until Step 3).
+- __RLS & Policies__
+  - Verify RLS in spec; enable policies for `profiles`, `notes`, `note_versions`.
+- __Tier model__
+  - Introduce `subscription_tier` in `profiles` and reflect locally via a `userTier` flag in `chrome.storage.local`.
+
+### Step 3: Sync (Premium)
+- __Client-side encryption__
+  - Derive key from user password (PBKDF2/Argon2 if available), AES-GCM encrypt note content before upload.
+  - Store only encrypted payloads in Supabase.
+- __Sync engine__
+  - Incremental upload/download; last-write-wins + user-visible conflict view.
+  - Background sync queue with retry and exponential backoff.
+- __Gating__
+  - Sync available only when authenticated and `userTier === 'premium'`.
+  - Hide ads in premium tier.
+
+### Step 4: Web App (Premium)
+- __Next.js app__ (scaffold under `web-app/`)
+  - Auth pages, dashboard with cross-domain view, advanced search, export.
+  - Settings (encryption key handling, backup tools, session mgmt).
+- __Subscription__
+  - Stripe/Lemon Squeezy for premium; map license to `subscription_tier` in Supabase.
+- __Polish__
+  - Responsive UI, keyboard nav, accessibility, dark mode.
+
+### Cross-cutting Tasks and Ideas Captured During UI Work
+- __Uninstall flow__: `chrome.runtime.setUninstallURL` to landing page explaining local data loss, Chrome `storage.sync` limits, and Export/Import guidance; premium upsell. Mirror same notice in Settings.
+- __CodeFuel Ads__: integrate SDK, real `publisherId`, display logic, contextual targeting, frequency caps (max 5/hour, ≥12m cooldown). Hide for premium.
+- __Light/Dark theme polish__: ensured readable colors in light mode for search, note titles, and tags; consistent outlined controls (e.g., back button).
+- __Performance improvements__: debounced autosave, lazy loads, background indexing, and list virtualization.
+- __Accessibility__: focus outlines, ARIA labels for icon buttons (`themeToggleBtn`, `settingsBtn`, `backBtn`, etc.).
+- __Version history (free)__: cap at 5 versions; efficient storage strategy.
+- __IndexedDB indices__: domain, url, updatedAt, tags; plan migrations for future schema changes.
+- __QA & Store prep__: end-to-end smoke tests, contrast checks, keyboard navigation, prepare Chrome Web Store listing (icons, screenshots, description).
+
+---
+
+## Planned Features and Policies
+
+### Global Notes Tab + Search
+- __All Notes view__
+  - DECISION: All Notes will be a dedicated, visible tab in `popup/` top navigation (not hidden in Settings) for discoverability.
+  - Group by Domain; inside each domain, notes sorted newest first.
+  - Domains collapsible (collapse/expand state remembered; persist state in `chrome.storage.local`).
+- __Global search toggle__
+  - Default scope = current domain/URL only.
+  - Toggle to search across all notes.
+  - Ranking priority (weighted): Titles > Tags > Content.
+    - Suggested weights: title 3.0x, tags 2.0x, content 1.0x; tie-break by `updatedAt` desc.
+    - Debounced input (≈250ms) and highlight matched terms in UI.
+
+### AI Features (Premium only)
+- __AI Rewrite__
+  - Premium-only; no free-tier AI at launch (hide button for free users).
+  - DECISION: Provider = Google Gemini, cheapest model (Gemini Flash Lite / 2.0 Flash) for cost control.
+  - Fair-use cap ~2,000 rewrites/month (enforced server-side; surfaced in ToS or silent cap).
+
+### Pricing & Features
+- __Free tier__
+  - Local-only notes (subject to Chrome storage cap).
+  - No AI rewrite.
+  - Ads (optional later, via CodeFuel).
+  - Optional teaser: 5–10 notes sync.
+- __Premium ($2.50/month)__
+  - Unlimited synced text notes (Supabase/Postgres backend).
+  - AI Rewrite (Gemini).
+  - Cross-device access.
+  - Hybrid URL/domain notes.
+  - Global “All Notes” view.
+  - No ads.
+  - No file uploads (control costs).
+
+### Editor Enhancements
+- __Speech-to-Text button__
+  - Use Web Speech API (`window.SpeechRecognition`/`webkitSpeechRecognition`) in popup as a progressive enhancement.
+  - UX: Mic icon in editor header; tap to start/stop; live transcription into `#noteContentInput` with undo-friendly inserts.
+  - Privacy: On-device where available; no server calls unless explicitly using a cloud API (not planned).
+  - Fallback: Hide button if API unsupported; show tooltip “Unavailable on this browser”.
+  - Limitations: Not in background; requires popup focus; handle errors/timeouts gracefully.
+- __Font size/color customization__
+  - Global (per-user) preferences stored in `chrome.storage.local.settings`.
+  - Options: Font size (Small/Default/Large), Editor text color (preset neutrals only to maintain contrast), Line height.
+  - Implementation: Apply CSS variables on `:root` or `.editor-content` (no per-note styles initially to keep performance high).
+
+### Settings: Manual Backup (Free users)
+- __Explicit Import UI__
+  - Add “Import JSON” button in Settings → Storage & Backup for manual backup upload (free users).
+  - Validate schema, show preview counts and dry-run option; support Merge vs Replace with confirmation.
+  - This complements Export in Step 1.1 and satisfies uninstall/backup guidance.
+
+### Chrome Storage Cap Handling (Local users)
+- __Quota awareness__
+  - Chrome `chrome.storage.local` quota ≈ 5MB/extension; notes ~1KB each → cap around 3,000–5,000 notes.
+  - Writes may fail when exceeding cap unless handled.
+- __UX plan__
+  - Add indicator/warning inside extension: “Storage almost full – sync to keep your notes safe”.
+  - On cap hit: prompt “You’ve reached local storage limit. Sync with cloud to continue creating notes.” + upgrade CTA.
+- __Premium behavior__
+  - For premium, store in Supabase/Postgres; local cap not relevant.
+  - Sync + clear local cache on upgrade to avoid leftover issues.
+
+### Upgrade Flow (Premium already at/near cap)
+- On upgrade:
+  - Sync all local notes to Supabase.
+  - Clear old local storage; continue writing to cloud.
+  - If sync fails (offline), show retry until success and defer clearing until completion.
+
 ## Success Metrics
 
 ### Technical KPIs
@@ -417,19 +587,26 @@ class NoteEncryption {
 
 ## Next Steps
 
-1. **Set up development environment**
-2. **Create basic extension structure**
-3. **Implement local storage system**
-4. **Build popup UI with domain/URL toggle**
-5. **Add basic note CRUD operations**
-6. **Set up Supabase backend**
-7. **Implement authentication system**
-8. **Build sync functionality**
-9. **Create web application**
-10. **Integrate monetization features**
+Completed (extension UI polish):
+1. Enhanced popup UI, compact header/search.
+2. All Notes grouped by domain with popular tags.
+3. Inline delete confirmations; domain bulk delete confirm.
+4. Settings panel readability (light mode); moved font controls back to Settings with preview.
+5. Slider visibility and font preview.
+
+Up next (short-term):
+1. Test accessibility contrast in light mode, including slider and preview.
+2. Finalize Export/Import copy and error states in Settings.
+3. CodeFuel ad integration wiring (replace placeholder; frequency cap logic).
+4. Uninstall notice landing page (content + simple host) and link wiring.
+
+Mid-term:
+1. Supabase project setup and schema migration.
+2. Auth integration and gated Premium UI (hide ads for premium).
+3. Sync prototype with client-side encryption.
 
 ---
 
 **Last Updated**: August 18, 2025
-**Version**: 1.1
+**Version**: 1.2
 **Status**: In Progress

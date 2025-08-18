@@ -1,12 +1,58 @@
 // URL Notes Extension - Popup Script
+
+/**
+ * Custom Confirmation Dialog (Promise-based)
+ */
+class CustomDialog {
+  constructor() {
+    this.overlay = document.getElementById('custom-dialog-overlay');
+    this.messageElement = document.getElementById('dialog-message');
+    this.confirmBtn = document.getElementById('dialog-confirm-btn');
+    this.cancelBtn = document.getElementById('dialog-cancel-btn');
+    this.resolve = null;
+
+    this.confirmBtn.addEventListener('click', () => this.handleConfirm(true));
+    this.cancelBtn.addEventListener('click', () => this.handleConfirm(false));
+    this.overlay.addEventListener('click', (e) => {
+      if (e.target === this.overlay) {
+        this.handleConfirm(false);
+      }
+    });
+  }
+
+  show(message) {
+    return new Promise((resolve) => {
+      this.messageElement.textContent = message;
+      this.resolve = resolve;
+      this.overlay.classList.add('show');
+    });
+  }
+
+  hide() {
+    this.overlay.classList.remove('show');
+    this.resolve = null;
+  }
+
+  handleConfirm(confirmed) {
+    if (this.resolve) {
+      this.resolve(confirmed);
+    }
+    this.hide();
+  }
+}
+
 class URLNotesApp {
   constructor() {
-    this.filterMode = 'all'; // 'all' or 'page'
+    this.filterMode = 'site'; // 'site', 'page', or 'all_notes'
     this.currentSite = null;
     this.notes = [];
+    this.allNotes = []; // For the 'All Notes' view
     this.currentNote = null;
     this.searchQuery = '';
     this.isJotMode = false;
+    this.premiumStatus = null;
+    this.autosaveInterval = null;
+    this.dialog = new CustomDialog();
     
     this.init();
   }
@@ -111,12 +157,37 @@ class URLNotesApp {
   }
 
   async init() {
+    this.premiumStatus = await getPremiumStatus();
     await this.loadCurrentSite();
     this.setupEventListeners();
     await this.setupThemeDetection();
     await this.applyAccentFromFavicon();
     await this.loadNotes();
+    await this.loadFontSetting();
+    this.checkStorageQuota();
     this.render();
+    this.updatePremiumUI();
+    this.checkStorageQuota();
+  }
+
+  // Load all notes from storage into the master list
+  async loadNotes() {
+    try {
+      const allData = await chrome.storage.local.get(null);
+      let allNotes = [];
+      for (const key in allData) {
+        // Filter out settings or non-array data
+        if (key !== 'themeMode' && Array.isArray(allData[key])) {
+          allNotes = allNotes.concat(allData[key]);
+        }
+      }
+      // Sort by most recently updated
+      allNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+      this.allNotes = allNotes;
+    } catch (error) {
+      console.error('Error loading notes:', error);
+      this.allNotes = []; // Fallback to an empty list on error
+    }
   }
 
   // Get current tab information
@@ -173,20 +244,27 @@ class URLNotesApp {
   setupEventListeners() {
     // Filter between all notes and page-specific
     document.getElementById('showAllBtn').addEventListener('click', () => {
-      this.switchFilter('all');
+      this.switchFilter('site');
     });
     
     document.getElementById('showPageBtn').addEventListener('click', () => {
       this.switchFilter('page');
     });
 
+    document.getElementById('showAllNotesBtn').addEventListener('click', () => {
+      this.switchFilter('all_notes');
+    });
+
     // Search functionality
     const searchInput = document.getElementById('searchInput');
     const searchClear = document.getElementById('searchClear');
     
+    // Debounce render function
+    const debouncedRender = this.debounce(() => this.render(), 200);
+
     searchInput.addEventListener('input', (e) => {
       this.searchQuery = e.target.value;
-      this.render();
+      debouncedRender();
       searchClear.style.display = this.searchQuery ? 'block' : 'none';
     });
     
@@ -273,8 +351,105 @@ class URLNotesApp {
 
     // Settings button
     document.getElementById('settingsBtn').addEventListener('click', () => {
-      this.openSettings();
+      this.initSettings();
     });
+
+    document.getElementById('settingsBackBtn').addEventListener('click', () => {
+      this.closeSettings();
+    });
+
+    document.getElementById('exportNotesBtn').addEventListener('click', () => {
+      this.exportNotes();
+    });
+
+    document.getElementById('importNotesBtn').addEventListener('click', () => {
+      document.getElementById('importNotesInput').click();
+    });
+
+    document.getElementById('importNotesInput').addEventListener('change', (e) => {
+      this.importNotes(e);
+    });
+
+    document.getElementById('aiRewriteBtn').addEventListener('click', () => {
+      this.aiRewrite();
+    });
+
+    // Font selector
+    document.getElementById('fontSelector').addEventListener('change', (e) => {
+      this.saveFontSetting(e.target.value);
+    });
+  }
+
+  initSettings() {
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsPanel = document.getElementById('settingsPanel');
+    const settingsBackBtn = document.getElementById('settingsBackBtn');
+    const exportNotesBtn = document.getElementById('exportNotesBtn');
+    const importNotesBtn = document.getElementById('importNotesBtn');
+    const importNotesInput = document.getElementById('importNotesInput');
+    const fontSelector = document.getElementById('fontSelector');
+    const fontSizeSlider = document.getElementById('fontSizeSlider');
+    const fontSizeValue = document.getElementById('fontSizeValue');
+    const fontPreviewText = document.getElementById('fontPreviewText');
+
+    const updateFontPreview = (fontName, sizePx) => {
+      if (fontSizeValue) fontSizeValue.textContent = `${sizePx}px`;
+      if (fontPreviewText) {
+        const previewFontFamily = (fontName === 'Default' || fontName === 'System')
+          ? '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+          : fontName;
+        fontPreviewText.style.fontFamily = previewFontFamily;
+        fontPreviewText.style.fontSize = `${sizePx}px`;
+      }
+    };
+
+    settingsBtn.addEventListener('click', () => {
+      settingsPanel.style.display = 'flex';
+    });
+
+    settingsBackBtn.addEventListener('click', () => {
+      // On close, apply current settings to the editor
+      const fontName = fontSelector.value;
+      const size = fontSizeSlider.value;
+      this.applyFont(fontName, size);
+      settingsPanel.style.display = 'none';
+    });
+
+    // Font controls
+    fontSelector.addEventListener('change', (e) => {
+      const fontName = e.target.value;
+      const size = fontSizeSlider.value;
+      // Do not apply to editor while settings is open; preview only
+      updateFontPreview(fontName, size);
+      chrome.storage.sync.set({ editorFont: fontName });
+    });
+
+    fontSizeSlider.addEventListener('input', (e) => {
+      const size = e.target.value;
+      const fontName = fontSelector.value;
+      // Do not apply to editor while settings is open; preview only
+      updateFontPreview(fontName, size);
+      chrome.storage.sync.set({ editorFontSize: size });
+    });
+
+    // Load saved font settings
+    chrome.storage.sync.get(['editorFont', 'editorFontSize'], ({ editorFont, editorFontSize }) => {
+      // Normalize legacy 'System' to 'Default'
+      const normalizedFont = editorFont === 'System' ? 'Default' : (editorFont || 'Default');
+      fontSelector.value = normalizedFont;
+      if (editorFont === 'System') {
+        chrome.storage.sync.set({ editorFont: 'Default' });
+      }
+      const sizeToUse = editorFontSize || fontSizeSlider.value || '14';
+      fontSizeSlider.value = sizeToUse;
+      this.applyFont(fontSelector.value, sizeToUse);
+      updateFontPreview(fontSelector.value, sizeToUse);
+    });
+
+    // Export/Import functionality
+    exportNotesBtn.addEventListener('click', () => this.exportNotes());
+    importNotesBtn.addEventListener('click', () => importNotesInput.click());
+    importNotesInput.addEventListener('change', (e) => this.importNotes(e));
   }
 
   // Detect system theme and manage override (auto/light/dark)
@@ -331,7 +506,7 @@ class URLNotesApp {
     btn.setAttribute('aria-label', btn.title);
   }
 
-  // Switch between all notes and page-specific filter
+  // Switch between different note filters
   switchFilter(filter) {
     this.filterMode = filter;
     
@@ -339,75 +514,74 @@ class URLNotesApp {
     document.querySelectorAll('.filter-option').forEach(btn => {
       btn.classList.remove('active');
     });
-    document.getElementById(filter === 'all' ? 'showAllBtn' : 'showPageBtn').classList.add('active');
-    
-    // Title stays constant per Option A: always "Notes"
-    document.getElementById('notesTitle').textContent = 'Notes';
-    
-    // Re-render with filter
+    const buttonId = {
+      'site': 'showAllBtn',
+      'page': 'showPageBtn',
+      'all_notes': 'showAllNotesBtn'
+    }[filter];
+    document.getElementById(buttonId).classList.add('active');
+
+    // Set data-view on root for view-specific styling (compact site/page)
+    document.documentElement.setAttribute('data-view', filter);
+
+    // Update search placeholder for clarity per view
+    const searchInput = document.querySelector('.search-input');
+    if (searchInput) {
+      const placeholder =
+        filter === 'all_notes' ? 'Search All Notes' :
+        filter === 'site' ? 'Search This Site' :
+        'Search This Page';
+      searchInput.setAttribute('placeholder', placeholder);
+    }
+
     this.render();
   }
 
-  // Load notes from storage (hybrid - load all domain notes)
-  async loadNotes() {
-    try {
-      const domainKey = this.currentSite.domain;
-      const result = await chrome.storage.local.get([domainKey]);
-      this.notes = result[domainKey] || [];
-      this.render();
-    } catch (error) {
-      console.error('Error loading notes:', error);
-      this.notes = [];
-    }
-  }
-
-  // Save notes to storage (hybrid - always save to domain)
-  async saveNotes() {
-    try {
-      const domainKey = this.currentSite.domain;
-      await chrome.storage.local.set({ [domainKey]: this.notes });
-    } catch (error) {
-      console.error('Error saving notes:', error);
-    }
-  }
-
-  // Filter notes based on search query and page filter
-  getFilteredNotes() {
-    let filtered = this.notes;
-    
-    // Apply page filter
-    if (this.filterMode === 'page') {
-      filtered = filtered.filter(note => note.url === this.currentSite.url);
-    }
-    
-    // Apply search filter
-    if (this.searchQuery) {
-      const query = this.searchQuery.toLowerCase();
-      filtered = filtered.filter(note => 
-        note.title.toLowerCase().includes(query) ||
-        note.content.toLowerCase().includes(query) ||
-        (note.tags && note.tags.some(tag => tag.toLowerCase().includes(query)))
-      );
-    }
-    
-    return filtered;
-  }
-
-  // Render the notes list
+  // Render the notes list based on the current filter and search query
   render() {
     const notesList = document.getElementById('notesList');
     let emptyState = document.getElementById('emptyState');
-    const filteredNotes = this.getFilteredNotes();
+    notesList.innerHTML = ''; // Clear previous list
 
+    let filteredNotes = [];
+
+    // 1. Apply filter mode
+    if (this.filterMode === 'site') {
+      filteredNotes = this.allNotes.filter(note => note.domain === this.currentSite.domain);
+    } else if (this.filterMode === 'page') {
+      filteredNotes = this.allNotes.filter(note => note.url === this.currentSite.url);
+    } else { // 'all_notes'
+      filteredNotes = this.allNotes;
+    }
+
+    // 2. Apply search query with prioritization
+    if (this.searchQuery) {
+      const query = this.searchQuery.toLowerCase();
+      filteredNotes = filteredNotes.map(note => {
+        let score = 0;
+        if (note.domain && note.domain.toLowerCase().includes(query)) score += 4;
+        if (note.title.toLowerCase().includes(query)) score += 3;
+        if (note.tags.some(tag => tag.toLowerCase().includes(query))) score += 2;
+        if (note.content.toLowerCase().includes(query)) score += 1;
+        return { note, score };
+      })
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(item => item.note);
+    } else if (this.filterMode === 'all_notes' && !this.searchQuery) {
+      // For 'all_notes' view, show all notes when there's no search query
+      filteredNotes = this.allNotes;
+    }
+
+    // 3. Render notes or empty state
     if (filteredNotes.length === 0) {
-      // Create empty state if it was removed on previous renders
       if (!emptyState) {
         emptyState = document.createElement('div');
         emptyState.id = 'emptyState';
         emptyState.className = 'empty-state';
         emptyState.innerHTML = `
           <div class="empty-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
               <polyline points="14,2 14,8 20,8"></polyline>
               <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -415,8 +589,8 @@ class URLNotesApp {
               <polyline points="10,9 9,9 8,9"></polyline>
             </svg>
           </div>
-          <h4>No notes yet</h4>
-          <p>Create your first note for this site</p>
+          <h4>No notes found</h4>
+          <p>Try a different filter or create a new note.</p>
         `;
       }
       notesList.innerHTML = '';
@@ -428,11 +602,102 @@ class URLNotesApp {
       }
       notesList.innerHTML = '';
       
-      filteredNotes.forEach(note => {
-        const noteElement = this.createNoteElement(note);
-        notesList.appendChild(noteElement);
-      });
+      if (this.filterMode === 'all_notes') {
+        this.renderGroupedNotes(filteredNotes);
+      } else {
+        filteredNotes.forEach(note => {
+          const noteElement = this.createNoteElement(note);
+          notesList.appendChild(noteElement);
+        });
+      }
     }
+  }
+
+  // Group notes by domain, including aggregated tags
+  groupNotesByDomain(notes) {
+    const grouped = notes.reduce((acc, note) => {
+      const domain = note.domain || 'No Domain';
+      if (!acc[domain]) {
+        acc[domain] = { notes: [], tagCounts: {} };
+      }
+      acc[domain].notes.push(note);
+      if (note.tags && note.tags.length > 0) {
+        note.tags.forEach(tag => {
+          acc[domain].tagCounts[tag] = (acc[domain].tagCounts[tag] || 0) + 1;
+        });
+      }
+      return acc;
+    }, {});
+
+    // Get top 5 tags for each domain
+    for (const domain in grouped) {
+      grouped[domain].tags = Object.entries(grouped[domain].tagCounts)
+        .sort(([, countA], [, countB]) => countB - countA)
+        .slice(0, 5)
+        .map(([tag]) => tag);
+    }
+    
+    return grouped;
+  }
+
+  // Render notes grouped by domain for 'All Notes' view
+  renderGroupedNotes(notes) {
+    const notesList = document.getElementById('notesList');
+    const groupedData = this.groupNotesByDomain(notes);
+    const sortedDomains = Object.keys(groupedData).sort();
+
+    notesList.innerHTML = ''; // Clear previous list
+
+    sortedDomains.forEach(domain => {
+      const { notes: domainNotes, tags: domainTags } = groupedData[domain];
+      
+      const tagsHtml = domainTags.length > 0 ? `
+        <div class="domain-tags">
+          ${domainTags.map(tag => `<span class="note-tag">${tag}</span>`).join('')}
+        </div>
+      ` : '';
+
+      const domainGroup = document.createElement('details');
+      domainGroup.className = 'domain-group';
+      // Expand top two results only when searching
+      const domainIndex = sortedDomains.indexOf(domain);
+      domainGroup.open = this.searchQuery && domainIndex < 2;
+      
+      domainGroup.innerHTML = `
+        <summary class="domain-group-header">
+          <div class="domain-header-info">
+            <span>${domain} (${domainNotes.length})</span>
+            ${tagsHtml}
+          </div>
+          <div class="domain-actions">
+            <button class="delete-domain-btn" data-domain="${domain}" title="Delete all notes for this domain">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-trash-2"><polyline points="3,6 5,6 21,6"></polyline><path d="m19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+            </button>
+          </div>
+        </summary>
+        <div class="domain-notes-list"></div>
+      `;
+      
+      const deleteDomainBtn = domainGroup.querySelector('.delete-domain-btn');
+      const actionsContainer = domainGroup.querySelector('.domain-actions');
+      const domainNotesList = domainGroup.querySelector('.domain-notes-list');
+
+      deleteDomainBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        this.showInlineConfirm(actionsContainer, () => {
+          this.deleteNotesByDomain(domain, true);
+        });
+      });
+
+      // Append note elements as DOM nodes so their event listeners remain active
+      domainNotes.forEach(n => {
+        const el = this.createNoteElement(n);
+        domainNotesList.appendChild(el);
+      });
+
+      notesList.appendChild(domainGroup);
+    });
   }
 
   // Create a note element
@@ -449,7 +714,7 @@ class URLNotesApp {
         ${note.tags.map(tag => `<span class="note-tag">${tag}</span>`).join('')}
       </div>` : '';
     
-    const pageIndicator = (this.filterMode === 'all' && note.url === this.currentSite.url) ? 
+    const pageIndicator = (this.filterMode !== 'page' && note.url === this.currentSite.url) ? 
       '<span class="page-indicator" data-tooltip="Current page note">•</span>' : '';
 
     noteDiv.innerHTML = `
@@ -471,7 +736,9 @@ class URLNotesApp {
     const deleteBtn = noteDiv.querySelector('.note-delete-btn');
     deleteBtn.addEventListener('click', (e) => {
       e.stopPropagation(); // Prevent opening the note
-      this.deleteNoteFromList(note.id);
+      this.showInlineConfirm(noteDiv, () => {
+        this.deleteNoteFromList(note.id, true);
+      });
     });
 
     return noteDiv;
@@ -510,12 +777,20 @@ class URLNotesApp {
     const contentInput = document.getElementById('noteContentInput');
     const tagsInput = document.getElementById('tagsInput');
     const dateSpan = document.getElementById('noteDate');
+    const aiRewriteBtn = document.getElementById('aiRewriteBtn');
 
     // Populate editor with note data
     titleHeader.value = this.currentNote.title;
     contentInput.value = this.currentNote.content;
     tagsInput.value = this.currentNote.tags.join(', ');
     dateSpan.textContent = `Created ${this.formatDate(this.currentNote.createdAt)}`;
+
+    // Show premium features
+    if (this.premiumStatus.isPremium) {
+      aiRewriteBtn.style.display = 'flex';
+    } else {
+      aiRewriteBtn.style.display = 'none';
+    }
 
     // Show editor with animation
     editor.style.display = 'flex';
@@ -546,7 +821,7 @@ class URLNotesApp {
   }
 
   // Save current note
-  async saveCurrentNote() {
+  async saveCurrentNote(isAutosave = false) {
     if (!this.currentNote) {
       this.showToast('No note open to save');
       return;
@@ -575,23 +850,39 @@ class URLNotesApp {
       return;
     }
 
-    // Add to notes array if it's a new note
-    const existingIndex = this.notes.findIndex(note => note.id === this.currentNote.id);
-    if (existingIndex >= 0) {
-      this.notes[existingIndex] = this.currentNote;
+    // Get all notes for the current domain from storage
+    const domain = this.currentNote.domain;
+    const data = await chrome.storage.local.get(domain);
+    const notesForDomain = data[domain] || [];
+
+    // Find and update the note, or add it if new
+    const noteIndex = notesForDomain.findIndex(n => n.id === this.currentNote.id);
+    if (noteIndex > -1) {
+      notesForDomain[noteIndex] = this.currentNote;
     } else {
-      this.notes.unshift(this.currentNote);
+      notesForDomain.push(this.currentNote);
     }
 
-    // Save to storage
-    await this.saveNotes();
-    
-    // Update UI
-    this.render();
+    // Save back to storage
+    await chrome.storage.local.set({ [domain]: notesForDomain });
+
+    // Update master list in memory
+    const masterIndex = this.allNotes.findIndex(n => n.id === this.currentNote.id);
+    if (masterIndex > -1) {
+      this.allNotes[masterIndex] = this.currentNote;
+    } else {
+      this.allNotes.unshift(this.currentNote); // Add to front for visibility
+    }
+
+    // Sort master list again to be safe
+    this.allNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+    this.showToast('Note saved!');
     this.closeEditor();
-    
-    // Show save feedback
-    this.showToast('Note saved');
+
+    // Re-render from memory
+    this.render();
+    this.checkStorageQuota();
   }
 
   // Delete current note (from editor)
@@ -601,32 +892,138 @@ class URLNotesApp {
       return;
     }
 
-    const noteIndex = this.notes.findIndex(note => note.id === this.currentNote.id);
-    if (noteIndex >= 0) {
-      this.notes.splice(noteIndex, 1);
-      await this.saveNotes();
-      this.showToast('Note deleted');
+    // If it's a new, unsaved note, just close the editor
+    const isNewNote = !this.allNotes.some(n => n.id === this.currentNote.id);
+    if (isNewNote) {
       this.closeEditor();
+      return;
     }
+
+    const confirmed = await this.dialog.show(`Delete "${this.currentNote.title || 'Untitled'}"?`);
+    if (!confirmed) {
+      return;
+    }
+
+    // Remove from master list in memory
+    const masterIndex = this.allNotes.findIndex(n => n.id === this.currentNote.id);
+    if (masterIndex > -1) {
+      this.allNotes.splice(masterIndex, 1);
+    }
+
+    // Remove from storage
+    const domain = this.currentNote.domain;
+    const data = await chrome.storage.local.get(domain);
+    let notesForDomain = data[domain] || [];
+    notesForDomain = notesForDomain.filter(n => n.id !== this.currentNote.id);
+    await chrome.storage.local.set({ [domain]: notesForDomain });
+
+    this.showToast('Note deleted');
+    this.closeEditor();
+    await this.postDeleteRefresh();
   }
   
   // Delete note from list (with confirmation)
-  async deleteNoteFromList(noteId) {
-    const note = this.notes.find(n => n.id === noteId);
+  async deleteNoteFromList(noteId, skipConfirm = false) {
+    const note = this.allNotes.find(n => n.id === noteId);
     if (!note) return;
-    
-    // Simple confirmation
-    if (!confirm(`Delete "${note.title || 'Untitled'}"?`)) {
-      return;
+
+    // This function is now only called directly when confirmed, so no need for dialog.
+    // The inline confirmation is handled by the click listener in `createNoteElement`.
+
+    // Remove from master list
+    this.allNotes = this.allNotes.filter(n => n.id !== noteId);
+
+    // Remove from storage
+    const domain = note.domain;
+    const data = await chrome.storage.local.get(domain);
+    let notesForDomain = data[domain] || [];
+    notesForDomain = notesForDomain.filter(n => n.id !== noteId);
+    await chrome.storage.local.set({ [domain]: notesForDomain });
+
+    this.showToast('Note deleted');
+    await this.postDeleteRefresh();
+  }
+
+  // Standardized inline confirmation UI
+  showInlineConfirm(parent, onConfirm) {
+    // Remove any other open confirmations
+    const existingConfirm = document.querySelector('.inline-confirm');
+    if (existingConfirm) {
+      existingConfirm.remove();
     }
-    
-    const noteIndex = this.notes.findIndex(n => n.id === noteId);
-    if (noteIndex >= 0) {
-      this.notes.splice(noteIndex, 1);
-      await this.saveNotes();
-      this.render();
-      this.showToast('Note deleted');
+
+    const confirmUI = document.createElement('div');
+    confirmUI.className = 'inline-confirm';
+    confirmUI.innerHTML = `
+      <span>Delete?</span>
+      <button class="confirm-yes">Confirm</button>
+      <button class="confirm-no">Cancel</button>
+    `;
+
+    parent.appendChild(confirmUI);
+
+    confirmUI.querySelector('.confirm-yes').addEventListener('click', (e) => {
+      e.stopPropagation();
+      onConfirm();
+      confirmUI.remove();
+    });
+
+    confirmUI.querySelector('.confirm-no').addEventListener('click', (e) => {
+      e.stopPropagation();
+      confirmUI.remove();
+    });
+  }
+
+  // Delete all notes for a specific domain
+  async deleteNotesByDomain(domain, confirmed = false) {
+    if (!confirmed) {
+      const notesForDomainCount = this.allNotes.filter(note => note.domain === domain).length;
+      const userConfirmed = await this.dialog.show(`Are you sure you want to delete all ${notesForDomainCount} notes for ${domain}? This cannot be undone.`);
+      if (!userConfirmed) return;
     }
+
+    // Remove from storage by removing the domain key
+    await chrome.storage.local.remove(domain);
+
+    // Remove from master list in memory
+    this.allNotes = this.allNotes.filter(note => note.domain !== domain);
+
+    await this.postDeleteRefresh();
+    this.showToast(`Deleted all notes for ${domain}`);
+  }
+
+  // After any deletion, optionally clear the search if it would show an empty list, then render
+  async postDeleteRefresh() {
+    // Compute what would be visible with current filter + search
+    let filtered = [];
+    if (this.filterMode === 'site') {
+      filtered = this.allNotes.filter(n => n.domain === (this.currentSite && this.currentSite.domain));
+    } else if (this.filterMode === 'page') {
+      filtered = this.allNotes.filter(n => n.url === (this.currentSite && this.currentSite.url));
+    } else {
+      filtered = this.allNotes;
+    }
+
+    if (this.searchQuery) {
+      const q = this.searchQuery.toLowerCase();
+      filtered = filtered.map(n => {
+        let score = 0;
+        if (n.domain && n.domain.toLowerCase().includes(q)) score += 4;
+        if ((n.title || '').toLowerCase().includes(q)) score += 3;
+        if ((n.tags || []).some(tag => (tag || '').toLowerCase().includes(q))) score += 2;
+        if ((n.content || '').toLowerCase().includes(q)) score += 1;
+        return { n, score };
+      }).filter(it => it.score > 0).map(it => it.n);
+    }
+
+    if (this.searchQuery && filtered.length === 0) {
+      // Clear query and input field
+      this.searchQuery = '';
+      const input = document.getElementById('searchInput') || document.querySelector('.search-input');
+      if (input) input.value = '';
+    }
+
+    this.render();
   }
 
   // Update note preview while typing
@@ -635,6 +1032,48 @@ class URLNotesApp {
   }
 
   // Update character count
+  // Font settings management
+  async saveFontSetting(fontName) {
+    await chrome.storage.local.set({ editorFont: fontName });
+    this.applyFont(fontName);
+    this.showToast(`Font set to ${fontName}`);
+  }
+
+  async loadFontSetting() {
+    const { editorFont } = await chrome.storage.local.get(['editorFont']);
+    const fontToApply = editorFont || 'Default'; // Default to 'Default'
+    document.getElementById('fontSelector').value = fontToApply;
+    const sizeSlider = document.getElementById('fontSizeSlider');
+    const initialSize = sizeSlider ? sizeSlider.value : undefined;
+    this.applyFont(fontToApply, initialSize);
+  }
+
+  applyFont(font, size) {
+    const editor = document.getElementById('noteContentInput');
+    const noteTitleHeader = document.getElementById('noteTitleHeader');
+    const tagsInput = document.getElementById('tagsInput');
+    const sizeSlider = document.getElementById('fontSizeSlider');
+    
+    const fontFamily = font === 'Default' 
+      ? '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+      : font;
+
+    [editor, noteTitleHeader, tagsInput].forEach(el => {
+      if (el) {
+        el.style.fontFamily = fontFamily;
+        const sizeToUse = size || (sizeSlider ? sizeSlider.value : null);
+        if (sizeToUse) {
+          el.style.fontSize = `${sizeToUse}px`;
+        }
+      }
+    });
+  }
+
+  // AI Rewrite (placeholder)
+  aiRewrite() {
+    this.showToast('AI Rewrite coming soon!');
+  }
+
   updateCharCount() {
     const contentInput = document.getElementById('noteContentInput');
     const charCount = document.getElementById('noteChars');
@@ -642,62 +1081,167 @@ class URLNotesApp {
     charCount.textContent = `${count} characters`;
   }
 
-  // Open settings (placeholder)
+  // Update UI based on premium status
+  updatePremiumUI() {
+    const allNotesBtn = document.getElementById('showAllNotesBtn');
+    if (!this.premiumStatus.isPremium) {
+      allNotesBtn.classList.add('premium-feature');
+      allNotesBtn.disabled = true;
+      allNotesBtn.title = 'This is a premium feature.';
+    }
+  }
+
+  // Open settings
   openSettings() {
-    // This will open settings panel in future versions
-    this.showToast('Settings coming soon');
+    const settingsPanel = document.getElementById('settingsPanel');
+    settingsPanel.style.display = 'flex';
+    settingsPanel.classList.add('slide-in');
   }
 
-  // Utility functions
-  generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
-  }
-
-  formatDate(dateString) {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    
-    return date.toLocaleDateString();
-  }
-
-  showToast(message) {
-    // Simple toast notification
-    const toast = document.createElement('div');
-    toast.style.cssText = `
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--bg-overlay);
-      color: var(--text-primary);
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 13px;
-      z-index: 1000;
-      backdrop-filter: blur(20px);
-      border: 1px solid var(--border-color);
-      box-shadow: 0 4px 12px var(--shadow-dark);
-    `;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-
+  // Close settings
+  closeSettings() {
+    const settingsPanel = document.getElementById('settingsPanel');
+    settingsPanel.classList.add('slide-out');
     setTimeout(() => {
-      toast.remove();
-    }, 2000);
+      settingsPanel.style.display = 'none';
+      settingsPanel.classList.remove('slide-in', 'slide-out');
+    }, 300);
+  }
+
+  // Export all notes to a JSON file
+  async exportNotes() {
+    try {
+      const allData = await chrome.storage.local.get(null);
+      const notesData = {};
+      for (const key in allData) {
+        if (key !== 'themeMode' && key !== 'editorFont') { // Exclude settings
+          notesData[key] = allData[key];
+        }
+      }
+
+      const blob = new Blob([JSON.stringify(notesData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `url-notes-backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      this.showToast('Notes exported successfully');
+    } catch (error) {
+      console.error('Error exporting notes:', error);
+      this.showToast('Failed to export notes');
+    }
+  }
+
+  // Import notes from a JSON file
+  async importNotes(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const importedData = JSON.parse(e.target.result);
+        const currentData = await chrome.storage.local.get(null);
+        let notesImportedCount = 0;
+
+        // Merge data, imported notes will overwrite existing notes with the same ID
+        for (const domain in importedData) {
+          if (domain === 'themeMode' || !Array.isArray(importedData[domain])) continue;
+          
+          const existingNotes = currentData[domain] || [];
+          const importedNotes = importedData[domain];
+          const notesMap = new Map(existingNotes.map(note => [note.id, note]));
+          
+          importedNotes.forEach(note => {
+            if (note && note.id) { // Basic validation
+              notesMap.set(note.id, note);
+              notesImportedCount++;
+            }
+          });
+
+          currentData[domain] = Array.from(notesMap.values());
+        }
+
+        await chrome.storage.local.set(currentData);
+        await this.loadNotes(); // Reload all notes into memory
+        this.render();
+        this.showToast(`${notesImportedCount} notes imported successfully`);
+
+      } catch (error) {
+        console.error('Error importing notes:', error);
+        this.showToast('Failed to import notes. Invalid file format.');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // Helper to format dates
+  formatDate(isoString) {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    return date.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+    });
+  }
+
+  // Generate a unique ID
+  generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+  }
+
+  // Show a toast notification
+  showToast(message) {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => {
+      toast.classList.remove('show');
+    }, 3000);
+  }
+
+  // Check storage quota
+  // Debounce utility
+  debounce(func, delay) {
+    let timeout;
+    return (...args) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(this, args), delay);
+    };
+  }
+
+  async checkStorageQuota() {
+    const usage = await navigator.storage.estimate();
+    const quota = usage.quota;
+    const usageInMB = (usage.usage / (1024 * 1024)).toFixed(2);
+    const quotaInMB = (quota / (1024 * 1024)).toFixed(2);
+    const percentage = ((usage.usage / quota) * 100).toFixed(1);
+
+    const storageBar = document.getElementById('storageUsageBar');
+    const storageText = document.getElementById('storageUsageText');
+
+    if (storageBar && storageText) {
+      storageBar.style.width = `${percentage}%`;
+      storageText.textContent = `${usageInMB} MB / ${quotaInMB} MB (${percentage}%)`;
+      
+      if (percentage > 90) {
+        storageBar.style.backgroundColor = 'var(--color-danger)';
+      } else if (percentage > 70) {
+        storageBar.style.backgroundColor = 'var(--color-warning)';
+      } else {
+        storageBar.style.backgroundColor = 'var(--accent-primary)';
+      }
+    }
   }
 }
 
-  // Initialize the app when DOM is loaded
-  document.addEventListener('DOMContentLoaded', () => {
-    // Expose globally for debugging/tests in popup console
-    window.app = new URLNotesApp();
-  });
+// Mock premium status function (replace with actual logic)
+async function getPremiumStatus() {
+  return { isPremium: true };
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  new URLNotesApp();
+});

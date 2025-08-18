@@ -42,6 +42,10 @@
   - Container padding: `8px 16px 8px 16px`
   - Input height: 40px; left icon absolutely positioned
   - Clear button appears conditionally
+  - Placeholder text is contextual:
+    - All Notes: "Search All Notes"
+    - This Site: "Search This Site"
+    - This Page: "Search This Page"
 
 - __Filter chips (`.filter-option`)__
   - Neutral until active; active uses Apple-like segmented pill
@@ -50,6 +54,7 @@
 - __Notes list__
   - Cards (`.note-item`) use inset light border, soft hover lift, hidden delete until hover
   - Title truncation, 2-line preview via `-webkit-line-clamp`
+  - Compact mode in Site/Page views via `:root[data-view="site|page"]` reduces paddings, title size, preview gap, and tag spacing.
 
 - __Buttons__
   - Primary actions (New Note, Save):
@@ -58,16 +63,48 @@
     - Hover: `background: var(--accent-secondary)` with `0 2px 8px var(--shadow-dark)`
   - Icon buttons use neutral surfaces; hover to secondary/background
 
+- __Settings panel (`.settings-panel`)__
+  - Light mode: higher opacity for readability `rgba(255, 255, 255, 0.92)` with clear border/shadow.
+  - Dark mode: use dark tokens; avoid lowering opacity excessively over complex backgrounds.
+  - Rounded corners (12px), blurred backdrop, subtle drop shadow.
+  - Storage & Backup actions live here.
+
+- __Font Settings (in Settings panel)__
+  - Font dropdown label is “Font” (no “family” wording). Default option label is “Default” (system stack).
+  - Font size slider has visible track/thumb in light mode.
+  - Live preview shows sample text and numeric value (e.g., `14px`).
+  - Behavior: Changes do NOT apply to the editor while Settings is open; they apply when the panel closes.
+
 ## Dark Mode
 
 - Dark tokens defined under `@media (prefers-color-scheme: dark)`.
 - Do not hardcode alternate colors; derive from variables only.
+- Settings menu uses higher opacity in dark to maintain contrast over complex backgrounds.
 
 ## Accessibility
 
 - Use `:focus-visible` on interactive elements.
 - Maintain sufficient contrast; enforce white text on accent backgrounds.
 - Tooltips on small indicators (e.g., page badge) for clarity.
+
+## UX Patterns
+
+- __Inline destructive confirmations__
+  - Replace blocking dialogs with two-click inline confirm on delete buttons.
+  - First click sets `.confirm` state on the button for ~2.5s; second click confirms.
+  - Applies to note delete in Site/Page and All Notes views; domain delete uses same pattern.
+  - Placement:
+    - Per-note confirm is appended to `.note-item-header` and absolutely positioned within the card.
+    - Domain bulk delete confirm is appended to the `.domain-actions` container inside the domain header summary.
+
+- __Live refresh in All Notes__
+  - Invalidate cached all-notes data on `chrome.storage.local` changes and re-render when `viewMode === 'all'`.
+  - Force-refresh cache after save/delete when currently in All Notes.
+  - Note cards are rendered as DOM nodes (not string HTML) so event handlers (delete) remain active.
+
+- __Post-delete search behavior__
+  - Keep the user’s query sticky while there are still results.
+  - If a delete leaves zero results for the current query, automatically clear the search box and re-render.
 
 ## Do / Don’t
 
@@ -80,3 +117,10 @@
 - Tightened header/search spacing for compact top area.
 - Replaced hardcoded blue glows on New Note with accent-derived shadows.
 - Removed copy-to-clipboard button next to URL (kept clean header).
+- Increased Settings panel opacity in light mode; clearer borders/shadows.
+- Font controls moved back to Settings; added preview and numeric value; slider track/thumb visible in light mode.
+- Behavior change: font changes apply on closing Settings, not live in the editor.
+- Added inline two-click delete confirmations; All Notes live-refresh on storage changes.
+ - Domain delete confirm moved inside domain header actions; All Notes per-note delete fixed by DOM-node rendering.
+ - Compact note styles for Site/Page views via `data-view` attribute.
+ - Dynamic search placeholder per view and conditional search clear after deletions.
