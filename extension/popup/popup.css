@@ -409,6 +409,24 @@ html, body {
   box-shadow: inset 0 1px 0 var(--shadow-light);
 }
 
+/* Compact variant for small inline actions */
+.icon-btn.sm {
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+}
+
+/* Subtle glass (liquid) effect */
+.icon-btn.glass {
+  background: color-mix(in srgb, var(--bg-primary) 40%, transparent);
+  backdrop-filter: saturate(160%) blur(8px);
+  -webkit-backdrop-filter: saturate(160%) blur(8px);
+  border: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
+  box-shadow:
+    0 1px 2px var(--shadow-dark),
+    inset 0 1px 0 var(--shadow-light);
+}
+
 .icon-btn:hover {
   background: var(--bg-secondary);
   color: var(--text-primary);
@@ -809,7 +827,7 @@ html, body {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 14px;
-  padding: 12px;
+  padding: 8px 10px 20px 10px; /* tighter top, small reserve at bottom for overlaid tags */
   margin-bottom: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -837,9 +855,34 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   position: relative;
-  padding-right: 32px;
+  padding-right: 28px;
+}
+
+.note-header-left {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  min-width: 0; /* allow title to ellipsize */
+}
+
+/* Ensure no tag chips ever render on the left side of the header */
+.note-header-left .note-tags,
+.note-header-left .note-tag { display: none !important; }
+
+.note-header-right {
+  display: flex;
+  align-items: center;
+  gap: 4px; /* closer spacing between trash and date */
+  margin-left: auto; /* push trash+date group to the right */
+  padding-right: 26px; /* reserve just enough room for the absolute date */
+}
+
+.note-inline-actions {
+  display: flex;
+  gap: 4px;
 }
 
 .note-title {
@@ -858,7 +901,18 @@ html, body {
 .note-date {
   font-size: 12px;
   color: var(--text-secondary);
-  margin-right: 8px;
+  position: absolute; /* pin to right edge of header */
+  right: 6px; /* same breathing room as tags */
+  top: 50%;
+  transform: translateY(-50%);
+  margin: 0;
+}
+
+/* Visual confirm state for two-tap delete on notes */
+.note-delete-btn.confirm {
+  background: rgba(255, 71, 87, 0.15);
+  color: #ff4757;
+  border-color: color-mix(in srgb, #ff4757 40%, var(--border-color));
 }
 
 .note-info .note-chars {
@@ -868,30 +922,30 @@ html, body {
 .note-delete-btn {
   opacity: 0;
   background: none;
-  border: none;
+  border: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
   color: #ff4757;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  position: absolute;
-  right: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 2;
+  padding: 2px;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+  position: static; /* participate in flex layout to sit left of date */
 }
 
-.note-item:hover .note-delete-btn {
-  opacity: 1;
-}
+.note-item:hover .note-delete-btn { opacity: 1; }
 
-.note-delete-btn:hover {
-  background: rgba(255, 71, 87, 0.1);
-  transform: translateY(-50%) scale(1.1);
-}
+.note-delete-btn:hover { background: rgba(255, 71, 87, 0.1); transform: scale(1.05); }
 
-.note-delete-btn:active {
-  transform: translateY(-50%) scale(0.95);
+.note-delete-btn:active { transform: scale(0.95); }
+
+/* Header right padding minimal since delete sits in-flow to the left of date */
+.note-item-header {
+  position: relative; /* positioning context for absolute date */
+  padding-right: 6px; /* minimal edge padding so date hugs the right */
 }
 
 .note-preview {
@@ -905,10 +959,39 @@ html, body {
   overflow: hidden;
 }
 
+/* Tags inside note cards: overlay in the card so they don't change height */
+.note-item .note-tags {
+  position: absolute;
+  right: 6px; /* match right padding with date */
+  bottom: 6px;
+  left: auto;
+  display: flex;
+  gap: 4px;
+  max-width: 60%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  opacity: 0.75;
+  z-index: 2; /* appear above content */
+}
+
+.note-item .note-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 18px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-tertiary) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
+}
+
 /* Compact styles for Page/Site views */
 :root[data-view="page"] .note-item,
 :root[data-view="site"] .note-item {
-  padding: 8px 9px;
+  padding: 5px 9px 18px 9px; /* compact with minimal tag reserve */
   margin-bottom: 4px;
   border-radius: 12px;
 }
@@ -1006,7 +1089,7 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 8px; /* Reduced vertical padding */
+  padding: 4px 8px; /* Condensed vertical padding */
   margin-bottom: 4px; /* Tighter to notes list */
   font-size: 12px;
   font-weight: 600;
@@ -1015,15 +1098,156 @@ html, body {
   border-radius: 12px;
   border: 1px solid var(--border-color);
   cursor: pointer;
-  box-shadow: 0 2px 8px var(--shadow-dark);
+  box-shadow: none;
   transition: background 0.2s ease;
+  position: relative;
+  z-index: 0; /* establish stacking context */
+}
+
+/* Distinguish the notes region from the domain header */
+.domain-notes-list {
+  position: relative;
+  padding: 0 4px 0 10px; /* align left guide with exact notes stack height */
+  margin-left: 6px; /* slight indent relative to header */
+  border-left: 1px solid color-mix(in srgb, var(--border-color) 20%, transparent);
+  z-index: 1; /* render above header's subtle shadow */
+  display: flex;              /* ensure no outside margins affect height */
+  flex-direction: column;
+  gap: 6px;                   /* internal spacing between notes */
+}
+
+/* remove top gradient to avoid perceived shadow block */
+.domain-notes-list::before { display: none; }
+
+/* Ensure header hover doesn’t bleed into notes area */
+details.domain-group[open] > .domain-notes-list {
+  background: transparent; /* remove blocky background that reads like a large shadow */
+  border-radius: 0;
+}
+
+/* Hide only left-side domain tags (if ever rendered inside header-info) */
+.domain-group-header .domain-header-info .domain-tags { display: none !important; }
+
+/* Prepare header for overlay elements (right-side tags) */
+.domain-group-header {
+  position: relative;
+  padding-right: 0; /* let absolute right elements sit at true edge */
+  overflow: visible; /* allow absolute children to render fully */
+}
+/* Reserve room on the left block for delete + tags area */
+.domain-group-header .domain-header-info { padding-right: 124px; }
+
+/* Right-side domain tags overlay (does not affect height) */
+.domain-group-header .domain-tags-right {
+  position: absolute;
+  right: 6px; /* match global right padding */
+  bottom: 4px; /* lower to increase vertical space from delete icon */
+  display: flex;
+  gap: 4px;
+  max-width: 55%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  opacity: 0.8;
+  z-index: 2;
+}
+
+/* Right-align domain actions at top-right and make smaller */
+.domain-actions {
+  position: absolute !important;
+  right: 6px !important;    /* comfortable padding from right (standard) */
+  top: 4px !important;      /* comfortable padding from top */
+  z-index: 3;  /* above right-side tags */
+}
+.domain-actions .icon-btn {
+  width: 18px;   /* smaller so it fits top-right neatly */
+  height: 18px;
+  padding: 0;
+}
+
+/* Inside grouped notes, keep shadows minimal so they don't look oversized */
+.domain-notes-list .note-item {
+  background: color-mix(in srgb, var(--bg-primary) 14%, transparent); /* slightly stronger tint for visibility */
+  box-shadow: none;        /* keep flat inside grouped list */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid color-mix(in srgb, var(--border-color) 75%, transparent); /* stronger outline */
+  margin: 0; /* spacing controlled by container gap to align left guide exactly */
+  border-radius: 10px;
+  padding: 5px 8px 18px 8px; /* compact with minimal tag reserve */
+  position: relative; /* ensure absolute-positioned tags anchor correctly */
+}
+
+.domain-notes-list .note-item:hover {
+  transform: none;
+  box-shadow: none !important;
+  background: color-mix(in srgb, var(--bg-primary) 22%, transparent);
+}
+
+/* Compact header and preview inside All Notes */
+.domain-notes-list .note-item-header {
+  margin-bottom: 1px;
+  padding-right: 16px;
+}
+
+/* Ensure note tags overlay correctly in All Notes too */
+.domain-notes-list .note-tags {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  left: auto;
+  display: flex;
+  gap: 4px;
+  max-width: 60%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  opacity: 0.75;
+  z-index: 2; /* appear above content */
+}
+
+.domain-notes-list .note-preview {
+  font-size: 11.5px;
+  line-height: 1.3;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+
+/* Tighten title, date, and inline spacing in All Notes */
+.domain-notes-list .note-header-left { gap: 4px; }
+.domain-notes-list .note-title { font-size: 13px; line-height: 1.2; }
+.domain-notes-list .note-date { font-size: 11px; opacity: 0.8; }
+.domain-notes-list .icon-btn.sm { width: 20px; height: 20px; }
+
+/* Subtle separators between notes instead of card borders */
+/* separators no longer needed as notes have outlines */
+
+/* Disable outlines that might appear like a big box around a note */
+.domain-notes-list .note-item:focus,
+.domain-notes-list .note-item:focus-visible,
+.domain-notes-list .note-item *:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.domain-header-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.domain-inline-actions {
+  display: flex;
+  gap: 6px;
 }
 
 .domain-actions {
   display: flex;
   align-items: center;
   gap: 6px;
-  position: relative; /* anchor for inline confirm inside header */
 }
 
 .domain-header-info {
@@ -1045,10 +1269,17 @@ html, body {
   gap: 4px;
 }
 
-/* Re-use note-tag style but make it slightly smaller for the header */
+/* Match domain tag pills to note tag pills (shape/size) */
 .domain-tags .note-tag {
-  padding: 1px 5px;
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  line-height: 18px;
+  padding: 0 6px;
+  font-size: 11px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-tertiary) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
 }
 
 .delete-domain-btn {
@@ -1070,24 +1301,30 @@ html, body {
 }
 
 .inline-confirm {
+  position: static; /* revert to inline flow inside .domain-actions */
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
-  padding-left: 8px;
+  margin-left: 8px; /* sits to the left of delete icon or expands next to it */
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+  white-space: nowrap;
 }
 
 .inline-confirm span {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
   font-weight: 500;
 }
 
 .inline-confirm button {
-  padding: 4px 8px;
+  padding: 1px 6px;
+  height: 20px;
+  font-size: 11px;
   border-radius: 6px;
   border: 1px solid transparent;
-  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1165,7 +1402,9 @@ html, body {
   gap: 8px;
   padding: 12px 16px;
   border-bottom: 1px solid var(--border-color);
-  background: var(--bg-secondary);
+  background: color-mix(in srgb, var(--bg-secondary) 60%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   min-height: 60px;
 }
 
@@ -1258,8 +1497,10 @@ html, body {
   font-weight: 700;
   letter-spacing: -0.015em;
   color: var(--text-strong);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-secondary) 55%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   padding: 10px 12px;
   border-radius: 8px;
   outline: none;
@@ -1270,8 +1511,8 @@ html, body {
 }
 
 .note-title-header:focus {
-  background: var(--bg-tertiary);
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.16);
+  background: color-mix(in srgb, var(--bg-tertiary) 60%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 20%, transparent);
 }
 
 .note-title-header::placeholder {
@@ -1280,8 +1521,8 @@ html, body {
 
 .note-content-input {
   flex: 1;
-  background: var(--bg-primary); /* subtle panel behind the writing area */
-  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-primary) 45%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
   color: var(--text-primary);
   font-size: 14px;
   line-height: 1.8;
@@ -1294,6 +1535,8 @@ html, body {
   overflow-wrap: break-word;
   padding: 12px 10px;
   border-radius: 8px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 /* Editor link readability */
@@ -1320,7 +1563,7 @@ html, body {
 }
 
 .note-content-input:focus {
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 20%, transparent);
   border-radius: 8px;
 }
 
@@ -1332,8 +1575,10 @@ html, body {
 
 .tags-input {
   width: 100%;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-secondary) 50%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-radius: 10px;
   padding: 8px 12px;
   font-size: 13px;

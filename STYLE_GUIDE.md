@@ -74,6 +74,11 @@
   - Cards (`.note-item`) use inset light border, soft hover lift, hidden delete until hover
   - Title truncation, 2-line preview via `-webkit-line-clamp`
   - Compact mode in Site/Page views via `:root[data-view="site|page"]` reduces paddings, title size, preview gap, and tag spacing.
+  - Alignment rules:
+    - Date is absolutely pinned to the far right and shares the same right inset as tag chips (e.g., `right: 6px`), so the date’s right edge aligns with the tag box edge.
+    - Tag chips render only on the right as overlays; never render tags on the left.
+    - Trash/delete icon sits to the left of the date with a tight gap; reserve minimal space in `.note-header-right` so icons never overlap the date.
+    - Domain delete button is smaller, pinned top-right of the domain header above tags; domain tags appear below and do not overlap the button.
 
 - __Buttons__
   - Primary actions (New Note, Save):
@@ -108,13 +113,10 @@
 
 ## UX Patterns
 
-- __Inline destructive confirmations__
-  - Replace blocking dialogs with two-click inline confirm on delete buttons.
-  - First click sets `.confirm` state on the button for ~2.5s; second click confirms.
-  - Applies to note delete in Site/Page and All Notes views; domain delete uses same pattern.
-  - Placement:
-    - Per-note confirm is appended to `.note-item-header` and absolutely positioned within the card.
-    - Domain bulk delete confirm is appended to the `.domain-actions` container inside the domain header summary.
+- __Destructive confirmations__
+  - Notes: Two-tap on the same trash icon (no inline box). First tap arms visual `.confirm` state (~1.6s timeout), second tap deletes.
+  - Domain: Bulk delete confirm renders inline inside the domain header’s `.domain-actions` container (keeps context, prevents layout jump).
+  - Tooltips: On first tap, update button title to “Click again to delete”. Auto-disarm restores the original title.
 
 - __Live refresh in All Notes__
   - Invalidate cached all-notes data on `chrome.storage.local` changes and re-render when `viewMode === 'all'`.
@@ -139,8 +141,8 @@
 - Increased Settings panel opacity in light mode; clearer borders/shadows.
 - Font controls moved back to Settings; added preview and numeric value; slider track/thumb visible in light mode.
 - Behavior change: font changes apply on closing Settings, not live in the editor.
-- Added inline two-click delete confirmations; All Notes live-refresh on storage changes.
- - Domain delete confirm moved inside domain header actions; All Notes per-note delete fixed by DOM-node rendering.
+- Added two-tap delete on the same icon for notes (no inline box); All Notes live-refresh on storage changes.
+ - Domain delete confirm kept inside domain header actions; All Notes per-note delete fixed by DOM-node rendering.
  - Compact note styles for Site/Page views via `data-view` attribute.
  - Dynamic search placeholder per view and conditional search clear after deletions.
 

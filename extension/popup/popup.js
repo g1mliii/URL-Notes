@@ -661,12 +661,6 @@ class URLNotesApp {
 
     sortedDomains.forEach(domain => {
       const { notes: domainNotes, tags: domainTags } = groupedData[domain];
-      
-      const tagsHtml = domainTags.length > 0 ? `
-        <div class="domain-tags">
-          ${domainTags.map(tag => `<span class="note-tag">${tag}</span>`).join('')}
-        </div>
-      ` : '';
 
       const domainGroup = document.createElement('details');
       domainGroup.className = 'domain-group';
@@ -674,22 +668,38 @@ class URLNotesApp {
       const domainIndex = sortedDomains.indexOf(domain);
       domainGroup.open = this.searchQuery && domainIndex < 2;
       
+      const rightDomainTagsHtml = (domainTags && domainTags.length > 0) ? `
+        <div class="domain-tags domain-tags-right">
+          ${domainTags.map(tag => `<span class="note-tag">${tag}</span>`).join('')}
+        </div>
+      ` : '';
+
       domainGroup.innerHTML = `
         <summary class="domain-group-header">
           <div class="domain-header-info">
             <span>${domain} (${domainNotes.length})</span>
-            ${tagsHtml}
+            <div class="domain-inline-actions">
+              <button class="icon-btn sm glass open-domain-btn" data-domain="${domain}" title="Open ${domain}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 3h7v7"/>
+                  <path d="M10 14 21 3"/>
+                  <path d="M3 10v11h11"/>
+                </svg>
+              </button>
+            </div>
           </div>
           <div class="domain-actions">
-            <button class="delete-domain-btn" data-domain="${domain}" title="Delete all notes for this domain">
+            <button class="icon-btn delete-domain-btn" data-domain="${domain}" title="Delete all notes for this domain">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-trash-2"><polyline points="3,6 5,6 21,6"></polyline><path d="m19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
             </button>
           </div>
+          ${rightDomainTagsHtml}
         </summary>
         <div class="domain-notes-list"></div>
       `;
       
       const deleteDomainBtn = domainGroup.querySelector('.delete-domain-btn');
+      const openDomainBtn = domainGroup.querySelector('.open-domain-btn');
       const actionsContainer = domainGroup.querySelector('.domain-actions');
       const domainNotesList = domainGroup.querySelector('.domain-notes-list');
 
@@ -700,6 +710,14 @@ class URLNotesApp {
           this.deleteNotesByDomain(domain, true);
         });
       });
+
+      if (openDomainBtn) {
+        openDomainBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          this.openDomainHomepage(domain);
+        });
+      }
 
       // Append note elements as DOM nodes so their event listeners remain active
       domainNotes.forEach(n => {
@@ -719,40 +737,98 @@ class URLNotesApp {
 
     // Build preview HTML that makes markdown links clickable (first line only)
     const preview = this.buildPreviewHtml(note.content);
-
     const tagsHtml = (note.tags && note.tags.length > 0) ? 
-      `<div class="note-tags">
-        ${note.tags.map(tag => `<span class="note-tag">${tag}</span>`).join('')}
-      </div>` : '';
-    
+      `<div class="note-tags">${note.tags.map(tag => `<span class=\"note-tag\">${tag}</span>`).join('')}</div>` : '';
+
+    // Tags removed from note list items to keep cards compact across views
     const pageIndicator = (this.filterMode !== 'page' && note.url === this.currentSite.url) ? 
       '<span class="page-indicator" data-tooltip="Current page note">•</span>' : '';
 
     noteDiv.innerHTML = `
       <div class="note-item-header">
-        <div class="note-title">${pageIndicator}${note.title || 'Untitled'}</div>
-        <div class="note-date">${this.formatDate(note.updatedAt)}</div>
-        <button class="note-delete-btn" data-note-id="${note.id}" title="Delete note">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="3,6 5,6 21,6"></polyline>
-            <path d="m19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2v2"></path>
-          </svg>
-        </button>
+        <div class="note-header-left">
+          <div class="note-title">${pageIndicator}${note.title || 'Untitled'}</div>
+          ${this.filterMode !== 'page' ? `
+            <div class="note-inline-actions">
+              <button class="icon-btn sm glass note-open-btn" data-note-id="${note.id}" title="Open referenced page">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 3h7v7"/>
+                  <path d="M10 14 21 3"/>
+                  <path d="M21 14v7h-7"/>
+                  <path d="M3 10v11h11"/>
+                </svg>
+              </button>
+            </div>
+          ` : ''}
+        </div>
+        <div class="note-header-right">
+          <button class="note-delete-btn" data-note-id="${note.id}" title="Delete note">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3,6 5,6 21,6"></polyline>
+              <path d="m19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2v2"></path>
+            </svg>
+          </button>
+          <div class="note-date">${this.formatDate(note.updatedAt)}</div>
+        </div>
       </div>
       <div class="note-preview">${preview}</div>
       ${tagsHtml}
     `;
     
-    // Add delete button event listener
+    // Add open button event listener (only present in non-page views)
+    const openBtn = noteDiv.querySelector('.note-open-btn');
+    if (openBtn) {
+      openBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const displayText = note.title || note.pageTitle || '';
+        this.openLinkAndHighlight(note.url, displayText);
+      });
+    }
+
+    // Add delete button event listener (two-tap confirm on same icon)
     const deleteBtn = noteDiv.querySelector('.note-delete-btn');
     deleteBtn.addEventListener('click', (e) => {
       e.stopPropagation(); // Prevent opening the note
-      this.showInlineConfirm(noteDiv, () => {
+      this.handleTwoTapDelete(deleteBtn, () => {
         this.deleteNoteFromList(note.id, true);
       });
     });
 
     return noteDiv;
+  }
+
+  // Lightweight two-tap delete: first tap arms, second within timeout confirms
+  handleTwoTapDelete(btn, onConfirm) {
+    try {
+      const armed = btn.getAttribute('data-armed') === 'true';
+      if (armed) {
+        // Confirmed
+        btn.removeAttribute('data-armed');
+        btn.classList.remove('confirm');
+        if (btn._confirmTimer) {
+          clearTimeout(btn._confirmTimer);
+          btn._confirmTimer = null;
+        }
+        onConfirm && onConfirm();
+        return;
+      }
+      // Arm
+      btn.setAttribute('data-armed', 'true');
+      btn.classList.add('confirm');
+      const prevTitle = btn.getAttribute('title') || '';
+      btn.setAttribute('data-prev-title', prevTitle);
+      btn.setAttribute('title', 'Click again to delete');
+      // Auto-disarm after 1.6s
+      btn._confirmTimer = setTimeout(() => {
+        btn.removeAttribute('data-armed');
+        btn.classList.remove('confirm');
+        const pt = btn.getAttribute('data-prev-title');
+        if (pt !== null) btn.setAttribute('title', pt);
+      }, 1600);
+    } catch (_) {
+      // Fallback: direct confirm
+      onConfirm && onConfirm();
+    }
   }
 
   // Convert first line of note content to preview HTML with clickable links
@@ -1026,6 +1102,17 @@ class URLNotesApp {
     }
   }
 
+  // Open a domain's homepage using existing tab reuse and highlight logic
+  async openDomainHomepage(domain) {
+    try {
+      const url = `https://${domain}/`;
+      await this.openLinkAndHighlight(url, '');
+    } catch (e) {
+      // Fallback open; openLinkAndHighlight already attempts a safe open
+      window.open(`https://${domain}/`, '_blank', 'noopener,noreferrer');
+    }
+  }
+
   // Create a new note (hybrid - always save both domain and URL)
   createNewNote() {
     this.isJotMode = false;
@@ -1066,7 +1153,11 @@ class URLNotesApp {
     // Render markdown/plain text to HTML for the contenteditable editor
     contentInput.innerHTML = this.buildContentHtml(this.currentNote.content);
     tagsInput.value = this.currentNote.tags.join(', ');
-    dateSpan.textContent = `Created ${this.formatDate(this.currentNote.createdAt)}`;
+    // Do not show created date inside the editor UI to avoid mid-editor clutter
+    if (dateSpan) {
+      dateSpan.textContent = '';
+      dateSpan.style.display = 'none';
+    }
 
     // Show premium features
     if (this.premiumStatus.isPremium) {

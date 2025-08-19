@@ -3,7 +3,7 @@
 ## Overview
 A browser extension and web application for taking notes on websites, with domain/URL-specific organization, local-first storage, and premium cloud sync features.
 
-### Recent Changes (Aug 18, 2025)
+### Recent Changes (Aug 19, 2025)
 - Implemented hybrid notes model: notes saved under domain with URL context; filter between "All Notes" and "This Page".
 - UI/UX improvements in `extension/popup/`:
   - Note title moved to editor header; compact save button.
@@ -21,13 +21,18 @@ A browser extension and web application for taking notes on websites, with domai
   - All Notes live-refresh on storage changes.
     - JS: `extension/popup/popup.js` added `setupStorageChangeListener()` and cache invalidation.
     - Force-refresh All Notes cache after save/delete when `viewMode === 'all'`.
-  - Inline two-click delete confirmations for notes (non-blocking, consistent in All Notes and Site/Page views).
-    - CSS: `.note-delete-btn.confirm`. JS: in-note delete handlers (replaced native confirm()).
+  - Two-tap delete on the same trash icon for notes (no inline confirm box). Non-blocking, consistent in All Notes and Site/Page views.
+  - CSS: `.note-delete-btn.confirm` visual state; auto-disarms ~1.6s. JS: `handleTwoTapDelete()` used by per-note delete handlers.
   - Domain deletion synchronized across views and caches (removes domain keys and collapse states, refreshes UI).
   - Tag chip sizing/line-height adjusted to prevent clipping in All Notes.
 
-  Final polish (Aug 18, later):
+  Final polish (Aug 19):
   - Domain bulk delete confirm renders inside the domain header's `.domain-actions` container (prevents layout jump and keeps context).
+  - Note date pinned to the far right; right edge aligns with the end of the tag box (shared right inset).
+  - Trash icon positioned to the left of the date with tight spacing; consistent across All, Site, and Page views.
+  - Tags appear only on the right as overlay chips; no left-side tags.
+  - Domain delete button is smaller, pinned top-right above tags; domain tags do not overlap.
+  - Removed the "Created …" line from the middle of the note editor to avoid clutter.
   - View-specific compact styles applied for "This Page" and "This Site" via `:root[data-view="page|site"]` selectors (reduced paddings, tighter headers, slimmer tags).
   - Dynamic search placeholder reflects active view: "Search All Notes" / "Search This Site" / "Search This Page".
   - Conditional search clear after deletions: if a delete leaves 0 matches for the current query, automatically clear the search and re-render.
@@ -627,6 +632,6 @@ Mid-term:
 
 ---
 
-**Last Updated**: August 18, 2025
+**Last Updated**: August 19, 2025
 **Version**: 1.2
 **Status**: Phase 1 Completed; Preparing Phase 2
