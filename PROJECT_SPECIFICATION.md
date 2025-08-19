@@ -33,6 +33,15 @@ A browser extension and web application for taking notes on websites, with domai
   - Conditional search clear after deletions: if a delete leaves 0 matches for the current query, automatically clear the search and re-render.
   - All Notes per-note delete fixed by rendering note cards as DOM nodes (not HTML strings) to preserve event handlers.
 
+  Popup maintenance (Aug 18, later-later):
+  - Dark mode text contrast fixes across popup: enforce light text for inputs, headers, buttons, and placeholders on dark backgrounds.
+  - Settings initialization cleanup to prevent duplicate listeners:
+    - `init()` calls `initSettings()` once.
+    - `settingsBtn` now only calls `openSettings()` (no re-initialization on each click).
+    - Export/Import listeners are registered only in `setupEventListeners()`.
+  - Font preferences use `chrome.storage.local` consistently (read/write) for `editorFont` and `editorFontSize`.
+  - Removed duplicated `.save-btn` CSS block from `extension/popup/popup.css`.
+
   UI copy and controls updates (Aug 18, later):
   - Font controls removed from inline editor, restored to Settings panel.
   - Default font label is now "Default" (system stack). "Font Family" label simplified to "Font".

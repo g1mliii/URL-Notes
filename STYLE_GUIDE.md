@@ -143,3 +143,11 @@
  - Domain delete confirm moved inside domain header actions; All Notes per-note delete fixed by DOM-node rendering.
  - Compact note styles for Site/Page views via `data-view` attribute.
  - Dynamic search placeholder per view and conditional search clear after deletions.
+
+### Popup maintenance (Aug 18, later-later)
+
+- __Dark mode contrast__: Ensure all popup text (inputs, headers, buttons, placeholders) uses light text on dark backgrounds. Avoid semi-transparent low-contrast text.
+- __Settings initialization__: Initialize settings once during `init()` and have the gear button only call `openSettings()`. Avoid re-binding listeners on each open.
+- __Export/Import listeners__: Keep export/import button listeners centralized in `setupEventListeners()` to prevent duplicates.
+- __Font preference storage__: Use `chrome.storage.local` consistently for `editorFont` and `editorFontSize` (read/write).
+- __CSS dedup__: Removed duplicated `.save-btn` rule block from `extension/popup/popup.css` to reduce redundancy.
