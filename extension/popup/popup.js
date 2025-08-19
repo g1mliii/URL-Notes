@@ -60,19 +60,26 @@ class URLNotesApp {
   // Derive accent color from favicon (with safe fallbacks)
   async applyAccentFromFavicon() {
     try {
-      const accent = await this.deriveAccentColor(this.currentSite?.favicon, this.currentSite?.domain);
-      this.setAccentVariables(accent);
+      const domain = this.currentSite?.domain;
+      const accent = await this.deriveAccentColor(this.currentSite?.favicon, domain);
+      if (!domain) return;
+      const cached = await this.getCachedAccent(domain);
+      // If accent couldn't be derived, do nothing (keep cached or neutral background)
+      if (!accent) return;
+      if (!this.isSameAccent(cached, accent)) {
+        this.setAccentVariables(accent);
+        await this.setCachedAccent(domain, accent);
+      }
     } catch (e) {
-      console.warn('Accent derivation failed, using fallback:', e);
-      const fallback = this.hashDomainToAccent(this.currentSite?.domain || 'local');
-      this.setAccentVariables(fallback);
+      console.warn('Accent derivation failed, leaving existing colors:', e);
+      // No-op on failure to avoid any flash or unwanted fallback
     }
   }
 
   async deriveAccentColor(faviconUrl, domain) {
-    // If no favicon, fallback to hash-based accent
+    // If no favicon, do not change colors
     if (!faviconUrl) {
-      return this.hashDomainToAccent(domain || 'local');
+      return null;
     }
 
     // Attempt to load image with CORS
@@ -113,22 +120,12 @@ class URLNotesApp {
       };
       return accent;
     } catch (err) {
-      // Canvas tainted or other error — fallback
-      return this.hashDomainToAccent(domain || 'local');
+      // Canvas tainted or other error — do not change colors
+      return null;
     }
   }
 
-  hashDomainToAccent(domain) {
-    // Produce a stable hue from domain; bias near blue range
-    let hash = 0;
-    for (let i = 0; i < domain.length; i++) {
-      hash = (hash * 31 + domain.charCodeAt(i)) >>> 0;
-    }
-    const baseHue = 210; // blue
-    const spread = 80;   // +/- 40 degrees range
-    const h = (baseHue - 40) + (hash % spread); // 170..250
-    return { h, s: 0.75, l: 0.5 };
-  }
+  // Removed blue-biased hash fallback to prevent initial color flash
 
   setAccentVariables(hsl) {
     const root = document.documentElement;
@@ -155,6 +152,34 @@ class URLNotesApp {
       h /= 6;
     }
     return { h: h * 360, s, l };
+  }
+
+  // Accent cache helpers
+  async getCachedAccent(domain) {
+    if (!domain) return null;
+    const { accentCache } = await chrome.storage.local.get(['accentCache']);
+    const cache = accentCache || {};
+    const entry = cache[domain];
+    if (!entry) return null;
+    const { h, s, l } = entry;
+    if (typeof h !== 'number' || typeof s !== 'number' || typeof l !== 'number') return null;
+    return { h, s, l };
+  }
+
+  async setCachedAccent(domain, hsl) {
+    if (!domain || !hsl) return;
+    const { accentCache } = await chrome.storage.local.get(['accentCache']);
+    const cache = accentCache || {};
+    cache[domain] = { h: hsl.h, s: hsl.s, l: hsl.l, updatedAt: Date.now() };
+    await chrome.storage.local.set({ accentCache: cache });
+  }
+
+  isSameAccent(a, b) {
+    if (!a || !b) return false;
+    const dh = Math.abs(a.h - b.h);
+    const ds = Math.abs(a.s - b.s);
+    const dl = Math.abs(a.l - b.l);
+    return dh < 1 && ds < 0.01 && dl < 0.01;
   }
 
   async init() {
@@ -230,6 +255,12 @@ class URLNotesApp {
         const siteUrlEl = document.getElementById('siteUrl');
         if (siteDomainEl) siteDomainEl.title = this.currentSite.domain;
         if (siteUrlEl) siteUrlEl.title = this.currentSite.url;
+
+        // Apply cached accent immediately if available
+        try {
+          const cached = await this.getCachedAccent(this.currentSite.domain);
+          if (cached) this.setAccentVariables(cached);
+        } catch(_) {}
       }
     } catch (error) {
       console.error('Error loading current site:', error);

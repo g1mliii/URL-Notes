@@ -31,6 +31,15 @@
   color: rgba(0, 0, 0, 0.5) !important;
 }
 
+/* Explicit dark-mode text fixes to avoid black text on dark surfaces */
+:root[data-theme="dark"] .search-input {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+:root[data-theme="dark"] .search-input::placeholder {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
 :root[data-theme="light"] .notes-title,
 :root:not([data-theme]) .notes-title,
 :root[data-theme="light"] .note-title,
@@ -117,48 +126,94 @@
   color: rgba(0, 0, 0, 0.9) !important;
 }
 
+/* Dark mode: ensure editor inputs render light text */
+:root[data-theme="dark"] .editor-content .note-title-header,
+:root[data-theme="dark"] .editor-content .tags-input {
+  color: rgba(255, 255, 255, 0.94) !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.94) !important;
+}
+
+/* Dark mode: note title in the editor header bar */
+:root[data-theme="dark"] .editor-header .note-title-header {
+  color: rgba(255, 255, 255, 0.94) !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.94) !important;
+}
+
 :root[data-theme="light"] .editor-content .tags-input::placeholder,
 :root:not([data-theme]) .editor-content .tags-input::placeholder {
   color: rgba(0, 0, 0, 0.6) !important;
 }
 
+:root[data-theme="dark"] .editor-content .tags-input::placeholder,
+:root[data-theme="dark"] .editor-content .note-title-header::placeholder {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+:root[data-theme="dark"] .editor-header .note-title-header::placeholder {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
 /* Dark Mode Colors */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-primary: rgba(28, 28, 30, 0.92);
-    --bg-secondary: rgba(44, 44, 46, 0.86);
-    --bg-tertiary: rgba(58, 58, 60, 0.7);
-    --bg-overlay: rgba(28, 28, 30, 0.96);
-    --text-primary: rgba(255, 255, 255, 0.84);
-    --text-secondary: rgba(255, 255, 255, 0.58);
+    --bg-primary: rgba(22, 22, 24, 0.72);
+    --bg-secondary: rgba(30, 30, 32, 0.78);
+    --bg-tertiary: rgba(36, 36, 38, 0.84);
+    --bg-overlay: rgba(0, 0, 0, 0.6);
+    --text-primary: rgba(255, 255, 255, 0.92);
+    --text-secondary: rgba(255, 255, 255, 0.72);
+    --text-strong: rgba(255, 255, 255, 0.98);
+    --text-muted: rgba(255, 255, 255, 0.60);
     --text-tertiary: rgba(255, 255, 255, 0.38);
-    --text-strong: rgba(255, 255, 255, 0.88);
-    --placeholder: rgba(255, 255, 255, 0.5);
-    --accent-primary: rgba(10, 132, 255, 1);
-    --accent-secondary: rgba(10, 132, 255, 0.8);
+    /* Neutral defaults to avoid initial accent flash */
+    --accent-primary: var(--bg-secondary);
+    --accent-secondary: var(--bg-tertiary);
     --border-color: rgba(255, 255, 255, 0.1);
     --shadow-light: rgba(255, 255, 255, 0.1);
     --shadow-dark: rgba(0, 0, 0, 0.3);
     --gradient-bg: linear-gradient(135deg, rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0.1));
   }
+
+  /* Auto theme (no data-theme): ensure inputs are light in system dark mode */
+  :root:not([data-theme]) .editor-header .note-title-header,
+  :root:not([data-theme]) .editor-content .note-title-header,
+  :root:not([data-theme]) .editor-content .tags-input {
+    color: rgba(255, 255, 255, 0.94) !important;
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.94) !important;
+  }
+
+  :root:not([data-theme]) .editor-header .note-title-header::placeholder,
+  :root:not([data-theme]) .editor-content .note-title-header::placeholder,
+  :root:not([data-theme]) .editor-content .tags-input::placeholder {
+    color: rgba(255, 255, 255, 0.6) !important;
+  }
+
+  :root:not([data-theme]) .search-input {
+    color: rgba(255, 255, 255, 0.92) !important;
+  }
+  :root:not([data-theme]) .search-input::placeholder {
+    color: rgba(255, 255, 255, 0.6) !important;
+  }
 }
 
 /* Forced theme overrides (for debug toggle) */
-:root[data-theme="light"] {
-  --bg-primary: rgba(255, 255, 255, 0.72);
-  --bg-secondary: rgba(255, 255, 255, 0.58);
-  --bg-tertiary: rgba(255, 255, 255, 0.32);
-  --bg-overlay: rgba(255, 255, 255, 0.88);
-  --text-primary: rgba(0, 0, 0, 0.82);
-  --text-secondary: rgba(0, 0, 0, 0.55);
+:root[data-theme="light"]:root {
+  --bg-primary: rgba(255, 255, 255, 0.78);
+  --bg-secondary: rgba(255, 255, 255, 0.86);
+  --bg-tertiary: rgba(255, 255, 255, 0.92);
+  --bg-overlay: rgba(0, 0, 0, 0.45);
+  --text-primary: rgba(0, 0, 0, 0.86);
+  --text-secondary: rgba(0, 0, 0, 0.62);
+  --text-strong: rgba(0, 0, 0, 0.92);
+  --text-muted: rgba(0, 0, 0, 0.48);
   --text-tertiary: rgba(0, 0, 0, 0.38);
-  --accent-primary: rgba(0, 122, 255, 1);
-  --accent-secondary: rgba(0, 122, 255, 0.8);
-  --border-color: rgba(0, 0, 0, 0.22);
+  /* Neutral defaults to avoid initial accent flash */
+  --accent-primary: var(--bg-secondary);
+  --accent-secondary: var(--bg-tertiary);
+  --border-color: rgba(0, 0, 0, 0.12);
   --shadow-light: rgba(255, 255, 255, 0.5);
   --shadow-dark: rgba(0, 0, 0, 0.12);
-  --backdrop-blur: 20px;
-  --gradient-bg: linear-gradient(135deg, rgba(10, 10, 12, 0.06), rgba(0, 0, 0, 0.08));
+  --gradient-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.18));
 }
 
 :root[data-theme="dark"] {
@@ -169,8 +224,9 @@
   --text-primary: rgba(255, 255, 255, 0.84);
   --text-secondary: rgba(255, 255, 255, 0.58);
   --text-tertiary: rgba(255, 255, 255, 0.38);
-  --accent-primary: rgba(10, 132, 255, 1);
-  --accent-secondary: rgba(10, 132, 255, 0.8);
+  /* Neutral defaults to avoid initial accent flash */
+  --accent-primary: var(--bg-secondary);
+  --accent-secondary: var(--bg-tertiary);
   --border-color: rgba(255, 255, 255, 0.1);
   --shadow-light: rgba(255, 255, 255, 0.1);
   --shadow-dark: rgba(0, 0, 0, 0.3);
@@ -385,7 +441,7 @@ html, body {
   padding: 4px;
   border: 1px solid var(--border-color);
   box-shadow: inset 0 2px 4px var(--shadow-dark);
-  transition: background 0.2s ease, box-shadow 0.2s ease;
+  transition: background-color 1s ease, box-shadow 1s ease, color 1s ease, border-color 1s ease;
 }
 
 .filter-option {
@@ -566,7 +622,7 @@ html, body {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 1s ease, color 1s ease, border-color 1s ease;
 }
 
 .settings-btn-full:hover {
@@ -648,7 +704,7 @@ html, body {
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 1s ease, color 1s ease, box-shadow 1s ease, border-color 1s ease;
   /* Apple-like neutral glow */
   box-shadow:
     0 1px 2px var(--shadow-dark),
@@ -725,7 +781,7 @@ html, body {
   border-radius: 6px;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background-color 1s ease, color 1s ease, box-shadow 1s ease, border-color 1s ease;
 }
 
 .note-item-header .inline-confirm .confirm-yes {
@@ -915,6 +971,7 @@ html, body {
   font-weight: 600;
   margin-right: 6px;
   position: relative;
+  transition: background-color 1s ease, color 1s ease, box-shadow 1s ease, border-color 1s ease;
 }
 
 .page-indicator::after {
