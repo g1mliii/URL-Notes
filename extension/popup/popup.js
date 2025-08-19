@@ -706,8 +706,8 @@ class URLNotesApp {
     noteDiv.className = 'note-item';
     noteDiv.addEventListener('click', () => this.openNote(note));
 
-    const preview = note.content.length > 100 ? 
-      note.content.substring(0, 100) + '...' : note.content;
+    // Build preview HTML that makes markdown links clickable (first line only)
+    const preview = this.buildPreviewHtml(note.content);
 
     const tagsHtml = (note.tags && note.tags.length > 0) ? 
       `<div class="note-tags">
@@ -742,6 +742,44 @@ class URLNotesApp {
     });
 
     return noteDiv;
+  }
+
+  // Convert first line of note content to preview HTML with clickable links
+  buildPreviewHtml(content) {
+    try {
+      const firstLine = (content || '').split('\n')[0];
+      if (!firstLine) return '';
+      // Escape HTML except simple markdown links we convert below
+      const escapeHtml = (s) => s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      // Extract optional leading bullet "- " then markdown link [text](url)
+      const bulletMatch = firstLine.match(/^\s*-\s*(.*)$/);
+      const line = bulletMatch ? bulletMatch[1] : firstLine;
+
+      // Replace markdown links with anchors
+      const mdLink = /\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g;
+      let replaced = '';
+      let lastIndex = 0;
+      let match;
+      while ((match = mdLink.exec(line)) !== null) {
+        // Append escaped text before the match
+        replaced += escapeHtml(line.slice(lastIndex, match.index));
+        const text = escapeHtml(match[1]);
+        const href = match[2];
+        replaced += `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+        lastIndex = mdLink.lastIndex;
+      }
+      replaced += escapeHtml(line.slice(lastIndex));
+
+      // Add a bullet visually if original started with "- "
+      const bulletPrefix = bulletMatch ? '&#8226; ' : '';
+      return `${bulletPrefix}${replaced}`;
+    } catch (e) {
+      return (content || '').substring(0, 100);
+    }
   }
 
   // Create a new note (hybrid - always save both domain and URL)

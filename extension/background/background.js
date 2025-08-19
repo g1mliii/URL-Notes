@@ -1,7 +1,12 @@
 // URL Notes Extension - Background Script (Service Worker)
 
+// --- Main Event Listeners ---
+
 // Extension installation and updates
 chrome.runtime.onInstalled.addListener((details) => {
+  console.log('onInstalled reason:', details.reason);
+  setupContextMenus();
+  
   if (details.reason === 'install') {
     console.log('URL Notes extension installed');
     // Set default settings
@@ -13,30 +18,215 @@ chrome.runtime.onInstalled.addListener((details) => {
         showAds: true
       }
     });
-    // Initialize uninstall URL with current stats
-    updateUninstallUrl();
-  } else if (details.reason === 'update') {
-    console.log('URL Notes extension updated');
-    // Refresh uninstall URL on updates
+  }
+  
+  // Always update uninstall URL on install/update
+  updateUninstallUrl();
+});
+
+// Handle extension icon click to open the side panel
+chrome.action.onClicked.addListener((tab) => {
+  if (chrome.sidePanel && chrome.sidePanel.open) {
+    chrome.sidePanel.open({ windowId: tab.windowId }).catch(() => {});
+  } else {
+    console.log('Side Panel API not available in this Chrome version.');
+  }
+});
+
+// Ensure context menus exist on browser startup (service worker cold start)
+chrome.runtime.onStartup.addListener(() => {
+  console.log('onStartup: ensuring context menus are created');
+  setupContextMenus();
+});
+
+// Handle context menu clicks
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === 'addSelectionToNewNote') {
+    addSelectionToNewNote(info, tab);
+  } else if (info.menuItemId === 'addSelectionToExistingNote') {
+    addSelectionToExistingNote(info, tab);
+  }
+});
+
+// Update uninstall URL and handle settings changes whenever local storage is modified
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'local') {
+    if (changes.settings) {
+      handleSettingsChange(changes.settings.oldValue, changes.settings.newValue);
+    }
     updateUninstallUrl();
   }
 });
+
+
+// --- Feature Implementations ---
+
+// Setup context menus for text selection
+function setupContextMenus() {
+  try {
+    chrome.contextMenus.removeAll(() => {
+      chrome.contextMenus.create({
+        id: 'addSelectionToNewNote',
+        title: 'URL Notes: Add to new note',
+        contexts: ['selection']
+      }, () => {
+        if (chrome.runtime.lastError) {
+          console.warn('Context menu create error:', chrome.runtime.lastError.message);
+        } else {
+          console.log('Context menu (new note) created');
+        }
+      });
+      // Add to existing note
+      chrome.contextMenus.create({
+        id: 'addSelectionToExistingNote',
+        title: 'URL Notes: Add to existing note',
+        contexts: ['selection']
+      }, () => {
+        if (chrome.runtime.lastError) {
+          console.warn('Existing-note menu create error:', chrome.runtime.lastError.message);
+        } else {
+          console.log('Context menu (existing note) created');
+        }
+      });
+    });
+  } catch (e) {
+    console.warn('setupContextMenus failed:', e);
+  }
+}
+
+// Also attempt creation immediately in case onInstalled/onStartup didn't fire yet
+setupContextMenus();
+
+// Function to handle adding selected text to a new note
+async function addSelectionToNewNote(info, tab) {
+  const { selectionText, pageUrl } = info;
+  const { title, favIconUrl } = tab;
+  const domain = new URL(pageUrl).hostname;
+
+  // 1. Prepare display text and Text Fragment URL
+  const parts = getClipParts(selectionText, pageUrl);
+  if (!parts) {
+    console.warn('No selection text found for context menu action');
+    return;
+  }
+  const { displayText, fragmentUrl } = parts;
+
+  // 2. Create the note content (single clickable anchor)
+  const noteContent = `- [${displayText}](${fragmentUrl})`;
+
+  // 3. Create the new note object
+  const newNote = {
+    id: `note_${Date.now()}`,
+    url: pageUrl,
+    domain: domain,
+    title: title || 'Untitled',
+    favicon: favIconUrl,
+    content: noteContent,
+    tags: ['clipping'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  // 4. Save the note to storage
+  try {
+    const data = await chrome.storage.local.get(domain);
+    const notes = data[domain] || [];
+    notes.push(newNote);
+    await chrome.storage.local.set({ [domain]: notes });
+    console.log('New note saved from selection:', newNote);
+
+    // 5. Open the extension UI to show the result
+    openExtensionUi();
+
+  } catch (error) {
+    console.error('Failed to save new note from selection:', error);
+  }
+}
+
+// Function: append selection to most recently updated note for this domain
+async function addSelectionToExistingNote(info, tab) {
+  const { selectionText, pageUrl } = info;
+  const domain = new URL(pageUrl).hostname;
+  const parts = getClipParts(selectionText, pageUrl);
+  if (!parts) return;
+  const { displayText, fragmentUrl } = parts;
+  const bullet = `- [${displayText}](${fragmentUrl})`;
+
+  try {
+    const data = await chrome.storage.local.get(domain);
+    const notes = (data[domain] || []).slice();
+    if (notes.length === 0) {
+      // No existing note for this domain; fallback to creating a new one
+      return addSelectionToNewNote(info, tab);
+    }
+    // Pick most recently updated
+    notes.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+    const target = notes[0];
+    target.content = (target.content ? `${target.content}\n` : '') + bullet;
+    target.updatedAt = new Date().toISOString();
+    await chrome.storage.local.set({ [domain]: notes });
+    console.log('Appended selection to existing note:', target.id);
+    openExtensionUi();
+  } catch (e) {
+    console.error('Failed to append to existing note:', e);
+  }
+}
+
+// Helpers
+// Build display text and fragment link consistently
+function getClipParts(selectionText, pageUrl) {
+  const raw = (selectionText || '').replace(/\s+/g, ' ').trim();
+  if (!raw) return null;
+  const maxWords = 8;
+  const words = raw.split(' ');
+  const short = words.slice(0, maxWords).join(' ');
+  const truncated = words.length > maxWords;
+  // Add leading/trailing ellipses if we truncated
+  const displayText = `${truncated ? '… ' : ''}${short}${truncated ? ' …' : ''}`;
+  const fragmentUrl = `${pageUrl}#:~:text=${encodeURIComponent(short)}`;
+  return { displayText, fragmentUrl };
+}
+
+function openExtensionUi() {
+  // Prefer opening the action popup (Chrome >= MV3). This keeps UX in the same window.
+  if (chrome.action && chrome.action.openPopup) {
+    chrome.action.openPopup().catch(() => {
+      // Fallback to Side Panel if available
+      if (chrome.sidePanel && chrome.sidePanel.open) {
+        chrome.sidePanel.open({}).catch(() => {
+          // Final fallback: open the popup page in a new tab
+          const url = chrome.runtime.getURL('popup/popup.html');
+          chrome.tabs.create({ url }).catch(() => {});
+        });
+      } else {
+        const url = chrome.runtime.getURL('popup/popup.html');
+        chrome.tabs.create({ url }).catch(() => {});
+      }
+    });
+  } else if (chrome.sidePanel && chrome.sidePanel.open) {
+    chrome.sidePanel.open({}).catch(() => {
+      const url = chrome.runtime.getURL('popup/popup.html');
+      chrome.tabs.create({ url }).catch(() => {});
+    });
+  } else {
+    const url = chrome.runtime.getURL('popup/popup.html');
+    chrome.tabs.create({ url }).catch(() => {});
+  }
+}
+
+
+// --- Utility and Maintenance Functions (largely unchanged) ---
 
 // Handle messages from content scripts and popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.action) {
     case 'contentScriptReady':
-      // Content script is ready, store page info if needed
       handleContentScriptReady(request.pageInfo, sender.tab);
       break;
-      
     case 'urlChanged':
-      // URL changed in SPA, update page info
       handleUrlChange(request.pageInfo, sender.tab);
       break;
-      
     case 'getPageInfo':
-      // Popup requesting page info
       if (sender.tab) {
         sendResponse({
           domain: new URL(sender.tab.url).hostname,
@@ -46,204 +236,81 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
       }
       break;
-      
     default:
       console.log('Unknown action:', request.action);
   }
-  
   return true; // Keep message channel open for async responses
 });
 
-// Handle content script ready
 function handleContentScriptReady(pageInfo, tab) {
-  // Store recent page info for quick access
-  chrome.storage.session.set({
-    [`pageInfo_${tab.id}`]: {
-      ...pageInfo,
-      tabId: tab.id,
-      timestamp: Date.now()
-    }
-  });
+  chrome.storage.session.set({ [`pageInfo_${tab.id}`]: { ...pageInfo, tabId: tab.id, timestamp: Date.now() } });
 }
 
-// Handle URL changes in SPAs
 function handleUrlChange(pageInfo, tab) {
-  // Update stored page info
-  chrome.storage.session.set({
-    [`pageInfo_${tab.id}`]: {
-      ...pageInfo,
-      tabId: tab.id,
-      timestamp: Date.now()
-    }
-  });
-  
-  // Notify popup if it's open
-  chrome.runtime.sendMessage({
-    action: 'pageInfoUpdated',
-    pageInfo: pageInfo,
-    tabId: tab.id
-  }).catch(() => {
-    // Ignore errors if popup isn't open
-  });
+  chrome.storage.session.set({ [`pageInfo_${tab.id}`]: { ...pageInfo, tabId: tab.id, timestamp: Date.now() } });
+  chrome.runtime.sendMessage({ action: 'pageInfoUpdated', pageInfo: pageInfo, tabId: tab.id }).catch(() => {});
 }
 
-// Clean up session storage when tabs are closed
 chrome.tabs.onRemoved.addListener((tabId) => {
   chrome.storage.session.remove(`pageInfo_${tabId}`);
 });
 
-// Handle extension icon click (fallback if popup fails)
-chrome.action.onClicked.addListener((tab) => {
-  // This shouldn't normally be called since we have a popup
-  // But it's here as a fallback
-  console.log('Extension icon clicked for tab:', tab.url);
-});
-
-// Periodic cleanup of old data
 chrome.alarms.create('cleanup', { periodInMinutes: 60 });
-
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'cleanup') {
-    performCleanup();
-  }
+  if (alarm.name === 'cleanup') performCleanup();
 });
 
-// Clean up old session data and perform maintenance
 async function performCleanup() {
   try {
-    // Clean up old session data
     const sessionData = await chrome.storage.session.get();
     const now = Date.now();
     const oneHourAgo = now - (60 * 60 * 1000);
-    
-    const keysToRemove = [];
-    for (const [key, value] of Object.entries(sessionData)) {
-      if (key.startsWith('pageInfo_') && value.timestamp < oneHourAgo) {
-        keysToRemove.push(key);
-      }
-    }
-    
+    const keysToRemove = Object.keys(sessionData).filter(key => key.startsWith('pageInfo_') && sessionData[key].timestamp < oneHourAgo);
     if (keysToRemove.length > 0) {
       await chrome.storage.session.remove(keysToRemove);
       console.log(`Cleaned up ${keysToRemove.length} old session entries`);
     }
-    
-    // TODO: Add more cleanup tasks as needed
-    // - Clean up old notes (soft deleted)
-    // - Compress large note content
-    // - Update search indexes
-    
   } catch (error) {
     console.error('Error during cleanup:', error);
   }
 }
 
-// Handle storage changes
-chrome.storage.onChanged.addListener((changes, namespace) => {
-  // React to storage changes if needed
-  if (namespace === 'local') {
-    // Local storage changed (notes, settings, etc.)
-    for (const [key, { oldValue, newValue }] of Object.entries(changes)) {
-      if (key === 'settings') {
-        handleSettingsChange(oldValue, newValue);
-      }
-    }
-  }
-});
-
-// Handle settings changes
 function handleSettingsChange(oldSettings, newSettings) {
   console.log('Settings changed:', { oldSettings, newSettings });
-  
-  // Notify all tabs about settings change
   chrome.tabs.query({}, (tabs) => {
     tabs.forEach(tab => {
-      chrome.tabs.sendMessage(tab.id, {
-        action: 'settingsChanged',
-        settings: newSettings
-      }).catch(() => {
-        // Ignore errors for tabs without content scripts
-      });
+      chrome.tabs.sendMessage(tab.id, { action: 'settingsChanged', settings: newSettings }).catch(() => {});
     });
   });
 }
 
-// Error handling
-chrome.runtime.onSuspend.addListener(() => {
-  console.log('Service worker suspending...');
-});
-
-// Service worker lifecycle management for Manifest V3
 chrome.runtime.onStartup.addListener(() => {
   console.log('Extension startup');
-  // Keep uninstall URL in sync each startup
   updateUninstallUrl();
 });
 
-chrome.runtime.onInstalled.addListener(() => {
-  console.log('Extension installed/updated');
-  // Also ensure uninstall URL reflects latest counts
-  updateUninstallUrl();
-});
-
-// Build and set an uninstall URL that informs users about data loss and storage limits
 async function updateUninstallUrl() {
   try {
-    // Get all local storage to estimate counts and size
     const all = await chrome.storage.local.get(null);
     const json = JSON.stringify(all);
     const bytes = new TextEncoder().encode(json).length;
-    // Best-effort note count detection (look for arrays of notes or domain buckets)
     let noteCount = 0;
-    for (const [k, v] of Object.entries(all)) {
-      if (!v) continue;
-      // If value is an array of notes
+    for (const v of Object.values(all)) {
       if (Array.isArray(v)) {
         noteCount += v.length;
-        continue;
-      }
-      // If value is an object that may contain a notes array or map
-      if (typeof v === 'object') {
-        if (Array.isArray(v.notes)) noteCount += v.notes.length;
-        // Count nested arrays that look like note lists
-        for (const sub of Object.values(v)) {
-          if (Array.isArray(sub)) noteCount += sub.length;
-        }
+      } else if (typeof v === 'object' && v !== null && Array.isArray(v.notes)) {
+        noteCount += v.notes.length;
       }
     }
-
-    // Chrome storage sync quotas (for messaging only)
-    const syncMaxItemBytes = 8192; // per item
-    const syncMaxTotalBytes = 102400; // total (~100KB)
-    const syncMaxItems = 512; // max items
 
     const params = new URLSearchParams({
       notes: String(noteCount),
       localBytes: String(bytes),
-      syncItemBytes: String(syncMaxItemBytes),
-      syncTotalBytes: String(syncMaxTotalBytes),
-      syncMaxItems: String(syncMaxItems)
     });
 
-    // TODO: Replace with real hosted page that explains export options and upsell to Premium
-    const uninstallUrl = `https://urlnotes.app/uninstall?${params.toString()}`;
+    const uninstallUrl = `https://example.com/uninstall?${params.toString()}`;
     chrome.runtime.setUninstallURL(uninstallUrl);
   } catch (e) {
     console.warn('Failed to set uninstall URL:', e);
   }
 }
-
-// Update uninstall URL whenever local storage changes (keeps counts roughly accurate)
-chrome.storage.onChanged.addListener((changes, namespace) => {
-  // React to storage changes if needed
-  if (namespace === 'local') {
-    // Local storage changed (notes, settings, etc.)
-    for (const [key, { oldValue, newValue }] of Object.entries(changes)) {
-      if (key === 'settings') {
-        handleSettingsChange(oldValue, newValue);
-      }
-    }
-    // Keep uninstall stats up to date
-    updateUninstallUrl();
-  }
-});
