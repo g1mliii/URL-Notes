@@ -159,9 +159,9 @@
       </div>
       
       <div class="editor-content">
-        <textarea class="note-content-input" placeholder="Start writing your note..." id="noteContentInput"></textarea>
-        <div class="note-content-preview" id="noteContentPreview" aria-live="polite" style="margin-top:8px;padding:10px;border:1px solid var(--border-color, #e3e3e3);border-radius:6px;background:var(--preview-bg, rgba(0,0,0,0.03));">
-          <!-- Live preview of content (clickable links) will render here -->
+        <div id="noteContentInput" class="note-content-input" contenteditable="true" style="min-height:140px; padding:10px; border:1px solid var(--border-color, #e3e3e3); border-radius:6px; outline:none;" aria-label="Note content (rich text)"></div>
+        <div class="note-content-preview" id="noteContentPreview" aria-live="polite" style="display:none;margin-top:8px;padding:10px;border:1px solid var(--border-color, #e3e3e3);border-radius:6px;background:var(--preview-bg, rgba(0,0,0,0.03));">
+          <!-- Preview hidden: editor is now rich text -->
         </div>
         
         <div class="note-meta">

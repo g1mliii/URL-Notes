@@ -1254,6 +1254,19 @@ min-width: auto;
   border-radius: 8px;
 }
 
+/* Editor link readability */
+.note-content-input a {
+  color: var(--accent-primary);
+  text-decoration: underline;
+  -webkit-text-decoration-skip: ink;
+  text-decoration-skip-ink: auto;
+  word-break: break-word;
+}
+
+.note-content-input a:hover {
+  color: var(--accent-secondary);
+}
+
 .note-content-input::placeholder {
   color: var(--text-tertiary);
 }

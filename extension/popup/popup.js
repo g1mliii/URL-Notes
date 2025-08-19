@@ -105,10 +105,11 @@ class URLNotesApp {
       r = Math.round(r / count); g = Math.round(g / count); b = Math.round(b / count);
       // Convert to HSL and normalize to tasteful accent
       const { h, s, l } = this.rgbToHsl(r, g, b);
+      // Tune saturation/lightness for better legibility in UI
       const accent = {
         h,
-        s: Math.max(0.45, Math.min(0.88, s * 1.1)),
-        l: Math.max(0.35, Math.min(0.6, l)),
+        s: Math.max(0.35, Math.min(0.65, s * 0.9)),
+        l: Math.max(0.44, Math.min(0.58, l * 0.95)),
       };
       return accent;
     } catch (err) {
@@ -165,9 +166,10 @@ class URLNotesApp {
     await this.loadNotes();
     await this.loadFontSetting();
     this.checkStorageQuota();
-    this.render();
-    this.updatePremiumUI();
-    this.checkStorageQuota();
+    this.updateCharCount();
+    this.updateNotePreview();
+    // Ensure initial render with the default filter ('site')
+    this.switchFilter(this.filterMode);
   }
 
   // Load all notes from storage into the master list
@@ -304,46 +306,12 @@ class URLNotesApp {
       this.updateNotePreview();
       this.updateCharCount();
     });
+    // Paste sanitization: allow only text, links, and line breaks
+    contentInput.addEventListener('paste', (e) => this.handleEditorPaste(e));
+    // Intercept link clicks inside the editor
+    contentInput.addEventListener('click', (e) => this.handleEditorLinkClick(e));
     
-    // Handle Obsidian-like editor behavior
-    contentInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        const start = e.target.selectionStart;
-        const end = e.target.selectionEnd;
-        const value = e.target.value;
-        e.target.value = value.substring(0, start) + '  ' + value.substring(end);
-        e.target.selectionStart = e.target.selectionEnd = start + 2;
-      } else if (e.key === 'Enter') {
-        const start = e.target.selectionStart;
-        const value = e.target.value;
-        const lineStart = value.lastIndexOf('\n', start - 1) + 1;
-        const currentLine = value.substring(lineStart, start);
-        
-        // Auto-indent: match the indentation of the current line
-        const indent = currentLine.match(/^\s*/)[0];
-        
-        // Check for list items and auto-continue
-        const listMatch = currentLine.match(/^(\s*)([-*+]|\d+\.)\s/);
-        if (listMatch) {
-          e.preventDefault();
-          const [, spaces, bullet] = listMatch;
-          let newBullet = bullet;
-          if (/\d+\./.test(bullet)) {
-            const num = parseInt(bullet) + 1;
-            newBullet = `${num}.`;
-          }
-          const insertion = `\n${spaces}${newBullet} `;
-          e.target.value = value.substring(0, start) + insertion + value.substring(start);
-          e.target.selectionStart = e.target.selectionEnd = start + insertion.length;
-        } else if (indent) {
-          e.preventDefault();
-          const insertion = `\n${indent}`;
-          e.target.value = value.substring(0, start) + insertion + value.substring(start);
-          e.target.selectionStart = e.target.selectionEnd = start + insertion.length;
-        }
-      }
-    });
+    // Skip textarea-specific key handling; editor is now contenteditable
     
     document.getElementById('tagsInput').addEventListener('input', () => {
       this.updateNotePreview();
@@ -377,6 +345,20 @@ class URLNotesApp {
     // Font selector
     document.getElementById('fontSelector').addEventListener('change', (e) => {
       this.saveFontSetting(e.target.value);
+    });
+
+    // Refresh notes when storage changes (e.g., context menu adds a note)
+    // Debounce to avoid thrashing on bulk updates/imports
+    const debouncedRefresh = this.debounce(async () => {
+      await this.loadNotes();
+      this.render();
+    }, 150);
+
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== 'local') return;
+      // If any domain arrays or note arrays changed, refresh
+      // We refresh unconditionally on local changes to keep UI in sync
+      debouncedRefresh();
     });
   }
 
@@ -759,7 +741,7 @@ class URLNotesApp {
       const bulletMatch = firstLine.match(/^\s*-\s*(.*)$/);
       const line = bulletMatch ? bulletMatch[1] : firstLine;
 
-      // Replace markdown links with anchors
+      // Replace markdown links with plain text (no anchors in list preview)
       const mdLink = /\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g;
       let replaced = '';
       let lastIndex = 0;
@@ -768,8 +750,8 @@ class URLNotesApp {
         // Append escaped text before the match
         replaced += escapeHtml(line.slice(lastIndex, match.index));
         const text = escapeHtml(match[1]);
-        const href = match[2];
-        replaced += `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+        // Only include the display text; do not render as a link in previews
+        replaced += `${text}`;
         lastIndex = mdLink.lastIndex;
       }
       replaced += escapeHtml(line.slice(lastIndex));
@@ -779,6 +761,239 @@ class URLNotesApp {
       return `${bulletPrefix}${replaced}`;
     } catch (e) {
       return (content || '').substring(0, 100);
+    }
+  }
+
+  // Render markdown/plain text to minimal HTML for the contenteditable editor
+  buildContentHtml(content) {
+    try {
+      const escapeHtml = (s) => (s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      const lines = (content || '').split(/\r?\n/);
+      const mdLink = /\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g;
+      const htmlLines = lines.map(line => {
+        let out = '';
+        let lastIndex = 0;
+        let match;
+        while ((match = mdLink.exec(line)) !== null) {
+          out += escapeHtml(line.slice(lastIndex, match.index));
+          const text = escapeHtml(match[1]);
+          const href = match[2];
+          out += `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+          lastIndex = mdLink.lastIndex;
+        }
+        out += escapeHtml(line.slice(lastIndex));
+        return out;
+      });
+      return htmlLines.join('<br>');
+    } catch (e) {
+      return (content || '').replace(/\n/g, '<br>');
+    }
+  }
+
+  // Convert limited HTML back to markdown-like plain text for storage
+  htmlToMarkdown(html) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html || '';
+    // Remove disallowed tags except <a>, <br>
+    const allowed = new Set(['A', 'BR']);
+    const walker = document.createTreeWalker(tmp, NodeFilter.SHOW_ELEMENT, null);
+    const toRemove = [];
+    while (walker.nextNode()) {
+      const el = walker.currentNode;
+      if (!allowed.has(el.tagName)) {
+        const text = document.createTextNode(el.textContent || '');
+        el.parentNode.insertBefore(text, el);
+        toRemove.push(el);
+      }
+    }
+    toRemove.forEach(n => n.remove());
+
+    // Replace anchors with [text](href)
+    tmp.querySelectorAll('a[href]').forEach(a => {
+      const text = a.textContent || a.getAttribute('href');
+      const href = a.getAttribute('href');
+      const md = document.createTextNode(`[${text}](${href})`);
+      a.replaceWith(md);
+    });
+
+    // Convert <br> to \n
+    const htmlStr = tmp.innerHTML
+      .replace(/<br\s*\/?>(?=\n)?/gi, '\n')
+      .replace(/<br\s*\/?>(?!\n)/gi, '\n');
+
+    // Strip remaining tags if any
+    const text = htmlStr.replace(/<[^>]*>/g, '');
+    // Decode entities by using textContent of a temp element
+    const decode = document.createElement('textarea');
+    decode.innerHTML = text;
+    return decode.value;
+  }
+
+  // Handle paste into contenteditable: sanitize to safe minimal HTML
+  handleEditorPaste(e) {
+    try {
+      const clipboard = e.clipboardData || window.clipboardData;
+      if (!clipboard) return; // let default behavior
+      const text = clipboard.getData('text/plain');
+      if (!text) return;
+      e.preventDefault();
+      const html = this.sanitizePastedTextToHtml(text);
+      this.insertHtmlAtCaret(html);
+      this.updateCharCount();
+    } catch (_) {
+      // On error, allow default paste
+    }
+  }
+
+  // Convert pasted plain text to safe HTML (linkify + line breaks)
+  sanitizePastedTextToHtml(text) {
+    const escapeHtml = (s) => (s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\"/g, '&#34;')
+      .replace(/'/g, '&#39;');
+
+    // Split into lines and escape first
+    const raw = (text || '').replace(/\r\n?/g, '\n');
+    const lines = raw.split('\n').map(escapeHtml);
+    // Linkify URLs and emails per line
+    const urlRe = /\b(https?:\/\/[^\s<>"]+)\b/g;
+    const emailRe = /\b([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})\b/gi;
+    const linked = lines.map(line => {
+      let out = line.replace(urlRe, (m) => `<a href="${m}" target="_blank" rel="noopener noreferrer">${m}</a>`);
+      out = out.replace(emailRe, (m) => `<a href="mailto:${m}">${m}</a>`);
+      return out;
+    });
+    return linked.join('<br>');
+  }
+
+  // Insert HTML at caret within contenteditable safely
+  insertHtmlAtCaret(html) {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) {
+      document.execCommand('insertHTML', false, html);
+      return;
+    }
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    const frag = range.createContextualFragment(html);
+    const lastNode = frag.lastChild;
+    range.insertNode(frag);
+    // Move caret after inserted content
+    if (lastNode) {
+      range.setStartAfter(lastNode);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  }
+
+  // Handle clicking links inside the editor contenteditable
+  handleEditorLinkClick(e) {
+    const target = e.target;
+    if (target && target.tagName === 'A') {
+      e.preventDefault();
+      const href = target.getAttribute('href');
+      const text = target.textContent || '';
+      this.openLinkAndHighlight(href, text);
+    }
+  }
+
+  async openLinkAndHighlight(href, text) {
+    try {
+      const baseUrl = (this.currentNote && this.currentNote.url) || (this.currentSite && this.currentSite.url) || undefined;
+      let absoluteHref = href;
+      try {
+        // Resolve relative links against the current page URL when possible
+        absoluteHref = baseUrl ? new URL(href, baseUrl).toString() : new URL(href).toString();
+      } catch {}
+
+      // Build a comparable key with normalization (strip tracking, ignore www., normalize slash)
+      const makeKey = (u) => {
+        try {
+          const x = new URL(u);
+          // Normalize hostname (drop www.)
+          let host = x.hostname.replace(/^www\./i, '').toLowerCase();
+          // Normalize path: remove trailing slash except root
+          let path = x.pathname || '/';
+          if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
+          // Filter query params to remove common trackers
+          const params = new URLSearchParams(x.search);
+          const deny = ['utm_source','utm_medium','utm_campaign','utm_term','utm_content','gclid','fbclid','mc_eid','yclid','igshid','si','si_source','si_id'];
+          deny.forEach(k => params.delete(k));
+          // Build sorted query for stable comparison
+          const entries = Array.from(params.entries()).sort(([a],[b]) => a.localeCompare(b));
+          const query = entries.length ? ('?' + entries.map(([k,v]) => `${k}=${v}`).join('&')) : '';
+          return `${host}${path}${query}`;
+        } catch {
+          return u;
+        }
+      };
+      const targetKey = makeKey(absoluteHref);
+
+      const tabs = await chrome.tabs.query({ currentWindow: true });
+      let targetTab = tabs.find(t => {
+        const key = makeKey(t.url);
+        return key === targetKey;
+      });
+
+      // For new tabs, try to include a text fragment to encourage native highlight
+      const addTextFragment = (u, txt) => {
+        if (!txt) return u;
+        try {
+          const urlObj = new URL(u);
+          const enc = encodeURIComponent(txt.trim()).slice(0, 500);
+          const hash = urlObj.hash || '';
+          // If hash already contains :~:text, keep it
+          if (hash.includes(':~:text=')) return u;
+          // Compose new hash preserving existing hash if present
+          // If existing hash exists, append &; otherwise use #:~:text
+          const baseHash = hash.replace(/^#/, '');
+          const newHash = baseHash
+            ? `${baseHash}&:~:text=${enc}`
+            : `:~:text=${enc}`;
+          urlObj.hash = `#${newHash}`;
+          return urlObj.toString();
+        } catch {
+          return u;
+        }
+      };
+
+      // Helper: send message with retries in case content script isn't ready yet
+      const sendMessageWithRetry = (tabId, payload, attempts = [150, 300, 600, 1000, 1600]) => {
+        const tryOnce = (i) => {
+          setTimeout(() => {
+            try {
+              chrome.tabs.sendMessage(tabId, payload).catch(() => {
+                if (i + 1 < attempts.length) tryOnce(i + 1);
+              });
+            } catch {
+              if (i + 1 < attempts.length) tryOnce(i + 1);
+            }
+          }, attempts[i]);
+        };
+        tryOnce(0);
+      };
+
+      if (!targetTab) {
+        const urlToOpen = addTextFragment(absoluteHref, text);
+        targetTab = await chrome.tabs.create({ url: urlToOpen, active: true });
+        // Retry highlight a few times as the tab loads
+        sendMessageWithRetry(targetTab.id, { action: 'highlightText', href: urlToOpen, text });
+      } else {
+        // If already on the same page, do not reload the page. Just activate and request highlight.
+        await chrome.tabs.update(targetTab.id, { active: true });
+        sendMessageWithRetry(targetTab.id, { action: 'highlightText', href: absoluteHref, text }, [50, 120, 250, 500]);
+      }
+    } catch (err) {
+      console.warn('openLinkAndHighlight failed', err);
+      // Fallback: open normally
+      window.open(href, '_blank', 'noopener,noreferrer');
     }
   }
 
@@ -819,7 +1034,8 @@ class URLNotesApp {
 
     // Populate editor with note data
     titleHeader.value = this.currentNote.title;
-    contentInput.value = this.currentNote.content;
+    // Render markdown/plain text to HTML for the contenteditable editor
+    contentInput.innerHTML = this.buildContentHtml(this.currentNote.content);
     tagsInput.value = this.currentNote.tags.join(', ');
     dateSpan.textContent = `Created ${this.formatDate(this.currentNote.createdAt)}`;
 
@@ -871,7 +1087,8 @@ class URLNotesApp {
 
     // Update note data
     this.currentNote.title = titleHeader.value.trim();
-    this.currentNote.content = contentInput.value.trim();
+    // Convert editor HTML back to markdown/plain text for storage
+    this.currentNote.content = this.htmlToMarkdown(contentInput.innerHTML).trim();
     this.currentNote.tags = tagsInput.value
       .split(',')
       .map(tag => tag.trim())
@@ -1070,6 +1287,13 @@ class URLNotesApp {
   }
 
   // Update character count
+  updateCharCount() {
+    const contentInput = document.getElementById('noteContentInput');
+    const charCount = document.getElementById('noteChars');
+    const count = (contentInput.innerText || '').length;
+    if (charCount) charCount.textContent = `${count} characters`;
+  }
+
   // Font settings management
   async saveFontSetting(fontName) {
     await chrome.storage.local.set({ editorFont: fontName });
@@ -1112,14 +1336,6 @@ class URLNotesApp {
     this.showToast('AI Rewrite coming soon!');
   }
 
-  updateCharCount() {
-    const contentInput = document.getElementById('noteContentInput');
-    const charCount = document.getElementById('noteChars');
-    const count = contentInput.value.length;
-    charCount.textContent = `${count} characters`;
-  }
-
-  // Update UI based on premium status
   updatePremiumUI() {
     const allNotesBtn = document.getElementById('showAllNotesBtn');
     if (!this.premiumStatus.isPremium) {
