@@ -1,3 +1,22 @@
+## Platform & UX Decisions
+
+- __Popup-first UX__
+  - `manifest.json` uses `action.default_popup: popup/popup.html`. The toolbar icon always opens the popup.
+  - No Side Panel usage to maintain compatibility across Chrome and Brave.
+
+- __Ads Placement Policy__
+  - Ads are displayed only inside the extension UI (`popup/popup.html`) within `#adContainer` using `extension/lib/ads.js`.
+  - Do not inject ads into content pages or overlays to comply with Chrome Web Store policies.
+
+## Phase 1 Completion Note
+
+- Phase 1 (Core Extension) complete: polished popup UI, domain/url filtering, improved highlighting, and ad container in place.
+
+## Next-phase Design Considerations
+
+- Gated premium mode removes ads in the popup when authenticated premium (Phase 2).
+- Ensure backup/export/import UI copy is concise and accessible.
+- Keep contrast high in light mode (esp. sliders, previews) and enforce focus-visible outlines.
 # URL Notes – Style Guide
 
 ## Design Tokens

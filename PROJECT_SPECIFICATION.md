@@ -40,6 +40,15 @@ A browser extension and web application for taking notes on websites, with domai
   - Added live preview inside Settings showing current font and size.
   - Behavior change: font changes no longer apply live while Settings is open; they apply when closing Settings.
 
+  Platform/UX updates (Aug 18, later):
+  - Attempted Side Panel-based persistent UI; reverted to classic popup-first UX for broader browser compatibility (Brave/older Chrome fall back).
+  - Restored `action.default_popup: popup/popup.html` in `extension/manifest.json`.
+  - Removed Side Panel code paths from `extension/background/background.js` to reduce dormant code.
+  - Improved link-opening reliability and on-page highlighting:
+    - Looser tab matching via URL normalization (strip `www.`, trailing slashes, and common tracking params like `utm_*`, `gclid`, `fbclid`).
+    - More robust content highlighting with retries and MutationObserver in `extension/content/content.js`, plus unicode normalization and partial token matching.
+  - Ads remain strictly inside the extension UI container (popup) via `extension/lib/ads.js` (CodeFuel integration policy-compliant).
+
 ## Tech Stack & Architecture
 
 ### Backend: Supabase
@@ -343,7 +352,7 @@ class NoteEncryption {
 
 ## Implementation Phases
 
-### Phase 1: Core Extension (4-6 weeks)
+### Phase 1: Core Extension (Completed)
 1. **Week 1-2**: Basic extension setup
    - Manifest V3 configuration
    - Popup UI with domain/URL detection
@@ -362,7 +371,9 @@ class NoteEncryption {
    - User testing and feedback
    - Chrome Web Store preparation
 
-### Phase 2: Backend & Authentication (3-4 weeks)
+Status: Phase 1 goals achieved for the local-first extension MVP with polished popup UI, search/filtering, basic versioning, ads container, uninstall notice plan, and improved highlighting.
+
+### Phase 2: Backend & Authentication (Broad roadmap)
 1. **Week 1**: Supabase setup
    - Database schema creation
    - RLS policies implementation
@@ -379,7 +390,7 @@ class NoteEncryption {
    - Security audit
    - Error handling improvements
 
-### Phase 3: Web Application (4-5 weeks)
+### Phase 3: Web Application (Outline)
 1. **Week 1-2**: Core web app
    - Next.js setup with authentication
    - Dashboard and notes management
@@ -395,7 +406,7 @@ class NoteEncryption {
    - Advanced organization tools
    - Analytics dashboard
 
-### Phase 4: Launch & Monetization (2-3 weeks)
+### Phase 4: Launch & Monetization (Outline)
 1. **Week 1**: CodeFuel integration
    - Ad placement implementation
    - Revenue tracking
@@ -597,7 +608,7 @@ Completed (extension UI polish):
 Up next (short-term):
 1. Test accessibility contrast in light mode, including slider and preview.
 2. Finalize Export/Import copy and error states in Settings.
-3. CodeFuel ad integration wiring (replace placeholder; frequency cap logic).
+3. QA CodeFuel AdManager frequency caps and fallback creatives in popup; ensure opt-out for Premium later.
 4. Uninstall notice landing page (content + simple host) and link wiring.
 
 Mid-term:
@@ -609,4 +620,4 @@ Mid-term:
 
 **Last Updated**: August 18, 2025
 **Version**: 1.2
-**Status**: In Progress
+**Status**: Phase 1 Completed; Preparing Phase 2

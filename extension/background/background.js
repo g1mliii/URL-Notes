@@ -3,7 +3,7 @@
 // --- Main Event Listeners ---
 
 // Extension installation and updates
-chrome.runtime.onInstalled.addListener((details) => {
+chrome.runtime.onInstalled.addListener(async (details) => {
   console.log('onInstalled reason:', details.reason);
   setupContextMenus();
   
@@ -24,14 +24,7 @@ chrome.runtime.onInstalled.addListener((details) => {
   updateUninstallUrl();
 });
 
-// Handle extension icon click to open the side panel
-chrome.action.onClicked.addListener((tab) => {
-  if (chrome.sidePanel && chrome.sidePanel.open) {
-    chrome.sidePanel.open({ windowId: tab.windowId }).catch(() => {});
-  } else {
-    console.log('Side Panel API not available in this Chrome version.');
-  }
-});
+// Note: No action.onClicked handler needed when default_popup is set in manifest
 
 // Ensure context menus exist on browser startup (service worker cold start)
 chrome.runtime.onStartup.addListener(() => {
@@ -177,12 +170,11 @@ async function addSelectionToExistingNote(info, tab) {
 function getClipParts(selectionText, pageUrl) {
   const raw = (selectionText || '').replace(/\s+/g, ' ').trim();
   if (!raw) return null;
-  const maxWords = 8;
+  const maxWords = 5;
   const words = raw.split(' ');
   const short = words.slice(0, maxWords).join(' ');
-  const truncated = words.length > maxWords;
-  // Add leading/trailing ellipses if we truncated
-  const displayText = `${truncated ? '… ' : ''}${short}${truncated ? ' …' : ''}`;
+  // Display exactly up to five words without ellipses for concise bullets
+  const displayText = short;
   const fragmentUrl = `${pageUrl}#:~:text=${encodeURIComponent(short)}`;
   return { displayText, fragmentUrl };
 }
@@ -191,20 +183,6 @@ function openExtensionUi() {
   // Prefer opening the action popup (Chrome >= MV3). This keeps UX in the same window.
   if (chrome.action && chrome.action.openPopup) {
     chrome.action.openPopup().catch(() => {
-      // Fallback to Side Panel if available
-      if (chrome.sidePanel && chrome.sidePanel.open) {
-        chrome.sidePanel.open({}).catch(() => {
-          // Final fallback: open the popup page in a new tab
-          const url = chrome.runtime.getURL('popup/popup.html');
-          chrome.tabs.create({ url }).catch(() => {});
-        });
-      } else {
-        const url = chrome.runtime.getURL('popup/popup.html');
-        chrome.tabs.create({ url }).catch(() => {});
-      }
-    });
-  } else if (chrome.sidePanel && chrome.sidePanel.open) {
-    chrome.sidePanel.open({}).catch(() => {
       const url = chrome.runtime.getURL('popup/popup.html');
       chrome.tabs.create({ url }).catch(() => {});
     });

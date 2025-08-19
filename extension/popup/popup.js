@@ -407,11 +407,16 @@ class URLNotesApp {
     });
 
     fontSizeSlider.addEventListener('input', (e) => {
-      const size = e.target.value;
+      let size = parseInt(e.target.value, 10);
+      if (Number.isNaN(size)) size = 12;
+      // Clamp to [8, 18]
+      size = Math.max(8, Math.min(18, size));
       const fontName = fontSelector.value;
+      // Keep the slider visually clamped
+      fontSizeSlider.value = String(size);
       // Do not apply to editor while settings is open; preview only
       updateFontPreview(fontName, size);
-      chrome.storage.sync.set({ editorFontSize: size });
+      chrome.storage.sync.set({ editorFontSize: String(size) });
     });
 
     // Load saved font settings
@@ -422,8 +427,11 @@ class URLNotesApp {
       if (editorFont === 'System') {
         chrome.storage.sync.set({ editorFont: 'Default' });
       }
-      const sizeToUse = editorFontSize || fontSizeSlider.value || '14';
-      fontSizeSlider.value = sizeToUse;
+      // Determine size with default 12 and clamp within [8, 18]
+      let sizeToUse = parseInt(editorFontSize || fontSizeSlider.value || '12', 10);
+      if (Number.isNaN(sizeToUse)) sizeToUse = 12;
+      sizeToUse = Math.max(8, Math.min(18, sizeToUse));
+      fontSizeSlider.value = String(sizeToUse);
       this.applyFont(fontSelector.value, sizeToUse);
       updateFontPreview(fontSelector.value, sizeToUse);
     });
