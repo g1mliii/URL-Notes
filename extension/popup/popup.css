@@ -126,6 +126,23 @@
   color: rgba(0, 0, 0, 0.9) !important;
 }
 
+/* Light mode: contenteditable editor contrast and clarity */
+:root[data-theme="light"] .note-content-input,
+:root:not([data-theme]) .note-content-input {
+  background: #ffffff !important;
+  color: rgba(0, 0, 0, 0.92) !important;
+  border-color: rgba(0, 0, 0, 0.22) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  caret-color: #0b0b0c;
+}
+
+/* Light mode: preview box more readable if shown */
+:root[data-theme="light"] .note-content-preview,
+:root:not([data-theme]) .note-content-preview {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.18) !important;
+}
+
 /* Dark mode: ensure editor inputs render light text */
 :root[data-theme="dark"] .editor-content .note-title-header,
 :root[data-theme="dark"] .editor-content .tags-input {
@@ -276,6 +293,7 @@ html, body {
   overflow-x: hidden;
   contain: layout paint;
 }
+
 
 /* Nebulous liquid-glass background overlay for main popup */
 .app-container::before {
@@ -1680,6 +1698,38 @@ details.domain-group[open] > .domain-notes-list {
 
 .slide-out {
   animation: slideOutDown 0.24s ease-out both;
+}
+
+/* Subtle fade-in for the editor to make appearance intentional */
+@keyframes editorFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.editor-fade-in {
+  animation: editorFadeIn 0.22s ease-out both;
+}
+
+/* Notes list subtle entrance when returning from editor */
+@keyframes panelFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.panel-fade-in {
+  animation: panelFadeIn 0.2s ease-out both;
 }
 
 /* Responsive adjustments */

@@ -8,6 +8,15 @@
   - Ads are displayed only inside the extension UI (`popup/popup.html`) within `#adContainer` using `extension/lib/ads.js`.
   - Do not inject ads into content pages or overlays to comply with Chrome Web Store policies.
 
+- __Link Opening & Highlighting Policy__
+  - Use retry-based `chrome.tabs.sendMessage` to trigger highlights; do not rely on `tabs.onUpdated` or any handshake wait.
+  - When opening a new tab from an editor link, append a `#:~:text=` fragment when possible to encourage native highlight.
+  - Content script (`extension/content/content.js`) owns robust retries and a MutationObserver to catch late DOM loads.
+
+- __“This Page” Filtering__
+  - Group notes by normalized page identity (ignore hash/fragments; strip common tracking params; lowercase host without `www.`; remove trailing slash).
+  - Implementation detail: `normalizePageKey(url)` in `popup/popup.js` used in `render()` and post-delete refresh when `filterMode === 'page'`.
+
 ## Phase 1 Completion Note
 
 - Phase 1 (Core Extension) complete: polished popup UI, domain/url filtering, improved highlighting, and ad container in place.
@@ -145,6 +154,9 @@
  - Domain delete confirm kept inside domain header actions; All Notes per-note delete fixed by DOM-node rendering.
  - Compact note styles for Site/Page views via `data-view` attribute.
  - Dynamic search placeholder per view and conditional search clear after deletions.
+
+- “This Page” filter now uses normalized URL comparison to include notes that point to the same page with different fragments or tracking params.
+- Link highlight behavior reverted to stable retry-based flow (no `tabs.onUpdated` listener / no readiness handshake).
 
 ### Popup maintenance (Aug 18, later-later)
 

@@ -18,6 +18,16 @@ class CustomDialog {
         this.handleConfirm(false);
       }
     });
+
+    // Flush draft immediately when popup is deactivating to capture last keystrokes
+    const flushDraft = () => {
+      try { this.saveEditorDraft(); } catch (_) {}
+    };
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flushDraft();
+    });
+    window.addEventListener('blur', flushDraft);
+    window.addEventListener('pagehide', flushDraft);
   }
 
   show(message) {
@@ -53,6 +63,8 @@ class URLNotesApp {
     this.premiumStatus = null;
     this.autosaveInterval = null;
     this.dialog = new CustomDialog();
+    // Debounced draft saver for editorState caching
+    this.saveDraftDebounced = this.debounce(() => this.saveEditorDraft(), 150);
     
     this.init();
   }
@@ -182,6 +194,65 @@ class URLNotesApp {
     return dh < 1 && ds < 0.01 && dl < 0.01;
   }
 
+  // Get current tab information and update UI/context
+  async loadCurrentSite() {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab && tab.url) {
+        const url = new URL(tab.url);
+        this.currentSite = {
+          domain: url.hostname,
+          url: tab.url,
+          title: tab.title,
+          favicon: tab.favIconUrl || `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=32`
+        };
+
+        // Update site icon with real favicon
+        const siteIcon = document.querySelector('.site-icon');
+        if (siteIcon) {
+          if (this.currentSite.favicon) {
+            siteIcon.innerHTML = `<img src="${this.currentSite.favicon}" alt="Site favicon">`;
+          } else {
+            siteIcon.innerHTML = `
+              <div class="site-fallback" aria-label="No favicon available">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9"></circle>
+                  <path d="M3 12h18"></path>
+                  <path d="M12 3a15.3 15.3 0 0 1 4 9 15.3 15.3 0 0 1-4 9 15.3 15.3 0 0 1-4-9 15.3 15.3 0 0 1 4-9z"></path>
+                </svg>
+              </div>`;
+          }
+        }
+
+        // Update UI text and tooltips
+        const domainEl = document.getElementById('siteDomain');
+        const urlEl = document.getElementById('siteUrl');
+        if (domainEl) {
+          domainEl.textContent = this.currentSite.domain;
+          domainEl.title = this.currentSite.domain;
+        }
+        if (urlEl) {
+          urlEl.textContent = this.currentSite.url;
+          urlEl.title = this.currentSite.url;
+        }
+
+        // Apply cached accent immediately if available
+        try {
+          const cached = await this.getCachedAccent(this.currentSite.domain);
+          if (cached) this.setAccentVariables(cached);
+        } catch (_) { }
+      }
+    } catch (error) {
+      console.error('Error loading current site:', error);
+      this.currentSite = {
+        domain: 'localhost',
+        url: 'http://localhost',
+        title: 'Local Development',
+        favicon: null
+      };
+    }
+  }
+
   async init() {
     this.premiumStatus = await getPremiumStatus();
     await this.loadCurrentSite();
@@ -195,8 +266,43 @@ class URLNotesApp {
     this.checkStorageQuota();
     this.updateCharCount();
     this.updateNotePreview();
-    // Ensure initial render with the default filter ('site')
-    this.switchFilter(this.filterMode);
+    // Restore last UI state (filter + possibly open editor)
+    try {
+      const { lastFilterMode, editorState, lastAction } = await chrome.storage.local.get(['lastFilterMode', 'editorState', 'lastAction']);
+      if (lastFilterMode === 'site' || lastFilterMode === 'page' || lastFilterMode === 'all_notes') {
+        this.filterMode = lastFilterMode;
+      }
+      this.switchFilter(this.filterMode, { persist: false });
+      // Priority 1: incoming context menu action
+      if (lastAction && lastAction.domain) {
+        // Try to locate the target note by id in loaded notes
+        const target = this.allNotes.find(n => n.id === lastAction.noteId);
+        if (target) {
+          this.currentNote = { ...target };
+          // Do NOT clear editorState; we want reopen to work if user closes popup
+          this.openEditor(true);
+          // Ensure open flag and draft are persisted immediately
+          this.persistEditorOpen(true);
+          this.saveEditorDraft();
+          // Remove action so it doesn't re-trigger on next open
+          chrome.storage.local.remove('lastAction');
+          return;
+        }
+      }
+      // Priority 2: previously open editor with cached draft
+      if (editorState && editorState.open && editorState.noteDraft) {
+        this.currentNote = { ...editorState.noteDraft };
+        if (this.currentSite) {
+          this.currentNote.domain = this.currentNote.domain || this.currentSite.domain;
+          this.currentNote.url = this.currentSite.url;
+          this.currentNote.pageTitle = this.currentSite.title;
+        }
+        this.openEditor(true);
+      }
+    } catch (_) {
+      // Fallback to default filter
+      this.switchFilter(this.filterMode, { persist: false });
+    }
   }
 
   // Load all notes from storage into the master list
@@ -216,62 +322,6 @@ class URLNotesApp {
     } catch (error) {
       console.error('Error loading notes:', error);
       this.allNotes = []; // Fallback to an empty list on error
-    }
-  }
-
-  // Get current tab information
-  async loadCurrentSite() {
-    try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (tab) {
-        const url = new URL(tab.url);
-        this.currentSite = {
-          domain: url.hostname,
-          url: tab.url,
-          title: tab.title,
-          favicon: tab.favIconUrl || `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=32`
-        };
-        
-        // Update site icon with real favicon
-        const siteIcon = document.querySelector('.site-icon');
-        if (this.currentSite.favicon) {
-          // Fill the icon container with the favicon (no bubble chrome)
-          siteIcon.innerHTML = `<img src="${this.currentSite.favicon}" alt="Site favicon">`;
-        } else {
-          // Subtle fallback: neutral rounded square with a small globe icon
-          siteIcon.innerHTML = `
-            <div class="site-fallback" aria-label="No favicon available">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="9"></circle>
-                <path d="M3 12h18"></path>
-                <path d="M12 3a15.3 15.3 0 0 1 4 9 15.3 15.3 0 0 1-4 9 15.3 15.3 0 0 1-4-9 15.3 15.3 0 0 1 4-9z"></path>
-              </svg>
-            </div>`;
-        }
-        
-        // Update UI
-        document.getElementById('siteDomain').textContent = this.currentSite.domain;
-        document.getElementById('siteUrl').textContent = this.currentSite.url;
-        // Provide tooltips for truncated values
-        const siteDomainEl = document.getElementById('siteDomain');
-        const siteUrlEl = document.getElementById('siteUrl');
-        if (siteDomainEl) siteDomainEl.title = this.currentSite.domain;
-        if (siteUrlEl) siteUrlEl.title = this.currentSite.url;
-
-        // Apply cached accent immediately if available
-        try {
-          const cached = await this.getCachedAccent(this.currentSite.domain);
-          if (cached) this.setAccentVariables(cached);
-        } catch(_) {}
-      }
-    } catch (error) {
-      console.error('Error loading current site:', error);
-      this.currentSite = {
-        domain: 'localhost',
-        url: 'http://localhost',
-        title: 'Local Development',
-        favicon: null
-      };
     }
   }
 
@@ -317,8 +367,24 @@ class URLNotesApp {
     
 
     // Editor controls
-    document.getElementById('backBtn').addEventListener('click', () => {
-      this.closeEditor();
+    document.getElementById('backBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Close editor immediately (no draft clearing) for instant UI response
+      const notesContainer = document.querySelector('.notes-container');
+      this.closeEditor({ clearDraft: false });
+      // Animate notes list entrance
+      if (notesContainer) {
+        notesContainer.classList.add('panel-fade-in');
+        setTimeout(() => notesContainer.classList.remove('panel-fade-in'), 220);
+      }
+      // Use same save path as Save button but non-blocking and without clearing draft/closing again
+      this.saveCurrentNote({
+        clearDraftAfterSave: false,
+        closeEditorAfterSave: false,
+        showToast: true,
+        switchFilterAfterSave: true
+      }).catch(() => {});
     });
     
     document.getElementById('saveNoteBtn').addEventListener('click', () => {
@@ -332,12 +398,14 @@ class URLNotesApp {
     // Editor inputs
     document.getElementById('noteTitleHeader').addEventListener('input', () => {
       this.updateNotePreview();
+      this.saveDraftDebounced();
     });
     
     const contentInput = document.getElementById('noteContentInput');
     contentInput.addEventListener('input', () => {
       this.updateNotePreview();
       this.updateCharCount();
+      this.saveDraftDebounced();
     });
     // Paste sanitization: allow only text, links, and line breaks
     contentInput.addEventListener('paste', (e) => this.handleEditorPaste(e));
@@ -348,6 +416,7 @@ class URLNotesApp {
     
     document.getElementById('tagsInput').addEventListener('input', () => {
       this.updateNotePreview();
+      this.saveDraftDebounced();
     });
 
     // Settings button simply opens the settings panel
@@ -381,13 +450,80 @@ class URLNotesApp {
     const debouncedRefresh = this.debounce(async () => {
       await this.loadNotes();
       this.render();
-    }, 150);
+      // If the currently open editor's note changed in storage, refresh its fields live
+      if (this.currentNote) {
+        const updated = this.allNotes.find(n => n.id === this.currentNote.id);
+        if (updated) {
+          this.currentNote = { ...updated };
+          const editorEl = document.getElementById('noteEditor');
+          if (editorEl && editorEl.style.display !== 'none') {
+            const titleHeader = document.getElementById('noteTitleHeader');
+            const contentInput = document.getElementById('noteContentInput');
+            const tagsInput = document.getElementById('tagsInput');
+
+            // Only update fields if they are not focused and actually differ
+            if (titleHeader) {
+              const titleFocused = document.activeElement === titleHeader;
+              const newTitle = this.currentNote.title || '';
+              if (!titleFocused && titleHeader.value !== newTitle) {
+                titleHeader.value = newTitle;
+              }
+            }
+
+            if (contentInput) {
+              const contentFocused = document.activeElement === contentInput;
+              const newHtml = this.buildContentHtml(this.currentNote.content || '');
+              if (!contentFocused && contentInput.innerHTML !== newHtml) {
+                contentInput.innerHTML = newHtml;
+              }
+            }
+
+            if (tagsInput) {
+              const tagsFocused = document.activeElement === tagsInput;
+              const newTags = (this.currentNote.tags || []).join(', ');
+              if (!tagsFocused && tagsInput.value !== newTags) {
+                tagsInput.value = newTags;
+              }
+            }
+
+            this.updateNotePreview();
+            this.updateCharCount();
+          }
+        }
+      }
+    }, 120);
 
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if (areaName !== 'local') return;
-      // If any domain arrays or note arrays changed, refresh
-      // We refresh unconditionally on local changes to keep UI in sync
+      // Ignore editorState-only changes (draft autosave), which shouldn't trigger a UI refresh
+      const changedKeys = Object.keys(changes || {});
+      if (changedKeys.length > 0 && changedKeys.every(k => k === 'editorState')) {
+        return;
+      }
+      // If the user is actively editing in the editor, avoid immediate refresh to prevent caret jumps.
+      const active = document.activeElement;
+      const isEditing = active && (active.id === 'noteTitleHeader' || active.id === 'noteContentInput' || active.id === 'tagsInput');
+      if (isEditing) {
+        clearTimeout(this._pendingStorageRefresh);
+        this._pendingStorageRefresh = setTimeout(() => {
+          debouncedRefresh();
+        }, 400);
+        return;
+      }
+      // Otherwise refresh normally
       debouncedRefresh();
+    });
+
+    // Persist editor/filter state when popup is about to close
+    window.addEventListener('beforeunload', () => {
+      try {
+        if (this.currentNote) {
+          this.saveEditorDraft();
+          this.persistEditorOpen(true);
+        } else {
+          this.persistEditorOpen(false);
+        }
+      } catch (_) {}
     });
   }
 
@@ -470,6 +606,9 @@ class URLNotesApp {
 
     // Load preference
     const { themeMode } = await chrome.storage.local.get(['themeMode']);
+    
+    
+    
     this.themeMode = themeMode || 'auto'; // 'auto' | 'light' | 'dark'
 
     const updateAuto = () => {
@@ -518,7 +657,8 @@ class URLNotesApp {
   }
 
   // Switch between different note filters
-  switchFilter(filter) {
+  // options.persist: whether to store lastFilterMode (default: true)
+  switchFilter(filter, options = { persist: true }) {
     this.filterMode = filter;
     
     // Update filter UI
@@ -546,6 +686,10 @@ class URLNotesApp {
     }
 
     this.render();
+    // Persist last chosen filter unless suppressed
+    if (!options || options.persist !== false) {
+      chrome.storage.local.set({ lastFilterMode: this.filterMode });
+    }
   }
 
   // Render the notes list based on the current filter and search query
@@ -560,7 +704,8 @@ class URLNotesApp {
     if (this.filterMode === 'site') {
       filteredNotes = this.allNotes.filter(note => note.domain === this.currentSite.domain);
     } else if (this.filterMode === 'page') {
-      filteredNotes = this.allNotes.filter(note => note.url === this.currentSite.url);
+      const currentKey = this.normalizePageKey(this.currentSite.url);
+      filteredNotes = this.allNotes.filter(note => this.normalizePageKey(note.url) === currentKey);
     } else { // 'all_notes'
       filteredNotes = this.allNotes;
     }
@@ -903,15 +1048,34 @@ class URLNotesApp {
   htmlToMarkdown(html) {
     const tmp = document.createElement('div');
     tmp.innerHTML = html || '';
-    // Remove disallowed tags except <a>, <br>
+    // Remove disallowed tags by unwrapping while preserving line breaks.
+    // For block elements, insert <br> boundaries to reflect visual line breaks.
     const allowed = new Set(['A', 'BR']);
+    const blockTags = new Set(['DIV', 'P', 'PRE', 'LI', 'UL', 'OL', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
     const walker = document.createTreeWalker(tmp, NodeFilter.SHOW_ELEMENT, null);
     const toRemove = [];
     while (walker.nextNode()) {
       const el = walker.currentNode;
       if (!allowed.has(el.tagName)) {
-        const text = document.createTextNode(el.textContent || '');
-        el.parentNode.insertBefore(text, el);
+        const isBlock = blockTags.has(el.tagName);
+        if (isBlock) {
+          // Insert a <br> before block (if not at start or already separated)
+          if (el.previousSibling && el.previousSibling.nodeName !== 'BR') {
+            el.parentNode.insertBefore(document.createElement('br'), el);
+          }
+        }
+        // Unwrap: move children out in place
+        let lastChild = null;
+        while (el.firstChild) {
+          lastChild = el.firstChild;
+          el.parentNode.insertBefore(lastChild, el);
+        }
+        if (isBlock) {
+          // Insert a <br> after block to mark end of this block
+          if (lastChild && lastChild.nodeName !== 'BR') {
+            el.parentNode.insertBefore(document.createElement('br'), el);
+          }
+        }
         toRemove.push(el);
       }
     }
@@ -936,6 +1100,115 @@ class URLNotesApp {
     const decode = document.createElement('textarea');
     decode.innerHTML = text;
     return decode.value;
+  }
+
+  // --- Caret/Selection utilities ---
+  getSelectionOffsets(container) {
+    try {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return { start: 0, end: 0 };
+      const range = sel.getRangeAt(0);
+      const computePos = (node, targetNode, targetOffset) => {
+        let pos = 0;
+        const walker = document.createTreeWalker(node, NodeFilter.SHOW_ALL, null);
+        let current = walker.currentNode;
+        const advance = (n) => {
+          if (n.nodeType === Node.TEXT_NODE) {
+            pos += n.nodeValue.length;
+          } else if (n.nodeName === 'BR') {
+            pos += 1; // treat <br> as one char (newline)
+          }
+        };
+        // If container itself is text node, handle differently
+        if (node.nodeType === Node.TEXT_NODE) {
+          // Not typical for our container; fallback to length
+          return Math.min(targetOffset, node.nodeValue.length);
+        }
+        while (current) {
+          if (current === targetNode) {
+            if (current.nodeType === Node.TEXT_NODE) {
+              pos += Math.min(targetOffset, current.nodeValue.length);
+            } else if (current.nodeName === 'BR') {
+              pos += 1; // caret after BR counts as after newline
+            }
+            break;
+          }
+          // Dive into children first
+          if (current.firstChild) {
+            current = current.firstChild;
+            continue;
+          }
+          // Process node
+          advance(current);
+          // Move to next sibling or ascend
+          while (current && !current.nextSibling && current !== node) {
+            current = current.parentNode;
+          }
+          if (!current || current === node) {
+            break;
+          }
+          current = current.nextSibling;
+        }
+        return pos;
+      };
+      const start = computePos(container, range.startContainer, range.startOffset);
+      const end = computePos(container, range.endContainer, range.endOffset);
+      return { start, end };
+    } catch (_) {
+      return { start: 0, end: 0 };
+    }
+  }
+
+  setSelectionOffsets(container, start, end) {
+    try {
+      let pos = 0;
+      let startNode = null, startOffset = 0;
+      let endNode = null, endOffset = 0;
+      const walker = document.createTreeWalker(container, NodeFilter.SHOW_ALL, null);
+      let current = walker.currentNode;
+
+      const matchPoint = (needStart, needEnd, len) => {
+        if (needStart && startNode === null && pos + len >= start) {
+          startNode = current.nodeType === Node.TEXT_NODE ? current : container;
+          startOffset = current.nodeType === Node.TEXT_NODE ? (start - pos) : 0;
+        }
+        if (needEnd && endNode === null && pos + len >= end) {
+          endNode = current.nodeType === Node.TEXT_NODE ? current : container;
+          endOffset = current.nodeType === Node.TEXT_NODE ? (end - pos) : 0;
+        }
+      };
+
+      while (current) {
+        if (current.nodeType === Node.TEXT_NODE) {
+          const len = current.nodeValue.length;
+          matchPoint(true, true, len);
+          pos += len;
+        } else if (current.nodeName === 'BR') {
+          const len = 1;
+          // Place caret before/after BR by anchoring to container and zero offsets; browsers will place it around the BR
+          matchPoint(true, true, len);
+          pos += len;
+        }
+
+        // Traverse depth-first
+        if (current.firstChild) {
+          current = current.firstChild;
+          continue;
+        }
+        while (current && !current.nextSibling && current !== container) {
+          current = current.parentNode;
+        }
+        if (!current || current === container) break;
+        current = current.nextSibling;
+      }
+
+      const range = document.createRange();
+      range.setStart(startNode || container, startNode ? startOffset : 0);
+      range.setEnd(endNode || container, endNode ? endOffset : 0);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch (_) {}
   }
 
   // Handle paste into contenteditable: sanitize to safe minimal HTML
@@ -998,6 +1271,44 @@ class URLNotesApp {
     }
   }
 
+  // Build a normalized key for URL equality on the "This Page" filter and tab matching
+  // - strips hash (including :~:text fragments)
+  // - removes common tracking query params
+  // - lowercases host and removes leading www.
+  // - removes trailing slash from path (except root)
+  // - sorts remaining query params for stable comparison
+  normalizePageKey(u) {
+    try {
+      const x = new URL(u, this.currentSite ? this.currentSite.url : undefined);
+      let host = (x.hostname || '').replace(/^www\./i, '').toLowerCase();
+      let path = x.pathname || '/';
+      if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
+      const params = new URLSearchParams(x.search);
+      const deny = ['utm_source','utm_medium','utm_campaign','utm_term','utm_content','gclid','fbclid','mc_eid','yclid','igshid','si','si_source','si_id'];
+      deny.forEach(k => params.delete(k));
+      const entries = Array.from(params.entries()).sort(([a],[b]) => a.localeCompare(b));
+      const query = entries.length ? ('?' + entries.map(([k,v]) => `${k}=${v}`).join('&')) : '';
+      // Ignore hash entirely for page identity
+      return `${host}${path}${query}`;
+    } catch {
+      return (u || '').toString();
+    }
+  }
+
+  // Wait briefly until the content script in a tab has reported readiness via background session storage
+  async awaitContentReady(tabId, { timeoutMs = 3000, intervalMs = 150 } = {}) {
+    const key = `pageInfo_${tabId}`;
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      try {
+        const data = await chrome.storage.session.get(key);
+        if (data && data[key]) return true;
+      } catch (_) { /* no-op */ }
+      await new Promise(r => setTimeout(r, intervalMs));
+    }
+    return false;
+  }
+
   // Handle clicking links inside the editor contenteditable
   handleEditorLinkClick(e) {
     const target = e.target;
@@ -1018,20 +1329,16 @@ class URLNotesApp {
         absoluteHref = baseUrl ? new URL(href, baseUrl).toString() : new URL(href).toString();
       } catch {}
 
-      // Build a comparable key with normalization (strip tracking, ignore www., normalize slash)
+      // Build a comparable key with normalization (local to this method)
       const makeKey = (u) => {
         try {
           const x = new URL(u);
-          // Normalize hostname (drop www.)
           let host = x.hostname.replace(/^www\./i, '').toLowerCase();
-          // Normalize path: remove trailing slash except root
           let path = x.pathname || '/';
           if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
-          // Filter query params to remove common trackers
           const params = new URLSearchParams(x.search);
           const deny = ['utm_source','utm_medium','utm_campaign','utm_term','utm_content','gclid','fbclid','mc_eid','yclid','igshid','si','si_source','si_id'];
           deny.forEach(k => params.delete(k));
-          // Build sorted query for stable comparison
           const entries = Array.from(params.entries()).sort(([a],[b]) => a.localeCompare(b));
           const query = entries.length ? ('?' + entries.map(([k,v]) => `${k}=${v}`).join('&')) : '';
           return `${host}${path}${query}`;
@@ -1042,10 +1349,7 @@ class URLNotesApp {
       const targetKey = makeKey(absoluteHref);
 
       const tabs = await chrome.tabs.query({ currentWindow: true });
-      let targetTab = tabs.find(t => {
-        const key = makeKey(t.url);
-        return key === targetKey;
-      });
+      let targetTab = tabs.find(t => makeKey(t.url) === targetKey);
 
       // For new tabs, try to include a text fragment to encourage native highlight
       const addTextFragment = (u, txt) => {
@@ -1168,60 +1472,98 @@ class URLNotesApp {
 
     // Show editor with animation
     editor.style.display = 'flex';
-    editor.classList.add('slide-in');
+    editor.classList.add('slide-in', 'editor-fade-in');
+    // Mark editor as open and persist current draft immediately
+    this.persistEditorOpen(true);
+    this.saveEditorDraft();
     
-    // Focus appropriately
+    // Focus appropriately and try to restore caret from cached draft (if present)
     setTimeout(() => {
-      if (focusContent || this.isJotMode) {
+      const focusContentNow = (focusContent || this.isJotMode);
+      if (focusContentNow) {
         contentInput.focus();
       } else {
         titleHeader.focus();
       }
-    }, 100);
+      // Attempt to restore caret from editorState
+      try {
+        chrome.storage.local.get(['editorState']).then(({ editorState }) => {
+          if (!editorState || !editorState.noteDraft) return;
+          const d = editorState.noteDraft;
+          if (d.id === this.currentNote.id && typeof d.caretStart === 'number' && typeof d.caretEnd === 'number') {
+            // Ensure content area is focused before restoring selection
+            contentInput.focus();
+            this.setSelectionOffsets(contentInput, d.caretStart, d.caretEnd);
+          }
+        }).catch(() => {});
+      } catch (_) {}
+    }, 120);
     
     this.updateCharCount();
   }
 
   // Close the note editor
-  closeEditor() {
+  closeEditor(options = { clearDraft: false }) {
     const editor = document.getElementById('noteEditor');
     editor.classList.add('slide-out');
     
     setTimeout(() => {
       editor.style.display = 'none';
-      editor.classList.remove('slide-in', 'slide-out');
-      this.currentNote = null;
-    }, 300);
+      editor.classList.remove('slide-in', 'slide-out', 'editor-fade-in');
+      // If requested, clear cached draft; otherwise keep cached but mark not open
+      if (options && options.clearDraft) {
+        this.clearEditorState();
+        // Only when explicitly clearing the draft do we drop currentNote reference
+        this.currentNote = null;
+      } else {
+        // Cache latest draft immediately on close to avoid losing unsaved edits
+        this.saveEditorDraft();
+        this.persistEditorOpen(false);
+      }
+    }, 240);
   }
 
+  
+
   // Save current note
-  async saveCurrentNote(isAutosave = false) {
+  async saveCurrentNote(optionsOrAutosave = false) {
+    const opts = typeof optionsOrAutosave === 'object' ? optionsOrAutosave : {
+      clearDraftAfterSave: true,
+      closeEditorAfterSave: true,
+      showToast: !optionsOrAutosave, // if autosave boolean passed true, suppress toast
+      switchFilterAfterSave: true
+    };
     if (!this.currentNote) {
       this.showToast('No note open to save');
       return;
     }
-
+    
+    // Grab editor fields
     const titleHeader = document.getElementById('noteTitleHeader');
     const contentInput = document.getElementById('noteContentInput');
     const tagsInput = document.getElementById('tagsInput');
 
-    // Update note data
-    this.currentNote.title = titleHeader.value.trim();
+    // Update note data from editor
+    this.currentNote.title = (titleHeader && titleHeader.value ? titleHeader.value : '').trim();
     // Convert editor HTML back to markdown/plain text for storage
-    this.currentNote.content = this.htmlToMarkdown(contentInput.innerHTML).trim();
-    this.currentNote.tags = tagsInput.value
-      .split(',')
-      .map(tag => tag.trim())
-      .filter(tag => tag.length > 0);
+    this.currentNote.content = this.htmlToMarkdown(contentInput ? contentInput.innerHTML : '');
+    this.currentNote.tags = (tagsInput && tagsInput.value
+      ? tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+      : []);
     this.currentNote.updatedAt = new Date().toISOString();
-      
+
     // Update URL and page title for current context
     this.currentNote.url = this.currentSite.url;
     this.currentNote.pageTitle = this.currentSite.title;
-
-    // Don't save empty notes
-    if (!this.currentNote.title && !this.currentNote.content) {
-      this.closeEditor();
+    
+    // Don't save empty notes (title, content, and tags all empty)
+    const isTitleEmpty = !this.currentNote.title;
+    const isContentEmpty = (this.currentNote.content || '').trim() === '';
+    const areTagsEmpty = (this.currentNote.tags || []).length === 0;
+    if (isTitleEmpty && isContentEmpty && areTagsEmpty) {
+      try { await this.clearEditorState(); } catch (_) {}
+      try { await this.persistEditorOpen(false); } catch (_) {}
+      this.closeEditor({ clearDraft: true });
       return;
     }
 
@@ -1252,12 +1594,23 @@ class URLNotesApp {
     // Sort master list again to be safe
     this.allNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
-    this.showToast('Note saved!');
-    this.closeEditor();
+    if (opts.showToast) this.showToast('Note saved!');
+    // Clear draft and/or close according to options
+    if (opts.closeEditorAfterSave) {
+      this.closeEditor({ clearDraft: !!opts.clearDraftAfterSave });
+    } else if (opts.clearDraftAfterSave) {
+      await this.clearEditorState();
+    } else {
+      // Persist editor open false since we're leaving editor via back
+      await this.persistEditorOpen(false);
+    }
 
-    // Re-render from memory
-    this.render();
-    this.checkStorageQuota();
+    if (opts.switchFilterAfterSave) {
+      // After saving, switch to This Page filter
+      this.switchFilter('page');
+      // Re-render from memory (switchFilter already renders)
+      this.checkStorageQuota();
+    }
   }
 
   // Delete current note (from editor)
@@ -1293,7 +1646,8 @@ class URLNotesApp {
     await chrome.storage.local.set({ [domain]: notesForDomain });
 
     this.showToast('Note deleted');
-    this.closeEditor();
+    // Clear draft cache and close editor
+    this.closeEditor({ clearDraft: true });
     await this.postDeleteRefresh();
   }
   
@@ -1349,6 +1703,61 @@ class URLNotesApp {
     });
   }
 
+  // Persist editor open flag (and keep existing noteDraft intact)
+  async persistEditorOpen(isOpen) {
+    try {
+      const { editorState } = await chrome.storage.local.get(['editorState']);
+      const state = editorState || {};
+      state.open = !!isOpen;
+      await chrome.storage.local.set({ editorState: state });
+    } catch (_) {}
+  }
+
+  // Save the current editor draft (title/content/tags) into storage
+  async saveEditorDraft() {
+    try {
+      if (!this.currentNote) return;
+      const titleHeader = document.getElementById('noteTitleHeader');
+      const contentInput = document.getElementById('noteContentInput');
+      const tagsInput = document.getElementById('tagsInput');
+
+      // Capture caret in content area
+      let caretStart = 0, caretEnd = 0;
+      try {
+        if (contentInput) {
+          const pos = this.getSelectionOffsets(contentInput);
+          caretStart = pos.start;
+          caretEnd = pos.end;
+        }
+      } catch (_) {}
+
+      const draft = {
+        id: this.currentNote.id,
+        title: (titleHeader && titleHeader.value) || '',
+        content: this.htmlToMarkdown(contentInput ? contentInput.innerHTML : ''),
+        tags: (tagsInput && tagsInput.value
+          ? tagsInput.value.split(',').map(t => t.trim()).filter(Boolean)
+          : []),
+        createdAt: this.currentNote.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        domain: this.currentNote.domain || (this.currentSite && this.currentSite.domain),
+        url: (this.currentSite && this.currentSite.url) || this.currentNote.url,
+        pageTitle: (this.currentSite && this.currentSite.title) || this.currentNote.pageTitle,
+        caretStart,
+        caretEnd
+      };
+
+      await chrome.storage.local.set({ editorState: { open: true, noteDraft: draft } });
+    } catch (_) { }
+  }
+
+  // Clear editor state entirely
+  async clearEditorState() {
+    try {
+      await chrome.storage.local.remove('editorState');
+    } catch (_) { }
+  }
+
   // Delete all notes for a specific domain
   async deleteNotesByDomain(domain, confirmed = false) {
     if (!confirmed) {
@@ -1374,7 +1783,8 @@ class URLNotesApp {
     if (this.filterMode === 'site') {
       filtered = this.allNotes.filter(n => n.domain === (this.currentSite && this.currentSite.domain));
     } else if (this.filterMode === 'page') {
-      filtered = this.allNotes.filter(n => n.url === (this.currentSite && this.currentSite.url));
+      const currentKey = this.currentSite ? this.normalizePageKey(this.currentSite.url) : '';
+      filtered = this.allNotes.filter(n => this.normalizePageKey(n.url) === currentKey);
     } else {
       filtered = this.allNotes;
     }

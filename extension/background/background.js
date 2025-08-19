@@ -127,8 +127,9 @@ async function addSelectionToNewNote(info, tab) {
     notes.push(newNote);
     await chrome.storage.local.set({ [domain]: notes });
     console.log('New note saved from selection:', newNote);
-
-    // 5. Open the extension UI to show the result
+    // 5. Mark last action so popup can prioritize showing this note
+    await chrome.storage.local.set({ lastAction: { type: 'new_from_selection', domain, noteId: newNote.id, ts: Date.now() } });
+    // 6. Open the extension UI to show the result
     openExtensionUi();
 
   } catch (error) {
@@ -159,6 +160,8 @@ async function addSelectionToExistingNote(info, tab) {
     target.updatedAt = new Date().toISOString();
     await chrome.storage.local.set({ [domain]: notes });
     console.log('Appended selection to existing note:', target.id);
+    // Mark last action so popup can refresh/open the appended note immediately
+    await chrome.storage.local.set({ lastAction: { type: 'append_selection', domain, noteId: target.id, ts: Date.now() } });
     openExtensionUi();
   } catch (e) {
     console.error('Failed to append to existing note:', e);

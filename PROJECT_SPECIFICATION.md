@@ -37,6 +37,8 @@ A browser extension and web application for taking notes on websites, with domai
   - Dynamic search placeholder reflects active view: "Search All Notes" / "Search This Site" / "Search This Page".
   - Conditional search clear after deletions: if a delete leaves 0 matches for the current query, automatically clear the search and re-render.
   - All Notes per-note delete fixed by rendering note cards as DOM nodes (not HTML strings) to preserve event handlers.
+  - This Page filter now groups notes by normalized page identity (ignores hash/fragments and tracking params; host lowercased without `www.`, trailing slash removed). See popup `normalizePageKey()`.
+  - Link highlight behavior reverted to stable retry-based messaging (no `tabs.onUpdated` listener, no content-ready handshake); new tabs include `#:~:text=` when possible; content script performs timed/mutation-observer retries.
 
   Popup maintenance (Aug 18, later-later):
   - Dark mode text contrast fixes across popup: enforce light text for inputs, headers, buttons, and placeholders on dark backgrounds.
@@ -59,8 +61,8 @@ A browser extension and web application for taking notes on websites, with domai
   - Restored `action.default_popup: popup/popup.html` in `extension/manifest.json`.
   - Removed Side Panel code paths from `extension/background/background.js` to reduce dormant code.
   - Improved link-opening reliability and on-page highlighting:
-    - Looser tab matching via URL normalization (strip `www.`, trailing slashes, and common tracking params like `utm_*`, `gclid`, `fbclid`).
-    - More robust content highlighting with retries and MutationObserver in `extension/content/content.js`, plus unicode normalization and partial token matching.
+    - Tab reuse via URL normalization (strip `www.`, trailing slashes, and common tracking params like `utm_*`, `gclid`, `fbclid`).
+    - First-load highlighting uses retry-based `chrome.tabs.sendMessage` scheduling; no `tabs.onUpdated` listener and no readiness handshake. New tabs attempt native text fragment (`#:~:text=`) and content script retries with MutationObserver.
   - Ads remain strictly inside the extension UI container (popup) via `extension/lib/ads.js` (CodeFuel integration policy-compliant).
 
 ## Tech Stack & Architecture
