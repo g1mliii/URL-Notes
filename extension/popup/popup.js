@@ -190,6 +190,8 @@ class URLNotesApp {
     await this.applyAccentFromFavicon();
     await this.loadNotes();
     await this.loadFontSetting();
+    // Initialize settings UI once (font controls, preview, etc.)
+    this.initSettings();
     this.checkStorageQuota();
     this.updateCharCount();
     this.updateNotePreview();
@@ -348,13 +350,9 @@ class URLNotesApp {
       this.updateNotePreview();
     });
 
-    // Settings button
+    // Settings button simply opens the settings panel
     document.getElementById('settingsBtn').addEventListener('click', () => {
-      this.initSettings();
-    });
-
-    document.getElementById('settingsBackBtn').addEventListener('click', () => {
-      this.closeSettings();
+      this.openSettings();
     });
 
     document.getElementById('exportNotesBtn').addEventListener('click', () => {
@@ -416,16 +414,13 @@ class URLNotesApp {
       }
     };
 
-    settingsBtn.addEventListener('click', () => {
-      settingsPanel.style.display = 'flex';
-    });
-
+    // Close settings: apply chosen font to editor then hide panel
+    // Keep this binding here so it's wired once
     settingsBackBtn.addEventListener('click', () => {
-      // On close, apply current settings to the editor
       const fontName = fontSelector.value;
       const size = fontSizeSlider.value;
       this.applyFont(fontName, size);
-      settingsPanel.style.display = 'none';
+      this.closeSettings();
     });
 
     // Font controls
@@ -434,7 +429,7 @@ class URLNotesApp {
       const size = fontSizeSlider.value;
       // Do not apply to editor while settings is open; preview only
       updateFontPreview(fontName, size);
-      chrome.storage.sync.set({ editorFont: fontName });
+      chrome.storage.local.set({ editorFont: fontName });
     });
 
     fontSizeSlider.addEventListener('input', (e) => {
@@ -447,16 +442,16 @@ class URLNotesApp {
       fontSizeSlider.value = String(size);
       // Do not apply to editor while settings is open; preview only
       updateFontPreview(fontName, size);
-      chrome.storage.sync.set({ editorFontSize: String(size) });
+      chrome.storage.local.set({ editorFontSize: String(size) });
     });
 
     // Load saved font settings
-    chrome.storage.sync.get(['editorFont', 'editorFontSize'], ({ editorFont, editorFontSize }) => {
+    chrome.storage.local.get(['editorFont', 'editorFontSize'], ({ editorFont, editorFontSize }) => {
       // Normalize legacy 'System' to 'Default'
       const normalizedFont = editorFont === 'System' ? 'Default' : (editorFont || 'Default');
       fontSelector.value = normalizedFont;
       if (editorFont === 'System') {
-        chrome.storage.sync.set({ editorFont: 'Default' });
+        chrome.storage.local.set({ editorFont: 'Default' });
       }
       // Determine size with default 12 and clamp within [8, 18]
       let sizeToUse = parseInt(editorFontSize || fontSizeSlider.value || '12', 10);
@@ -466,11 +461,6 @@ class URLNotesApp {
       this.applyFont(fontSelector.value, sizeToUse);
       updateFontPreview(fontSelector.value, sizeToUse);
     });
-
-    // Export/Import functionality
-    exportNotesBtn.addEventListener('click', () => this.exportNotes());
-    importNotesBtn.addEventListener('click', () => importNotesInput.click());
-    importNotesInput.addEventListener('change', (e) => this.importNotes(e));
   }
 
   // Detect system theme and manage override (auto/light/dark)

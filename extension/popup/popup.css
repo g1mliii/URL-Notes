@@ -1203,22 +1203,7 @@ html, body {
 .save-btn {
   display: flex;
   align-items: center;
-gap: 4px;
-padding: 6px 10px;
-background: var(--accent-primary);
-color: #fff; /* enforce legible text on any accent */
-border: none;
-border-radius: 8px;
-font-size: 12px;
-font-weight: 500;
-cursor: pointer;
-transition: all 0.2s ease;
-/* Apple-like neutral glow (no color shadow) */
-box-shadow:
-0 1px 2px var(--shadow-dark),
-inset 0 1px 0 var(--shadow-light);
-white-space: nowrap;
-min-width: auto;
+  gap: 4px;
   padding: 6px 10px;
   background: var(--accent-primary);
   color: #fff; /* enforce legible text on any accent */
