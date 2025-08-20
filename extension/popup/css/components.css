@@ -17,7 +17,7 @@
 .domain-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px; /* match note actions spacing */
 }
 /* Base Component Styles */
 
@@ -73,7 +73,7 @@ html, body {
   pointer-events: none;
   background:
     radial-gradient(120% 80% at 100% 0%, rgba(255,255,255,0.02), transparent 50%),
-    radial-gradient(100% 70% at 0% 100%, rgba(0,0,0,0.05), transparent 55%);
+    radial-gradient(100% 70% at 0% 100%, rgba(0,0,0,0.06), transparent 55%);
   mix-blend-mode: normal;
   opacity: 1;
 }
@@ -315,63 +315,83 @@ html, body {
   display: flex;
   justify-content: center;
   padding: 0; /* use margins instead of padding to match length */
-  height: 40px; /* tighter to match button height */
+  height: 34px; /* match search bar height in compact */
 }
 
 .filter-wrapper {
   display: flex;
-  width: 100%;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px; /* rounded like search */
-  padding: 4px 6px;
-  gap: 4px;
-  box-shadow: inset 0 1px 0 var(--shadow-light);
-  backdrop-filter: blur(var(--backdrop-blur));
-  -webkit-backdrop-filter: blur(var(--backdrop-blur));
-  height: 100%;
-  align-items: center;
-  box-sizing: border-box; /* prevent size shifts from borders/padding */
+  align-items: stretch;
+  justify-content: center;
+  width: 100%; /* ensure full width so pills fill */
+  border-radius: 10px; /* rounded ends for the band */
+  padding: 0;
+  box-sizing: border-box;
 }
 
 .filter-wrapper:hover {
-  background: color-mix(in oklab, var(--bg-primary) 90%, white 10%);
+  background: color-mix(in oklab, var(--bg-primary) 88%, white 12%);
 }
 
 .filter-option {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 8px 0; /* tighter to reduce bar height */
-  border: none;
-  border-radius: 8px;
-  background: transparent;
+  gap: 4px; /* tighter icon/text spacing */
+  padding: 7px 10px; /* comfortable vertical, symmetric horizontal */
+  border-radius: 0; /* remove rounding so ends touch */
+  /* Glassmorphic pill surface */
+  background: var(--glass-bg);
+  border: 1px solid transparent; /* no visible outline when not selected */
   color: var(--text-secondary);
-  font-size: 13px;
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  font-size: 13px; /* original size */
   font-weight: 500;
   cursor: pointer;
-  transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease; /* avoid layout-affecting transitions */
+  transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease; /* include transform */
   white-space: nowrap;
-  flex: 1 1 0; /* flex to fill evenly */
+  flex: 1 1 0; /* fill evenly across wrapper */
   min-width: 0; /* prevent growth by text */
+  box-shadow: var(--glass-inset), var(--glass-shadow);
+  background-clip: padding-box; /* ensure borders don’t create seams */
+  position: relative; /* allow z-index stacking to hide seams */
 }
+
+/* Round only the ends of the pill group */
+.filter-option:first-child {
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+}
+.filter-option:last-child {
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
+
+/* Revert overlap; keep normal spacing so wrapper band is intact */
+.filter-option + .filter-option { margin-left: 0; }
 
 .filter-option:hover {
   color: var(--text-primary);
-  background: color-mix(in oklab, var(--bg-tertiary) 85%, white 15%);
+  background: var(--glass-bg-hover);
+  border-color: transparent; /* keep outline hidden on hover */
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 3px 10px rgba(0,0,0,0.09);
 }
 
 .filter-option.active {
-  background: var(--accent-primary);
+  /* Accent-tinted glass */
   color: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: var(--accent-glass-bg);
+  border-color: var(--accent-glass-border); /* only active shows outline */
+  box-shadow: var(--accent-glass-inset), var(--accent-glass-shadow);
 }
 
 .filter-option svg {
-  width: 14px;
+  width: 14px; /* match search icon sizing */
   height: 14px;
 }
+.filter-option span, .filter-option svg { opacity: 0.80; } /* soften inactive intensity */
+.filter-option:hover span, .filter-option:hover svg { opacity: 0.92; }
+.filter-option.active span, .filter-option.active svg { opacity: 1; }
 
 /* Main Content */
 .main-content {
@@ -380,7 +400,7 @@ html, body {
   flex-direction: column;
   overflow: hidden;
   padding: 0; /* remove side padding to avoid visual gaps */
-  background: var(--bg-secondary); /* match header background */
+  background: var(--canvas-bg);
 }
 
 /* Notes Container */
@@ -389,7 +409,7 @@ html, body {
   display: flex;
   flex-direction: column;
   overflow: hidden; /* prevent outer scroll; inner list will scroll */
-  background: var(--bg-secondary); /* match header background */
+  background: var(--canvas-bg);
   padding: 0; /* full-bleed for headers */
   min-height: 0; /* allow flex child to shrink so ad bar is visible */
   position: relative; /* for background band */
@@ -412,7 +432,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 1px 12px 6px; /* nudge header up slightly without touching band */
+  margin: 1px 12px 2px; /* reduce gap to bring first note closer */
   padding: 8px 12px; /* keep spacing for content */
   background: transparent; /* hide container */
   border: 1px solid transparent; /* remove outline */
@@ -443,21 +463,32 @@ html, body {
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  border: none;
   border-radius: 10px;
-  background: var(--accent-primary);
-  color: white;
+  /* Accent-tinted glass like filter active */
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent-primary) 26%, rgba(255,255,255,0.18)),
+    color-mix(in oklab, var(--accent-primary) 18%, rgba(255,255,255,0.06))
+  );
+  border: 1px solid color-mix(in oklab, var(--accent-primary) 45%, rgba(255,255,255,0.28));
+  color: #fff;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 2px var(--shadow-dark), inset 0 1px 0 var(--shadow-light);
+  transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), 0 3px 10px rgba(0,0,0,0.12);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
 }
 
 .add-note-btn:hover {
-  background: var(--accent-secondary);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent-primary) 36%, rgba(255,255,255,0.22)),
+    color-mix(in oklab, var(--accent-primary) 24%, rgba(255,255,255,0.10))
+  );
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.32), 0 4px 12px rgba(0,0,0,0.14);
 }
 
 .add-note-btn:active {
@@ -469,12 +500,33 @@ html, body {
   height: 16px;
 }
 
+.add-note-btn span {
+  color: #fff;
+  opacity: 0.86; /* softer white */
+}
+
+.add-note-btn svg {
+  color: #fff;
+  opacity: 0.86; /* softer white */
+}
+
+/* Global Layout */
+:root {
+  /* Stable canvas background to avoid site-by-site variance */
+  --canvas-bg: var(--bg-secondary); /* match header exactly */
+}
+
+html,
+body {
+  background: var(--canvas-bg);
+}
+
 /* Notes List */
 .notes-list {
   flex: 1 1 auto;
   min-height: 0; /* critical for scroll inside flex column */
   overflow-y: auto;
-  padding: 6px 16px 8px; /* reduce top padding so list starts just below header */
+  padding: 2px 16px 8px; /* tighter top padding to bring first note closer */
   position: relative;
   z-index: 1; /* above the band */
   background: var(--bg-secondary); /* prevent band from showing through gaps */
@@ -508,12 +560,12 @@ html[data-compact="1"] .search-input {
 }
 
 html[data-compact="1"] .filter-wrapper {
-  padding: 3px;
+  padding: 2px; /* keep buttons connected in compact mode */
 }
 
 html[data-compact="1"] .filter-option {
-  padding: 5px 8px;
-  font-size: 12px;
+  padding: 6px 6px; /* taller pill within same bar height */
+  font-size: 12px; /* original compact size */
 }
 
 html[data-compact="1"] .notes-header {
@@ -584,9 +636,12 @@ html[data-compact="1"] .notes-list {
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background: transparent; /* blend into card/header until hover */
-  border: 1px solid transparent; /* no hard outline until hover */
-  box-shadow: none; /* remove inset line until hover */
+  /* Glass base */
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-inset), var(--glass-shadow);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
 }
 .note-actions .icon-btn svg,
 .domain-actions .icon-btn svg {
@@ -602,10 +657,10 @@ html[data-compact="1"] .notes-list {
 }
 .note-actions .icon-btn:hover,
 .domain-actions .icon-btn:hover {
-  background: var(--bg-secondary); /* reveal surface on hover */
-  border-color: var(--border-color); /* show outline on hover */
+  background: var(--glass-bg-hover);
+  border-color: color-mix(in oklab, var(--border-color) 60%, rgba(255,255,255,0.32));
   transform: translateY(-1px);
-  box-shadow: inset 0 1px 0 var(--shadow-light), 0 2px 8px var(--shadow-dark);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 3px 10px rgba(0,0,0,0.09);
 }
 .note-actions .icon-btn:active,
 .domain-actions .icon-btn:active {
@@ -661,7 +716,13 @@ html[data-compact="1"] .notes-list {
 .note-actions .icon-btn:hover svg,
 .domain-actions .icon-btn:hover svg {
   color: var(--text-primary);
-  opacity: 0.9;
+  stroke: var(--text-primary);
+  opacity: 1;
+}
+
+/* Darken hover a bit more specifically for the All Notes tab */
+#showAllNotesBtn:hover {
+  filter: brightness(0.88);
 }
 
 html[data-compact="1"] .note-item {
@@ -679,6 +740,12 @@ html[data-compact="1"] .note-preview {
 }
 
 html[data-compact="1"] .note-actions .icon-btn {
+  width: 28px;
+  height: 28px;
+}
+
+/* Match domain action sizes to note action sizes in compact mode */
+html[data-compact="1"] .domain-actions .icon-btn {
   width: 28px;
   height: 28px;
 }
@@ -743,15 +810,62 @@ html[data-compact="1"] .domain-notes-list {
 
 /* Use lighter element background for cards */
 .note-item {
-  background: var(--bg-primary);
+  background: var(--bg-primary); /* flat surface; gradients removed */
+}
+
+/* Round corners more for top-level notes (not inside dropdown domain groups) */
+.notes-list > .note-item {
+  border-radius: 12px;
+  /* Apply same layered background effect as domain groups */
   background-image:
-    radial-gradient(120% 140% at 100% -10%, rgba(255,255,255,0.06), transparent 55%),
-    linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)),
-    linear-gradient(135deg, color-mix(in oklab, var(--accent-primary) 6%, transparent), transparent 70%);
+    radial-gradient(100% 150% at 0% -20%, rgba(255,255,255,0.07), transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03)),
+    linear-gradient(135deg, color-mix(in oklab, var(--accent-primary) 6%, transparent), transparent 75%);
+}
+
+/* Apply same rounding to notes inside dropdown domain groups */
+.domain-notes-list .note-item {
+  border-radius: 12px;
+}
+
+/* Delete buttons: match New Note accent glass with white icon (except confirm/danger) */
+.note-actions .delete-note-btn:not(.confirm):not(.danger),
+.domain-actions .delete-domain-btn:not(.confirm):not(.danger) {
+  background: var(--accent-glass-bg);
+  border: 1px solid var(--accent-glass-border);
+  box-shadow: var(--accent-glass-inset), var(--accent-glass-shadow);
+}
+.note-actions .delete-note-btn:not(.confirm):not(.danger):hover,
+.domain-actions .delete-domain-btn:not(.confirm):not(.danger):hover {
+  background: var(--accent-glass-bg-hover);
+}
+.note-actions .delete-note-btn:not(.confirm):not(.danger) svg,
+.domain-actions .delete-domain-btn:not(.confirm):not(.danger) svg {
+  color: #fff;
+  stroke: #fff;
+  opacity: 1;
+}
+
+/* Open/link buttons: same accent glass + white icon for visual parity */
+.note-actions .open-page-btn,
+.domain-actions .open-domain-btn {
+  background: var(--accent-glass-bg);
+  border: 1px solid var(--accent-glass-border);
+  box-shadow: var(--accent-glass-inset), var(--accent-glass-shadow);
+}
+.note-actions .open-page-btn:hover,
+.domain-actions .open-domain-btn:hover {
+  background: var(--accent-glass-bg-hover);
+}
+.note-actions .open-page-btn svg,
+.domain-actions .open-domain-btn svg {
+  color: #fff;
+  stroke: #fff;
+  opacity: 1;
 }
 
 .note-item:hover {
-  background: var(--bg-tertiary);
+  background-color: var(--bg-tertiary); /* preserve layered background-image */
   transform: translateY(-1px);
   box-shadow: 
     0 2px 8px var(--shadow-dark),
@@ -871,9 +985,9 @@ html[data-compact="1"] .domain-notes-list {
   border-radius: 12px;
   background: var(--bg-primary); /* lighter element background */
   background-image:
-    radial-gradient(100% 150% at 0% -20%, rgba(255,255,255,0.06), transparent 55%),
-    linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02)),
-    linear-gradient(135deg, color-mix(in oklab, var(--accent-primary) 5%, transparent), transparent 75%);
+    radial-gradient(100% 150% at 0% -20%, rgba(255,255,255,0.07), transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03)),
+    linear-gradient(135deg, color-mix(in oklab, var(--accent-primary) 6%, transparent), transparent 75%);
   overflow: hidden;
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
@@ -915,7 +1029,7 @@ html[data-compact="1"] .domain-notes-list {
 
 .domain-actions {
   display: flex;
-  gap: 4px;
+  gap: 8px; /* match note actions spacing */
 }
 
 .domain-tags { display: none; }

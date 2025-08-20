@@ -118,10 +118,10 @@ html[data-compact="1"] .save-btn {
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
-  border: none;
+  border: 1px solid var(--border-color);
   border-radius: 10px;
-  background: var(--accent-primary);
-  color: white;
+  background: var(--bg-primary); /* match adjacent editor buttons */
+  color: var(--text-primary);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -129,12 +129,18 @@ html[data-compact="1"] .save-btn {
 }
 
 .save-btn:hover {
-  background: var(--accent-secondary);
+  background: var(--bg-primary);
   transform: translateY(-1px);
 }
 
 .save-btn:active {
   transform: translateY(0);
+}
+
+/* Make the save icon green to mirror destructive red of delete */
+.save-btn svg {
+  color: var(--success-green);
+  stroke: var(--success-green);
 }
 
 /* Strong focus-visible rings for editor action buttons on dark surfaces */
