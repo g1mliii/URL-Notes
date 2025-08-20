@@ -52,7 +52,9 @@ class SettingsManager {
     const noteEditor = document.getElementById('noteEditor');
     
     if (this.settingsPanel) this.settingsPanel.style.display = 'none';
-    if (notesList) notesList.style.display = 'block';
+    // Restore notes container to its stylesheet-defined display (flex),
+    // instead of forcing 'block' which changes layout/background.
+    if (notesList) notesList.style.removeProperty('display');
     
     // Don't automatically show editor - let the main app handle state
   }

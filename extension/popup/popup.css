@@ -1,35 +1,3 @@
-/* CSS Variables for Glassmorphism Theme */
-:root {
-  /* Light Mode Colors */
-  --bg-primary: rgba(255, 255, 255, 0.72);
-  --bg-secondary: rgba(255, 255, 255, 0.58); /* slightly stronger for separation */
-  --bg-tertiary: rgba(255, 255, 255, 0.32);
-  --bg-overlay: rgba(255, 255, 255, 0.88);
-  --text-primary: rgba(0, 0, 0, 0.82);
-  --text-secondary: rgba(0, 0, 0, 0.55);
-  --text-tertiary: rgba(0, 0, 0, 0.38);
-  --text-strong: rgba(0, 0, 0, 0.88); /* for sharper headings/inputs */
-  --placeholder: rgba(0, 0, 0, 0.5);
-  --accent-primary: rgba(0, 122, 255, 1);
-  --accent-secondary: rgba(0, 122, 255, 0.8);
-  /* Light mode borders should be darker to be visible on light surfaces */
-  --border-color: rgba(0, 0, 0, 0.22);
-  --shadow-light: rgba(255, 255, 255, 0.5);
-  --shadow-dark: rgba(0, 0, 0, 0.12);
-  --backdrop-blur: 20px;
-  --gradient-bg: linear-gradient(135deg, rgba(10, 10, 12, 0.06), rgba(0, 0, 0, 0.08));
-}
-
-/* Explicit light-mode text fixes to avoid accidental white text */
-:root[data-theme="light"] .search-input,
-:root:not([data-theme]) .search-input {
-  color: rgba(0, 0, 0, 0.9) !important;
-}
-
-:root[data-theme="light"] .search-input::placeholder,
-:root:not([data-theme]) .search-input::placeholder {
-  color: rgba(0, 0, 0, 0.5) !important;
-}
 
 /* Explicit dark-mode text fixes to avoid black text on dark surfaces */
 :root[data-theme="dark"] .search-input {
@@ -50,28 +18,13 @@
   -webkit-text-fill-color: rgba(0, 0, 0, 0.9) !important; /* force for WebKit inputs */
 }
 
-/* Light mode: make settings panel less transparent and higher contrast */
-:root[data-theme="light"] .settings-panel,
-:root:not([data-theme]) .settings-panel {
-  background: rgba(255, 255, 255, 0.92) !important;
-  border: 1px solid rgba(0, 0, 0, 0.2) !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
-}
+
 
 :root[data-theme="light"] .settings-content,
 :root:not([data-theme]) .settings-content {
   background: transparent !important;
 }
 
-/* Light mode: clearer slider track and thumb */
-:root[data-theme="light"] .font-size-slider,
-:root:not([data-theme]) .font-size-slider {
-  appearance: none;
-  height: 4px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.22);
-  outline: none;
-}
 
 .font-size-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -118,30 +71,6 @@
   color: var(--text-primary);
 }
 
-/* Ensure editor inputs are dark in light mode */
-:root[data-theme="light"] .editor-content .note-title-header,
-:root:not([data-theme]) .editor-content .note-title-header,
-:root[data-theme="light"] .editor-content .tags-input,
-:root:not([data-theme]) .editor-content .tags-input {
-  color: rgba(0, 0, 0, 0.9) !important;
-}
-
-/* Light mode: contenteditable editor contrast and clarity */
-:root[data-theme="light"] .note-content-input,
-:root:not([data-theme]) .note-content-input {
-  background: #ffffff !important;
-  color: rgba(0, 0, 0, 0.92) !important;
-  border-color: rgba(0, 0, 0, 0.22) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  caret-color: #0b0b0c;
-}
-
-/* Light mode: preview box more readable if shown */
-:root[data-theme="light"] .note-content-preview,
-:root:not([data-theme]) .note-content-preview {
-  background: #ffffff !important;
-  border-color: rgba(0, 0, 0, 0.18) !important;
-}
 
 /* Dark mode: ensure editor inputs render light text */
 :root[data-theme="dark"] .editor-content .note-title-header,
@@ -615,6 +544,13 @@ html, body {
   z-index: 100;
   display: none; /* Hidden by default */
   flex-direction: column;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  box-shadow:
+    0 8px 24px var(--shadow-dark),
+    inset 0 1px 0 var(--shadow-light);
 }
 
 .settings-title {
@@ -634,7 +570,16 @@ html, body {
 }
 
 .settings-section {
-  margin-bottom: 24px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 14px;
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+}
+
+.settings-section + .settings-section {
+  margin-top: 10px;
 }
 
 .settings-section h4 {
@@ -678,6 +623,22 @@ html, body {
   padding: 10px 12px;
   border-radius: 8px;
   border: 1px solid var(--border-color);
+}
+
+.setting-item + .setting-item {
+  margin-top: 8px;
+}
+
+.setting-item:hover {
+  background: var(--bg-primary);
+  box-shadow:
+    0 2px 8px var(--shadow-dark),
+    inset 0 1px 0 var(--shadow-light);
+}
+
+.setting-item:focus-within {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 20%, transparent);
 }
 
 .settings-select {
@@ -1739,6 +1700,47 @@ details.domain-group[open] > .domain-notes-list {
     height: 100vh;
     border-radius: 0;
   }
+}
+
+/* --- Ads Bar (bottom) --- */
+.app-container {
+  /* Ensure content isn't overlapped by the bottom ad bar */
+  padding-bottom: 64px;
+  position: relative;
+}
+
+.ad-container {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px 12px;
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-color);
+  box-shadow: 0 -8px 16px var(--shadow-dark), inset 0 1px 0 var(--shadow-light);
+  z-index: 50;
+}
+
+.ad-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  opacity: 0.8;
+  margin-bottom: 6px;
+}
+
+.ad-content {
+  min-height: 48px;
+}
+
+.ad-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
 }
 
 /* Focus styles for accessibility */

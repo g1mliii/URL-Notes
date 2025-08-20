@@ -26,6 +26,42 @@
 - Gated premium mode removes ads in the popup when authenticated premium (Phase 2).
 - Ensure backup/export/import UI copy is concise and accessible.
 - Keep contrast high in light mode (esp. sliders, previews) and enforce focus-visible outlines.
+
+## Architecture & Code Ownership (Popup)
+
+- __Popup orchestrator (`extension/popup/popup.js`)__
+  - Acts as the coordinator: initializes modules, wires events, routes actions, and manages view state (`all|site|page`).
+  - Does not perform DOM rendering of notes, inline confirmations, or editor transformations.
+  - May read/write high-level UI state (active view, search query, collapse state) and delegate work to modules.
+
+- __Notes module (`extension/popup/modules/notes.js`)__
+  - Owns grouping, sorting, and rendering of notes, including domain headers and note cards.
+  - Owns per-note and per-domain destructive UX: two-tap delete for notes, inline confirm for domain bulk delete.
+  - Exposes imperative APIs consumed by `popup.js` (e.g., `renderAllNotes`, `renderSiteNotes`, `renderPageNotes`, `attachNoteEventHandlers`).
+
+- __Editor module (`extension/popup/modules/editor.js`)__
+  - Owns editor lifecycle: open/close, content HTML↔markdown transforms, caret utilities, paste/link handlers, draft persistence.
+  - All editor-related calls must go through `EditorManager`. No editor helpers in `popup.js`.
+
+- __Settings module (`extension/popup/modules/settings.js`)__
+  - Owns settings UI, font preferences, and applies font styles to rendered note elements when requested.
+
+- __Storage module (`extension/popup/modules/storage.js`)__
+  - Owns data access for notes, versions, and domain/page filtering queries. No DOM knowledge.
+
+- __Theming module (`extension/popup/modules/theming.js`)__
+  - Owns theme toggling, accent application, and token management. No business logic.
+
+- __Utils module (`extension/popup/modules/utils.js`)__
+  - Stateless helpers only (formatting, normalization like `normalizePageKey`, etc.).
+
+### Do / Don’t (Popup architecture)
+
+- __Do__ keep `popup.js` free of rendering and editor helpers; use modules’ exported APIs.
+- __Do__ centralize destructive UI patterns inside `notes.js` and reuse them across views.
+- __Don’t__ duplicate functions already provided by modules (e.g., `createNoteElement`, `groupNotesByDomain`, `handleTwoTapDelete`, `buildContentHtml`). If a temporary duplicate exists during refactor, mark it with `// TODO: duplicated – route via <Module>` and prefer the module implementation at call sites.
+- __Don’t__ bind event listeners multiple times; let `popup.js` own initial wiring and delegate to modules for per-item handlers.
+
 # URL Notes – Style Guide
 
 ## Design Tokens

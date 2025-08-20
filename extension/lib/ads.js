@@ -69,8 +69,10 @@ class AdManager {
         resolve();
       };
       script.onerror = () => {
-        console.error('Failed to load CodeFuel SDK');
-        reject(new Error('CodeFuel SDK load failed'));
+        // In Chrome extensions, CSP often blocks remote scripts. Do not reject; fall back silently.
+        console.warn('CodeFuel SDK blocked by CSP; using fallback ad.');
+        window.__cf_sdk_failed = true;
+        resolve();
       };
       
       document.head.appendChild(script);

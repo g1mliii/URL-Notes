@@ -150,6 +150,8 @@ class URLNotesApp {
       // Fallback to default filter
       this.switchFilter(this.filterMode, { persist: false });
     }
+
+    // Ad bar UI only (no backend init)
   }
 
   // Load all notes from storage into the master list

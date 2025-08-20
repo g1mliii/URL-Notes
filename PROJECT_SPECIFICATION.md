@@ -87,6 +87,18 @@ A browser extension and web application for taking notes on websites, with domai
 - **Authentication**: Supabase Auth integration
 - **Deployment**: Vercel (free tier sufficient)
 
+### Popup Architecture (Modules & Orchestrator)
+
+- `extension/popup/popup.js` is the orchestrator that initializes modules, wires events, manages `viewMode` (`all|site|page`), and delegates work. It should not implement note rendering, editor helpers, or destructive UI patterns directly.
+- Modules under `extension/popup/modules/` own their domains:
+  - `notes.js`: grouping, sorting, and rendering of notes (All/Site/Page), domain headers, per-note actions, two-tap delete, and inline domain bulk delete confirmation.
+  - `editor.js`: editor lifecycle, HTML↔markdown transforms, caret utilities, paste/link handling, and draft persistence via `EditorManager`.
+  - `settings.js`: settings UI, font preferences, applying font styles to note elements.
+  - `storage.js`: data access for notes and versions (no DOM knowledge).
+  - `theming.js`: theme toggling and token management (no business logic).
+  - `utils.js`: stateless helpers (formatting, URL normalization like `normalizePageKey`, etc.).
+- Duplication policy: avoid re-implementing module functions in `popup.js` (e.g., `createNoteElement`, `groupNotesByDomain`, `handleTwoTapDelete`, `buildContentHtml`). If temporary duplicates exist during refactor, prefer calling module APIs and mark duplicates for cleanup.
+
 ## Uninstall Notice & Persistence Plan
 
 ### Uninstall notice (pre-uninstall prompt)
@@ -209,6 +221,13 @@ url-notes/
 │   │   ├── popup.html
 │   │   ├── popup.js
 │   │   ├── popup.css
+│   │   ├── modules/
+│   │   │   ├── notes.js          # Rendering/grouping and destructive UI patterns
+│   │   │   ├── editor.js         # EditorManager and editor lifecycle
+│   │   │   ├── settings.js       # Settings UI and font prefs
+│   │   │   ├── storage.js        # Data access (local)
+│   │   │   ├── theming.js        # Theme tokens and toggling
+│   │   │   └── utils.js          # Shared helpers (e.g., normalizePageKey)
 │   │   └── components/
 │   ├── content/
 │   │   └── content.js         # Page detection & injection
