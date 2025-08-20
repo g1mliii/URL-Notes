@@ -105,6 +105,14 @@ class URLNotesApp {
     this.setupEventListeners();
     await this.themeManager.setupThemeDetection();
     await this.themeManager.applyAccentFromFavicon(this.currentSite);
+    // Initialize Supabase session from storage so auth UI persists across popup reopen
+    try {
+      if (window.supabaseClient && typeof window.supabaseClient.init === 'function') {
+        await window.supabaseClient.init();
+      }
+    } catch (e) {
+      console.warn('Supabase init failed:', e);
+    }
     this.allNotes = await this.storageManager.loadNotes();
     await this.settingsManager.loadFontSetting();
     // Initialize settings UI once (font controls, preview, etc.)

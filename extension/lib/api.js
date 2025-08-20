@@ -3,12 +3,35 @@
 
 class SupabaseClient {
   constructor() {
-    this.supabaseUrl = 'YOUR_SUPABASE_URL'; // Replace with actual URL
-    this.supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY'; // Replace with actual key
+    this.supabaseUrl = 'https://kqjcorjjvunmyrnzvqgr.supabase.co'; // Set from user-provided project URL
+    this.supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxamNvcmpqdnVubXlybnp2cWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3MTc4ODgsImV4cCI6MjA3MTI5Mzg4OH0.l-ZdPOYMNi8x3lBqlemwQ2elDyvoPy-2ZUWuODVviWk'; // Set from user-provided anon key
     this.apiUrl = `${this.supabaseUrl}/rest/v1`;
     this.authUrl = `${this.supabaseUrl}/auth/v1`;
     this.currentUser = null;
     this.accessToken = null;
+  }
+
+  // PKCE helpers
+  async generateCodeVerifier() {
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    return Array.from(array).map(b => ('0' + b.toString(16)).slice(-2)).join('');
+  }
+
+  async sha256(plain) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(plain);
+    return await crypto.subtle.digest('SHA-256', data);
+  }
+
+  base64UrlEncode(arrayBuffer) {
+    let str = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    return str.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  async generateCodeChallenge(verifier) {
+    const hashed = await this.sha256(verifier);
+    return this.base64UrlEncode(hashed);
   }
 
   // Initialize client and check auth status
@@ -24,6 +47,21 @@ class SupabaseClient {
         const isValid = await this.verifyToken();
         if (!isValid) {
           await this.signOut();
+        } else {
+          // Propagate subscription tier on startup
+          try {
+            const status = await this.getSubscriptionStatus();
+            await chrome.storage.local.set({ userTier: status.active ? (status.tier || 'premium') : 'free' });
+            if (window.adManager) {
+              if (status.active && (status.tier || 'premium') !== 'free') {
+                window.adManager.hideAdContainer?.();
+              } else {
+                window.adManager.refreshAd?.();
+              }
+            }
+          } catch (e) {
+            console.warn('Failed to propagate userTier on init:', e);
+          }
         }
       }
     } catch (error) {
@@ -58,8 +96,14 @@ class SupabaseClient {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error_description || 'Sign in failed');
+        let detail = 'Sign in failed';
+        try {
+          const j = await response.json();
+          detail = j.error_description || j.msg || j.error || JSON.stringify(j);
+        } catch (_) {
+          try { detail = await response.text(); } catch (_) {}
+        }
+        throw new Error(detail);
       }
 
       const data = await response.json();
@@ -84,8 +128,14 @@ class SupabaseClient {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error_description || 'Sign up failed');
+        let detail = 'Sign up failed';
+        try {
+          const j = await response.json();
+          detail = j.error_description || j.msg || j.error || JSON.stringify(j);
+        } catch (_) {
+          try { detail = await response.text(); } catch (_) {}
+        }
+        throw new Error(detail);
       }
 
       const data = await response.json();
@@ -99,24 +149,106 @@ class SupabaseClient {
     }
   }
 
-  // Sign in with OAuth provider
+  // Sign in with OAuth provider using PKCE + chrome.identity.launchWebAuthFlow
   async signInWithOAuth(provider) {
     try {
-      const redirectUrl = chrome.runtime.getURL('popup/popup.html');
-      const authUrl = `${this.authUrl}/authorize?provider=${provider}&redirect_to=${encodeURIComponent(redirectUrl)}`;
-      
-      // Open auth popup
-      const authWindow = window.open(authUrl, 'auth', 'width=500,height=600');
-      
-      return new Promise((resolve, reject) => {
-        const checkClosed = setInterval(() => {
-          if (authWindow.closed) {
-            clearInterval(checkClosed);
-            // Check if auth was successful
-            this.checkAuthResult().then(resolve).catch(reject);
+      const redirectUri = chrome.identity.getRedirectURL();
+      const codeVerifier = await this.generateCodeVerifier();
+      const codeChallenge = await this.generateCodeChallenge(codeVerifier);
+
+      const scope = encodeURIComponent('openid email profile');
+      const authUrl = `${this.authUrl}/authorize?provider=${encodeURIComponent(provider)}&redirect_to=${encodeURIComponent(redirectUri)}&response_type=code&code_challenge=${encodeURIComponent(codeChallenge)}&code_challenge_method=S256&scope=${scope}`;
+
+      const responseUrl = await new Promise((resolve, reject) => {
+        chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true }, (redirectedTo) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+            return;
           }
-        }, 1000);
+          resolve(redirectedTo);
+        });
       });
+
+      const urlObj = new URL(responseUrl);
+      const code = urlObj.searchParams.get('code');
+      console.debug('[OAuth] authorize url:', authUrl);
+      console.debug('[OAuth] redirected to:', responseUrl);
+      if (!code) {
+        const errParam = urlObj.searchParams.get('error');
+        const errDesc = urlObj.searchParams.get('error_description');
+        throw new Error(`Authorization code not found. error=${errParam || ''} ${errDesc || ''}`.trim());
+      }
+
+      // Token exchange attempts with fallbacks
+      const attempts = [];
+
+      // Attempt 1: x-www-form-urlencoded with Authorization header
+      const form1 = new URLSearchParams();
+      form1.set('grant_type', 'authorization_code');
+      form1.set('code', code);
+      form1.set('code_verifier', codeVerifier);
+      form1.set('redirect_uri', redirectUri);
+      attempts.push(() => fetch(`${this.authUrl}/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+          'apikey': this.supabaseAnonKey,
+          'Authorization': `Bearer ${this.supabaseAnonKey}`
+        },
+        body: form1.toString()
+      }));
+
+      // Attempt 2: x-www-form-urlencoded without Authorization header
+      const form2 = new URLSearchParams(form1);
+      attempts.push(() => fetch(`${this.authUrl}/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+          'apikey': this.supabaseAnonKey
+        },
+        body: form2.toString()
+      }));
+
+      // Attempt 3: x-www-form-urlencoded with grant_type=pkce
+      const form3 = new URLSearchParams();
+      form3.set('grant_type', 'pkce');
+      form3.set('code', code);
+      form3.set('code_verifier', codeVerifier);
+      form3.set('redirect_uri', redirectUri);
+      attempts.push(() => fetch(`${this.authUrl}/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+          'apikey': this.supabaseAnonKey
+        },
+        body: form3.toString()
+      }));
+
+      let lastStatus = 0;
+      const errors = [];
+      let tokenRes = null;
+      for (const attempt of attempts) {
+        tokenRes = await attempt();
+        if (tokenRes.ok) break;
+        lastStatus = tokenRes.status;
+        try {
+          const j = await tokenRes.json();
+          errors.push(`status ${tokenRes.status}: ${j.error_description || j.msg || JSON.stringify(j)}`);
+        } catch (_) {
+          try { errors.push(`status ${tokenRes.status}: ${await tokenRes.text()}`); } catch (_) { errors.push(`status ${tokenRes.status}`); }
+        }
+      }
+
+      if (!tokenRes || !tokenRes.ok) {
+        throw new Error(`Token exchange failed after ${attempts.length} attempts. ${errors.join(' | ')}`);
+      }
+
+      const data = await tokenRes.json();
+      await this.handleAuthSuccess(data);
+      return data;
     } catch (error) {
       console.error('OAuth sign in error:', error);
       throw error;
@@ -158,6 +290,11 @@ class SupabaseClient {
       this.accessToken = null;
       this.currentUser = null;
       await chrome.storage.local.remove(['supabase_session']);
+      // Reset premium gating
+      try {
+        await chrome.storage.local.set({ userTier: 'free' });
+        window.adManager?.refreshAd?.();
+      } catch (_) {}
     }
   }
 
@@ -178,20 +315,50 @@ class SupabaseClient {
   // Create or update user profile
   async upsertProfile(user) {
     try {
-      const profile = {
-        id: user.id,
-        email: user.email,
-        updated_at: new Date().toISOString()
-      };
-
+      // Ensure profile exists and has a per-user salt
+      const baseProfile = { id: user.id, email: user.email, updated_at: new Date().toISOString() };
       await fetch(`${this.apiUrl}/profiles`, {
         method: 'POST',
-        headers: {
-          ...this.getHeaders(),
-          'Prefer': 'resolution=merge-duplicates'
-        },
-        body: JSON.stringify(profile)
+        headers: { ...this.getHeaders(), 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify(baseProfile)
       });
+
+      // Fetch current salt
+      let salt = null;
+      try {
+        const res = await fetch(`${this.apiUrl}/profiles?id=eq.${user.id}&select=salt,subscription_tier,subscription_expires_at`, { headers: this.getHeaders() });
+        if (res.ok) {
+          const arr = await res.json();
+          if (arr[0]) salt = arr[0].salt || null;
+        }
+      } catch (_) {}
+
+      // If no salt, generate and patch
+      if (!salt) {
+        const saltBytes = new Uint8Array(32);
+        crypto.getRandomValues(saltBytes);
+        salt = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        await fetch(`${this.apiUrl}/profiles?id=eq.${user.id}`, {
+          method: 'PATCH',
+          headers: this.getHeaders(),
+          body: JSON.stringify({ salt, updated_at: new Date().toISOString() })
+        });
+      }
+
+      // Update userTier in local storage
+      try {
+        const status = await this.getSubscriptionStatus();
+        await chrome.storage.local.set({ userTier: status.active ? (status.tier || 'premium') : 'free' });
+        if (window.adManager) {
+          if (status.active && (status.tier || 'premium') !== 'free') {
+            window.adManager.hideAdContainer?.();
+          } else {
+            window.adManager.refreshAd?.();
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to set userTier:', e);
+      }
     } catch (error) {
       console.error('Error upserting profile:', error);
     }
@@ -313,11 +480,31 @@ class SupabaseClient {
       throw new Error('No authenticated user');
     }
 
-    // For now, derive key from user ID and email
-    // In production, this should be more secure
+    // Derive key from stable user material + per-user salt from profile
     const keyMaterial = `${this.currentUser.id}:${this.currentUser.email}`;
-    const salt = 'url-notes-salt'; // Should be unique per user
-    
+    let salt = null;
+    try {
+      const res = await fetch(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=salt`, { headers: this.getHeaders() });
+      if (res.ok) {
+        const arr = await res.json();
+        salt = arr[0]?.salt || null;
+      }
+    } catch (_) {}
+
+    if (!salt) {
+      // Fallback: local salt (as last resort)
+      const local = await chrome.storage.local.get(['local_salt']);
+      if (!local.local_salt) {
+        const saltBytes = new Uint8Array(32);
+        crypto.getRandomValues(saltBytes);
+        const gen = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        await chrome.storage.local.set({ local_salt: gen });
+        salt = gen;
+      } else {
+        salt = local.local_salt;
+      }
+    }
+
     return await window.noteEncryption.generateKey(keyMaterial, salt);
   }
 
@@ -329,6 +516,24 @@ class SupabaseClient {
   // Get current user
   getCurrentUser() {
     return this.currentUser;
+  }
+
+  // Get current session (from storage or in-memory)
+  async getSession() {
+    try {
+      const { supabase_session } = await chrome.storage.local.get(['supabase_session']);
+      if (supabase_session) return supabase_session;
+      if (this.accessToken && this.currentUser) {
+        return {
+          access_token: this.accessToken,
+          user: this.currentUser
+        };
+      }
+      return null;
+    } catch (e) {
+      console.warn('getSession error:', e);
+      return null;
+    }
   }
 
   // Check subscription status

@@ -8,7 +8,8 @@
     "activeTab",
     "tabs",
     "alarms",
-    "contextMenus"
+    "contextMenus",
+    "identity"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -26,7 +27,7 @@
   "commands": {
     "_execute_action": {
       "suggested_key": {
-        "default": "Alt+E"
+        "default": "Alt+O"
       },
       "description": "Open URL Notes"
     },
@@ -49,5 +50,8 @@
       "resources": ["assets/*"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co https://kqjcorjjvunmyrnzvqgr.supabase.co/auth/v1 https://kqjcorjjvunmyrnzvqgr.supabase.co/rest/v1; img-src 'self' data: https:; style-src 'self' 'unsafe-inline';"
+  }
 }

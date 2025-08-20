@@ -251,10 +251,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 function handleContentScriptReady(pageInfo, tab) {
+  if (!tab || typeof tab.id !== 'number') {
+    return;
+  }
   chrome.storage.session.set({ [`pageInfo_${tab.id}`]: { ...pageInfo, tabId: tab.id, timestamp: Date.now() } });
 }
 
 function handleUrlChange(pageInfo, tab) {
+  if (!tab || typeof tab.id !== 'number') {
+    return;
+  }
   chrome.storage.session.set({ [`pageInfo_${tab.id}`]: { ...pageInfo, tabId: tab.id, timestamp: Date.now() } });
   chrome.runtime.sendMessage({ action: 'pageInfoUpdated', pageInfo: pageInfo, tabId: tab.id }).catch(() => {});
 }

@@ -443,6 +443,11 @@ Status: Phase 1 goals achieved for the local-first extension MVP with polished p
 - Premium gating: hide ads and enable sync when authenticated premium; persist `userTier` in `chrome.storage.local`.
 - QA: performance profiling of sync, encryption correctness tests, error surfaces.
 
+ - Reset Password: implement Supabase email-based password reset flow.
+   - Add “Forgot password?” link in `settings` Account section (extension) to trigger `auth/recover`.
+   - Send email with reset link; for dev, allow reset via Supabase-hosted link; for prod, point to web app route.
+   - Handle post-reset sign-in UX in the extension (status message, prompt to log in).
+
 ### Phase 3: Web Application (Outline)
 1. **Week 1-2**: Core web app
    - Next.js setup with authentication

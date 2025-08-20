@@ -25,11 +25,12 @@
 .settings-content {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  overflow-x: hidden; /* prevent horizontal scrollbar */
+  padding: 12px; /* condensed */
 }
 
 .settings-section {
-  margin-bottom: 24px;
+  margin-bottom: 16px; /* condensed */
 }
 
 .settings-section:last-child {
@@ -43,19 +44,83 @@
   margin: 0 0 8px 0; /* tighter spacing */
 }
 
+/* Generic settings text input */
+.settings-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color .2s ease, box-shadow .2s ease;
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+}
+
+.settings-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.settings-input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.10);
+}
+
+/* Auth section layout */
+.auth-section .setting-item {
+  align-items: stretch;
+}
+
+.auth-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.auth-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* Ensure auth grid buttons look identical and don’t wrap */
+.auth-actions .settings-btn-full {
+  margin-bottom: 0; /* no extra spacing inside grid */
+  width: 100%;
+}
+.auth-actions .settings-btn-full span {
+  white-space: nowrap; /* avoid multi-line labels causing height mismatch */
+}
+
+.auth-status {
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.settings-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.settings-actions .settings-btn-full {
+  margin-bottom: 0; /* avoid extra vertical space in grid */
+}
+
 .settings-btn-full {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: 10px;
+  padding: 10px 12px; /* condensed */
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 10px; /* slightly tighter */
   background: var(--bg-secondary);
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: 13px; /* condensed */
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -167,6 +232,19 @@
   color: var(--text-primary);
 }
 
+/* Font inline row */
+.font-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0; /* allow children to shrink within container */
+  overflow: hidden; /* clip any thumb overflow */
+}
+
+.font-inline .sep {
+  opacity: 0.4;
+}
+
 /* Font Size Slider */
 .font-size-slider {
   appearance: none;
@@ -177,6 +255,9 @@
   flex: 1;
   margin: 0 8px;
   cursor: pointer;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0; /* prevent horizontal overflow in some browsers */
 }
 
 .font-size-slider::-webkit-slider-thumb {

@@ -19,14 +19,152 @@ class SettingsManager {
     this.exportNotesBtn = document.getElementById('exportNotesBtn');
     this.importNotesBtn = document.getElementById('importNotesBtn');
     this.importNotesInput = document.getElementById('importNotesInput');
+    // Auth row container
+    this.authRow = document.querySelector('.auth-row');
     // Shortcut elements
     this.shortcutValue = document.getElementById('shortcutValue');
     this.changeShortcutBtn = document.getElementById('changeShortcutBtn');
+
+    // Auth elements
+    this.authEmailInput = document.getElementById('authEmailInput');
+    this.authPasswordInput = document.getElementById('authPasswordInput');
+    this.authTogglePwBtn = document.getElementById('authTogglePwBtn');
+    this.authSignUpBtn = document.getElementById('authSignUpBtn');
+    this.authSignInBtn = document.getElementById('authSignInBtn');
+    this.authSignOutBtn = document.getElementById('authSignOutBtn');
+    this.authStatusText = document.getElementById('authStatusText');
     
     this.currentFont = 'Default';
     this.currentFontSize = 12;
     
     this.setupEventListeners();
+  }
+
+  // ===== Auth UI and handlers =====
+  async updateAuthUI() {
+    try {
+      const isAuthed = window.supabaseClient?.isAuthenticated?.() || false;
+      const user = window.supabaseClient?.getCurrentUser?.();
+      const actions = document.getElementById('authActions');
+      // Helper to toggle element visibility
+      const show = (el, on = true) => { if (el) el.style.display = on ? '' : 'none'; };
+
+      if (isAuthed && user) {
+        // Show compact logged-in state: only status + Sign Out
+        if (this.authStatusText) {
+          this.authStatusText.textContent = `Logged in as ${user.email || 'user'}`;
+          this.authStatusText.style.display = '';
+        }
+        show(this.authSignOutBtn, true);
+        show(this.authSignInBtn, false);
+        show(this.authSignUpBtn, false);
+        show(this.authEmailInput, false);
+        show(this.authPasswordInput, false);
+        show(this.authTogglePwBtn, false);
+        show(this.authRow, false);
+        if (this.authEmailInput) this.authEmailInput.value = user.email || '';
+        if (this.authPasswordInput) this.authPasswordInput.value = '';
+        if (actions) {
+          actions.style.gridTemplateColumns = '1fr';
+        }
+      } else {
+        // Show full account area; remove "Not signed in" copy
+        if (this.authStatusText) {
+          this.authStatusText.textContent = '';
+          this.authStatusText.style.display = 'none';
+        }
+        show(this.authSignOutBtn, false);
+        show(this.authEmailInput, true);
+        show(this.authPasswordInput, true);
+        show(this.authTogglePwBtn, true);
+        show(this.authRow, true);
+        // Swap buttons: Sign In on left, Sign Up on right
+        if (actions && this.authSignInBtn && this.authSignUpBtn) {
+          // Ensure correct visual order in CSS Grid by DOM reordering
+          this.authSignInBtn.style.display = 'inline-flex';
+          this.authSignUpBtn.style.display = 'inline-flex';
+          // Put Sign In first, then Sign Up
+          actions.prepend(this.authSignInBtn);
+          actions.appendChild(this.authSignUpBtn);
+        }
+        if (actions) {
+          actions.style.display = 'grid';
+          actions.style.gridTemplateColumns = '1fr 1fr';
+        }
+      }
+    } catch (e) {
+      console.warn('updateAuthUI failed:', e);
+    }
+  }
+
+  togglePasswordVisibility() {
+    if (!this.authPasswordInput || !this.authTogglePwBtn) return;
+    const isPwd = this.authPasswordInput.type === 'password';
+    this.authPasswordInput.type = isPwd ? 'text' : 'password';
+    this.authTogglePwBtn.textContent = isPwd ? 'Hide' : 'Show';
+  }
+
+  getAuthInputs() {
+    const email = (this.authEmailInput?.value || '').trim();
+    const password = this.authPasswordInput?.value || '';
+    return { email, password };
+  }
+
+  async handleSignUp() {
+    const { email, password } = this.getAuthInputs();
+    if (!email || !password) {
+      return this.showNotification('Enter email and password', 'error');
+    }
+    try {
+      this.setAuthBusy(true);
+      await window.supabaseClient.signUpWithEmail(email, password);
+      // With confirm disabled, ensure session by signing in
+      if (!window.supabaseClient.isAuthenticated()) {
+        await window.supabaseClient.signInWithEmail(email, password);
+      }
+      this.showNotification('Signed up successfully', 'success');
+      this.updateAuthUI();
+    } catch (e) {
+      this.showNotification(`Sign up failed: ${e.message || e}`, 'error');
+    } finally {
+      this.setAuthBusy(false);
+    }
+  }
+
+  async handleSignIn() {
+    const { email, password } = this.getAuthInputs();
+    if (!email || !password) {
+      return this.showNotification('Enter email and password', 'error');
+    }
+    try {
+      this.setAuthBusy(true);
+      await window.supabaseClient.signInWithEmail(email, password);
+      this.showNotification('Signed in', 'success');
+      this.updateAuthUI();
+    } catch (e) {
+      this.showNotification(`Sign in failed: ${e.message || e}`, 'error');
+    } finally {
+      this.setAuthBusy(false);
+    }
+  }
+
+  async handleSignOut() {
+    try {
+      this.setAuthBusy(true);
+      await window.supabaseClient.signOut();
+      this.showNotification('Signed out', 'success');
+      this.updateAuthUI();
+    } catch (e) {
+      this.showNotification(`Sign out failed: ${e.message || e}`, 'error');
+    } finally {
+      this.setAuthBusy(false);
+    }
+  }
+
+  setAuthBusy(busy) {
+    const controls = [this.authEmailInput, this.authPasswordInput, this.authTogglePwBtn, this.authSignUpBtn, this.authSignInBtn, this.authSignOutBtn];
+    controls.forEach(el => { if (el) el.disabled = !!busy; });
+    if (this.authStatusText) this.authStatusText.style.opacity = busy ? '0.6' : '0.8';
   }
 
   setupEventListeners() {
@@ -46,6 +184,12 @@ class SettingsManager {
     // Shortcut settings
     this.changeShortcutBtn?.addEventListener('click', () => this.openShortcutEditor());
 
+    // Auth handlers
+    this.authTogglePwBtn?.addEventListener('click', () => this.togglePasswordVisibility());
+    this.authSignUpBtn?.addEventListener('click', () => this.handleSignUp());
+    this.authSignInBtn?.addEventListener('click', () => this.handleSignIn());
+    this.authSignOutBtn?.addEventListener('click', () => this.handleSignOut());
+
     // Open onboarding
     this.openOnboardingBtn?.addEventListener('click', () => this.openOnboarding());
     // Back from onboarding
@@ -62,6 +206,8 @@ class SettingsManager {
     if (this.settingsPanel) this.settingsPanel.style.display = 'block';
     // Refresh shortcut display when opening settings
     this.loadShortcutDisplay();
+    // Refresh auth UI
+    this.updateAuthUI();
   }
 
   // Close settings panel
@@ -167,6 +313,8 @@ class SettingsManager {
     this.updateFontPreview();
     // Initialize shortcut display
     this.loadShortcutDisplay();
+    // Initialize auth UI
+    this.updateAuthUI();
   }
 
   // Update font preview display

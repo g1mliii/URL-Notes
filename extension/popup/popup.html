@@ -192,24 +192,61 @@
         <h3 class="settings-title">Settings</h3>
       </div>
       <div class="settings-content">
+        <div class="settings-section auth-section">
+          <h4>Account</h4>
+          <div class="setting-item" style="flex-direction:column; gap:10px;">
+            <input id="authEmailInput" type="email" class="settings-input" placeholder="Email" autocomplete="email">
+            <div class="auth-row">
+              <input id="authPasswordInput" type="password" class="settings-input" placeholder="Password" autocomplete="current-password" style="flex:1;">
+              <button id="authTogglePwBtn" class="settings-btn-compact" title="Show/Hide password">Show</button>
+            </div>
+            <div id="authActions" class="auth-actions">
+              <button id="authSignUpBtn" class="settings-btn-full">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 5v14"/>
+                  <path d="M5 12h14"/>
+                </svg>
+                <span>Sign Up</span>
+              </button>
+              <button id="authSignInBtn" class="settings-btn-full">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 12h14"/>
+                  <path d="M12 5l7 7-7 7"/>
+                </svg>
+                <span>Sign In</span>
+              </button>
+              <button id="authSignOutBtn" class="settings-btn-full" style="display:none;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M16 17l5-5-5-5"/>
+                  <path d="M21 12H9"/>
+                  <path d="M4 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/>
+                </svg>
+                <span>Sign Out</span>
+              </button>
+            </div>
+            <div id="authStatusText" class="auth-status"></div>
+          </div>
+        </div>
         <div class="settings-section">
           <h4>Data Management</h4>
-          <button class="settings-btn-full" id="exportNotesBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="17 8 12 3 7 8"></polyline>
-              <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-            <span>Export All Notes</span>
-          </button>
-          <button class="settings-btn-full" id="importNotesBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            <span>Import Notes</span>
-          </button>
+          <div class="settings-actions">
+            <button class="settings-btn-full" id="exportNotesBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <span>Export All Notes</span>
+            </button>
+            <button class="settings-btn-full" id="importNotesBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Import Notes</span>
+            </button>
+          </div>
           <input type="file" id="importNotesInput" accept=".json" style="display: none;">
         </div>
         <div class="settings-section">
@@ -234,7 +271,7 @@
         </div>
         <div class="settings-section">
           <h4>Font Settings</h4>
-          <div class="setting-item" style="margin-bottom: 10px;">
+          <div class="setting-item font-inline">
             <span>Font</span>
             <select id="fontSelector" class="settings-select" title="Select font">
               <option value="Default">Default</option>
@@ -243,20 +280,12 @@
               <option value="Georgia">Georgia</option>
               <option value="Courier New">Courier</option>
             </select>
-          </div>
-          <div class="setting-item">
-            <span>Font Size</span>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span class="font-size-label">A</span>
-              <input type="range" id="fontSizeSlider" min="8" max="18" step="1" value="12" class="font-size-slider" title="Adjust font size">
-              <span class="font-size-label large">A</span>
-              <span id="fontSizeValue" class="font-size-value" aria-live="polite" style="margin-left:6px;opacity:.8;">12px</span>
-            </div>
-          </div>
-          <div class="font-preview" id="fontPreviewContainer" aria-label="Font size preview">
-            <div class="font-preview-box">
-              <span class="font-preview-text" id="fontPreviewText">The quick brown fox jumps over the lazy dog.</span>
-            </div>
+            <span class="sep" aria-hidden="true">•</span>
+            <span>Size</span>
+            <span class="font-size-label">A</span>
+            <input type="range" id="fontSizeSlider" min="8" max="18" step="1" value="12" class="font-size-slider" title="Adjust font size">
+            <span class="font-size-label large">A</span>
+            <span id="fontSizeValue" class="font-size-value" aria-live="polite" style="margin-left:6px;opacity:.8;">12px</span>
           </div>
         </div>
         <div class="settings-section">
@@ -301,6 +330,9 @@
   </div>
 
   <script src="../lib/premium.js"></script>
+  <!-- Ensure encryption and Supabase client are available in popup context -->
+  <script src="../lib/encryption.js"></script>
+  <script src="../lib/api.js"></script>
   <script src="modules/dialog.js"></script>
   <script src="modules/theming.js"></script>
   <script src="modules/storage.js"></script>
