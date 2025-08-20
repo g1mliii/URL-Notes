@@ -73,8 +73,9 @@ class URLNotesApp {
         const domainEl = document.getElementById('siteDomain');
         const urlEl = document.getElementById('siteUrl');
         if (domainEl) {
-          domainEl.textContent = this.currentSite.domain;
-          domainEl.title = this.currentSite.domain;
+          const displayDomain = (this.currentSite.domain || '').replace(/^www\./, '');
+          domainEl.textContent = displayDomain;
+          domainEl.title = displayDomain;
         }
         if (urlEl) {
           urlEl.textContent = this.currentSite.url;
@@ -109,6 +110,7 @@ class URLNotesApp {
     // Initialize settings UI once (font controls, preview, etc.)
     this.settingsManager.initSettings();
     Utils.checkStorageQuota();
+    this.maybeShowQuotaWarning();
     this.editorManager.updateCharCount();
     this.editorManager.updateNotePreview();
     // Restore last UI state (filter + possibly open editor)
@@ -118,6 +120,13 @@ class URLNotesApp {
         this.filterMode = lastFilterMode;
       }
       this.switchFilter(this.filterMode, { persist: false });
+      // Priority 0: explicit keyboard command to create a new note
+      if (lastAction && lastAction.type === 'new_note') {
+        const newNote = this.editorManager.createNewNote(this.currentSite);
+        this.currentNote = newNote;
+        chrome.storage.local.remove('lastAction');
+        return;
+      }
       // Priority 1: incoming context menu action
       if (lastAction && lastAction.domain) {
         // Try to locate the target note by id in loaded notes
@@ -289,6 +298,8 @@ class URLNotesApp {
     document.getElementById('aiRewriteBtn').addEventListener('click', () => {
       this.aiRewrite();
     });
+
+    // Developer tools removed: mock data generation/cleanup and storage stress tools
 
     // Font selector
     document.getElementById('fontSelector').addEventListener('change', (e) => {
@@ -488,7 +499,34 @@ class URLNotesApp {
 
   // Delegate notes rendering to NotesManager (modularized)
   render() {
+    const t0 = (window.performance && performance.now) ? performance.now() : Date.now();
     this.notesManager.render();
+    const t1 = (window.performance && performance.now) ? performance.now() : Date.now();
+    try {
+      const total = this.filterMode === 'all_notes' ? (this.allNotes ? this.allNotes.length : 0) : (this.notes ? this.notes.length : 0);
+      const q = this.searchQuery || '';
+      console.log(`[DEV] Render ${this.filterMode}: ${total} notes in ${(t1 - t0).toFixed(1)}ms${q ? ` | q="${q}"` : ''}`);
+    } catch (_) {}
+  }
+
+  // Proactive, non-blocking storage warnings using toast only (no dialog to avoid API mismatch)
+  async maybeShowQuotaWarning() {
+    try {
+      if (!this.storageManager || !this.storageManager.checkStorageQuota) return;
+      const est = await this.storageManager.checkStorageQuota();
+      if (!est || typeof est.percentage !== 'number') return;
+      const pct = est.percentage;
+      const band = pct >= 95 ? 'critical' : pct >= 90 ? 'high' : pct >= 75 ? 'warn' : 'ok';
+      if (band === 'ok') return;
+      if (this._lastQuotaWarnBand === band) return;
+      this._lastQuotaWarnBand = band;
+      const msg = band === 'critical'
+        ? `Storage almost full: ${est.usageInMB}/${est.quotaInMB} MB (${pct}%). Saves may fail.`
+        : band === 'high'
+        ? `Storage very high: ${est.usageInMB}/${est.quotaInMB} MB (${pct}%).`
+        : `Storage usage high: ${est.usageInMB}/${est.quotaInMB} MB (${pct}%).`;
+      Utils.showToast(msg);
+    } catch (_) { /* noop */ }
   }
 
   // Group notes by domain, including aggregated tags

@@ -21,6 +21,13 @@
 
 - Phase 1 (Core Extension) complete: polished popup UI, domain/url filtering, improved highlighting, and ad container in place.
 
+### Phase 1 UI Outcomes (Aug 20, 2025)
+- __Onboarding panel (inline)__: Lives inside Settings as `#onboardingPanel` iframe; panel and iframe must fit exactly within the popup with no internal scrollbars. Container `overflow: hidden`; iframe `width/height: 100%`, `border: 0`, `overflow: hidden`.
+- __Header truncation rules__: Domain should remain fully readable when possible; only the URL is allowed to truncate with ellipsis. Keep right-side reserved space minimal so text isn’t prematurely cut. Use `min-width: 0` on flex children.
+- __Compact header tweaks__: Slightly reduced paddings and icon sizes in compact mode for tighter vertical space.
+- __Keyboard shortcuts__: Open Popup = Alt+E; New Note = Alt+N (default). Display hints compactly in header.
+- __Help tooltip__: Header Help icon shows a concise tooltip of quick tips/hidden features.
+
 ## Next-phase Design Considerations
 
 - Gated premium mode removes ads in the popup when authenticated premium (Phase 2).

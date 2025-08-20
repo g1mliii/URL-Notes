@@ -3,7 +3,16 @@
 ## Overview
 A browser extension and web application for taking notes on websites, with domain/URL-specific organization, local-first storage, and premium cloud sync features.
 
-### Recent Changes (Aug 19, 2025)
+### Recent Changes (Aug 20, 2025)
+- Popup onboarding moved inline via iframe inside Settings with a Back action. `#onboardingPanel` and iframe styled to fit exactly with no internal scrollbars.
+- Header domain/URL visibility refined: larger legible sizes, reduced right padding reserve, domain fully visible while only URL truncates with ellipsis.
+- Compact mode tweaks across header and shortcut hints for tighter vertical usage.
+- Keyboard shortcuts: Open Popup now Alt+E; New Note remains Alt+N (default). UI reflects hints compactly.
+- Help icon added in header with tooltip that lists quick tips/hidden features.
+- Settings re-ordered: Font Settings above Help & Onboarding; added button to open Onboarding anytime.
+- Domain display simplified by stripping leading `www.` in header.
+
+Updates (Aug 19, 2025)
 - Implemented hybrid notes model: notes saved under domain with URL context; filter between "All Notes" and "This Page".
 - UI/UX improvements in `extension/popup/`:
   - Note title moved to editor header; compact save button.
@@ -408,7 +417,7 @@ class NoteEncryption {
 
 Status: Phase 1 goals achieved for the local-first extension MVP with polished popup UI, search/filtering, basic versioning, ads container, uninstall notice plan, and improved highlighting.
 
-### Phase 2: Backend & Authentication (Broad roadmap)
+### Phase 2: Backend & Authentication (Detailed plan)
 1. **Week 1**: Supabase setup
    - Database schema creation
    - RLS policies implementation
@@ -424,6 +433,15 @@ Status: Phase 1 goals achieved for the local-first extension MVP with polished p
    - Sync performance testing
    - Security audit
    - Error handling improvements
+
+#### Phase 2 – Detailed Tasks
+- Supabase project: apply `supabase/migrations/001_initial_schema.sql`; verify RLS and policies.
+- Auth: enable Email + Google/GitHub; scaffold client in `extension/lib/api.js`.
+- Encryption baseline: ensure `extension/lib/encryption.js` exposes AES-GCM utilities and key derivation.
+- Sync engine prototype (premium-gated): incremental upload/download, last-write-wins with basic conflict UI.
+- Offline queue + retry with backoff; resume on reconnect.
+- Premium gating: hide ads and enable sync when authenticated premium; persist `userTier` in `chrome.storage.local`.
+- QA: performance profiling of sync, encryption correctness tests, error surfaces.
 
 ### Phase 3: Web Application (Outline)
 1. **Week 1-2**: Core web app
@@ -653,6 +671,6 @@ Mid-term:
 
 ---
 
-**Last Updated**: August 19, 2025
-**Version**: 1.2
+**Last Updated**: August 20, 2025
+**Version**: 1.3
 **Status**: Phase 1 Completed; Preparing Phase 2

@@ -1,3 +1,30 @@
+// Keyboard commands
+try {
+  chrome.commands.onCommand.addListener(async (command) => {
+    if (command === 'create_new_note') {
+      try {
+        // Flag for popup to open new note immediately
+        await chrome.storage.local.set({ lastAction: { type: 'new_note', ts: Date.now() } });
+        // Open the popup (command is a user gesture, permitted)
+        if (chrome.action && chrome.action.openPopup) {
+          await chrome.action.openPopup();
+        }
+      } catch (e) {
+        // Best-effort fallback: open the side panel or settings (if configured)
+      }
+    }
+  });
+} catch (_) { /* noop */ }
+
+// Open onboarding page on first install
+try {
+  chrome.runtime.onInstalled.addListener((details) => {
+    if (details.reason === 'install') {
+      const url = chrome.runtime.getURL('onboarding.html');
+      chrome.tabs.create({ url });
+    }
+  });
+} catch (_) { /* noop */ }
 // URL Notes Extension - Background Script (Service Worker)
 
 // --- Main Event Listeners ---

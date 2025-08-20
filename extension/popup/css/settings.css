@@ -40,7 +40,7 @@
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
-  margin: 0 0 12px 0;
+  margin: 0 0 8px 0; /* tighter spacing */
 }
 
 .settings-btn-full {
@@ -88,11 +88,54 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 12px; /* tighter spacing */
 }
 
 .setting-item:last-child {
   margin-bottom: 0;
+}
+
+/* Compact shortcuts row */
+.shortcut-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.shortcut-inline .label {
+  opacity: 0.8;
+}
+
+.shortcut-inline .kbd {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.shortcut-inline .sep {
+  opacity: 0.4;
+}
+
+/* Compact button for settings items */
+.settings-btn-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+}
+
+.settings-btn-compact:hover {
+  background: var(--bg-tertiary);
 }
 
 .setting-item span {

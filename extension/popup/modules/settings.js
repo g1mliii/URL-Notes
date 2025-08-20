@@ -7,6 +7,11 @@ class SettingsManager {
     this.settingsPanel = document.getElementById('settingsPanel');
     this.settingsBtn = document.getElementById('settingsBtn');
     this.settingsBackBtn = document.getElementById('settingsBackBtn');
+    this.openOnboardingBtn = document.getElementById('openOnboardingBtn');
+    // Inline onboarding panel elements
+    this.onboardingPanel = document.getElementById('onboardingPanel');
+    this.onboardingBackBtn = document.getElementById('onboardingBackBtn');
+    this.onboardingFrame = document.getElementById('onboardingFrame');
     this.fontSelector = document.getElementById('fontSelector');
     this.fontSizeSlider = document.getElementById('fontSizeSlider');
     this.fontSizeValue = document.getElementById('fontSizeValue');
@@ -14,6 +19,9 @@ class SettingsManager {
     this.exportNotesBtn = document.getElementById('exportNotesBtn');
     this.importNotesBtn = document.getElementById('importNotesBtn');
     this.importNotesInput = document.getElementById('importNotesInput');
+    // Shortcut elements
+    this.shortcutValue = document.getElementById('shortcutValue');
+    this.changeShortcutBtn = document.getElementById('changeShortcutBtn');
     
     this.currentFont = 'Default';
     this.currentFontSize = 12;
@@ -34,6 +42,14 @@ class SettingsManager {
     this.exportNotesBtn?.addEventListener('click', () => this.handleExportNotes());
     this.importNotesBtn?.addEventListener('click', () => this.importNotesInput?.click());
     this.importNotesInput?.addEventListener('change', (e) => this.handleImportNotes(e));
+
+    // Shortcut settings
+    this.changeShortcutBtn?.addEventListener('click', () => this.openShortcutEditor());
+
+    // Open onboarding
+    this.openOnboardingBtn?.addEventListener('click', () => this.openOnboarding());
+    // Back from onboarding
+    this.onboardingBackBtn?.addEventListener('click', () => this.backFromOnboarding());
   }
 
   // Open settings panel
@@ -44,6 +60,8 @@ class SettingsManager {
     if (notesList) notesList.style.display = 'none';
     if (noteEditor) noteEditor.style.display = 'none';
     if (this.settingsPanel) this.settingsPanel.style.display = 'block';
+    // Refresh shortcut display when opening settings
+    this.loadShortcutDisplay();
   }
 
   // Close settings panel
@@ -147,6 +165,8 @@ class SettingsManager {
     
     // Set up any other initial settings UI state
     this.updateFontPreview();
+    // Initialize shortcut display
+    this.loadShortcutDisplay();
   }
 
   // Update font preview display
@@ -156,6 +176,98 @@ class SettingsManager {
       this.fontPreviewText.style.fontFamily = fontFamily;
       this.fontPreviewText.style.fontSize = `${this.currentFontSize}px`;
     }
+  }
+
+  // Load and display current keyboard shortcut for _execute_action
+  async loadShortcutDisplay() {
+    try {
+      if (!chrome.commands || !chrome.commands.getAll) return;
+      const cmds = await chrome.commands.getAll();
+      const action = cmds.find(c => c.name === '_execute_action');
+      const create = cmds.find(c => c.name === 'create_new_note');
+      const openShortcut = action && action.shortcut ? action.shortcut : 'Not set';
+      const newShortcut = create && create.shortcut ? create.shortcut : 'Not set';
+
+      // Settings panel values
+      if (this.shortcutValue) this.shortcutValue.textContent = openShortcut;
+      const newNoteEl = document.getElementById('newNoteShortcutValue');
+      if (newNoteEl) newNoteEl.textContent = newShortcut;
+
+      // Header hints
+      const headerOpen = document.getElementById('shortcutOpenValue');
+      if (headerOpen) headerOpen.textContent = openShortcut;
+      const headerNew = document.getElementById('shortcutNewValue');
+      if (headerNew) headerNew.textContent = newShortcut;
+    } catch (e) {
+      console.warn('Failed to load commands:', e);
+      if (this.shortcutValue) this.shortcutValue.textContent = 'Not available';
+      const newNoteEl = document.getElementById('newNoteShortcutValue');
+      if (newNoteEl) newNoteEl.textContent = '';
+      const headerOpen = document.getElementById('shortcutOpenValue');
+      if (headerOpen) headerOpen.textContent = '';
+      const headerNew = document.getElementById('shortcutNewValue');
+      if (headerNew) headerNew.textContent = '';
+    }
+  }
+
+  // Open Chrome's extension shortcuts page for user to change shortcut
+  openShortcutEditor() {
+    try {
+      // Try chrome.tabs first
+      if (chrome?.tabs?.create) {
+        chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }).catch(() => {
+          // Fallback to window.open
+          try { window.open('chrome://extensions/shortcuts', '_blank'); } catch (_) {}
+        });
+      } else {
+        // Fallback
+        window.open('chrome://extensions/shortcuts', '_blank');
+      }
+    } catch (_) { /* noop */ }
+  }
+
+  // Open onboarding inside popup
+  openOnboarding() {
+    // If inline panel exists, use it; otherwise fall back to tab
+    if (this.onboardingPanel && this.onboardingFrame) {
+      try {
+        const url = chrome?.runtime?.getURL ? chrome.runtime.getURL('onboarding.html') : 'onboarding.html';
+        // Only set src if different to avoid reload flicker
+        if (this.onboardingFrame.getAttribute('src') !== url) {
+          this.onboardingFrame.setAttribute('src', url);
+        }
+      } catch (_) {
+        // Best-effort local fallback
+        if (!this.onboardingFrame.getAttribute('src')) {
+          this.onboardingFrame.setAttribute('src', 'onboarding.html');
+        }
+      }
+
+      // Show onboarding panel, hide settings
+      if (this.settingsPanel) this.settingsPanel.style.display = 'none';
+      this.onboardingPanel.style.display = 'block';
+      return;
+    }
+
+    // Fallback to opening in a new tab if inline not available
+    try {
+      const url = chrome?.runtime?.getURL ? chrome.runtime.getURL('onboarding.html') : 'onboarding.html';
+      if (chrome?.tabs?.create) {
+        chrome.tabs.create({ url }).catch(() => {
+          try { window.open(url, '_blank'); } catch (_) {}
+        });
+      } else {
+        window.open(url, '_blank');
+      }
+    } catch (_) {
+      try { window.open('onboarding.html', '_blank'); } catch (__) {}
+    }
+  }
+
+  // Navigate back from onboarding panel to settings
+  backFromOnboarding() {
+    if (this.onboardingPanel) this.onboardingPanel.style.display = 'none';
+    if (this.settingsPanel) this.settingsPanel.style.display = 'block';
   }
 
   // Handle export notes

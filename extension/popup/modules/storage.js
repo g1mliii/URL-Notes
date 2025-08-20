@@ -7,10 +7,27 @@ class StorageManager {
     this.allNotes = [];
   }
 
+  // ---- Promise wrappers to ensure reliability across Chrome versions ----
+  async _lsGet(keys = null) {
+    return new Promise((resolve) => {
+      try { chrome.storage.local.get(keys, (res) => resolve(res || {})); } catch (_) { resolve({}); }
+    });
+  }
+  async _lsSet(obj) {
+    return new Promise((resolve, reject) => {
+      try { chrome.storage.local.set(obj, () => resolve(true)); } catch (e) { reject(e); }
+    });
+  }
+  async _lsRemove(keys) {
+    return new Promise((resolve) => {
+      try { chrome.storage.local.remove(keys, () => resolve(true)); } catch (_) { resolve(false); }
+    });
+  }
+
   // Load all notes from storage into the master list
   async loadNotes() {
     try {
-      const allData = await chrome.storage.local.get(null);
+      const allData = await this._lsGet(null);
       let allNotes = [];
       for (const key in allData) {
         // Filter out settings or non-array data
@@ -21,11 +38,11 @@ class StorageManager {
       // Sort by most recently updated
       allNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
       this.allNotes = allNotes;
-      return allNotes;
+      return this.allNotes;
     } catch (error) {
       console.error('Error loading notes:', error);
-      this.allNotes = []; // Fallback to an empty list on error
-      return [];
+      this.allNotes = [];
+      return this.allNotes;
     }
   }
 
@@ -152,26 +169,7 @@ class StorageManager {
   }
 
   // Check storage quota and return usage info
-  async checkStorageQuota() {
-    try {
-      const usage = await navigator.storage.estimate();
-      const quota = usage.quota;
-      const usageInMB = (usage.usage / (1024 * 1024)).toFixed(2);
-      const quotaInMB = (quota / (1024 * 1024)).toFixed(2);
-      const percentage = ((usage.usage / quota) * 100).toFixed(1);
-
-      return {
-        usage: usage.usage,
-        quota: quota,
-        usageInMB: parseFloat(usageInMB),
-        quotaInMB: parseFloat(quotaInMB),
-        percentage: parseFloat(percentage)
-      };
-    } catch (error) {
-      console.error('Error checking storage quota:', error);
-      return null;
-    }
-  }
+  // Removed: checkStorageQuota (dev-only utility)
 
   // Persist editor open flag (and keep existing noteDraft intact)
   async persistEditorOpen(isOpen) {
@@ -239,6 +237,10 @@ class StorageManager {
   generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
   }
+
+  // Removed: development utilities for mock data generation/cleanup
+
+  // Removed: storage usage and stress tools (quota testing)
 }
 
 // Export for use in other modules

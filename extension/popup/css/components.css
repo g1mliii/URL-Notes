@@ -152,11 +152,13 @@ html, body {
 .site-details {
   flex: 1;
   min-width: 0;
+  /* Keep only a small buffer from shortcut hints */
+  padding-right: 12px;
 }
 
 .site-domain {
   font-weight: 600;
-  font-size: 16px;
+  font-size: 15px; /* restore fuller size */
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -164,7 +166,8 @@ html, body {
 }
 
 .site-url {
-  font-size: 12px;
+  font-size: 12.5px; /* restore legibility */
+  line-height: 1.25;
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -175,6 +178,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 0 0 auto; /* do not shrink; keep fixed width */
 }
 
 /* Button Styles */
@@ -445,7 +449,17 @@ html, body {
 /* Hide per-note actions inside domain dropdown list */
 .domain-notes-list .note-sidebar,
 .domain-notes-list .note-actions {
-  display: none !important;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+
+.domain-notes-list .note-item:hover .note-sidebar,
+.domain-notes-list .note-item:hover .note-actions,
+.domain-notes-list .note-item:focus-within .note-sidebar,
+.domain-notes-list .note-item:focus-within .note-actions {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .notes-header:hover {
@@ -546,6 +560,16 @@ html[data-compact="1"] .header-content {
   padding: 0 10px;
 }
 
+/* Further condense header in compact mode */
+html[data-compact="1"] .site-info { gap: 8px; }
+html[data-compact="1"] .site-icon { width: 28px; height: 28px; }
+html[data-compact="1"] .site-domain { font-size: 14px; }
+html[data-compact="1"] .site-url { font-size: 11.5px; line-height: 1.2; }
+html[data-compact="1"] #shortcutHints { font-size: 10.5px !important; gap: 1px !important; }
+html[data-compact="1"] .header .icon-btn { width: 32px; height: 32px; }
+html[data-compact="1"] .header .icon-btn svg { width: 14px; height: 14px; }
+html[data-compact="1"] .site-details { padding-right: 8px; }
+
 html[data-compact="1"] .search-container {
   padding: 6px 0;
 }
@@ -579,6 +603,18 @@ html[data-compact="1"] .add-note-btn {
 
 html[data-compact="1"] .notes-list {
   padding: 6px 10px 6px;
+}
+
+/* Onboarding panel: prevent internal scroll and ensure full fit */
+#onboardingPanel .settings-content {
+  overflow: hidden;
+}
+#onboardingPanel #onboardingFrame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  overflow: hidden;
 }
 
 .note-content {
@@ -798,7 +834,8 @@ html[data-compact="1"] .domain-notes-list {
   padding: 8px 10px;
   margin-bottom: 6px;
   cursor: pointer;
-  transition: background 200ms ease, transform 180ms ease, box-shadow 240ms ease, border-color 180ms ease;
+  /* Simplify transitions to avoid heavy repaints on large lists */
+  transition: background-color 150ms ease, border-color 150ms ease;
   position: relative;
   height: 60px; /* fixed tile height */
   min-height: 60px;
@@ -865,11 +902,10 @@ html[data-compact="1"] .domain-notes-list {
 }
 
 .note-item:hover {
-  background-color: var(--bg-tertiary); /* preserve layered background-image */
-  transform: translateY(-1px);
-  box-shadow: 
-    0 2px 8px var(--shadow-dark),
-    inset 0 1px 0 var(--shadow-light);
+  /* Lightweight hover: avoid transforms and outer shadows to prevent flashing */
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  box-shadow: inset 0 1px 0 var(--shadow-light);
 }
 
 .note-item:active {

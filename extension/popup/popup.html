@@ -31,6 +31,10 @@
           </div>
         </div>
         <div class="header-actions">
+          <div id="shortcutHints" style="opacity:.7; font-size:11px; margin-right:8px; display:flex; flex-direction:column; gap:2px; text-align:right;">
+            <div><span style="opacity:.85;">Open:</span> <span id="shortcutOpenValue" style="font-weight:600;">Alt+E</span></div>
+            <div><span style="opacity:.85;">New note:</span> <span id="shortcutNewValue" style="font-weight:600;">Alt+N</span></div>
+          </div>
           <button class="icon-btn settings-btn" id="settingsBtn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
@@ -209,6 +213,26 @@
           <input type="file" id="importNotesInput" accept=".json" style="display: none;">
         </div>
         <div class="settings-section">
+          <h4>Keyboard Shortcuts</h4>
+          <div class="setting-item">
+            <div class="shortcut-inline">
+              <span class="label">Open</span>
+              <span id="shortcutValue" class="kbd">Loading…</span>
+              <span class="sep" aria-hidden="true">•</span>
+              <span class="label">New</span>
+              <span id="newNoteShortcutValue" class="kbd">Loading…</span>
+            </div>
+            <button class="settings-btn-compact" id="changeShortcutBtn" title="Change keyboard shortcuts in Chrome">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14"/>
+                <path d="M5 12h14"/>
+              </svg>
+              <span>Change</span>
+            </button>
+          </div>
+          <div style="opacity:.7; font-size:12px; margin-top:6px;">Customize in Chrome's extension shortcuts page.</div>
+        </div>
+        <div class="settings-section">
           <h4>Font Settings</h4>
           <div class="setting-item" style="margin-bottom: 10px;">
             <span>Font</span>
@@ -235,6 +259,32 @@
             </div>
           </div>
         </div>
+        <div class="settings-section">
+          <h4>Help & Onboarding</h4>
+          <button class="settings-btn-full" id="openOnboardingBtn" title="Open the onboarding guide">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9.09 9a3 3 0 1 1 5.83 1c0 2-3 2-3 4"/>
+              <line x1="12" y1="17" x2="12" y2="17"/>
+            </svg>
+            <span>Open Onboarding</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Onboarding Panel (Hidden by default) -->
+    <div class="settings-panel" id="onboardingPanel" style="display: none;">
+      <div class="editor-header">
+        <button class="back-btn" id="onboardingBackBtn" title="Back">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+        <h3 class="settings-title">Onboarding</h3>
+      </div>
+      <div class="settings-content" style="height: calc(100% - 52px); padding: 0;">
+        <iframe id="onboardingFrame" title="Onboarding Guide" scrolling="no" style="border:0; width:100%; height:100%; overflow:hidden; display:block;"></iframe>
       </div>
     </div>
 
