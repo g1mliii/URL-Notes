@@ -51,12 +51,24 @@
     return true;
   });
 
+  // Safe message sender to avoid "Extension context invalidated" errors
+  function safeSendMessage(message) {
+    try {
+      if (!chrome || !chrome.runtime || !chrome.runtime.id) return;
+      const maybePromise = chrome.runtime.sendMessage(message);
+      // In MV3 this returns a promise; attach a no-op catch
+      if (maybePromise && typeof maybePromise.then === 'function') {
+        maybePromise.catch(() => {});
+      }
+    } catch (_) {
+      // Swallow errors when context is gone (navigation/reload)
+    }
+  }
+
   // Notify background script that content script is ready
-  chrome.runtime.sendMessage({
+  safeSendMessage({
     action: 'contentScriptReady',
     pageInfo: getCurrentPageInfo()
-  }).catch(() => {
-    // Ignore errors if background script isn't ready
   });
 
   // Monitor for URL changes (for SPAs)
@@ -64,11 +76,9 @@
   const observer = new MutationObserver(() => {
     if (window.location.href !== currentUrl) {
       currentUrl = window.location.href;
-      chrome.runtime.sendMessage({
+      safeSendMessage({
         action: 'urlChanged',
         pageInfo: getCurrentPageInfo()
-      }).catch(() => {
-        // Ignore errors if background script isn't ready
       });
     }
   });
@@ -136,12 +146,12 @@
     attempts.forEach((ms) => setTimeout(() => { if (!done) tryNow(); }, ms));
 
     // Mutation-driven attempts for dynamic pages (e.g., YouTube SPA)
-    const observer = new MutationObserver(() => { tryNow(); });
+    const hlObserver = new MutationObserver(() => { tryNow(); });
     try {
-      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+      hlObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
     } catch {}
     // Stop observing after the last attempt window
-    setTimeout(() => { if (observer) observer.disconnect(); }, attempts[attempts.length - 1] + 500);
+    setTimeout(() => { if (hlObserver) hlObserver.disconnect(); }, attempts[attempts.length - 1] + 500);
   }
 
   // Build slight variations of the text to increase chances of a match

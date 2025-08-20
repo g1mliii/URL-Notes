@@ -1,0 +1,975 @@
+.domain-actions .icon-btn { /* unify icon sizes with note actions */
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+.domain-actions .icon-btn svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.9;
+}
+.domain-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.domain-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* Base Component Styles */
+
+/* Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: transparent;
+  line-height: 1.4;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure Chrome sizes the popup correctly */
+html, body {
+  width: 400px;
+  height: 600px; /* Chrome popup max ~600px; avoid forced inner scroll */
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  background: var(--bg-secondary); /* fill edge-to-edge; no white corners */
+}
+
+.app-container {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-secondary); /* match header/main background */
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  border: none;
+  border-radius: 0; /* unrounded corners per request */
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  contain: layout paint;
+}
+
+/* Subtle gradient overlay to reduce flatness */
+.app-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgba(255,255,255,0.02), transparent 50%),
+    radial-gradient(100% 70% at 0% 100%, rgba(0,0,0,0.05), transparent 55%);
+  mix-blend-mode: normal;
+  opacity: 1;
+}
+
+/* Header Styles */
+.header {
+  background: var(--bg-secondary);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  border-bottom: 1px solid var(--border-color);
+  padding: 8px 0; /* full-bleed background */
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  padding: 0 12px; /* inner horizontal padding */
+}
+
+.site-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.site-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  overflow: hidden;
+  display: block;
+}
+
+.site-icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.site-icon .site-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-tertiary);
+}
+
+.site-icon .site-fallback svg {
+  width: 18px;
+  height: 18px;
+}
+
+.site-icon .icon-btn {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary); /* match card background; avoid default white */
+  border: 1px solid var(--border-color);
+  border-radius: 8px; /* revert to original shape; sizes unchanged */
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 160ms ease, color 120ms ease, border-color 160ms ease, transform 120ms ease, box-shadow 160ms ease;
+}
+
+.site-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.site-domain {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.site-url {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Button Styles */
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: var(--bg-primary); /* stronger contrast vs canvas */
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 180ms ease, transform 180ms ease, box-shadow 220ms ease, border-color 180ms ease, color 120ms ease, opacity 150ms ease;
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+}
+
+.icon-btn:hover {
+  background: var(--bg-secondary);
+  transform: translateY(-1px);
+  box-shadow: 
+    0 2px 8px var(--shadow-dark),
+    inset 0 1px 0 var(--shadow-light);
+}
+
+.icon-btn:active {
+  transform: translateY(0);
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+}
+
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+  background: transparent; /* avoid any white artifact */
+  opacity: 0.9;
+}
+
+.icon-btn.sm svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Icon button modifiers */
+.icon-btn.sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.icon-btn.glass {
+  background: var(--bg-primary);
+  opacity: 0.95;
+}
+
+/* Search Container */
+.search-container {
+  padding: 8px 0; /* full-bleed background */
+  /* Differentiate search band from rest of UI */
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+}
+
+.search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 0 12px 12px; /* add inner horizontal padding */
+  /* More distinct than title/filter surfaces */
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+}
+
+.search-wrapper:hover {
+  background: color-mix(in oklab, var(--bg-secondary) 98%, white 2%);
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-tertiary);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.search-input {
+  width: 100%;
+  height: 40px;
+  border: 1px solid transparent; /* inner field blends into wrapper */
+  border-radius: 12px;
+  padding: 0 36px 0 36px; /* room for icons */
+  background: transparent; /* inherit wrapper tone */
+  color: var(--text-primary);
+  outline: none;
+  transition: box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+}
+
+.search-input:focus {
+  /* Colorless (neutral) focus treatment */
+  border-color: var(--border-color);
+  box-shadow: inset 0 1px 0 var(--shadow-light), 0 0 0 2px rgba(255, 255, 255, 0.06);
+}
+
+.search-input::placeholder {
+  color: var(--placeholder);
+}
+
+.search-clear {
+  position: absolute;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 3px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-clear:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* Filter Container */
+.filter-container {
+  margin: 4px 12px 0; /* match search-wrapper side margins */
+  display: flex;
+  justify-content: center;
+  padding: 0; /* use margins instead of padding to match length */
+  height: 40px; /* tighter to match button height */
+}
+
+.filter-wrapper {
+  display: flex;
+  width: 100%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px; /* rounded like search */
+  padding: 4px 6px;
+  gap: 4px;
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  height: 100%;
+  align-items: center;
+  box-sizing: border-box; /* prevent size shifts from borders/padding */
+}
+
+.filter-wrapper:hover {
+  background: color-mix(in oklab, var(--bg-primary) 90%, white 10%);
+}
+
+.filter-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 0; /* tighter to reduce bar height */
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease; /* avoid layout-affecting transitions */
+  white-space: nowrap;
+  flex: 1 1 0; /* flex to fill evenly */
+  min-width: 0; /* prevent growth by text */
+}
+
+.filter-option:hover {
+  color: var(--text-primary);
+  background: color-mix(in oklab, var(--bg-tertiary) 85%, white 15%);
+}
+
+.filter-option.active {
+  background: var(--accent-primary);
+  color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.filter-option svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0; /* remove side padding to avoid visual gaps */
+  background: var(--bg-secondary); /* match header background */
+}
+
+/* Notes Container */
+.notes-container {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* prevent outer scroll; inner list will scroll */
+  background: var(--bg-secondary); /* match header background */
+  padding: 0; /* full-bleed for headers */
+  min-height: 0; /* allow flex child to shrink so ad bar is visible */
+  position: relative; /* for background band */
+}
+
+/* Extend the search/filter background band behind the notes header only */
+.notes-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 70px; /* ends at the bottom of the notes header */
+  background: linear-gradient(180deg, rgba(0,0,0,0.06), rgba(0,0,0,0.03)); /* darker, no white tint */
+  z-index: 0;
+  pointer-events: none;
+}
+
+.notes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 1px 12px 6px; /* nudge header up slightly without touching band */
+  padding: 8px 12px; /* keep spacing for content */
+  background: transparent; /* hide container */
+  border: 1px solid transparent; /* remove outline */
+  border-radius: 12px; /* keep layout rounding without visible border */
+  box-shadow: none; /* remove inner line */
+  position: relative;
+  z-index: 1; /* sit above the band */
+}
+
+/* Hide per-note actions inside domain dropdown list */
+.domain-notes-list .note-sidebar,
+.domain-notes-list .note-actions {
+  display: none !important;
+}
+
+.notes-header:hover {
+  background: transparent; /* no visual change on hover */
+}
+
+.notes-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.add-note-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent-primary);
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px var(--shadow-dark), inset 0 1px 0 var(--shadow-light);
+}
+
+.add-note-btn:hover {
+  background: var(--accent-secondary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.add-note-btn:active {
+  transform: translateY(0);
+}
+
+.add-note-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Notes List */
+.notes-list {
+  flex: 1 1 auto;
+  min-height: 0; /* critical for scroll inside flex column */
+  overflow-y: auto;
+  padding: 6px 16px 8px; /* reduce top padding so list starts just below header */
+  position: relative;
+  z-index: 1; /* above the band */
+  background: var(--bg-secondary); /* prevent band from showing through gaps */
+}
+
+/* Compact mode: shrink global spacing and sizes to avoid scroll/clipping */
+html[data-compact="1"] body {
+  font-size: 13px;
+}
+
+html[data-compact="1"] .header {
+  padding: 4px 0;
+}
+
+html[data-compact="1"] .header-content {
+  margin-bottom: 2px;
+  padding: 0 10px;
+}
+
+html[data-compact="1"] .search-container {
+  padding: 6px 0;
+}
+
+html[data-compact="1"] .search-wrapper {
+  margin: 0 10px 6px;
+}
+
+html[data-compact="1"] .search-input {
+  height: 34px;
+  padding: 0 34px 0 34px;
+}
+
+html[data-compact="1"] .filter-wrapper {
+  padding: 3px;
+}
+
+html[data-compact="1"] .filter-option {
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+html[data-compact="1"] .notes-header {
+  padding: 8px 10px;
+}
+
+html[data-compact="1"] .add-note-btn {
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+html[data-compact="1"] .notes-list {
+  padding: 6px 10px 6px;
+}
+
+.note-content {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  position: relative;
+}
+
+.note-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding-right: 112px; /* reserve space for right sidebar (actions/tags area) */
+}
+
+.note-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.note-date-inline {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.note-sidebar {
+  position: absolute;
+  right: 6px; /* closer to right edge */
+  top: 8px;
+  bottom: 8px; /* anchor to bottom so tags can sit at bottom-right */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+  width: 112px; /* matches padding-right reserved space */
+}
+
+.note-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Ensure domain and note action icons are visually identical */
+.note-actions .icon-btn,
+.domain-actions .icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: transparent; /* blend into card/header until hover */
+  border: 1px solid transparent; /* no hard outline until hover */
+  box-shadow: none; /* remove inset line until hover */
+}
+.note-actions .icon-btn svg,
+.domain-actions .icon-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2;
+  color: var(--text-secondary); /* subdued until hover */
+  stroke: currentColor;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.6; /* quieter until hover */
+}
+.note-actions .icon-btn:hover,
+.domain-actions .icon-btn:hover {
+  background: var(--bg-secondary); /* reveal surface on hover */
+  border-color: var(--border-color); /* show outline on hover */
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 var(--shadow-light), 0 2px 8px var(--shadow-dark);
+}
+.note-actions .icon-btn:active,
+.domain-actions .icon-btn:active {
+  transform: translateY(0);
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+}
+
+
+
+.note-tag {
+  background: var(--accent-color);
+  color: #fff;
+  padding: 1px 4px;
+  border-radius: 8px;
+  font-size: 8px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.icon-btn.confirm {
+  background: rgba(220, 68, 68, 0.16);
+  border: 1px solid rgba(220, 68, 68, 0.35);
+}
+.icon-btn.confirm svg {
+  color: #ff6b6b;
+  stroke: #ff6b6b;
+}
+
+/* Two-tap delete armed state (alias to confirm with stronger cue) */
+.icon-btn.danger {
+  background: rgba(220, 68, 68, 0.22);
+  border: 1px solid rgba(220, 68, 68, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 10px rgba(220,68,68,0.18);
+}
+.icon-btn.danger svg {
+  color: #ff5a5a;
+  stroke: #ff5a5a;
+}
+
+.icon-btn:hover {
+  background: color-mix(in oklab, var(--accent-primary) 10%, transparent);
+  box-shadow: inset 0 1px 0 var(--shadow-light), 0 2px 8px var(--shadow-dark);
+}
+
+/* Re-assert note/domain action hover styles with higher precedence */
+.note-actions .icon-btn:hover,
+.domain-actions .icon-btn:hover {
+  background: var(--bg-secondary); /* reveal surface on hover */
+  border-color: var(--border-color); /* show outline on hover */
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 var(--shadow-light), 0 2px 8px var(--shadow-dark);
+}
+.note-actions .icon-btn:hover svg,
+.domain-actions .icon-btn:hover svg {
+  color: var(--text-primary);
+  opacity: 0.9;
+}
+
+html[data-compact="1"] .note-item {
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  height: 56px;
+}
+
+html[data-compact="1"] .note-title {
+  font-size: 12px;
+}
+
+html[data-compact="1"] .note-preview {
+  font-size: 10.5px;
+}
+
+html[data-compact="1"] .note-actions .icon-btn {
+  width: 28px;
+  height: 28px;
+}
+
+html[data-compact="1"] .note-meta {
+  font-size: 9px;
+}
+
+html[data-compact="1"] .domain-group-header {
+  padding: 10px 12px;
+}
+
+html[data-compact="1"] .domain-notes-list {
+  padding: 6px;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.empty-icon {
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.empty-state h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.empty-state p {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Note Item */
+.note-item {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: background 200ms ease, transform 180ms ease, box-shadow 240ms ease, border-color 180ms ease;
+  position: relative;
+  height: 60px; /* fixed tile height */
+  min-height: 60px;
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+  overflow: hidden; /* prevent inner abs elements from poking past rounding */
+}
+
+/* Use lighter element background for cards */
+.note-item {
+  background: var(--bg-primary);
+  background-image:
+    radial-gradient(120% 140% at 100% -10%, rgba(255,255,255,0.06), transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)),
+    linear-gradient(135deg, color-mix(in oklab, var(--accent-primary) 6%, transparent), transparent 70%);
+}
+
+.note-item:hover {
+  background: var(--bg-tertiary);
+  transform: translateY(-1px);
+  box-shadow: 
+    0 2px 8px var(--shadow-dark),
+    inset 0 1px 0 var(--shadow-light);
+}
+
+.note-item:active {
+  transform: translateY(0);
+}
+
+.note-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.note-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 2px 0;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Small dot before title indicating current page note */
+.note-title .page-indicator {
+  display: inline-block;
+  color: var(--accent-primary);
+  margin-right: 4px;
+  font-size: 12px;
+  line-height: 1;
+  vertical-align: baseline;
+}
+
+.note-preview {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.3;
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.note-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
+.note-main {
+  flex: 1;
+  min-width: 0;
+  padding-right: 112px; /* reserve space for right sidebar */
+  padding-top: 3px; /* lower title slightly more from card outline */
+}
+
+.note-sidebar {
+  position: absolute;
+  right: 6px;
+  top: 8px;
+  width: 112px; /* vertical space below is reserved for tags */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start; /* actions at the top */
+  gap: 6px;
+}
+
+.note-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.note-item:hover .note-actions { opacity: 1; }
+
+.note-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  font-size: 9px;
+  color: var(--text-tertiary);
+}
+
+/* Pin tags at bottom-right of the tile, wrap leftwards within sidebar width */
+/* Temporarily remove note tags in list view */
+.note-tags { display: none !important; }
+
+.note-tag {
+  background: var(--accent-color);
+  color: white;
+  padding: 1px 4px;
+  border-radius: 8px;
+  font-size: 8px;
+  font-weight: 500;
+}
+
+.note-date {
+  white-space: nowrap;
+}
+
+/* Domain Group Styles */
+.domain-group {
+  margin-bottom: 6px; /* match note item spacing */
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-primary); /* lighter element background */
+  background-image:
+    radial-gradient(100% 150% at 0% -20%, rgba(255,255,255,0.06), transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02)),
+    linear-gradient(135deg, color-mix(in oklab, var(--accent-primary) 5%, transparent), transparent 75%);
+  overflow: hidden;
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+}
+
+.domain-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: color-mix(in oklab, var(--bg-tertiary) 90%, black 10%); /* distinct solid tone for dropdown header */
+  border-left: none; /* remove colored left line */
+  transition: background 200ms ease, color 120ms ease;
+  cursor: pointer;
+  list-style: none;
+}
+
+.domain-group-header:hover {
+  background: color-mix(in oklab, var(--bg-tertiary) 98%, white 2%);
+}
+
+.domain-group-header::-webkit-details-marker {
+  display: none;
+}
+
+.domain-header-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.domain-header-info span {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.domain-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.domain-tags { display: none; }
+
+.domain-tags-right { display: none; }
+
+.domain-notes-list {
+  padding: 8px;
+}
+
+.domain-notes-list .note-item {
+  margin-bottom: 6px;
+}
+
+.domain-notes-list .note-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Ad Container (bottom area) */
+/* TEMP: hide ad bar completely */
+.ad-container {
+  display: none !important;
+  flex: 0 0 auto;
+  height: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* Compact: make ad bar shorter so full UI fits without outer scroll */
+html[data-compact="1"] .ad-container { display: none !important; }
+html[data-compact="1"] .ad-placeholder {
+  height: 32px;
+  font-size: 11px;
+}
+
+.ad-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-bottom: 4px;
+}
+
+.ad-content {
+  width: 100%;
+  height: 100%;
+}
+
+.ad-placeholder {
+  width: 100%;
+  height: 40px;
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}

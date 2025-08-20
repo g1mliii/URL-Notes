@@ -1,0 +1,230 @@
+/* Settings Panel Styles */
+
+.settings-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-primary);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.settings-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.settings-section {
+  margin-bottom: 24px;
+}
+
+.settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.settings-section h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 12px 0;
+}
+
+.settings-btn-full {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-secondary);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 8px;
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+}
+
+.settings-btn-full:hover {
+  background: var(--bg-tertiary);
+  transform: translateY(-1px);
+  box-shadow: 
+    0 2px 8px var(--shadow-dark),
+    inset 0 1px 0 var(--shadow-light);
+}
+
+.settings-btn-full:active {
+  transform: translateY(0);
+}
+
+.settings-btn-full:last-child {
+  margin-bottom: 0;
+}
+
+.settings-btn-full svg {
+  width: 16px;
+  height: 16px;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.setting-item:last-child {
+  margin-bottom: 0;
+}
+
+.setting-item span {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.settings-select {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+.settings-select:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.settings-select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* Font Size Slider */
+.font-size-slider {
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border-color);
+  outline: none;
+  flex: 1;
+  margin: 0 8px;
+  cursor: pointer;
+}
+
+.font-size-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  border: none;
+  box-shadow: 0 1px 2px var(--shadow-dark), inset 0 1px 0 var(--shadow-light);
+  cursor: pointer;
+}
+
+.font-size-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  border: none;
+  box-shadow: 0 1px 2px var(--shadow-dark), inset 0 1px 0 var(--shadow-light);
+  cursor: pointer;
+}
+
+.font-size-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.font-size-label.large {
+  font-size: 16px;
+}
+
+.font-size-value {
+  min-width: 40px;
+  text-align: right;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+/* Font Preview */
+.font-preview {
+  margin-top: 16px;
+}
+
+.font-preview-box {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+}
+
+.font-preview-text {
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+/* Settings Panel Animations */
+.settings-panel.slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+.settings-panel.slide-out {
+  animation: slideOut 0.3s ease-in;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* Import file input (hidden) */
+input[type="file"] {
+  display: none;
+}

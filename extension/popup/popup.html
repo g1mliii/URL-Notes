@@ -1,10 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-compact="1">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>URL Notes</title>
-  <link rel="stylesheet" href="popup.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/editor.css">
+  <link rel="stylesheet" href="css/settings.css">
+  <link rel="stylesheet" href="css/animations.css">
   <link rel="stylesheet" href="dialog.css">
 </head>
 <body>
@@ -26,13 +31,6 @@
           </div>
         </div>
         <div class="header-actions">
-          <button class="icon-btn theme-btn" id="themeToggleBtn" aria-label="Toggle theme" title="Theme: Auto">
-            <!-- Sun/Moon icon combo -->
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 3v2M12 19v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-              <circle cx="12" cy="12" r="4"></circle>
-            </svg>
-          </button>
           <button class="icon-btn settings-btn" id="settingsBtn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
@@ -63,7 +61,7 @@
       <!-- Page Filter moved here -->
       <div class="filter-container">
         <div class="filter-wrapper">
-          <button class="filter-option active" id="showAllBtn">
+          <button class="filter-option active filter-btn" id="showAllBtn" data-filter="site">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"></circle>
               <path d="m4.93 4.93 4.24 4.24"></path>
@@ -73,14 +71,14 @@
             </svg>
             <span>This Site</span>
           </button>
-          <button class="filter-option" id="showPageBtn">
+          <button class="filter-option filter-btn" id="showPageBtn" data-filter="page">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
             </svg>
             <span>This Page</span>
           </button>
-          <button class="filter-option" id="showAllNotesBtn">
+          <button class="filter-option filter-btn" id="showAllNotesBtn" data-filter="all_notes">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
               <polyline points="2 17 12 22 22 17"></polyline>
@@ -120,6 +118,7 @@
           <h4>No notes yet</h4>
           <p>Create your first note for this site</p>
         </div>
+        <!-- Note template - will be replaced by JS -->
       </div>
     </div>
 
@@ -133,7 +132,7 @@
         </button>
         <input type="text" class="note-title-header" placeholder="Note title..." id="noteTitleHeader">
         <div class="editor-actions">
-          <button class="icon-btn ai-rewrite-btn" id="aiRewriteBtn" style="display: none;" title="Rewrite with AI (Premium)">
+          <button class="icon-btn ai-rewrite-btn" id="aiRewriteBtn" title="Rewrite with AI (Premium)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 3L12 21"></path>
               <path d="M20 12L4 12"></path>
@@ -159,8 +158,8 @@
       </div>
       
       <div class="editor-content">
-        <div id="noteContentInput" class="note-content-input" contenteditable="true" style="min-height:140px; padding:10px; border:1px solid var(--border-color, #e3e3e3); border-radius:6px; outline:none;" aria-label="Note content (rich text)"></div>
-        <div class="note-content-preview" id="noteContentPreview" aria-live="polite" style="display:none;margin-top:8px;padding:10px;border:1px solid var(--border-color, #e3e3e3);border-radius:6px;background:var(--preview-bg, rgba(0,0,0,0.03));">
+        <div id="noteContentInput" class="note-content-input" contenteditable="true" aria-label="Note content (rich text)"></div>
+        <div class="note-content-preview" id="noteContentPreview" aria-live="polite" style="display:none;">
           <!-- Preview hidden: editor is now rich text -->
         </div>
         
@@ -252,6 +251,13 @@
   </div>
 
   <script src="../lib/premium.js"></script>
+  <script src="modules/dialog.js"></script>
+  <script src="modules/theming.js"></script>
+  <script src="modules/storage.js"></script>
+  <script src="modules/editor.js"></script>
+  <script src="modules/settings.js"></script>
+  <script src="modules/utils.js"></script>
+  <script src="modules/notes.js"></script>
   <script src="popup.js"></script>
 
     <!-- Custom Confirmation Dialog -->

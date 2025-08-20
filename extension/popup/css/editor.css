@@ -1,0 +1,391 @@
+/* Editor-specific styles */
+
+/* Note Editor */
+.note-editor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-primary);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  z-index: 9999; /* ensure overlay above all */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overflow-x: hidden;
+  transition: transform 0.24s ease; /* a bit snappier */
+  transform: translateY(100%); /* start off-canvas, slide up to 0 */
+  box-sizing: border-box;
+}
+
+/* Keep the editor in view once opened */
+.note-editor.open {
+  transform: translateY(0);
+}
+
+.editor-header {
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px; /* tighter header to save vertical space */
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.back-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 10px;
+  background: var(--bg-primary); /* stronger contrast */
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+/* Strong focus ring for back button on dark bg */
+.back-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.9), 0 0 0 5px rgba(0,122,255,0.55);
+}
+
+#noteTitleHeader {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  outline: none;
+  padding: 10px 12px;
+  border-radius: 10px;
+  transition: box-shadow 160ms ease, border-color 160ms ease, background 160ms ease, color 120ms ease;
+  box-sizing: border-box; /* prevent layout shift on focus */
+}
+
+#noteTitleHeader:focus-visible,
+#noteTitleHeader:focus {
+  border-color: var(--border-color);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.06);
+}
+
+/* Compact editor tweaks */
+html[data-compact="1"] .editor-header {
+  gap: 6px;
+}
+
+html[data-compact="1"] .editor-header .icon-btn svg,
+html[data-compact="1"] .save-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+html[data-compact="1"] .save-btn span {
+  display: none; /* icon-only to avoid overflow */
+}
+
+html[data-compact="1"] .save-btn {
+  padding: 6px 8px;
+}
+
+.back-btn:hover {
+  background: var(--bg-primary);
+  transform: translateY(-1px);
+}
+
+.back-btn:active {
+  transform: translateY(0);
+}
+
+.editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0; /* prevent pushing title off-screen */
+}
+
+.save-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent-primary);
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.save-btn:hover {
+  background: var(--accent-secondary);
+  transform: translateY(-1px);
+}
+
+.save-btn:active {
+  transform: translateY(0);
+}
+
+/* Strong focus-visible rings for editor action buttons on dark surfaces */
+.save-btn:focus-visible,
+.delete-btn:focus-visible,
+.ai-rewrite-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.9), 0 0 0 5px rgba(0,122,255,0.55);
+}
+
+.delete-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 10px;
+  background: var(--bg-primary); /* stronger contrast */
+  border: 1px solid var(--border-color);
+  color: #ff4757;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.delete-btn:hover {
+  background: rgba(255, 71, 87, 0.1);
+  transform: translateY(-1px);
+}
+
+.delete-btn:active {
+  transform: translateY(0);
+}
+
+.ai-rewrite-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 10px;
+  background: var(--bg-primary); /* stronger contrast */
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.ai-rewrite-btn:hover {
+  background: var(--bg-primary);
+  transform: translateY(-1px);
+}
+
+.ai-rewrite-btn:active {
+  transform: translateY(0);
+}
+
+/* Editor Content */
+.editor-content {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px; /* iOS-like section spacing */
+  overflow: hidden; /* let inner editor scroll, not the container */
+  max-height: none;
+  max-width: 100%;
+  box-sizing: border-box;
+  gap: 10px; /* spacing between sections */
+}
+
+.note-content-input {
+  flex: 1 1 auto; /* fill remaining space */
+  min-height: 0;  /* allow flex item to grow/shrink */
+  /* no max-height so it can take available space */
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  resize: none;
+  line-height: 1.5;
+  font-family: inherit;
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+  overflow-y: auto; /* scroll inside the editor box */
+}
+
+.note-content-input:focus-visible,
+.note-content-input:focus {
+  border-color: var(--border-color);
+  box-shadow: inset 0 1px 0 var(--shadow-light), 0 0 0 2px rgba(255, 255, 255, 0.06);
+}
+
+.note-content-preview {
+  flex: 1;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-secondary);
+  padding: 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+/* Editor Meta */
+.note-meta {
+display: flex;
+align-items: flex-end;
+justify-content: flex-start;
+margin-top: 10px;
+padding-top: 10px;
+padding-bottom: 6px;
+border-top: 1px solid var(--border-color);
+min-height: 28px; /* room for bottom-right counter */
+position: relative;
+gap: 8px;
+}
+
+/* Tag bar bottom-left and styled */
+.note-editor .note-tags {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 6px;
+  order: 1;
+  margin-right: auto; /* stick to left */
+  align-self: flex-end; /* align to bottom */
+  flex: 1 1 auto; /* take more horizontal space */
+}
+.note-editor .tags-input {
+  display: block !important;
+  min-width: 200px;
+  max-width: 80%;
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  outline: none;
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+}
+.note-editor .tags-input:hover {
+  background: color-mix(in oklab, var(--bg-primary) 85%, white 15%);
+}
+.note-editor .tags-input:focus-visible {
+  border-color: var(--border-color);
+  box-shadow: inset 0 1px 0 var(--shadow-light), 0 0 0 2px rgba(255, 255, 255, 0.06);
+}
+
+.tags-input:focus {
+  border-color: var(--border-color);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.06);
+}
+
+.tags-input::placeholder {
+  color: var(--placeholder);
+}
+
+.note-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  order: 2;
+  margin-left: auto; /* keep info on the right */
+}
+
+.note-chars {
+  color: var(--text-tertiary);
+  position: absolute;
+  right: 0;
+  bottom: 6px; /* aligns with meta bottom padding */
+}
+
+/* Rich text editor styles */
+.note-content-input[contenteditable="true"] {
+  min-height: 0; /* flex will determine height */
+}
+
+.note-content-input[contenteditable="true"]:empty::before {
+  content: attr(placeholder);
+  color: var(--placeholder);
+  pointer-events: none;
+}
+
+.note-content-input[contenteditable="true"] p {
+  margin: 0 0 8px 0;
+}
+
+.note-content-input[contenteditable="true"] p:last-child {
+  margin-bottom: 0;
+}
+
+.note-content-input[contenteditable="true"] strong {
+  font-weight: 600;
+}
+
+.note-content-input[contenteditable="true"] em {
+  font-style: italic;
+}
+
+.note-content-input[contenteditable="true"] a {
+  color: var(--accent-primary);
+  text-decoration: underline;
+}
+
+.note-content-input[contenteditable="true"] a:hover {
+  text-decoration: none;
+}
+
+.note-content-input[contenteditable="true"] ul,
+.note-content-input[contenteditable="true"] ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.note-content-input[contenteditable="true"] li {
+  margin: 4px 0;
+}
+
+.note-content-input[contenteditable="true"] blockquote {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--accent-primary);
+  background: var(--bg-tertiary);
+  border-radius: 0 8px 8px 0;
+}
+
+.note-content-input[contenteditable="true"] code {
+  background: var(--bg-tertiary);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.9em;
+}
+
+.note-content-input[contenteditable="true"] pre {
+  background: var(--bg-tertiary);
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.note-content-input[contenteditable="true"] pre code {
+  background: none;
+  padding: 0;
+}
