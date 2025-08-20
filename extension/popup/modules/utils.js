@@ -199,5 +199,38 @@ class Utils {
   }
 }
 
+// Simple pub/sub event bus for cross-module communication
+class EventBus {
+  constructor() {
+    this._events = {};
+  }
+
+  // Subscribe to an event
+  on(event, handler) {
+    if (!this._events[event]) this._events[event] = new Set();
+    this._events[event].add(handler);
+    return () => this.off(event, handler);
+  }
+
+  // Unsubscribe
+  off(event, handler) {
+    const set = this._events[event];
+    if (!set) return;
+    set.delete(handler);
+    if (set.size === 0) delete this._events[event];
+  }
+
+  // Emit an event with optional payload
+  emit(event, payload) {
+    const set = this._events[event];
+    if (!set) return;
+    for (const handler of Array.from(set)) {
+      try { handler(payload); } catch (e) { console.error(`[EventBus] handler error for ${event}:`, e); }
+    }
+  }
+}
+
 // Export to global scope
 window.Utils = Utils;
+window.EventBus = EventBus;
+window.eventBus = window.eventBus || new EventBus();

@@ -59,7 +59,8 @@ class StorageManager {
 
     // Find and update the note, or add it if new
     const noteIndex = notesForDomain.findIndex(n => n.id === note.id);
-    if (noteIndex > -1) {
+    const isUpdate = noteIndex > -1;
+    if (isUpdate) {
       notesForDomain[noteIndex] = note;
     } else {
       notesForDomain.push(note);
@@ -79,6 +80,14 @@ class StorageManager {
     // Sort master list again to be safe
     this.allNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
     
+    // Emit event
+    try {
+      if (window.eventBus) {
+        if (isUpdate) window.eventBus.emit('notes:updated', { note });
+        else window.eventBus.emit('notes:created', { note });
+      }
+    } catch (_) {}
+
     return note;
   }
 
@@ -99,6 +108,8 @@ class StorageManager {
     notesForDomain = notesForDomain.filter(n => n.id !== noteId);
     await chrome.storage.local.set({ [domain]: notesForDomain });
 
+    // Emit event
+    try { window.eventBus?.emit('notes:deleted', { id: noteId, domain }); } catch (_) {}
     return note;
   }
 
@@ -114,6 +125,8 @@ class StorageManager {
     // Remove from storage
     await chrome.storage.local.remove(domain);
 
+    // Emit event
+    try { window.eventBus?.emit('notes:domain_deleted', { domain }); } catch (_) {}
     return domain;
   }
 
@@ -160,7 +173,8 @@ class StorageManager {
 
       await chrome.storage.local.set(currentData);
       await this.loadNotes(); // Reload all notes into memory
-      
+      // Emit event
+      try { window.eventBus?.emit('notes:imported', { count: notesImportedCount }); } catch (_) {}
       return notesImportedCount;
     } catch (error) {
       console.error('Error importing notes:', error);

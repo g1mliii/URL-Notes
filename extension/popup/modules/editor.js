@@ -40,6 +40,7 @@ class EditorManager {
     const contentInput = document.getElementById('noteContentInput');
     const tagsInput = document.getElementById('tagsInput');
     const dateSpan = document.getElementById('noteDate');
+    const aiRewriteBtn = document.getElementById('aiRewriteBtn');
 
     // Populate editor with note data
     titleHeader.value = this.currentNote.title;
@@ -50,6 +51,12 @@ class EditorManager {
     if (dateSpan) {
       dateSpan.textContent = '';
     }
+
+    // Toggle premium-only controls (AI button) based on app premium status
+    try {
+      const isPremium = !!(window.urlNotesApp && window.urlNotesApp.premiumStatus && window.urlNotesApp.premiumStatus.isPremium);
+      if (aiRewriteBtn) aiRewriteBtn.style.display = isPremium ? 'flex' : 'none';
+    } catch (_) {}
 
     // Show editor with animation and persistent open state
     editor.style.display = 'flex';

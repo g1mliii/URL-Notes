@@ -189,11 +189,24 @@ class SettingsManager {
     this.authSignUpBtn?.addEventListener('click', () => this.handleSignUp());
     this.authSignInBtn?.addEventListener('click', () => this.handleSignIn());
     this.authSignOutBtn?.addEventListener('click', () => this.handleSignOut());
+    // Press Enter to sign in from either field
+    this.authEmailInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); this.handleSignIn(); }
+    });
+    this.authPasswordInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); this.handleSignIn(); }
+    });
 
     // Open onboarding
     this.openOnboardingBtn?.addEventListener('click', () => this.openOnboarding());
     // Back from onboarding
     this.onboardingBackBtn?.addEventListener('click', () => this.backFromOnboarding());
+
+    // React to global auth and tier changes
+    try {
+      window.eventBus?.on('auth:changed', () => this.updateAuthUI());
+      window.eventBus?.on('tier:changed', () => this.updateAuthUI());
+    } catch (_) {}
   }
 
   // Open settings panel

@@ -37,11 +37,35 @@ class SupabaseClient {
   // Initialize client and check auth status
   async init() {
     try {
+      // Load config overrides if available
+      try {
+        if (window.urlNotesConfig?.loadConfig) {
+          const cfg = await window.urlNotesConfig.loadConfig();
+          if (cfg?.supabaseUrl) this.supabaseUrl = cfg.supabaseUrl;
+          if (cfg?.supabaseAnonKey) this.supabaseAnonKey = cfg.supabaseAnonKey;
+          this.apiUrl = `${this.supabaseUrl}/rest/v1`;
+          this.authUrl = `${this.supabaseUrl}/auth/v1`;
+        }
+      } catch (e) {
+        console.warn('Config load failed, using defaults:', e);
+      }
+
       // Check for stored session
       const result = await chrome.storage.local.get(['supabase_session']);
       if (result.supabase_session) {
         this.accessToken = result.supabase_session.access_token;
         this.currentUser = result.supabase_session.user;
+        const expiresAt = result.supabase_session.expires_at || 0;
+        const now = Date.now();
+        // If the token is expired or expiring within 60s, try to refresh first
+        if (!expiresAt || (expiresAt - now) < 60000) {
+          try {
+            await this.refreshSession();
+          } catch (e) {
+            console.warn('Token refresh on init failed, signing out:', e);
+            await this.signOut();
+          }
+        }
         
         // Verify token is still valid
         const isValid = await this.verifyToken();
@@ -52,6 +76,7 @@ class SupabaseClient {
           try {
             const status = await this.getSubscriptionStatus();
             await chrome.storage.local.set({ userTier: status.active ? (status.tier || 'premium') : 'free' });
+            try { window.eventBus?.emit('tier:changed', status); } catch (_) {}
             if (window.adManager) {
               if (status.active && (status.tier || 'premium') !== 'free') {
                 window.adManager.hideAdContainer?.();
@@ -83,30 +108,102 @@ class SupabaseClient {
     return headers;
   }
 
+  // Internal: sleep helper for backoff
+  async _sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  // Centralized request helper with timeout, retry/backoff, and 401 refresh retry
+  async _request(url, {
+    method = 'GET',
+    headers = {},
+    body = undefined,
+    auth = true,
+    timeoutMs = 10000,
+    maxRetries = 2,
+    raw = false
+  } = {}) {
+    const makeOnce = async () => {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const init = { method, headers: { ...this.getHeaders(auth), ...headers }, signal: controller.signal };
+        if (body !== undefined) {
+          init.body = typeof body === 'string' ? body : JSON.stringify(body);
+        }
+        const res = await fetch(url, init);
+        return res;
+      } finally {
+        clearTimeout(id);
+      }
+    };
+
+    let attempt = 0;
+    let didRefresh = false;
+    let res;
+
+    while (true) {
+      try {
+        res = await makeOnce();
+
+        // Handle 401 once by refreshing session
+        if (res.status === 401 && auth && !didRefresh) {
+          try {
+            await this.refreshSession();
+            didRefresh = true;
+            // retry immediately after refresh
+            res = await makeOnce();
+          } catch (e) {
+            // fall through to error handling
+          }
+        }
+
+        // Retry on 429/5xx with backoff
+        if ((res.status === 429 || (res.status >= 500 && res.status <= 599)) && attempt < maxRetries) {
+          const backoff = Math.min(2000 * Math.pow(2, attempt), 8000);
+          await this._sleep(backoff);
+          attempt++;
+          continue;
+        }
+
+        if (raw) return res;
+
+        const text = await res.text();
+        let data;
+        try { data = text ? JSON.parse(text) : null; } catch (_) { data = text; }
+
+        if (!res.ok) {
+          const detail = (data && (data.error_description || data.msg || data.error)) || (typeof data === 'string' ? data : 'Request failed');
+          const err = new Error(detail);
+          err.status = res.status;
+          err.data = data;
+          throw err;
+        }
+
+        return data;
+      } catch (err) {
+        // Retry network and abort errors
+        const isAbort = err?.name === 'AbortError';
+        const isNetwork = err?.message?.includes('Failed to fetch') || err?.message?.includes('NetworkError');
+        if ((isAbort || isNetwork) && attempt < maxRetries) {
+          const backoff = Math.min(2000 * Math.pow(2, attempt), 8000);
+          await this._sleep(backoff);
+          attempt++;
+          continue;
+        }
+        throw err;
+      }
+    }
+  }
+
   // Sign in with email and password
   async signInWithEmail(email, password) {
     try {
-      const response = await fetch(`${this.authUrl}/token?grant_type=password`, {
+      const data = await this._request(`${this.authUrl}/token?grant_type=password`, {
         method: 'POST',
-        headers: this.getHeaders(false),
-        body: JSON.stringify({
-          email,
-          password
-        })
+        auth: false,
+        body: { email, password }
       });
-
-      if (!response.ok) {
-        let detail = 'Sign in failed';
-        try {
-          const j = await response.json();
-          detail = j.error_description || j.msg || j.error || JSON.stringify(j);
-        } catch (_) {
-          try { detail = await response.text(); } catch (_) {}
-        }
-        throw new Error(detail);
-      }
-
-      const data = await response.json();
       await this.handleAuthSuccess(data);
       return data;
     } catch (error) {
@@ -118,27 +215,11 @@ class SupabaseClient {
   // Sign up with email and password
   async signUpWithEmail(email, password) {
     try {
-      const response = await fetch(`${this.authUrl}/signup`, {
+      const data = await this._request(`${this.authUrl}/signup`, {
         method: 'POST',
-        headers: this.getHeaders(false),
-        body: JSON.stringify({
-          email,
-          password
-        })
+        auth: false,
+        body: { email, password }
       });
-
-      if (!response.ok) {
-        let detail = 'Sign up failed';
-        try {
-          const j = await response.json();
-          detail = j.error_description || j.msg || j.error || JSON.stringify(j);
-        } catch (_) {
-          try { detail = await response.text(); } catch (_) {}
-        }
-        throw new Error(detail);
-      }
-
-      const data = await response.json();
       if (data.access_token) {
         await this.handleAuthSuccess(data);
       }
@@ -272,6 +353,7 @@ class SupabaseClient {
 
     // Create or update user profile
     await this.upsertProfile(authData.user);
+    try { window.eventBus?.emit('auth:changed', { user: this.currentUser }); } catch (_) {}
   }
 
   // Sign out
@@ -295,6 +377,8 @@ class SupabaseClient {
         await chrome.storage.local.set({ userTier: 'free' });
         window.adManager?.refreshAd?.();
       } catch (_) {}
+      try { window.eventBus?.emit('auth:changed', { user: null }); } catch (_) {}
+      try { window.eventBus?.emit('tier:changed', { tier: 'free', active: false, expiresAt: null }); } catch (_) {}
     }
   }
 
@@ -303,12 +387,61 @@ class SupabaseClient {
     if (!this.accessToken) return false;
 
     try {
-      const response = await fetch(`${this.authUrl}/user`, {
-        headers: this.getHeaders()
-      });
+      const response = await this._request(`${this.authUrl}/user`, { auth: true, raw: true });
       return response.ok;
     } catch (error) {
       return false;
+    }
+  }
+
+  // Refresh session using refresh_token
+  async refreshSession() {
+    try {
+      const { supabase_session } = await chrome.storage.local.get(['supabase_session']);
+      const refreshToken = supabase_session?.refresh_token;
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      const response = await fetch(`${this.authUrl}/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: this.getHeaders(false),
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+
+      if (!response.ok) {
+        let detail = 'Refresh token failed';
+        try {
+          const j = await response.json();
+          detail = j.error_description || j.msg || j.error || JSON.stringify(j);
+        } catch (_) {
+          try { detail = await response.text(); } catch (_) {}
+        }
+        throw new Error(detail);
+      }
+
+      const data = await response.json();
+
+      // Some responses may omit user; fetch it if needed
+      if (!data.user && data.access_token) {
+        try {
+          const ures = await fetch(`${this.authUrl}/user`, { headers: { ...this.getHeaders(false), Authorization: `Bearer ${data.access_token}` } });
+          if (ures.ok) {
+            data.user = await ures.json();
+          }
+        } catch (_) {}
+      }
+
+      // If refresh_token not returned, keep existing one
+      if (!data.refresh_token && refreshToken) {
+        data.refresh_token = refreshToken;
+      }
+
+      await this.handleAuthSuccess(data);
+      return true;
+    } catch (error) {
+      console.error('refreshSession error:', error);
+      throw error;
     }
   }
 
@@ -317,20 +450,18 @@ class SupabaseClient {
     try {
       // Ensure profile exists and has a per-user salt
       const baseProfile = { id: user.id, email: user.email, updated_at: new Date().toISOString() };
-      await fetch(`${this.apiUrl}/profiles`, {
+      await this._request(`${this.apiUrl}/profiles`, {
         method: 'POST',
-        headers: { ...this.getHeaders(), 'Prefer': 'resolution=merge-duplicates' },
-        body: JSON.stringify(baseProfile)
+        headers: { 'Prefer': 'resolution=merge-duplicates' },
+        body: baseProfile,
+        auth: true
       });
 
       // Fetch current salt
       let salt = null;
       try {
-        const res = await fetch(`${this.apiUrl}/profiles?id=eq.${user.id}&select=salt,subscription_tier,subscription_expires_at`, { headers: this.getHeaders() });
-        if (res.ok) {
-          const arr = await res.json();
-          if (arr[0]) salt = arr[0].salt || null;
-        }
+        const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${user.id}&select=salt,subscription_tier,subscription_expires_at`, { auth: true });
+        if (Array.isArray(arr) && arr[0]) salt = arr[0].salt || null;
       } catch (_) {}
 
       // If no salt, generate and patch
@@ -338,10 +469,10 @@ class SupabaseClient {
         const saltBytes = new Uint8Array(32);
         crypto.getRandomValues(saltBytes);
         salt = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
-        await fetch(`${this.apiUrl}/profiles?id=eq.${user.id}`, {
+        await this._request(`${this.apiUrl}/profiles?id=eq.${user.id}`, {
           method: 'PATCH',
-          headers: this.getHeaders(),
-          body: JSON.stringify({ salt, updated_at: new Date().toISOString() })
+          body: { salt, updated_at: new Date().toISOString() },
+          auth: true
         });
       }
 
@@ -349,6 +480,7 @@ class SupabaseClient {
       try {
         const status = await this.getSubscriptionStatus();
         await chrome.storage.local.set({ userTier: status.active ? (status.tier || 'premium') : 'free' });
+        try { window.eventBus?.emit('tier:changed', status); } catch (_) {}
         if (window.adManager) {
           if (status.active && (status.tier || 'premium') !== 'free') {
             window.adManager.hideAdContainer?.();
@@ -382,20 +514,13 @@ class SupabaseClient {
         encryptedNotes.push(encryptedNote);
       }
 
-      const response = await fetch(`${this.apiUrl}/notes`, {
+      const data = await this._request(`${this.apiUrl}/notes`, {
         method: 'POST',
-        headers: {
-          ...this.getHeaders(),
-          'Prefer': 'resolution=merge-duplicates'
-        },
-        body: JSON.stringify(encryptedNotes)
+        headers: { 'Prefer': 'resolution=merge-duplicates' },
+        body: encryptedNotes,
+        auth: true
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to sync notes');
-      }
-
-      return await response.json();
+      return data;
     } catch (error) {
       console.error('Sync error:', error);
       throw error;
@@ -415,15 +540,7 @@ class SupabaseClient {
         url += `&updated_at=gt.${lastSyncTime}`;
       }
 
-      const response = await fetch(url, {
-        headers: this.getHeaders()
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch notes');
-      }
-
-      const encryptedNotes = await response.json();
+      const encryptedNotes = await this._request(url, { auth: true });
       const decryptedNotes = [];
 
       // Decrypt notes after downloading
@@ -454,19 +571,11 @@ class SupabaseClient {
     }
 
     try {
-      const response = await fetch(`${this.apiUrl}/notes?id=eq.${noteId}`, {
+      await this._request(`${this.apiUrl}/notes?id=eq.${noteId}`, {
         method: 'PATCH',
-        headers: this.getHeaders(),
-        body: JSON.stringify({
-          is_deleted: true,
-          deleted_at: new Date().toISOString()
-        })
+        body: { is_deleted: true, deleted_at: new Date().toISOString() },
+        auth: true
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete note');
-      }
-
       return true;
     } catch (error) {
       console.error('Delete error:', error);
@@ -484,11 +593,8 @@ class SupabaseClient {
     const keyMaterial = `${this.currentUser.id}:${this.currentUser.email}`;
     let salt = null;
     try {
-      const res = await fetch(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=salt`, { headers: this.getHeaders() });
-      if (res.ok) {
-        const arr = await res.json();
-        salt = arr[0]?.salt || null;
-      }
+      const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=salt`, { auth: true });
+      salt = arr?.[0]?.salt || null;
     } catch (_) {}
 
     if (!salt) {
@@ -543,22 +649,14 @@ class SupabaseClient {
     }
 
     try {
-      const response = await fetch(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=subscription_tier,subscription_expires_at`, {
-        headers: this.getHeaders()
-      });
-
-      if (!response.ok) {
-        return { tier: 'free', active: false };
-      }
-
-      const profiles = await response.json();
-      const profile = profiles[0];
+      const profiles = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=subscription_tier,subscription_expires_at`, { auth: true });
+      const profile = profiles?.[0];
 
       if (!profile) {
         return { tier: 'free', active: false };
       }
 
-      const isActive = profile.subscription_expires_at ? 
+      const isActive = profile.subscription_expires_at ?
         new Date(profile.subscription_expires_at) > new Date() : false;
 
       return {
@@ -607,16 +705,8 @@ class SupabaseClient {
     }
 
     try {
-      const response = await fetch(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=storage_used_bytes`, {
-        headers: this.getHeaders()
-      });
-
-      if (!response.ok) {
-        return { used: 0, limit: 0 };
-      }
-
-      const profiles = await response.json();
-      const profile = profiles[0];
+      const profiles = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=storage_used_bytes`, { auth: true });
+      const profile = profiles?.[0];
       const subscription = await this.getSubscriptionStatus();
       
       const limit = subscription.tier === 'premium' ? 

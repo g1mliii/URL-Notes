@@ -5,7 +5,7 @@
 async function isPremiumUser() {
   // In a real scenario, this would check a license key, user account, etc.
   // For now, we can toggle this for testing.
-  return true; // or false
+  return false; // default to non-premium until real auth/tier wiring
 }
 
 async function getPremiumStatus() {

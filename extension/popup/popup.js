@@ -113,6 +113,11 @@ class URLNotesApp {
     } catch (e) {
       console.warn('Supabase init failed:', e);
     }
+    // Listen for global auth/tier changes
+    try {
+      window.eventBus?.on('auth:changed', (payload) => this.handleAuthChanged(payload));
+      window.eventBus?.on('tier:changed', (status) => this.handleTierChanged(status));
+    } catch (_) {}
     this.allNotes = await this.storageManager.loadNotes();
     await this.settingsManager.loadFontSetting();
     // Initialize settings UI once (font controls, preview, etc.)
@@ -169,6 +174,32 @@ class URLNotesApp {
     }
 
     // Ad bar UI only (no backend init)
+  }
+
+  // Handle auth change: refresh premium from storage (set by api.js) and update UI
+  async handleAuthChanged(payload) {
+    try {
+      await this.refreshPremiumFromStorage();
+    } catch (_) {}
+  }
+
+  // Handle tier change from api.js with status payload { active, tier }
+  handleTierChanged(status) {
+    try {
+      const isPremium = !!(status && status.active && (status.tier || 'premium') !== 'free');
+      this.premiumStatus = { isPremium };
+      this.updatePremiumUI();
+    } catch (_) {}
+  }
+
+  // Refresh premium flag from chrome.storage.local 'userTier'
+  async refreshPremiumFromStorage() {
+    try {
+      const { userTier } = await chrome.storage.local.get(['userTier']);
+      const isPremium = !!(userTier && userTier !== 'free');
+      this.premiumStatus = { isPremium };
+      this.updatePremiumUI();
+    } catch (_) {}
   }
 
   // Load all notes from storage into the master list
@@ -361,6 +392,16 @@ class URLNotesApp {
         }
       }
     }, 120);
+
+    // Listen for in-app notes events to refresh immediately (authored changes)
+    try {
+      const refresh = () => debouncedRefresh();
+      window.eventBus?.on('notes:created', refresh);
+      window.eventBus?.on('notes:updated', refresh);
+      window.eventBus?.on('notes:deleted', refresh);
+      window.eventBus?.on('notes:domain_deleted', refresh);
+      window.eventBus?.on('notes:imported', refresh);
+    } catch (_) {}
 
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if (areaName !== 'local') return;
@@ -1611,10 +1652,11 @@ class URLNotesApp {
 
   updatePremiumUI() {
     const allNotesBtn = document.getElementById('showAllNotesBtn');
-    if (!this.premiumStatus.isPremium) {
-      allNotesBtn.classList.add('premium-feature');
-      allNotesBtn.disabled = true;
-      allNotesBtn.title = 'This is a premium feature.';
+    // Always allow All Notes view
+    if (allNotesBtn) {
+      allNotesBtn.classList.remove('premium-feature');
+      allNotesBtn.disabled = false;
+      allNotesBtn.title = 'View all notes';
     }
   }
 
@@ -1752,7 +1794,8 @@ class URLNotesApp {
 
 // Mock premium status function (replace with actual logic)
 async function getPremiumStatus() {
-  return { isPremium: true };
+  // Default to non-premium until real auth/tier is wired end-to-end
+  return { isPremium: false };
 }
 
 document.addEventListener('DOMContentLoaded', () => {
