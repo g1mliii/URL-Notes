@@ -130,11 +130,21 @@ class URLNotesApp {
     this.editorManager.updateNotePreview();
     // Restore last UI state (filter + possibly open editor)
     try {
-      const { lastFilterMode, editorState, lastAction } = await chrome.storage.local.get(['lastFilterMode', 'editorState', 'lastAction']);
+      const { lastFilterMode, editorState, lastAction, lastSearchQuery } = await chrome.storage.local.get(['lastFilterMode', 'editorState', 'lastAction', 'lastSearchQuery']);
       if (lastFilterMode === 'site' || lastFilterMode === 'page' || lastFilterMode === 'all_notes') {
         this.filterMode = lastFilterMode;
       }
       this.switchFilter(this.filterMode, { persist: false });
+      // Restore search query if present
+      if (typeof lastSearchQuery === 'string' && lastSearchQuery.length > 0) {
+        this.searchQuery = lastSearchQuery;
+        const searchInputEl = document.getElementById('searchInput');
+        const searchClearEl = document.getElementById('searchClear');
+        if (searchInputEl) searchInputEl.value = lastSearchQuery;
+        if (searchClearEl) searchClearEl.style.display = 'block';
+        // Render with restored search
+        this.render();
+      }
       // Priority 0: explicit keyboard command to create a new note
       if (lastAction && lastAction.type === 'new_note') {
         const newNote = this.editorManager.createNewNote(this.currentSite);
@@ -250,6 +260,7 @@ class URLNotesApp {
       this.searchQuery = e.target.value;
       debouncedRender();
       searchClear.style.display = this.searchQuery ? 'block' : 'none';
+      try { chrome.storage.local.set({ lastSearchQuery: this.searchQuery }); } catch (_) {}
     });
     
     searchClear.addEventListener('click', () => {
@@ -409,7 +420,7 @@ class URLNotesApp {
       if (areaName !== 'local') return;
       // Ignore editorState-only changes (draft autosave), which shouldn't trigger a UI refresh
       const changedKeys = Object.keys(changes || {});
-      if (changedKeys.length > 0 && changedKeys.every(k => k === 'editorState')) {
+      if (changedKeys.length > 0 && changedKeys.every(k => k === 'editorState' || k === 'allNotesOpenDomains' || k === 'lastSearchQuery')) {
         return;
       }
       // If the user is actively editing in the editor, avoid immediate refresh to prevent caret jumps.

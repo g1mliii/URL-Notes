@@ -30,10 +30,16 @@ class StorageManager {
       const allData = await this._lsGet(null);
       let allNotes = [];
       for (const key in allData) {
-        // Filter out settings or non-array data
-        if (key !== 'themeMode' && Array.isArray(allData[key])) {
-          allNotes = allNotes.concat(allData[key]);
-        }
+        // Filter out settings or non-array data. Only include arrays that look like notes.
+        const val = allData[key];
+        if (!Array.isArray(val)) continue;
+        // Explicitly ignore known settings arrays
+        if (key === 'allNotesOpenDomains') continue;
+        // Heuristic: include only arrays of objects with expected note-like properties
+        const sample = val.find?.(x => x && typeof x === 'object');
+        const looksLikeNote = !!(sample && (sample.id || sample.content || sample.url || sample.domain));
+        if (!looksLikeNote) continue;
+        allNotes = allNotes.concat(val);
       }
       // Sort by most recently updated
       allNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
@@ -133,10 +139,10 @@ class StorageManager {
   // Export all notes to JSON format
   async exportNotes() {
     try {
-      const allData = await chrome.storage.local.get(null);
+      const allData = await this._lsGet(null);
       const notesData = {};
       for (const key in allData) {
-        if (key !== 'themeMode' && key !== 'editorFont' && key !== 'editorFontSize' && key !== 'accentCache' && key !== 'editorState' && key !== 'lastFilterMode' && key !== 'lastAction') {
+        if (key !== 'themeMode' && key !== 'editorFont' && key !== 'editorFontSize' && key !== 'accentCache' && key !== 'editorState' && key !== 'lastFilterMode' && key !== 'lastAction' && key !== 'allNotesOpenDomains' && key !== 'userTier' && key !== 'supabase_session') {
           notesData[key] = allData[key];
         }
       }

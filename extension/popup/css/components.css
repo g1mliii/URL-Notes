@@ -159,6 +159,25 @@
   align-items: center;
   gap: 8px; /* match note actions spacing */
 }
+
+/* Domain header actions: visible by default; when group is open, hide unless hovered/focused */
+details.domain-group > summary.domain-group-header .domain-actions {
+  display: flex !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+details.domain-group[open] > summary.domain-group-header .domain-actions {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: none !important; /* avoid delay flash when opening */
+}
+details.domain-group[open] > summary.domain-group-header:hover .domain-actions,
+details.domain-group[open] > summary.domain-group-header:focus-within .domain-actions {
+  display: flex !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
 /* Base Component Styles */
 
 /* Base Styles */
@@ -618,27 +637,85 @@ html, body {
 }
 
 /* All Notes only: hide per-note actions inside domain dropdown list */
-html[data-view="all_notes"] .domain-notes-list .note-sidebar,
-html[data-view="all_notes"] .domain-notes-list .note-actions {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 150ms ease;
+html[data-view="all_notes"] details.domain-group > .domain-notes-list .note-item .note-sidebar,
+html[data-view="all_notes"] details.domain-group > .domain-notes-list .note-item .note-actions {
+  display: flex !important; /* keep layout stable; only fade */
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 120ms ease-out !important;
+  transition-delay: 0s !important;
+  will-change: opacity;
+}
+html[data-view="all_notes"] details.domain-group > .domain-notes-list .note-item:hover .note-sidebar,
+html[data-view="all_notes"] details.domain-group > .domain-notes-list .note-item:hover .note-actions,
+html[data-view="all_notes"] details.domain-group > .domain-notes-list .note-item:focus-within .note-sidebar,
+html[data-view="all_notes"] details.domain-group > .domain-notes-list .note-item:focus-within .note-actions {
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
-html[data-view="all_notes"] .domain-notes-list .note-item:hover .note-sidebar,
-html[data-view="all_notes"] .domain-notes-list .note-item:hover .note-actions,
-html[data-view="all_notes"] .domain-notes-list .note-item:focus-within .note-sidebar,
-html[data-view="all_notes"] .domain-notes-list .note-item:focus-within .note-actions {
-  opacity: 1;
-  pointer-events: auto;
+/* Broader match: any note items inside a domain group (safety net) */
+html[data-view="all_notes"] details.domain-group .note-item .note-sidebar,
+html[data-view="all_notes"] details.domain-group .note-item .note-actions {
+  display: flex !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 220ms ease-out !important;
+  transition-delay: 0s !important;
+  will-change: opacity;
+}
+html[data-view="all_notes"] details.domain-group .note-item:hover .note-sidebar,
+html[data-view="all_notes"] details.domain-group .note-item:hover .note-actions,
+html[data-view="all_notes"] details.domain-group .note-item:focus-within .note-sidebar,
+html[data-view="all_notes"] details.domain-group .note-item:focus-within .note-actions {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* All Notes view: when group is open, hide header actions unless hovered/focused (explicit) */
+html[data-view="all_notes"] details.domain-group[open] > summary.domain-group-header .domain-actions {
+  display: flex !important; /* keep layout; only fade */
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 220ms ease-out !important;
+  transition-delay: 0s !important;
+  will-change: opacity;
+}
+html[data-view="all_notes"] details.domain-group[open] > summary.domain-group-header:hover .domain-actions,
+html[data-view="all_notes"] details.domain-group[open] > summary.domain-group-header:focus-within .domain-actions {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Fallback: enforce same hover-only behavior for notes inside any domain-group,
+   regardless of data-view attribute presence. Safe because only All Notes uses
+   details.domain-group rendering. */
+details.domain-group .domain-notes-list .note-item:not(:hover):not(:focus-within) .note-sidebar,
+details.domain-group .domain-notes-list .note-item:not(:hover):not(:focus-within) .note-actions {
+  display: flex !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 220ms ease-out !important;
+  transition-delay: 0s !important;
+  will-change: opacity;
+}
+details.domain-group .domain-notes-list .note-item:hover .note-sidebar,
+details.domain-group .domain-notes-list .note-item:hover .note-actions,
+details.domain-group .domain-notes-list .note-item:focus-within .note-sidebar,
+details.domain-group .domain-notes-list .note-item:focus-within .note-actions {
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
 /* All Notes only: hide note UI buttons until hover/focus (top-level notes only) */
 html[data-view="all_notes"] .notes-list > .note-item .note-sidebar,
 html[data-view="all_notes"] .notes-list > .note-item .note-actions {
+  display: flex !important;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 150ms ease;
+  transition: opacity 120ms ease-out !important;
+  transition-delay: 0s !important;
+  will-change: opacity;
 }
 html[data-view="all_notes"] .notes-list > .note-item:hover .note-sidebar,
 html[data-view="all_notes"] .notes-list > .note-item:hover .note-actions,

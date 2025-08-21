@@ -102,63 +102,95 @@ class NotesManager {
 
     notesList.innerHTML = '';
 
-    sortedDomains.forEach(domain => {
-      const { notes: domainNotes, tags } = grouped[domain];
-      const domainGroup = document.createElement('details');
-      domainGroup.className = 'domain-group';
-      const domainIndex = sortedDomains.indexOf(domain);
-      domainGroup.open = app.searchQuery && domainIndex < 2;
+    // Load saved open domains and then render
+    try {
+      chrome.storage.local.get(['allNotesOpenDomains'], ({ allNotesOpenDomains }) => {
+        const openSet = new Set(Array.isArray(allNotesOpenDomains) ? allNotesOpenDomains : []);
+        // Debounced saver to avoid thrashing
+        const saveOpenDomains = Utils.debounce(() => {
+          try {
+            const currentlyOpen = Array.from(notesList.querySelectorAll('details.domain-group'))
+              .filter(d => d.open)
+              .map(d => d.getAttribute('data-domain'))
+              .filter(Boolean);
+            chrome.storage.local.set({ allNotesOpenDomains: currentlyOpen });
+          } catch (_) {}
+        }, 120);
 
-      const rightDomainTagsHtml = (tags && tags.length > 0) ? `
-        <div class="domain-tags domain-tags-right">
-          ${tags.map(tag => `<span class="note-tag">${tag}</span>`).join('')}
-        </div>
-      ` : '';
+        sortedDomains.forEach(domain => {
+          const { notes: domainNotes, tags } = grouped[domain];
+          const domainGroup = document.createElement('details');
+          domainGroup.className = 'domain-group';
+          domainGroup.setAttribute('data-domain', domain);
+          const domainIndex = sortedDomains.indexOf(domain);
+          // If searching, auto-open top 2; otherwise restore from saved openSet
+          domainGroup.open = app.searchQuery ? (domainIndex < 2) : openSet.has(domain);
 
-      domainGroup.innerHTML = `
-        <summary class="domain-group-header">
-          <div class="domain-header-info">
-            <span>${domain} (${domainNotes.length})</span>
-          </div>
-          <div class="domain-actions">
-            <button class="icon-btn sm glass open-domain-btn" data-domain="${domain}" title="Open ${domain}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                <polyline points="15,3 21,3 21,9"></polyline>
-                <line x1="10" y1="14" x2="21" y2="3"></line>
-              </svg>
-            </button>
-            <button class="icon-btn sm glass delete-domain-btn" data-domain="${domain}" title="Delete all notes for this domain">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-trash-2"><polyline points="3,6 5,6 21,6"></polyline><path d="m19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-            </button>
-          </div>
-          ${rightDomainTagsHtml}
-        </summary>
-        <div class="domain-notes-list"></div>
-      `;
+          const rightDomainTagsHtml = (tags && tags.length > 0) ? `
+            <div class="domain-tags domain-tags-right">
+              ${tags.map(tag => `<span class=\"note-tag\">${tag}</span>`).join('')}
+            </div>
+          ` : '';
 
-      const deleteDomainBtn = domainGroup.querySelector('.delete-domain-btn');
-      const openDomainBtn = domainGroup.querySelector('.open-domain-btn');
-      const domainNotesList = domainGroup.querySelector('.domain-notes-list');
+          domainGroup.innerHTML = `
+            <summary class="domain-group-header">
+              <div class="domain-header-info">
+                <span>${domain} (${domainNotes.length})</span>
+              </div>
+              <div class="domain-actions">
+                <button class="icon-btn sm glass open-domain-btn" data-domain="${domain}" title="Open ${domain}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15,3 21,3 21,9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                  </svg>
+                </button>
+                <button class="icon-btn sm glass delete-domain-btn" data-domain="${domain}" title="Delete all notes for this domain">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-trash-2"><polyline points="3,6 5,6 21,6"></polyline><path d="m19,6v14a2,2,0,0,1-2,2H7a2,2 0,0,1 -2,-2V6m3,0V4a2,2 0,0,1 2,-2h4a2,2 0,0,1 2,2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+              </div>
+              ${rightDomainTagsHtml}
+            </summary>
+            <div class="domain-notes-list"></div>
+          `;
 
-      // Two-tap delete confirmation (same pattern as note cards/editor)
-      deleteDomainBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        this.handleTwoTapDelete(deleteDomainBtn, () => app.deleteNotesByDomain(domain, true));
-      });
+          const deleteDomainBtn = domainGroup.querySelector('.delete-domain-btn');
+          const openDomainBtn = domainGroup.querySelector('.open-domain-btn');
+          const domainNotesList = domainGroup.querySelector('.domain-notes-list');
 
-      if (openDomainBtn) {
-        openDomainBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          app.openDomainHomepage(domain);
+          // Two-tap delete confirmation
+          deleteDomainBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            this.handleTwoTapDelete(deleteDomainBtn, () => app.deleteNotesByDomain(domain, true));
+          });
+
+          if (openDomainBtn) {
+            openDomainBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              app.openDomainHomepage(domain);
+            });
+          }
+
+          // Persist open/close on toggle
+          domainGroup.addEventListener('toggle', () => {
+            saveOpenDomains();
+          });
+
+          domainNotes.forEach(n => domainNotesList.appendChild(this.createNoteElement(n)));
+          notesList.appendChild(domainGroup);
         });
-      }
-
-      domainNotes.forEach(n => domainNotesList.appendChild(this.createNoteElement(n)));
-      notesList.appendChild(domainGroup);
-    });
+      });
+    } catch (_) {
+      // Fallback: render without persistence
+      sortedDomains.forEach(domain => {
+        const { notes: domainNotes } = grouped[domain];
+        const d = document.createElement('details');
+        d.className = 'domain-group';
+        notesList.appendChild(d);
+      });
+    }
   }
 
   groupNotesByDomain(notes) {
