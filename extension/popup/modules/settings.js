@@ -46,6 +46,7 @@ class SettingsManager {
       const isAuthed = window.supabaseClient?.isAuthenticated?.() || false;
       const user = window.supabaseClient?.getCurrentUser?.();
       const actions = document.getElementById('authActions');
+      const syncManagement = document.getElementById('syncManagement');
       // Helper to toggle element visibility
       const show = (el, on = true) => { if (el) el.style.display = on ? '' : 'none'; };
 
@@ -58,6 +59,7 @@ class SettingsManager {
         show(this.authSignOutBtn, true);
         show(this.authSignInBtn, false);
         show(this.authSignUpBtn, false);
+        show(this.authForgotPwBtn, false);
         show(this.authEmailInput, false);
         show(this.authPasswordInput, false);
         show(this.authTogglePwBtn, false);
@@ -66,6 +68,22 @@ class SettingsManager {
         if (this.authPasswordInput) this.authPasswordInput.value = '';
         if (actions) {
           actions.style.gridTemplateColumns = '1fr';
+        }
+        
+        // Show sync management for premium users
+        if (syncManagement) {
+          try {
+            const status = await window.supabaseClient?.getSubscriptionStatus?.();
+            const shouldShow = status?.active && status?.tier !== 'free';
+            show(syncManagement, shouldShow);
+            
+            // Update storage usage if sync is visible
+            if (shouldShow) {
+              this.updateStorageUsage();
+            }
+          } catch (_) {
+            show(syncManagement, false);
+          }
         }
       } else {
         // Show full account area; remove "Not signed in" copy
@@ -78,6 +96,9 @@ class SettingsManager {
         show(this.authPasswordInput, true);
         show(this.authTogglePwBtn, true);
         show(this.authRow, true);
+        show(this.authForgotPwBtn, true);
+        // Hide sync management for non-authenticated users
+        show(syncManagement, false);
         // Swap buttons: Sign In on left, Sign Up on right
         if (actions && this.authSignInBtn && this.authSignUpBtn) {
           // Ensure correct visual order in CSS Grid by DOM reordering
@@ -161,8 +182,107 @@ class SettingsManager {
     }
   }
 
+  async handleForgotPassword() {
+    const email = this.authEmailInput?.value || '';
+    if (!email) {
+      this.showNotification('Please enter your email address', 'error');
+      return;
+    }
+
+    try {
+      this.setAuthBusy(true);
+      await window.supabaseClient.resetPassword(email);
+      this.showNotification('Password reset email sent. Check your inbox.', 'success');
+    } catch (e) {
+      this.showNotification(`Password reset failed: ${e.message || e}`, 'error');
+    } finally {
+      this.setAuthBusy(false);
+    }
+  }
+
+  async handleManualSync() {
+    if (!window.syncEngine) {
+      this.showNotification('Sync engine not available', 'error');
+      return;
+    }
+
+    try {
+      this.manualSyncBtn.disabled = true;
+      this.manualSyncBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 3v9l3 3"/>
+        </svg>
+        <span>Syncing...</span>
+      `;
+      
+      await window.syncEngine.manualSync();
+      
+      this.manualSyncBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 3v9l3 3"/>
+        </svg>
+        <span>Sync Complete</span>
+      `;
+      
+      setTimeout(() => {
+        this.manualSyncBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            <path d="M12 3v12l3 3"/>
+          </svg>
+          <span>Sync Now</span>
+        `;
+        this.manualSyncBtn.disabled = false;
+      }, 2000);
+      
+      // Update storage usage after sync
+      this.updateStorageUsage();
+      
+    } catch (e) {
+      this.showNotification(`Manual sync failed: ${e.message || e}`, 'error');
+      this.manualSyncBtn.disabled = false;
+      this.manualSyncBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+          <path d="M12 3v9l3 3"/>
+        </svg>
+        <span>Sync Now</span>
+      `;
+    }
+  }
+
+  async updateStorageUsage() {
+    try {
+      if (!window.supabaseClient?.isAuthenticated()) return;
+      
+      const usage = await window.supabaseClient.getStorageUsage();
+      const progressEl = document.getElementById('storageProgress');
+      const textEl = document.getElementById('storageText');
+      
+      if (progressEl && textEl) {
+        const percentage = (usage.used / usage.limit) * 100;
+        progressEl.style.width = `${Math.min(percentage, 100)}%`;
+        
+        const usedMB = (usage.used / (1024 * 1024)).toFixed(1);
+        const limitMB = (usage.limit / (1024 * 1024)).toFixed(1);
+        textEl.textContent = `${usedMB} MB / ${limitMB} MB`;
+        
+        // Change color based on usage
+        if (percentage > 80) {
+          progressEl.style.background = 'var(--error-color, #ef4444)';
+        } else if (percentage > 60) {
+          progressEl.style.background = 'var(--warning-color, #f59e0b)';
+        } else {
+          progressEl.style.background = 'var(--accent-color)';
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to update storage usage:', error);
+    }
+  }
+
   setAuthBusy(busy) {
-    const controls = [this.authEmailInput, this.authPasswordInput, this.authTogglePwBtn, this.authSignUpBtn, this.authSignInBtn, this.authSignOutBtn];
+    const controls = [this.authEmailInput, this.authPasswordInput, this.authTogglePwBtn, this.authSignUpBtn, this.authSignInBtn, this.authForgotPwBtn, this.authSignOutBtn];
     controls.forEach(el => { if (el) el.disabled = !!busy; });
     if (this.authStatusText) this.authStatusText.style.opacity = busy ? '0.6' : '0.8';
   }
@@ -180,6 +300,9 @@ class SettingsManager {
     this.exportNotesBtn?.addEventListener('click', () => this.handleExportNotes());
     this.importNotesBtn?.addEventListener('click', () => this.importNotesInput?.click());
     this.importNotesInput?.addEventListener('change', (e) => this.handleImportNotes(e));
+    
+    // Sync management
+    this.manualSyncBtn?.addEventListener('click', () => this.handleManualSync());
 
     // Shortcut settings
     this.changeShortcutBtn?.addEventListener('click', () => this.openShortcutEditor());
@@ -189,6 +312,8 @@ class SettingsManager {
     this.authSignUpBtn?.addEventListener('click', () => this.handleSignUp());
     this.authSignInBtn?.addEventListener('click', () => this.handleSignIn());
     this.authSignOutBtn?.addEventListener('click', () => this.handleSignOut());
+    // Forgot password handler
+    this.authForgotPwBtn?.addEventListener('click', () => this.handleForgotPassword());
     // Press Enter to sign in from either field
     this.authEmailInput?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); this.handleSignIn(); }

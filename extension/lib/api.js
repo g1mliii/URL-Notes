@@ -382,6 +382,33 @@ class SupabaseClient {
     }
   }
 
+  // Reset password
+  async resetPassword(email) {
+    try {
+      const response = await fetch(`${this.authUrl}/recover`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': this.supabaseAnonKey
+        },
+        body: JSON.stringify({
+          email: email,
+          type: 'recovery'
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error_description || 'Password reset failed');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Password reset error:', error);
+      throw error;
+    }
+  }
+
   // Verify token validity
   async verifyToken() {
     if (!this.accessToken) return false;
@@ -496,13 +523,15 @@ class SupabaseClient {
     }
   }
 
-  // Sync notes to cloud
+  // Sync notes to cloud using Edge Function
   async syncNotes(notes) {
     if (!this.isAuthenticated()) {
       throw new Error('User not authenticated');
     }
 
     try {
+      console.log('Starting sync with token:', this.accessToken ? 'Present' : 'Missing');
+      
       const encryptedNotes = [];
       
       // Encrypt notes before uploading
@@ -514,12 +543,36 @@ class SupabaseClient {
         encryptedNotes.push(encryptedNote);
       }
 
-      const data = await this._request(`${this.apiUrl}/notes`, {
+      // Use Edge Function for sync
+      const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-notes`, {
         method: 'POST',
-        headers: { 'Prefer': 'resolution=merge-duplicates' },
-        body: encryptedNotes,
-        auth: true
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.accessToken}`,
+          'apikey': this.supabaseAnonKey
+        },
+        body: JSON.stringify({
+          operation: 'push',
+          notes: encryptedNotes
+        })
       });
+
+      console.log('Sync response status:', response.status);
+      console.log('Sync response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Sync error response:', errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { error: errorText || 'Sync failed' };
+        }
+        throw new Error(errorData.error || `Sync failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
       return data;
     } catch (error) {
       console.error('Sync error:', error);
@@ -527,20 +580,40 @@ class SupabaseClient {
     }
   }
 
-  // Fetch notes from cloud
+  // Fetch notes from cloud using Edge Function
   async fetchNotes(lastSyncTime = null) {
     if (!this.isAuthenticated()) {
       throw new Error('User not authenticated');
     }
 
     try {
-      let url = `${this.apiUrl}/notes?user_id=eq.${this.currentUser.id}&is_deleted=eq.false&order=updated_at.desc`;
-      
-      if (lastSyncTime) {
-        url += `&updated_at=gt.${lastSyncTime}`;
+      // Use Edge Function for fetching
+      const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-notes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.accessToken}`,
+          'apikey': this.supabaseAnonKey
+        },
+        body: JSON.stringify({
+          operation: 'pull',
+          lastSyncTime: lastSyncTime
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Fetch error response:', errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { error: errorText || 'Fetch failed' };
+        }
+        throw new Error(errorData.error || `Fetch failed with status ${response.status}`);
       }
 
-      const encryptedNotes = await this._request(url, { auth: true });
+      const { notes: encryptedNotes } = await response.json();
       const decryptedNotes = [];
 
       // Decrypt notes after downloading
@@ -720,6 +793,40 @@ class SupabaseClient {
     } catch (error) {
       console.error('Error getting storage usage:', error);
       return { used: 0, limit: 0 };
+    }
+  }
+
+  // Resolve sync conflicts using Edge Function
+  async resolveConflict(noteId, resolution, noteData = null) {
+    if (!this.isAuthenticated()) {
+      throw new Error('User not authenticated');
+    }
+
+    try {
+      const response = await fetch(`${this.supabaseUrl}/functions/v1/resolve-conflict`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.accessToken}`,
+          'apikey': this.supabaseAnonKey
+        },
+        body: JSON.stringify({
+          noteId,
+          resolution,
+          noteData
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Conflict resolution failed');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Conflict resolution error:', error);
+      throw error;
     }
   }
 }

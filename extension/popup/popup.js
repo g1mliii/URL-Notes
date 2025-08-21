@@ -103,6 +103,10 @@ class URLNotesApp {
     this.premiumStatus = await getPremiumStatus();
     // Apply premium-dependent UI immediately
     try { this.updatePremiumUI(); } catch (_) {}
+    
+    // RESTORE CACHED VALUES IMMEDIATELY to prevent visual shifts
+    await this.restoreCachedUIState();
+    
     await this.loadCurrentSite();
     this.setupEventListeners();
     await this.themeManager.setupThemeDetection();
@@ -115,11 +119,30 @@ class URLNotesApp {
     } catch (e) {
       console.warn('Supabase init failed:', e);
     }
+    
+    // Initialize sync engine if available
+    try {
+      if (window.syncEngine && typeof window.syncEngine.init === 'function') {
+        await window.syncEngine.init();
+      }
+    } catch (e) {
+      console.warn('Sync engine init failed:', e);
+    }
     // Listen for global auth/tier changes
     try {
       window.eventBus?.on('auth:changed', (payload) => this.handleAuthChanged(payload));
       window.eventBus?.on('tier:changed', (status) => this.handleTierChanged(status));
     } catch (_) {}
+    
+    // Listen for sync events
+    try {
+      window.eventBus?.on('notes:synced', (payload) => this.handleNotesSynced(payload));
+      window.eventBus?.on('sync:error', (payload) => this.handleSyncError(payload));
+      window.eventBus?.on('sync:success', (payload) => this.handleSyncSuccess(payload));
+    } catch (_) {}
+    
+    // Setup conflict banner event listeners
+    this.setupConflictBannerListeners();
     this.allNotes = await this.storageManager.loadNotes();
     await this.settingsManager.loadFontSetting();
     // Initialize settings UI once (font controls, preview, etc.)
@@ -188,6 +211,121 @@ class URLNotesApp {
     // Ad bar UI only (no backend init)
   }
 
+  // NEW: Restore cached UI state immediately to prevent visual shifts
+  async restoreCachedUIState() {
+    try {
+      // 1. Restore filter mode and search query immediately
+      const { lastFilterMode, lastSearchQuery } = await chrome.storage.local.get(['lastFilterMode', 'lastSearchQuery']);
+      if (lastFilterMode === 'site' || lastFilterMode === 'page' || lastFilterMode === 'all_notes') {
+        this.filterMode = lastFilterMode;
+      }
+      if (typeof lastSearchQuery === 'string' && lastSearchQuery.length > 0) {
+        this.searchQuery = lastSearchQuery;
+      }
+
+      // 2. Set search placeholder immediately based on filter mode
+      const searchInput = document.querySelector('.search-input');
+      if (searchInput) {
+        const placeholder =
+          this.filterMode === 'all_notes' ? 'Search All Notes' :
+          this.filterMode === 'site' ? 'Search This Site' :
+          'Search This Page';
+        searchInput.setAttribute('placeholder', placeholder);
+      }
+
+      // 3. Restore search input value immediately if exists
+      if (this.searchQuery && searchInput) {
+        searchInput.value = this.searchQuery;
+        const searchClearEl = document.getElementById('searchClear');
+        if (searchClearEl) searchClearEl.style.display = 'block';
+      }
+
+      // 4. Restore extension shortcuts immediately
+      await this.restoreShortcutsImmediately();
+
+      // 5. Set filter buttons active state immediately
+      this.updateFilterButtonStates();
+
+    } catch (error) {
+      console.warn('Failed to restore cached UI state:', error);
+    }
+  }
+
+  // NEW: Restore shortcuts immediately to prevent visual shift
+  async restoreShortcutsImmediately() {
+    try {
+      // Try to get shortcuts from storage first (faster)
+      const { cachedShortcuts } = await chrome.storage.local.get(['cachedShortcuts']);
+      if (cachedShortcuts && cachedShortcuts.open && cachedShortcuts.new) {
+        const openEl = document.getElementById('shortcutOpenValue');
+        const newEl = document.getElementById('shortcutNewValue');
+        
+        if (openEl) openEl.textContent = cachedShortcuts.open;
+        if (newEl) newEl.textContent = cachedShortcuts.new;
+      }
+
+      // Then get fresh shortcuts from chrome.commands
+      const actions = await chrome.commands.getAll();
+      const openAction = actions.find(a => a.name === '_execute_action');
+      const createAction = actions.find(a => a.name === '_execute_browser_action');
+
+      // Update shortcut display elements
+      const openShortcut = openAction && openAction.shortcut ? openAction.shortcut : 'Not set';
+      const newShortcut = createAction && createAction.shortcut ? createAction.shortcut : 'Not set';
+
+      const openEl = document.getElementById('shortcutOpenValue');
+      const newEl = document.getElementById('shortcutNewValue');
+      
+      if (openEl) openEl.textContent = openShortcut;
+      if (newEl) newEl.textContent = newShortcut;
+
+      // Cache the shortcuts for next time
+      await chrome.storage.local.set({ 
+        cachedShortcuts: { open: openShortcut, new: newShortcut } 
+      });
+
+    } catch (error) {
+      console.warn('Failed to restore shortcuts immediately:', error);
+      // Only set fallback if no cached values were loaded
+      const { cachedShortcuts } = await chrome.storage.local.get(['cachedShortcuts']);
+      if (!cachedShortcuts || !cachedShortcuts.open || !cachedShortcuts.new) {
+        const openEl = document.getElementById('shortcutOpenValue');
+        const newEl = document.getElementById('shortcutNewValue');
+        
+        if (openEl) openEl.textContent = 'Not set';
+        if (newEl) newEl.textContent = 'Not set';
+      }
+    }
+  }
+
+  // NEW: Update filter button states immediately
+  updateFilterButtonStates() {
+    try {
+      // Remove active class from all filter buttons
+      document.querySelectorAll('.filter-option').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      
+      // Add active class to current filter button
+      const buttonId = {
+        'site': 'showAllBtn',
+        'page': 'showPageBtn',
+        'all_notes': 'showAllNotesBtn'
+      }[this.filterMode];
+      
+      if (buttonId) {
+        const activeButton = document.getElementById(buttonId);
+        if (activeButton) activeButton.classList.add('active');
+      }
+
+      // Set data-view on root for view-specific styling
+      document.documentElement.setAttribute('data-view', this.filterMode);
+      
+    } catch (error) {
+      console.warn('Failed to update filter button states:', error);
+    }
+  }
+
   // Handle auth change: refresh premium from storage (set by api.js) and update UI
   async handleAuthChanged(payload) {
     try {
@@ -201,6 +339,97 @@ class URLNotesApp {
       const isPremium = !!(status && status.active && (status.tier || 'premium') !== 'free');
       this.premiumStatus = { isPremium };
       this.updatePremiumUI();
+    } catch (_) {}
+  }
+
+  // Handle notes synced event
+  handleNotesSynced(payload) {
+    try {
+      if (payload.source === 'cloud') {
+        // Refresh notes list when cloud notes are pulled
+        this.loadNotes();
+      }
+      // Show sync status in UI
+      this.updateSyncStatus(payload);
+    } catch (_) {}
+  }
+
+  // Handle sync error
+  handleSyncError(payload) {
+    try {
+      Utils.showToast(payload.message, 'error');
+    } catch (_) {}
+  }
+
+  // Handle sync success
+  handleSyncSuccess(payload) {
+    try {
+      Utils.showToast(payload.message, 'success');
+    } catch (_) {}
+  }
+
+  // Update sync status in UI
+  updateSyncStatus(payload) {
+    try {
+      const syncStatusEl = document.getElementById('syncStatus');
+      if (syncStatusEl) {
+        const timestamp = new Date(payload.timestamp).toLocaleTimeString();
+        syncStatusEl.textContent = `Last sync: ${timestamp}`;
+        syncStatusEl.style.display = 'block';
+        
+        // Hide after 5 seconds
+        setTimeout(() => {
+          syncStatusEl.style.display = 'none';
+        }, 5000);
+      }
+    } catch (_) {}
+  }
+
+  // Setup conflict banner event listeners
+  setupConflictBannerListeners() {
+    const keepMineBtn = document.getElementById('keepMineBtn');
+    const useServerBtn = document.getElementById('useServerBtn');
+    
+    if (keepMineBtn) {
+      keepMineBtn.addEventListener('click', () => this.handleConflictResolution('local'));
+    }
+    
+    if (useServerBtn) {
+      useServerBtn.addEventListener('click', () => this.handleConflictResolution('server'));
+    }
+  }
+
+  // Handle conflict resolution
+  handleConflictResolution(choice) {
+    try {
+      // Hide the conflict banner
+      const banner = document.getElementById('conflictBanner');
+      if (banner) {
+        banner.style.display = 'none';
+      }
+      
+      // Emit event for sync engine to handle
+      window.eventBus?.emit('conflict:resolved', { choice });
+      
+      Utils.showToast(`Using ${choice === 'local' ? 'local' : 'server'} version`, 'success');
+    } catch (_) {}
+  }
+
+  // Show conflict banner
+  showConflictBanner(message = 'Sync conflict detected') {
+    try {
+      const banner = document.getElementById('conflictBanner');
+      const messageEl = document.getElementById('conflictMessage');
+      
+      if (banner && messageEl) {
+        messageEl.textContent = message;
+        banner.style.display = 'block';
+        
+        // Auto-hide after 30 seconds
+        setTimeout(() => {
+          banner.style.display = 'none';
+        }, 30000);
+      }
     } catch (_) {}
   }
 
@@ -545,15 +774,8 @@ class URLNotesApp {
     // Set data-view on root for view-specific styling (compact site/page)
     document.documentElement.setAttribute('data-view', filter);
 
-    // Update search placeholder for clarity per view
-    const searchInput = document.querySelector('.search-input');
-    if (searchInput) {
-      const placeholder =
-        filter === 'all_notes' ? 'Search All Notes' :
-        filter === 'site' ? 'Search This Site' :
-        'Search This Page';
-      searchInput.setAttribute('placeholder', placeholder);
-    }
+    // Search placeholder is now handled centrally in restoreCachedUIState to prevent caching conflicts
+    // No need to update it here anymore
 
     this.render();
     // Persist last chosen filter unless suppressed
@@ -628,6 +850,7 @@ class URLNotesApp {
     const sortedDomains = Object.keys(groupedData).sort();
 
     notesList.innerHTML = ''; // Clear previous list
+    notesList.classList.add('notes-fade-in');
 
     sortedDomains.forEach(domain => {
       const { notes: domainNotes, tags: domainTags } = groupedData[domain];
@@ -696,6 +919,7 @@ class URLNotesApp {
       // Append note elements as DOM nodes so their event listeners remain active
       domainNotes.forEach(n => {
         const el = this.createNoteElement(n);
+        el.classList.add('note-item-stagger');
         domainNotesList.appendChild(el);
       });
 
@@ -734,7 +958,7 @@ class URLNotesApp {
             <button class="icon-btn delete-note-btn" data-note-id="${note.id}" title="Delete note">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3,6 5,6 21,6"></polyline>
-                <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
+                <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2,0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
                 <line x1="10" y1="11" x2="10" y2="17"></line>
                 <line x1="14" y1="11" x2="14" y2="17"></line>
               </svg>

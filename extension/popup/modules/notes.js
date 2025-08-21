@@ -72,15 +72,8 @@ class NotesManager {
     if (emptyState) emptyState.style.display = 'none';
     notesList.innerHTML = '';
 
-    // Update search placeholder to reflect scope
-    if (searchInput) {
-      const map = {
-        all_notes: 'Search all notes...',
-        site: 'Search site notes...',
-        page: 'Search page notes...'
-      };
-      searchInput.placeholder = map[app.filterMode] || 'Search notes...';
-    }
+    // Search placeholder is now handled centrally in popup.js to prevent caching conflicts
+    // No need to update it here anymore
 
     if (app.filterMode === 'all_notes') {
       this.renderGroupedNotes(filteredNotes);
@@ -92,105 +85,114 @@ class NotesManager {
     }
   }
 
-  // Group + render for All Notes view
+  // Render notes grouped by domain for 'All Notes' view
   renderGroupedNotes(notes) {
-    const { app } = this;
     const notesList = document.getElementById('notesList');
-    if (!notesList) return;
     const grouped = this.groupNotesByDomain(notes);
     const sortedDomains = Object.keys(grouped).sort();
 
     notesList.innerHTML = '';
+    notesList.classList.add('notes-fade-in');
 
-    // Load saved open domains and then render
+    // Load saved open domains IMMEDIATELY to prevent visual shift
+    let openSet = new Set();
     try {
+      // Use synchronous storage access for immediate restoration
       chrome.storage.local.get(['allNotesOpenDomains'], ({ allNotesOpenDomains }) => {
-        const openSet = new Set(Array.isArray(allNotesOpenDomains) ? allNotesOpenDomains : []);
-        // Debounced saver to avoid thrashing
-        const saveOpenDomains = Utils.debounce(() => {
-          try {
-            const currentlyOpen = Array.from(notesList.querySelectorAll('details.domain-group'))
-              .filter(d => d.open)
-              .map(d => d.getAttribute('data-domain'))
-              .filter(Boolean);
-            chrome.storage.local.set({ allNotesOpenDomains: currentlyOpen });
-          } catch (_) {}
-        }, 120);
-
-        sortedDomains.forEach(domain => {
-          const { notes: domainNotes, tags } = grouped[domain];
-          const domainGroup = document.createElement('details');
-          domainGroup.className = 'domain-group';
-          domainGroup.setAttribute('data-domain', domain);
-          const domainIndex = sortedDomains.indexOf(domain);
-          // If searching, auto-open top 2; otherwise restore from saved openSet
-          domainGroup.open = app.searchQuery ? (domainIndex < 2) : openSet.has(domain);
-
-          const rightDomainTagsHtml = (tags && tags.length > 0) ? `
-            <div class="domain-tags domain-tags-right">
-              ${tags.map(tag => `<span class=\"note-tag\">${tag}</span>`).join('')}
-            </div>
-          ` : '';
-
-          domainGroup.innerHTML = `
-            <summary class="domain-group-header">
-              <div class="domain-header-info">
-                <span>${domain} (${domainNotes.length})</span>
-              </div>
-              <div class="domain-actions">
-                <button class="icon-btn sm glass open-domain-btn" data-domain="${domain}" title="Open ${domain}">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                    <polyline points="15,3 21,3 21,9"></polyline>
-                    <line x1="10" y1="14" x2="21" y2="3"></line>
-                  </svg>
-                </button>
-                <button class="icon-btn sm glass delete-domain-btn" data-domain="${domain}" title="Delete all notes for this domain">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-trash-2"><polyline points="3,6 5,6 21,6"></polyline><path d="m19,6v14a2,2,0,0,1-2,2H7a2,2 0,0,1 -2,-2V6m3,0V4a2,2 0,0,1 2,-2h4a2,2 0,0,1 2,2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                </button>
-              </div>
-              ${rightDomainTagsHtml}
-            </summary>
-            <div class="domain-notes-list"></div>
-          `;
-
-          const deleteDomainBtn = domainGroup.querySelector('.delete-domain-btn');
-          const openDomainBtn = domainGroup.querySelector('.open-domain-btn');
-          const domainNotesList = domainGroup.querySelector('.domain-notes-list');
-
-          // Two-tap delete confirmation
-          deleteDomainBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            this.handleTwoTapDelete(deleteDomainBtn, () => app.deleteNotesByDomain(domain, true));
-          });
-
-          if (openDomainBtn) {
-            openDomainBtn.addEventListener('click', (e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              app.openDomainHomepage(domain);
-            });
-          }
-
-          // Persist open/close on toggle
-          domainGroup.addEventListener('toggle', () => {
-            saveOpenDomains();
-          });
-
-          domainNotes.forEach(n => domainNotesList.appendChild(this.createNoteElement(n)));
-          notesList.appendChild(domainGroup);
-        });
+        openSet = new Set(Array.isArray(allNotesOpenDomains) ? allNotesOpenDomains : []);
+        // Continue with rendering after getting cached state
+        this.renderDomainGroups(notesList, grouped, sortedDomains, openSet);
       });
     } catch (_) {
       // Fallback: render without persistence
-      sortedDomains.forEach(domain => {
-        const { notes: domainNotes } = grouped[domain];
-        const d = document.createElement('details');
-        d.className = 'domain-group';
-        notesList.appendChild(d);
-      });
+      this.renderDomainGroups(notesList, grouped, sortedDomains, openSet);
     }
+  }
+
+  // NEW: Separate method to render domain groups with cached open state
+  renderDomainGroups(notesList, grouped, sortedDomains, openSet) {
+    const { app } = this; // Get app reference from this instance
+    
+    // Debounced saver to avoid thrashing
+    const saveOpenDomains = Utils.debounce(() => {
+      try {
+        const currentlyOpen = Array.from(notesList.querySelectorAll('details.domain-group'))
+          .filter(d => d.open)
+          .map(d => d.getAttribute('data-domain'))
+          .filter(Boolean);
+        chrome.storage.local.set({ allNotesOpenDomains: currentlyOpen });
+      } catch (_) {}
+    }, 120);
+
+    sortedDomains.forEach(domain => {
+      const { notes: domainNotes, tags } = grouped[domain];
+      const domainGroup = document.createElement('details');
+      domainGroup.className = 'domain-group';
+      domainGroup.setAttribute('data-domain', domain);
+      const domainIndex = sortedDomains.indexOf(domain);
+      
+      // Set open state immediately based on cached value to prevent visual shift
+      domainGroup.open = app.searchQuery ? (domainIndex < 2) : openSet.has(domain);
+
+      const rightDomainTagsHtml = (tags && tags.length > 0) ? `
+        <div class="domain-tags domain-tags-right">
+          ${tags.map(tag => `<span class=\"note-tag\">${tag}</span>`).join('')}
+        </div>
+      ` : '';
+
+      domainGroup.innerHTML = `
+        <summary class="domain-group-header">
+          <div class="domain-header-info">
+            <span>${domain} (${domainNotes.length})</span>
+          </div>
+          <div class="domain-actions">
+            <button class="icon-btn sm glass open-domain-btn" data-domain="${domain}" title="Open ${domain}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15,3 21,3 21,9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+              </svg>
+            </button>
+            <button class="icon-btn sm glass delete-domain-btn" data-domain="${domain}" title="Delete all notes for this domain">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-trash-2"><polyline points="3,6 5,6 21,6"></polyline><path d="m19,6v14a2,2,0,0,1-2,2H7a2,2 0,0,1 -2,-2V6m3,0V4a2,2 0,0,1 2,-2h4a2,2 0,0,1 2,2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+            </button>
+          </div>
+          ${rightDomainTagsHtml}
+        </summary>
+        <div class="domain-notes-list"></div>
+      `;
+
+      const deleteDomainBtn = domainGroup.querySelector('.delete-domain-btn');
+      const openDomainBtn = domainGroup.querySelector('.open-domain-btn');
+      const domainNotesList = domainGroup.querySelector('.domain-notes-list');
+
+      // Two-tap delete confirmation
+      deleteDomainBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        this.handleTwoTapDelete(deleteDomainBtn, () => app.deleteNotesByDomain(domain, true));
+      });
+
+      if (openDomainBtn) {
+        openDomainBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          app.openDomainHomepage(domain);
+        });
+      }
+
+      // Persist open/close on toggle
+      domainGroup.addEventListener('toggle', () => {
+        saveOpenDomains();
+      });
+
+      domainNotes.forEach(n => {
+        const noteEl = this.createNoteElement(n);
+        noteEl.classList.add('note-item-stagger');
+        domainNotesList.appendChild(noteEl);
+      });
+      notesList.appendChild(domainGroup);
+    });
   }
 
   groupNotesByDomain(notes) {
@@ -237,10 +239,17 @@ class NotesManager {
                   <line x1="10" y1="14" x2="21" y2="3"></line>
                 </svg>
               </button>
+              ${window.notesStorage?.isVersionHistoryAvailable ? `
+              <button class="icon-btn sm version-history-btn" title="Version History">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2"/>
+                </svg>
+              </button>
+              ` : ''}
               <button class="icon-btn sm delete-note-btn" data-note-id="${note.id}" title="Delete note">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="3,6 5,6 21,6"></polyline>
-                  <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
+                  <path d="m19,6v14a2,2,0,0,1-2,2H7a2,2 0,0,1 -2,-2V6m3,0V4a2,2 0,0,1 2,-2h4a2,2 0,0,1 2,2v2"></path>
                   <line x1="10" y1="11" x2="10" y2="17"></line>
                   <line x1="14" y1="11" x2="14" y2="17"></line>
                 </svg>
@@ -257,6 +266,15 @@ class NotesManager {
         e.stopPropagation();
         const displayText = note.title || note.pageTitle || '';
         app.openLinkAndHighlight(note.url, displayText);
+      });
+    }
+
+    // Add version history button event listener
+    const versionBtn = el.querySelector('.version-history-btn');
+    if (versionBtn) {
+      versionBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.showVersionHistory(note);
       });
     }
 
@@ -325,6 +343,101 @@ class NotesManager {
       return `${bulletPrefix}${replaced}`;
     } catch (e) {
       return (content || '').substring(0, 100);
+    }
+  }
+
+  // Add method to show version history
+  async showVersionHistory(note) {
+    try {
+      const versions = await window.notesStorage.getVersionHistory(note.id);
+      
+      if (versions.length === 0) {
+        window.showToast('No version history available', 'info');
+        return;
+      }
+      
+      // Create version history dialog
+      const dialog = document.createElement('div');
+      dialog.className = 'version-history-dialog';
+      dialog.innerHTML = `
+        <div class="version-history-content">
+          <div class="version-history-header">
+            <h3>Version History</h3>
+            <button class="close-btn">&times;</button>
+          </div>
+          <div class="version-list">
+            ${versions.map((version, index) => `
+              <div class="version-item ${index === 0 ? 'current' : ''}">
+                <div class="version-header">
+                  <span class="version-number">v${version.version}</span>
+                  <span class="version-date">${new Date(version.createdAt).toLocaleDateString()}</span>
+                  ${index === 0 ? '<span class="current-badge">Current</span>' : ''}
+                </div>
+                <div class="version-preview">${this.buildPreviewHtml(version.content)}</div>
+                <button class="restore-btn" data-version="${version.version}">Restore</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      
+      // Add event listeners
+      dialog.querySelector('.close-btn').addEventListener('click', () => {
+        document.body.removeChild(dialog);
+      });
+      
+      dialog.querySelectorAll('.restore-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const versionNum = parseInt(e.target.dataset.version);
+          await this.restoreVersion(note.id, versionNum);
+          document.body.removeChild(dialog);
+        });
+      });
+      
+      document.body.appendChild(dialog);
+      
+    } catch (error) {
+      console.error('Failed to show version history:', error);
+      window.showToast('Failed to load version history', 'error');
+    }
+  }
+
+  // Add method to restore a version
+  async restoreVersion(noteId, versionNum) {
+    try {
+      const versions = await window.notesStorage.getVersionHistory(noteId);
+      const targetVersion = versions.find(v => v.version === versionNum);
+      
+      if (!targetVersion) {
+        throw new Error('Version not found');
+      }
+      
+      // Get current note
+      const currentNote = await window.notesStorage.getNote(noteId);
+      if (!currentNote) {
+        throw new Error('Note not found');
+      }
+      
+      // Create new version with restored content
+      const restoredNote = {
+        ...currentNote,
+        title: targetVersion.title,
+        content: targetVersion.content,
+        version: currentNote.version + 1,
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Save the restored note
+      await window.notesStorage.saveNote(restoredNote);
+      
+      // Refresh the UI
+      window.eventBus?.emit('notes:updated', { noteId });
+      
+      window.showToast('Version restored successfully', 'success');
+      
+    } catch (error) {
+      console.error('Failed to restore version:', error);
+      window.showToast('Failed to restore version', 'error');
     }
   }
 }

@@ -28,12 +28,13 @@
           <div class="site-details">
             <div class="site-domain" id="siteDomain">Loading...</div>
             <div class="site-url" id="siteUrl">Loading...</div>
+            <div class="sync-status" id="syncStatus" style="display: none; font-size: 11px; opacity: 0.7; margin-top: 2px;"></div>
           </div>
         </div>
         <div class="header-actions">
           <div id="shortcutHints" style="opacity:.7; font-size:11px; margin-right:8px; display:flex; flex-direction:column; gap:2px; text-align:right;">
-            <div><span style="opacity:.85;">Open:</span> <span id="shortcutOpenValue" style="font-weight:600;">Alt+E</span></div>
-            <div><span style="opacity:.85;">New note:</span> <span id="shortcutNewValue" style="font-weight:600;">Alt+N</span></div>
+            <div><span style="opacity:.85;">Open:</span> <span id="shortcutOpenValue" style="font-weight:600;"></span></div>
+            <div><span style="opacity:.85;">New note:</span> <span id="shortcutNewValue" style="font-weight:600;"></span></div>
           </div>
           <button class="icon-btn settings-btn" id="settingsBtn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -45,6 +46,15 @@
       </div>
       
     </header>
+
+    <!-- Conflict Banner (Hidden by default) -->
+    <div class="conflict-banner" id="conflictBanner" style="display: none; background: var(--warning-color, #f59e0b); color: white; padding: 8px 12px; font-size: 12px; text-align: center;">
+      <span id="conflictMessage">Sync conflict detected</span>
+      <div class="conflict-actions" style="margin-top: 6px; display: flex; gap: 8px; justify-content: center;">
+        <button class="conflict-btn" id="keepMineBtn" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;">Keep Mine</button>
+        <button class="conflict-btn" id="useServerBtn" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;">Use Server</button>
+      </div>
+    </div>
 
     <!-- Search Bar -->
     <div class="search-container">
@@ -215,6 +225,14 @@
                 </svg>
                 <span>Sign In</span>
               </button>
+              <button id="authForgotPwBtn" class="settings-btn-compact" style="display:none;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 12l2 2 4-4"/>
+                  <path d="M21 12c-1 0-2-1-2-2s1-2 2-2 2 1 2 2-1 2-2 2z"/>
+                  <path d="M3 12c1 0 2-1 2-2s-1-2-2-2-2 1-2 2 1 2 2 2z"/>
+                </svg>
+                <span>Forgot Password?</span>
+              </button>
               <button id="authSignOutBtn" class="settings-btn-full" style="display:none;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M16 17l5-5-5-5"/>
@@ -248,6 +266,30 @@
             </button>
           </div>
           <input type="file" id="importNotesInput" accept=".json" style="display: none;">
+          
+          <!-- Sync Management (Premium only) -->
+          <div class="sync-management" id="syncManagement" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+            <h5 style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.8;">Cloud Sync</h5>
+            <div class="settings-actions">
+              <button class="settings-btn-full" id="manualSyncBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                  <path d="M12 3v9l3 3"/>
+                </svg>
+                <span>Sync Now</span>
+              </button>
+              <div class="sync-status-text" id="syncStatusText" style="font-size: 12px; opacity: 0.7; margin-top: 8px; text-align: center;"></div>
+            </div>
+            
+            <!-- Storage Usage -->
+            <div class="storage-usage" id="storageUsage" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+              <h6 style="margin: 0 0 6px 0; font-size: 13px; opacity: 0.8;">Storage Usage</h6>
+              <div class="storage-bar" style="width: 100%; height: 4px; background: var(--border-color); border-radius: 2px; overflow: hidden;">
+                <div class="storage-progress" id="storageProgress" style="height: 4px; background: var(--accent-color); border-radius: 2px; transition: width 0.3s ease; width: 0%;"></div>
+              </div>
+              <div class="storage-text" id="storageText" style="font-size: 11px; opacity: 0.7; margin-top: 4px; text-align: center;"></div>
+            </div>
+          </div>
         </div>
         <div class="settings-section">
           <h4>Keyboard Shortcuts</h4>

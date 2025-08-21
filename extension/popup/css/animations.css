@@ -310,3 +310,48 @@
   pointer-events: none;
   cursor: not-allowed;
 }
+
+/* Notes animation keyframes */
+@keyframes notes-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes notes-stagger-in {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Notes animation classes */
+.notes-fade-in {
+  animation: notes-fade-in 0.3s ease-out;
+}
+
+.note-item-stagger {
+  animation: notes-stagger-in 0.4s ease-out;
+  animation-fill-mode: both;
+}
+
+/* Stagger animation delays for note items */
+.note-item-stagger:nth-child(1) { animation-delay: 0.05s; }
+.note-item-stagger:nth-child(2) { animation-delay: 0.1s; }
+.note-item-stagger:nth-child(3) { animation-delay: 0.15s; }
+.note-item-stagger:nth-child(4) { animation-delay: 0.2s; }
+.note-item-stagger:nth-child(5) { animation-delay: 0.25s; }
+.note-item-stagger:nth-child(6) { animation-delay: 0.3s; }
+.note-item-stagger:nth-child(7) { animation-delay: 0.35s; }
+.note-item-stagger:nth-child(8) { animation-delay: 0.4s; }
+.note-item-stagger:nth-child(9) { animation-delay: 0.45s; }
+.note-item-stagger:nth-child(10) { animation-delay: 0.5s; }

@@ -775,6 +775,15 @@ html[data-view="page"] .note-item .note-actions {
   transition: none !important;
 }
 
+/* Force note actions to be visible in Site/Page views regardless of container */
+html[data-view="site"] .note-item .note-actions,
+html[data-view="page"] .note-item .note-actions {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transition: none !important;
+  display: flex !important;
+}
+
 .notes-header:hover {
   background: transparent; /* no visual change on hover */
 }

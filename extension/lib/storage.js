@@ -250,8 +250,32 @@ class NotesStorage {
     });
   }
 
-  // Get version history for a note
+  // Get all notes (for sync purposes)
+  async getAllNotes() {
+    if (!this.db) await this.init();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['notes'], 'readonly');
+      const store = transaction.objectStore('notes');
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const notes = request.result || [];
+        // Sort by updatedAt descending
+        notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        resolve(notes);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // Get version history for a note (Premium users only)
   async getVersionHistory(noteId, limit = 10) {
+    // Check premium status before allowing access
+    if (!await this.checkPremiumAccess()) {
+      throw new Error('Version history is a premium feature. Please upgrade to access.');
+    }
+
     if (!this.db) await this.init();
 
     return new Promise((resolve, reject) => {
@@ -267,6 +291,55 @@ class NotesStorage {
       };
       request.onerror = () => reject(request.error);
     });
+  }
+
+  // Save note version (for version history) - Always stores data for all users
+  async saveNoteVersion(note) {
+    if (!this.db) await this.init();
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['versions'], 'readwrite');
+      const store = transaction.objectStore('versions');
+      
+      const version = {
+        id: crypto.randomUUID(),
+        noteId: note.id,
+        title: note.title,
+        content: note.content,
+        contentHash: note.contentHash,
+        version: note.version || 1,
+        createdAt: new Date().toISOString(),
+        changeReason: 'auto_save'
+      };
+
+      const request = store.add(version);
+      request.onsuccess = () => resolve(version);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // Clean up old versions (keep last 10) - Premium users only
+  async cleanupOldVersions(noteId, maxVersions = 10) {
+    // Check premium status before allowing access
+    if (!await this.checkPremiumAccess()) {
+      console.warn('Version cleanup skipped - premium feature');
+      return;
+    }
+
+    if (!this.db) await this.init();
+    try {
+      const versions = await this.getVersionHistory(noteId);
+      if (versions.length > maxVersions) {
+        const toDelete = versions.slice(maxVersions);
+        const transaction = this.db.transaction(['versions'], 'readwrite');
+        const store = transaction.objectStore('versions');
+        
+        for (const version of toDelete) {
+          store.delete(version.id);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to cleanup old versions:', error);
+    }
   }
 
   // Add attachment to a note
@@ -404,6 +477,47 @@ class NotesStorage {
 
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  // Check if user has premium access for version history features
+  async checkPremiumAccess() {
+    try {
+      // Try to get premium status from storage
+      const { userTier } = await chrome.storage.local.get(['userTier']);
+      if (userTier && userTier.active && userTier.tier !== 'free') {
+        return true;
+      }
+      
+      // Fallback: check if premium status exists in memory
+      if (window.premiumStatus && window.premiumStatus.isPremium) {
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.warn('Failed to check premium status:', error);
+      return false;
+    }
+  }
+
+  // Check if version history is available for UI purposes
+  async isVersionHistoryAvailable() {
+    return await this.checkPremiumAccess();
+  }
+
+  // Get version count for a note (always available, but content access requires premium)
+  async getVersionCount(noteId) {
+    if (!this.db) await this.init();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['versions'], 'readonly');
+      const store = transaction.objectStore('versions');
+      const index = store.index('noteId');
+      const request = index.count(noteId);
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
     });
   }
 }
