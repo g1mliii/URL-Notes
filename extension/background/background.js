@@ -174,21 +174,57 @@ async function addSelectionToExistingNote(info, tab) {
   const bullet = `- [${displayText}](${fragmentUrl})`;
 
   try {
+    // Check for cached editor state first to avoid overwriting unsaved changes
+    const { editorState } = await chrome.storage.local.get(['editorState']);
+    let targetNote = null;
+    
+    // If editor is open with unsaved changes, use the cached note
+    if (editorState && editorState.open && editorState.noteDraft) {
+      const cachedNote = editorState.noteDraft;
+      if (cachedNote.domain === domain) {
+        targetNote = cachedNote;
+        console.log('Using cached note from editor for context menu append');
+      }
+    }
+    
+    // If no cached note, get from storage
+    if (!targetNote) {
+      const data = await chrome.storage.local.get(domain);
+      const notes = (data[domain] || []).slice();
+      if (notes.length === 0) {
+        // No existing note for this domain; fallback to creating a new one
+        return addSelectionToNewNote(info, tab);
+      }
+      // Pick most recently updated
+      notes.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+      targetNote = notes[0];
+    }
+    
+    // Append to the target note
+    targetNote.content = (targetNote.content ? `${targetNote.content}\n` : '') + bullet;
+    targetNote.updatedAt = new Date().toISOString();
+    
+    // Save to storage
     const data = await chrome.storage.local.get(domain);
     const notes = (data[domain] || []).slice();
-    if (notes.length === 0) {
-      // No existing note for this domain; fallback to creating a new one
-      return addSelectionToNewNote(info, tab);
+    const noteIndex = notes.findIndex(n => n.id === targetNote.id);
+    if (noteIndex > -1) {
+      notes[noteIndex] = targetNote;
+    } else {
+      notes.push(targetNote);
     }
-    // Pick most recently updated
-    notes.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
-    const target = notes[0];
-    target.content = (target.content ? `${target.content}\n` : '') + bullet;
-    target.updatedAt = new Date().toISOString();
     await chrome.storage.local.set({ [domain]: notes });
-    console.log('Appended selection to existing note:', target.id);
+    
+    // Update cached editor state if it exists
+    if (editorState && editorState.open && editorState.noteDraft && editorState.noteDraft.id === targetNote.id) {
+      editorState.noteDraft = { ...targetNote };
+      await chrome.storage.local.set({ editorState });
+      console.log('Updated cached editor state with appended content');
+    }
+    
+    console.log('Appended selection to existing note:', targetNote.id);
     // Mark last action so popup can refresh/open the appended note immediately
-    await chrome.storage.local.set({ lastAction: { type: 'append_selection', domain, noteId: target.id, ts: Date.now() } });
+    await chrome.storage.local.set({ lastAction: { type: 'append_selection', domain, noteId: targetNote.id, ts: Date.now() } });
     openExtensionUi();
   } catch (e) {
     console.error('Failed to append to existing note:', e);

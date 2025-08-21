@@ -452,12 +452,12 @@ class EditorManager {
       // Get caret position
       const { start, end } = contentInput ? this.getSelectionOffsets(contentInput) : { start: 0, end: 0 };
       
-      const state = {
-        open: true,
-        noteDraft: { ...this.currentNote },
-        caretStart: start,
-        caretEnd: end
-      };
+      const { editorState } = await chrome.storage.local.get(['editorState']);
+      const state = editorState || {};
+      state.open = true; // A draft save implies the editor is open
+      state.noteDraft = { ...this.currentNote };
+      state.caretStart = start;
+      state.caretEnd = end;
       
       await chrome.storage.local.set({ editorState: state });
     } catch (_) { }

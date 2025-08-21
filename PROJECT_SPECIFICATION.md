@@ -11,7 +11,10 @@ A browser extension and web application for taking notes on websites, with domai
 - Help icon added in header with tooltip that lists quick tips/hidden features.
 - Settings re-ordered: Font Settings above Help & Onboarding; added button to open Onboarding anytime.
 - Domain display simplified by stripping leading `www.` in header.
- - Developer mode: Premium is currently force-enabled in popup for UI testing; debug toggle removed from Settings. See details below.
+- Developer mode: Premium is currently force-enabled in popup for UI testing; debug toggle removed from Settings. See details below.
+- Toast notification repositioned to the top of the popup (`#toast` at `top: 12px`) so save feedback appears above the editor; fades in/out and is non-interactive (`pointer-events: none`).
+- Introduced a visual-only `.glass` utility in `extension/popup/css/components.css` that centralizes glassmorphic surface tokens (background, border, blur, shadows). Avoid layout properties (display, gap, padding) in utilities to prevent artifacts.
+- Fixed a visual artifact (vertical empty rectangle) by ensuring `.glass` is not grouped with layout-driven selectors and by constraining background painting via component rules.
 
 Updates (Aug 19, 2025)
 - Implemented hybrid notes model: notes saved under domain with URL context; filter between "All Notes" and "This Page".
@@ -120,6 +123,10 @@ Updates (Aug 19, 2025)
   - `theming.js`: theme toggling and token management (no business logic).
   - `utils.js`: stateless helpers (formatting, URL normalization like `normalizePageKey`, etc.).
 - Duplication policy: avoid re-implementing module functions in `popup.js` (e.g., `createNoteElement`, `groupNotesByDomain`, `handleTwoTapDelete`, `buildContentHtml`). If temporary duplicates exist during refactor, prefer calling module APIs and mark duplicates for cleanup.
+
+Design tokens & utilities:
+- `.glass` is a reusable visual utility applied by components (e.g., icon buttons, filter pills) to opt into glass surfaces. Components remain responsible for their layout (padding, gap, sizing), avoiding grouping that mixes utility with layout.
+- Toast (`#toast`) should layer above the editor (`z-index: 10001`) and sit within `.app-container` using absolute positioning near the top-center.
 
 ## Uninstall Notice & Persistence Plan
 

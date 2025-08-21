@@ -71,6 +71,16 @@
   overflow: hidden;
 }
 
+/* Make editor action icons consistent in size */
+.editor-header .icon-btn svg,
+.save-btn svg,
+.delete-btn svg,
+.ai-rewrite-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.2; /* bump stroke so save matches visual weight */
+}
+
 /* removed header shimmer per request */
 
 .back-btn {
@@ -128,9 +138,12 @@ html[data-compact="1"] .editor-header {
 }
 
 html[data-compact="1"] .editor-header .icon-btn svg,
-html[data-compact="1"] .save-btn svg {
+html[data-compact="1"] .save-btn svg,
+html[data-compact="1"] .delete-btn svg,
+html[data-compact="1"] .ai-rewrite-btn svg {
   width: 14px;
   height: 14px;
+  stroke-width: 2.1;
 }
 
 html[data-compact="1"] .save-btn span {
@@ -194,6 +207,7 @@ html[data-compact="1"] .save-btn {
 .save-btn svg {
   color: var(--success-green);
   stroke: var(--success-green);
+  transform: scale(1.08); /* slightly larger to match visual weight */
 }
 
 /* Strong focus-visible rings for editor action buttons on dark surfaces */
@@ -266,21 +280,21 @@ html[data-compact="1"] .save-btn {
 
 /* Editor Content */
 .editor-content {
-  flex: 1 1 auto;
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 12px; /* add horizontal breathing room */
   display: flex;
   flex-direction: column;
-  padding: 10px 12px; /* iOS-like section spacing */
-  overflow: hidden; /* let inner editor scroll, not the container */
-  max-height: none;
-  max-width: 100%;
-  box-sizing: border-box;
   gap: 10px; /* spacing between sections */
+  min-height: 0; /* allow flex child to shrink properly */
+  max-height: 100%; /* prevent content from expanding beyond container */
+  contain: content; /* improve performance */
 }
 
 .note-content-input {
   flex: 1 1 auto; /* fill remaining space */
   min-height: 0;  /* allow flex item to grow/shrink */
-  /* no max-height so it can take available space */
+  height: 100%; /* ensure it fills the available space */
   border: 1px solid var(--border-color);
   border-radius: 12px;
   background: var(--bg-secondary);
@@ -294,10 +308,25 @@ html[data-compact="1"] .save-btn {
   line-height: 1.5;
   font-family: inherit;
   box-shadow: inset 0 1px 0 var(--shadow-light);
-  overflow-y: auto; /* scroll inside the editor box */
+  overflow-y: auto; /* Enable scrolling for content */
+  max-height: 100%; /* Prevent content from expanding beyond container */
   position: relative;
   isolation: isolate;
+  overscroll-behavior: contain; /* Prevent pull-to-refresh and other overscroll behaviors */
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  /* Hide scrollbar visuals while keeping scroll */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge legacy */
+  background-clip: padding-box; /* avoid border/background seam artifacts */
 }
+
+.note-content-input::-webkit-scrollbar { /* Chrome/Safari */
+  width: 0;
+  height: 0;
+}
+
+/* Remove decorative glass overlay on the editor input to prevent moving line artifacts */
+.note-content-input::after { content: none !important; }
 
 .note-content-input:focus-visible,
 .note-content-input:focus {

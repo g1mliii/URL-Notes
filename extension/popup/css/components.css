@@ -148,6 +148,7 @@
   transform-origin: 50% 50%;
   will-change: transform;
 }
+
 .domain-group-header {
   display: flex;
   align-items: center;
@@ -340,31 +341,56 @@ html, body {
   flex: 0 0 auto; /* do not shrink; keep fixed width */
 }
 
-/* Button Styles */
-.icon-btn {
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 50%;
-  background: var(--bg-primary); /* stronger contrast vs canvas */
-  border: 1px solid var(--border-color);
-  backdrop-filter: blur(var(--backdrop-blur));
-  -webkit-backdrop-filter: blur(var(--backdrop-blur));
-  color: var(--text-primary);
-  cursor: pointer;
-  display: flex;
+/* Unified icon button base for header, notes, and domain actions */
+.header .icon-btn,
+.note-actions .icon-btn,
+.domain-actions .icon-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background 180ms ease, transform 180ms ease, box-shadow 220ms ease, border-color 180ms ease, color 120ms ease, opacity 150ms ease;
-  box-shadow: inset 0 1px 0 var(--shadow-light);
+  border-radius: 50%;
+  /* Glass visual surface */
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-inset), var(--glass-shadow);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
 }
 
-.icon-btn:hover {
-  background: var(--bg-secondary);
-  transform: translateY(-1px);
-  box-shadow: 
-    0 2px 8px var(--shadow-dark),
-    inset 0 1px 0 var(--shadow-light);
+/* Normalize icon sizes and centering */
+.header .icon-btn svg,
+.note-actions .icon-btn svg,
+.domain-actions .icon-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block; /* avoid inline baseline misalignment */
+  opacity: 0.9;
+}
+
+/* Consistent hover for glass buttons (settings, note, domain icons) */
+.header .icon-btn:hover,
+.note-actions .icon-btn:hover,
+.domain-actions .icon-btn:hover {
+  background: var(--glass-bg-hover);
+}
+
+/* Settings icon: ensure white glyph on glass */
+#settingsBtn svg {
+  color: #fff;
+  stroke: #fff;
+  opacity: 1;
+}
+
+/* Utility Styles */
+.glass {
+  /* Visual-only utility. Do not include layout props here. */
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-inset), var(--glass-shadow);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
 }
 
 .icon-btn:active {
@@ -506,7 +532,7 @@ html, body {
   border-radius: 0; /* remove rounding so ends touch */
   /* Glassmorphic pill surface */
   background: var(--glass-bg);
-  border: 1px solid transparent; /* no visible outline when not selected */
+  border: 1px solid var(--glass-border); /* default outline via utility */
   color: var(--text-secondary);
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
@@ -595,6 +621,9 @@ html, body {
   overflow: hidden;
   padding: 0; /* remove side padding to avoid visual gaps */
   background: var(--canvas-bg);
+  /* Ensure main content has proper height constraints */
+  min-height: 0;
+  max-height: 100%;
 }
 
 /* Notes Container */
@@ -606,12 +635,14 @@ html, body {
   background: var(--canvas-bg);
   padding: 0; /* full-bleed for headers */
   min-height: 0; /* allow flex child to shrink so ad bar is visible */
-  position: relative; /* for background band */
+  max-height: 100%; /* prevent container from expanding beyond viewport */
+  /* Constrain visual content width for a more natural reading measure */
+  --content-max: 660px;
 }
 
-/* Extend the search/filter background band behind the notes header only */
-.notes-container::before {
-  content: '';
+/* Notes header background band */
+.notes-header-band {
+  flex: 1 1 auto;
   position: absolute;
   top: 0;
   left: 0;
@@ -626,8 +657,8 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 1px 12px 2px; /* reduce gap to bring first note closer */
-  padding: 8px 12px; /* keep spacing for content */
+  margin: 1px 16px 2px; /* align with list padding; keep title left and button right */
+  padding: 8px 16px; /* align with .notes-list horizontal padding */
   background: transparent; /* hide container */
   border: 1px solid transparent; /* remove outline */
   border-radius: 16px; /* keep layout rounding without visible border */
@@ -819,15 +850,48 @@ body {
   background: var(--canvas-bg);
 }
 
+/* Toast Notification */
+.toast {
+  position: absolute; /* within .app-container (relative) */
+  left: 50%;
+  top: 12px; /* show at top, above editor */
+  bottom: auto;
+  transform: translate(-50%, -8px);
+  z-index: 10001; /* above .note-editor (9999) */
+  max-width: calc(100% - 24px);
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--bg-primary) 94%, black 6%);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  box-shadow: 0 6px 20px var(--shadow-dark), inset 0 1px 0 var(--shadow-light);
+  opacity: 0;
+  pointer-events: none; /* let clicks pass through */
+  transition: opacity 160ms ease, transform 160ms ease;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 /* Notes List */
 .notes-list {
   flex: 1 1 auto;
   min-height: 0; /* critical for scroll inside flex column */
+  max-height: 100%; /* prevent infinite expansion */
   overflow-y: auto;
-  padding: 2px 16px 8px; /* tighter top padding to bring first note closer */
+  overflow-x: hidden; /* prevent horizontal scroll */
+  padding: 6px 16px 10px; /* add breathing room */
   position: relative;
   z-index: 1; /* above the band */
   background: var(--bg-secondary); /* prevent band from showing through gaps */
+  /* Ensure scrollbar doesn't cause layout shifts */
+  scrollbar-gutter: stable;
+  /* Let the list span full width; cards themselves are constrained */
 }
 
 /* Compact mode: shrink global spacing and sizes to avoid scroll/clipping */
@@ -853,6 +917,10 @@ html[data-compact="1"] #shortcutHints { font-size: 10.5px !important; gap: 1px !
 html[data-compact="1"] .header .icon-btn { width: 32px; height: 32px; }
 html[data-compact="1"] .header .icon-btn svg { width: 14px; height: 14px; }
 html[data-compact="1"] .site-details { padding-right: 8px; }
+
+html[data-compact="1"] .notes-container {
+  --content-max: 600px; /* slightly narrower in compact mode */
+}
 
 html[data-compact="1"] .search-container {
   padding: 6px 0;
@@ -952,11 +1020,13 @@ html[data-compact="1"] .notes-list {
 
 /* Ensure domain and note action icons are visually identical */
 .note-actions .icon-btn,
-.domain-actions .icon-btn {
+.domain-actions .icon-btn,
+.note-actions .icon-btn.glass,
+.domain-actions .icon-btn.glass {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  /* Glass base */
+  /* Glass base via utility */
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-inset), var(--glass-shadow);
@@ -1081,7 +1151,8 @@ html[data-compact="1"] .domain-group-header {
 }
 
 html[data-compact="1"] .domain-notes-list {
-  padding: 6px;
+  /* Match compact .notes-list padding (6px 10px 6px) */
+  padding: 6px 10px 6px;
 }
 
 /* Empty State */
@@ -1139,6 +1210,10 @@ html[data-compact="1"] .domain-notes-list {
 /* Round corners more for top-level notes (not inside dropdown domain groups) */
 .notes-list > .note-item {
   border-radius: 20px;
+  max-width: var(--content-max);
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 10px; /* consistent spacing for top-level cards */
   /* Apply same layered background effect as domain groups */
   background-image:
     radial-gradient(100% 150% at 0% -20%, rgba(255,255,255,0.07), transparent 55%),
@@ -1148,9 +1223,40 @@ html[data-compact="1"] .domain-notes-list {
   isolation: isolate;
 }
 
+/* (Removed TEMP debug rule that capped width and added outline) */
+
+/* Page/Site: visually narrower notes using active filter state in the search bar */
+.search-container:has(.filter-option.active[data-filter="site"]) ~ .notes-container .notes-list > .note-item,
+.search-container:has(.filter-option.active[data-filter="page"]) ~ .notes-container .notes-list > .note-item {
+  max-width: 480px !important; /* only applies when Page or Site is active */
+  flex: 0 0 auto; /* prevent stretching to full width */
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.search-container:has(.filter-option.active[data-filter="site"]) ~ .notes-container .notes-list,
+.search-container:has(.filter-option.active[data-filter="page"]) ~ .notes-container .notes-list {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+/* Compact mode: a touch tighter */
+html[data-compact="1"] .search-container:has(.filter-option.active[data-filter="site"]) ~ .notes-container .notes-list > .note-item,
+html[data-compact="1"] .search-container:has(.filter-option.active[data-filter="page"]) ~ .notes-container .notes-list > .note-item {
+  max-width: 460px !important;
+}
+html[data-compact="1"] .search-container:has(.filter-option.active[data-filter="site"]) ~ .notes-container .notes-list,
+html[data-compact="1"] .search-container:has(.filter-option.active[data-filter="page"]) ~ .notes-container .notes-list {
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
 /* Apply same rounding to notes inside dropdown domain groups */
 .domain-notes-list .note-item {
   border-radius: 20px;
+  max-width: var(--content-max);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* Delete buttons: match New Note accent glass with white icon (except confirm/danger) */
@@ -1173,20 +1279,66 @@ html[data-compact="1"] .domain-notes-list {
 
 /* Open/link buttons: same accent glass + white icon for visual parity */
 .note-actions .open-page-btn,
-.domain-actions .open-domain-btn {
+.domain-actions .open-domain-btn,
+.domain-actions .open-link-btn,
+.domain-actions .link-btn,
+.domain-actions .open-link,
+/* apply directly to class in case button isn't under .domain-actions wrapper */
+.open-domain-btn {
   background: var(--accent-glass-bg);
   border: 1px solid var(--accent-glass-border);
   box-shadow: var(--accent-glass-inset), var(--accent-glass-shadow);
 }
 .note-actions .open-page-btn:hover,
-.domain-actions .open-domain-btn:hover {
+.domain-actions .open-domain-btn:hover,
+.domain-actions .open-link-btn:hover,
+.domain-actions .link-btn:hover,
+.domain-actions .open-link:hover,
+.open-domain-btn:hover {
   background: var(--accent-glass-bg-hover);
 }
 .note-actions .open-page-btn svg,
-.domain-actions .open-domain-btn svg {
+.domain-actions .open-domain-btn svg,
+.domain-actions .open-link-btn svg,
+.domain-actions .link-btn svg,
+.domain-actions .open-link svg,
+.open-domain-btn svg {
   color: #fff;
   stroke: #fff;
   opacity: 1;
+}
+
+/* Increase specificity so accent wins over generic .domain-actions .icon-btn base */
+.icon-btn.open-domain-btn {
+  background: var(--accent-glass-bg) !important;
+  border: 1px solid var(--accent-glass-border) !important;
+  box-shadow: var(--accent-glass-inset), var(--accent-glass-shadow) !important;
+}
+.icon-btn.open-domain-btn:hover {
+  background: var(--accent-glass-bg-hover) !important;
+}
+.icon-btn.open-domain-btn svg {
+  color: #fff !important;
+  stroke: #fff !important;
+  opacity: 1 !important;
+}
+
+/* Highest specificity fallbacks */
+button.icon-btn.open-domain-btn,
+.domain-actions .icon-btn.open-domain-btn {
+  background: var(--accent-glass-bg) !important;
+  border: 1px solid var(--accent-glass-border) !important;
+  box-shadow: var(--accent-glass-inset), var(--accent-glass-shadow) !important;
+}
+button.icon-btn.open-domain-btn:hover,
+.domain-actions .icon-btn.open-domain-btn:hover {
+  background: var(--accent-glass-bg-hover) !important;
+}
+button.icon-btn.open-domain-btn svg,
+.domain-actions .icon-btn.open-domain-btn svg {
+  color: #fff !important;
+  stroke: #fff !important;
+  opacity: 1 !important;
 }
 
 .note-item:hover {
@@ -1424,11 +1576,12 @@ html[data-compact="1"] .domain-notes-list {
 .domain-tags-right { display: none; }
 
 .domain-notes-list {
-  padding: 8px;
+  /* Match .notes-list default padding for visual centering */
+  padding: 2px 16px 8px;
 }
 
 .domain-notes-list .note-item {
-  margin-bottom: 6px;
+  margin-bottom: 8px; /* a touch more spacing between cards */
 }
 
 .domain-notes-list .note-item:last-child {
@@ -1472,4 +1625,26 @@ html[data-compact="1"] .ad-placeholder {
   justify-content: center;
   color: var(--text-tertiary);
   font-size: 12px;
+}
+
+/* Smooth scrolling globally */
+html, body {
+  scroll-behavior: smooth;
+}
+
+/* Hide scrollbars but keep scrolling (cross-browser) */
+/* Firefox */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none; /* IE/Edge legacy */
+}
+/* WebKit */
+*::-webkit-scrollbar {
+  display: none;
+}
+
+/* Notes list: remove reserved gutter and enable momentum scrolling */
+.notes-list {
+  scrollbar-gutter: auto !important; /* do not reserve space for scrollbar */
+  -webkit-overflow-scrolling: touch;  /* smooth momentum on iOS */
 }

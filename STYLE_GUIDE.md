@@ -139,6 +139,11 @@
     - Hover: `background: var(--accent-secondary)` with `0 2px 8px var(--shadow-dark)`
   - Icon buttons use neutral surfaces; hover to secondary/background
 
+- __Toast notification (`#toast`)__
+  - Positioned at the top of the popup inside `.app-container` using `position: absolute; top: 12px; left: 50%; transform: translate(-50%, ...)`.
+  - Stacks above the editor (`z-index: 10001`), fades in/out, non-interactive (`pointer-events: none`).
+  - Copy should be concise (e.g., “Note saved”).
+
 - __Settings panel (`.settings-panel`)__
   - Light mode: higher opacity for readability `rgba(255, 255, 255, 0.92)` with clear border/shadow.
   - Dark mode: use dark tokens; avoid lowering opacity excessively over complex backgrounds.
@@ -184,6 +189,13 @@
 - __Do__ use color-mix with `--accent-*` for shadows/glows.
 - __Do__ keep truncation with `min-width: 0` on flex items as needed.
 - __Don’t__ hardcode brand blues; avoid layout shifts on hover (bolding).
+
+## Utility Classes
+
+- __`.glass` (visual-only)__
+  - Provides the glassmorphic surface: `background: var(--glass-bg)`, `border: 1px solid var(--glass-border)`, `box-shadow: var(--glass-inset), var(--glass-shadow)`, and `backdrop-filter` blur.
+  - Avoid adding layout-affecting props (e.g., `display`, `flex`, `padding`, `gap`, sizing) to utilities. Apply layout via the component selectors.
+  - Apply to icon buttons or surfaces to opt-in to the glass look. Do not rely on grouping `.glass` with component selectors when component needs its own layout.
 
 ## Changelog Highlights
 

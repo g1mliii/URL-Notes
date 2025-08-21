@@ -236,18 +236,16 @@ class URLNotesApp {
 
   // Setup event listeners
   setupEventListeners() {
-    // Filter between all notes and page-specific
-    document.getElementById('showAllBtn').addEventListener('click', () => {
-      this.switchFilter('site');
-    });
-    
-    document.getElementById('showPageBtn').addEventListener('click', () => {
-      this.switchFilter('page');
-    });
-
-    document.getElementById('showAllNotesBtn').addEventListener('click', () => {
-      this.switchFilter('all_notes');
-    });
+    // Filter between all notes and page-specific (deduplicated bindings)
+    const on = (id, evt, handler) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener(evt, handler);
+    };
+    [
+      ['showAllBtn', 'site'],
+      ['showPageBtn', 'page'],
+      ['showAllNotesBtn', 'all_notes']
+    ].forEach(([id, mode]) => on(id, 'click', () => this.switchFilter(mode)));
 
     // Search functionality
     const searchInput = document.getElementById('searchInput');
@@ -278,6 +276,13 @@ class URLNotesApp {
     
 
     // Editor controls
+    // Shared save handler to avoid duplication across Back and Save buttons
+    const saveStandard = () => this.saveCurrentNote({
+      clearDraftAfterSave: false,
+      closeEditorAfterSave: false,
+      showToast: true,
+      switchFilterAfterSave: true
+    }).catch(() => {});
     document.getElementById('backBtn').addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -290,16 +295,14 @@ class URLNotesApp {
         setTimeout(() => notesContainer.classList.remove('panel-fade-in'), 220);
       }
       // Use same save path as Save button but non-blocking and without clearing draft/closing again
-      this.saveCurrentNote({
-        clearDraftAfterSave: false,
-        closeEditorAfterSave: false,
-        showToast: true,
-        switchFilterAfterSave: true
-      }).catch(() => {});
+      saveStandard();
     });
     
-    document.getElementById('saveNoteBtn').addEventListener('click', () => {
-      this.saveCurrentNote();
+    document.getElementById('saveNoteBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Save with same behavior as back button but keep editor open
+      saveStandard();
     });
     
     document.getElementById('deleteNoteBtn').addEventListener('click', () => {
