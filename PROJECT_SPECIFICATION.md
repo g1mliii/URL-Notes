@@ -11,6 +11,7 @@ A browser extension and web application for taking notes on websites, with domai
 - Help icon added in header with tooltip that lists quick tips/hidden features.
 - Settings re-ordered: Font Settings above Help & Onboarding; added button to open Onboarding anytime.
 - Domain display simplified by stripping leading `www.` in header.
+ - Developer mode: Premium is currently force-enabled in popup for UI testing; debug toggle removed from Settings. See details below.
 
 Updates (Aug 19, 2025)
 - Implemented hybrid notes model: notes saved under domain with URL context; filter between "All Notes" and "This Page".
@@ -73,6 +74,18 @@ Updates (Aug 19, 2025)
     - Tab reuse via URL normalization (strip `www.`, trailing slashes, and common tracking params like `utm_*`, `gclid`, `fbclid`).
     - First-load highlighting uses retry-based `chrome.tabs.sendMessage` scheduling; no `tabs.onUpdated` listener and no readiness handshake. New tabs attempt native text fragment (`#:~:text=`) and content script retries with MutationObserver.
   - Ads remain strictly inside the extension UI container (popup) via `extension/lib/ads.js` (CodeFuel integration policy-compliant).
+
+### Temporary Developer Mode (Premium Always On)
+
+- For development convenience, the popup treats the user as premium unconditionally.
+- Implementation:
+  - `extension/popup/popup.js` defines `getPremiumStatus()` to return `{ isPremium: true }`.
+  - The Settings “Enable Premium (debug)” toggle and related handler were removed from `popup.html` and `popup.js`.
+  - `extension/lib/premium.js` simplified; debug flag helpers were removed.
+- Effects in popup during dev:
+  - Premium-only UI elements (e.g., AI buttons) are visible.
+  - Ads may be hidden when the UI checks `isPremium`.
+- This is temporary and will be reverted when wiring real auth/tier.
 
 ## Tech Stack & Architecture
 

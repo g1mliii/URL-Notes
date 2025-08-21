@@ -101,6 +101,8 @@ class URLNotesApp {
 
   async init() {
     this.premiumStatus = await getPremiumStatus();
+    // Apply premium-dependent UI immediately
+    try { this.updatePremiumUI(); } catch (_) {}
     await this.loadCurrentSite();
     this.setupEventListeners();
     await this.themeManager.setupThemeDetection();
@@ -622,6 +624,8 @@ class URLNotesApp {
       const domainIndex = sortedDomains.indexOf(domain);
       domainGroup.open = this.searchQuery && domainIndex < 2;
       
+      // Domain group created
+
       const rightDomainTagsHtml = (domainTags && domainTags.length > 0) ? `
         <div class="domain-tags domain-tags-right">
           ${domainTags.map(tag => `<span class="note-tag">${tag}</span>`).join('')}
@@ -651,6 +655,8 @@ class URLNotesApp {
         </summary>
         <div class="domain-notes-list"></div>
       `;
+
+      // No pre-open suppression; restore original behavior
       
       const deleteDomainBtn = domainGroup.querySelector('.delete-domain-btn');
       const openDomainBtn = domainGroup.querySelector('.open-domain-btn');
@@ -1651,13 +1657,24 @@ class URLNotesApp {
   }
 
   updatePremiumUI() {
-    const allNotesBtn = document.getElementById('showAllNotesBtn');
-    // Always allow All Notes view
-    if (allNotesBtn) {
-      allNotesBtn.classList.remove('premium-feature');
-      allNotesBtn.disabled = false;
-      allNotesBtn.title = 'View all notes';
-    }
+    try {
+      const isPremium = !!(this.premiumStatus && this.premiumStatus.isPremium);
+      // AI button visibility
+      const aiBtn = document.getElementById('aiRewriteBtn');
+      if (aiBtn) aiBtn.style.display = isPremium ? '' : 'none';
+
+      // Ads container visibility
+      const ad = document.getElementById('adContainer');
+      if (ad) ad.style.display = isPremium ? 'none' : '';
+
+      // Always allow All Notes view
+      const allNotesBtn = document.getElementById('showAllNotesBtn');
+      if (allNotesBtn) {
+        allNotesBtn.classList.remove('premium-feature');
+        allNotesBtn.disabled = false;
+        allNotesBtn.title = 'View all notes';
+      }
+    } catch (_) { /* noop */ }
   }
 
   // Handle paste events in editor
@@ -1792,12 +1809,12 @@ class URLNotesApp {
 
 }
 
-// Mock premium status function (replace with actual logic)
+// Mock premium status function (force premium for now)
 async function getPremiumStatus() {
-  // Default to non-premium until real auth/tier is wired end-to-end
-  return { isPremium: false };
+  return { isPremium: true };
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  new URLNotesApp();
+  // Expose the app globally so modules (e.g., editor.js) can read premiumStatus
+  window.urlNotesApp = new URLNotesApp();
 });

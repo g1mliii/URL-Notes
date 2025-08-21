@@ -1,12 +1,152 @@
 .domain-actions .icon-btn { /* unify icon sizes with note actions */
   width: 32px;
   height: 32px;
-  border-radius: 10px;
+  border-radius: 50%;
+}
+
+/* Rotate shimmer per instance to avoid identical look side-by-side */
+.note-actions .icon-btn:nth-child(1)::after { transform: rotate(0deg); }
+.note-actions .icon-btn:nth-child(2)::after { transform: rotate(40deg); }
+.note-actions .icon-btn:nth-child(3)::after { transform: rotate(95deg); }
+.note-actions .icon-btn:nth-child(4)::after { transform: rotate(140deg); }
+.note-actions .icon-btn:nth-child(5)::after { transform: rotate(210deg); }
+
+.domain-actions .icon-btn:nth-child(1)::after { transform: rotate(15deg); }
+.domain-actions .icon-btn:nth-child(2)::after { transform: rotate(70deg); }
+.domain-actions .icon-btn:nth-child(3)::after { transform: rotate(130deg); }
+.domain-actions .icon-btn:nth-child(4)::after { transform: rotate(185deg); }
+.domain-actions .icon-btn:nth-child(5)::after { transform: rotate(240deg); }
+
+.header .icon-btn:nth-child(1)::after { transform: rotate(25deg); }
+.header .icon-btn:nth-child(2)::after { transform: rotate(85deg); }
+.header .icon-btn:nth-child(3)::after { transform: rotate(145deg); }
+.header .icon-btn:nth-child(4)::after { transform: rotate(200deg); }
+.header .icon-btn:nth-child(5)::after { transform: rotate(260deg); }
+
+/* Stronger per-instance variation: offset gradient centers, angles, opacity, and thickness */
+.note-actions .icon-btn:nth-child(1)::after {
+  background:
+    conic-gradient(from 110deg at 58% 42%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 65deg,
+      rgba(0,0,0,0.20) 145deg,
+      rgba(255,255,255,0.12) 225deg,
+      rgba(255,255,255,0.55) 360deg);
+  opacity: 0.88;
+  padding: var(--ring-padding, 1px);
+}
+.note-actions .icon-btn:nth-child(2)::after {
+  background:
+    conic-gradient(from 250deg at 42% 60%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 60deg,
+      rgba(0,0,0,0.20) 140deg,
+      rgba(255,255,255,0.12) 220deg,
+      rgba(255,255,255,0.55) 360deg);
+  opacity: 0.75;
+  padding: 0.5px;
+}
+.note-actions .icon-btn:nth-child(3)::after {
+  background:
+    conic-gradient(from 190deg at 55% 45%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 70deg,
+      rgba(0,0,0,0.18) 150deg,
+      rgba(255,255,255,0.12) 230deg,
+      rgba(255,255,255,0.55) 360deg);
+  opacity: 0.82;
+  padding: 0.75px;
+}
+
+.domain-actions .icon-btn:nth-child(1) {
+  --btn-shimmer: conic-gradient(from 140deg at 60% 40%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 65deg,
+      rgba(0,0,0,0.20) 145deg,
+      rgba(255,255,255,0.12) 225deg,
+      rgba(255,255,255,0.55) 360deg);
+  --ring-opacity: 0.86;
+  --ring-padding: 1px;
+}
+.domain-actions .icon-btn:nth-child(2) {
+  --btn-shimmer: conic-gradient(from 300deg at 40% 62%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 60deg,
+      rgba(0,0,0,0.20) 140deg,
+      rgba(255,255,255,0.12) 220deg,
+      rgba(255,255,255,0.55) 360deg);
+  --ring-opacity: 0.74;
+  --ring-padding: 0.5px;
+}
+
+.header .icon-btn:nth-child(1) {
+  --btn-shimmer: conic-gradient(from 90deg at 56% 44%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 70deg,
+      rgba(0,0,0,0.18) 150deg,
+      rgba(255,255,255,0.12) 230deg,
+      rgba(255,255,255,0.55) 360deg);
+  --ring-opacity: 0.85;
+  --ring-padding: 0.85px;
+}
+.header .icon-btn:nth-child(2) {
+  --btn-shimmer: conic-gradient(from 230deg at 44% 58%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 60deg,
+      rgba(0,0,0,0.20) 140deg,
+      rgba(255,255,255,0.12) 220deg,
+      rgba(255,255,255,0.55) 360deg);
+  --ring-opacity: 0.76;
+  --ring-padding: 0.6px;
+}
+
+/* Default shimmer, can be overridden via --btn-shimmer per instance */
+.note-actions .icon-btn::after {
+  background: var(--btn-shimmer,
+    conic-gradient(from 160deg at 50% 50%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 70deg,
+      rgba(0,0,0,0.18) 140deg,
+      rgba(255,255,255,0.12) 220deg,
+      rgba(255,255,255,0.55) 360deg));
+}
+
+.domain-actions .icon-btn::after {
+  background:
+    conic-gradient(from 220deg at 50% 50%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 70deg,
+      rgba(0,0,0,0.18) 140deg,
+      rgba(255,255,255,0.12) 220deg,
+      rgba(255,255,255,0.55) 360deg);
+}
+
+.site-icon .icon-btn::after {
+  background:
+    conic-gradient(from 120deg at 50% 50%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 70deg,
+      rgba(0,0,0,0.18) 140deg,
+      rgba(255,255,255,0.12) 220deg,
+      rgba(255,255,255,0.55) 360deg);
+}
+
+.header .icon-btn::after {
+  background:
+    conic-gradient(from 280deg at 50% 50%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 70deg,
+      rgba(0,0,0,0.18) 140deg,
+      rgba(255,255,255,0.12) 220deg,
+      rgba(255,255,255,0.55) 360deg);
 }
 .domain-actions .icon-btn svg {
   width: 14px;
   height: 14px;
-  opacity: 0.9;
+  opacity: var(--ring-opacity, 0.9);
+  transform: rotate(0deg);
+  transform-origin: 50% 50%;
+  will-change: transform;
 }
 .domain-group-header {
   display: flex;
@@ -106,7 +246,7 @@ html, body {
 .site-icon {
   width: 32px;
   height: 32px;
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
   display: block;
 }
@@ -143,7 +283,7 @@ html, body {
   justify-content: center;
   background: var(--bg-primary); /* match card background; avoid default white */
   border: 1px solid var(--border-color);
-  border-radius: 8px; /* revert to original shape; sizes unchanged */
+  border-radius: 50%;
   color: var(--text-secondary);
   cursor: pointer;
   transition: background 160ms ease, color 120ms ease, border-color 160ms ease, transform 120ms ease, box-shadow 160ms ease;
@@ -186,7 +326,7 @@ html, body {
   width: 36px;
   height: 36px;
   border: none;
-  border-radius: 10px;
+  border-radius: 50%;
   background: var(--bg-primary); /* stronger contrast vs canvas */
   border: 1px solid var(--border-color);
   backdrop-filter: blur(var(--backdrop-blur));
@@ -229,7 +369,7 @@ html, body {
 .icon-btn.sm {
   width: 28px;
   height: 28px;
-  border-radius: 8px;
+  border-radius: 50%;
 }
 
 .icon-btn.glass {
@@ -252,7 +392,7 @@ html, body {
   /* More distinct than title/filter surfaces */
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 16px;
   box-shadow: inset 0 1px 0 var(--shadow-light);
 }
 
@@ -272,7 +412,7 @@ html, body {
   width: 100%;
   height: 40px;
   border: 1px solid transparent; /* inner field blends into wrapper */
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 0 36px 0 36px; /* room for icons */
   background: transparent; /* inherit wrapper tone */
   color: var(--text-primary);
@@ -297,7 +437,7 @@ html, body {
   width: 24px;
   height: 24px;
   border: none;
-  border-radius: 3px;
+  border-radius: 6px;
   background: none;
   color: var(--text-secondary);
   cursor: pointer;
@@ -327,9 +467,11 @@ html, body {
   align-items: stretch;
   justify-content: center;
   width: 100%; /* ensure full width so pills fill */
-  border-radius: 10px; /* rounded ends for the band */
+  border-radius: 14px; /* rounded ends for the band */
   padding: 0;
   box-sizing: border-box;
+  position: relative;
+  isolation: isolate;
 }
 
 .filter-wrapper:hover {
@@ -361,14 +503,40 @@ html, body {
   position: relative; /* allow z-index stacking to hide seams */
 }
 
+/* Shimmering outline for filter buttons (subtle by default, stronger on hover) */
+.filter-option::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  padding: 1px;
+  background:
+    conic-gradient(from 220deg at 50% 50%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 70deg,
+      rgba(0,0,0,0.18) 140deg,
+      rgba(255,255,255,0.12) 220deg,
+      rgba(255,255,255,0.55) 360deg);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  opacity: 0.75;
+}
+
 /* Round only the ends of the pill group */
 .filter-option:first-child {
-  border-top-left-radius: 10px;
-  border-bottom-left-radius: 10px;
+  border-top-left-radius: 14px;
+  border-bottom-left-radius: 14px;
 }
 .filter-option:last-child {
-  border-top-right-radius: 10px;
-  border-bottom-right-radius: 10px;
+  border-top-right-radius: 14px;
+  border-bottom-right-radius: 14px;
 }
 
 /* Revert overlap; keep normal spacing so wrapper band is intact */
@@ -380,6 +548,9 @@ html, body {
   border-color: transparent; /* keep outline hidden on hover */
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 3px 10px rgba(0,0,0,0.09);
 }
+
+/* Make shimmer ring a bit more noticeable on hover */
+.filter-option:hover::after { opacity: 0.9; }
 
 .filter-option.active {
   /* Accent-tinted glass */
@@ -440,26 +611,60 @@ html, body {
   padding: 8px 12px; /* keep spacing for content */
   background: transparent; /* hide container */
   border: 1px solid transparent; /* remove outline */
-  border-radius: 12px; /* keep layout rounding without visible border */
+  border-radius: 16px; /* keep layout rounding without visible border */
   box-shadow: none; /* remove inner line */
   position: relative;
   z-index: 1; /* sit above the band */
 }
 
-/* Hide per-note actions inside domain dropdown list */
-.domain-notes-list .note-sidebar,
-.domain-notes-list .note-actions {
+/* All Notes only: hide per-note actions inside domain dropdown list */
+html[data-view="all_notes"] .domain-notes-list .note-sidebar,
+html[data-view="all_notes"] .domain-notes-list .note-actions {
   opacity: 0;
   pointer-events: none;
   transition: opacity 150ms ease;
 }
 
-.domain-notes-list .note-item:hover .note-sidebar,
-.domain-notes-list .note-item:hover .note-actions,
-.domain-notes-list .note-item:focus-within .note-sidebar,
-.domain-notes-list .note-item:focus-within .note-actions {
+html[data-view="all_notes"] .domain-notes-list .note-item:hover .note-sidebar,
+html[data-view="all_notes"] .domain-notes-list .note-item:hover .note-actions,
+html[data-view="all_notes"] .domain-notes-list .note-item:focus-within .note-sidebar,
+html[data-view="all_notes"] .domain-notes-list .note-item:focus-within .note-actions {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* All Notes only: hide note UI buttons until hover/focus (top-level notes only) */
+html[data-view="all_notes"] .notes-list > .note-item .note-sidebar,
+html[data-view="all_notes"] .notes-list > .note-item .note-actions {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+html[data-view="all_notes"] .notes-list > .note-item:hover .note-sidebar,
+html[data-view="all_notes"] .notes-list > .note-item:hover .note-actions,
+html[data-view="all_notes"] .notes-list > .note-item:focus-within .note-sidebar,
+html[data-view="all_notes"] .notes-list > .note-item:focus-within .note-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Site/Page views: always show note actions (override hover-hide) */
+html[data-view="site"] .notes-list .note-item .note-sidebar,
+html[data-view="site"] .notes-list .note-item .note-actions,
+html[data-view="site"] .domain-notes-list .note-sidebar,
+html[data-view="site"] .domain-notes-list .note-actions,
+html[data-view="page"] .notes-list .note-item .note-sidebar,
+html[data-view="page"] .notes-list .note-item .note-actions,
+html[data-view="page"] .domain-notes-list .note-sidebar,
+html[data-view="page"] .domain-notes-list .note-actions,
+/* Fallback: in Site/Page, force all note items’ actions visible regardless of container */
+html[data-view="site"] .note-item .note-sidebar,
+html[data-view="site"] .note-item .note-actions,
+html[data-view="page"] .note-item .note-sidebar,
+html[data-view="page"] .note-item .note-actions {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transition: none !important;
 }
 
 .notes-header:hover {
@@ -477,7 +682,7 @@ html, body {
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  border-radius: 10px;
+  border-radius: 14px;
   /* Accent-tinted glass like filter active */
   background: linear-gradient(
     180deg,
@@ -493,6 +698,8 @@ html, body {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), 0 3px 10px rgba(0,0,0,0.12);
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  position: relative;
+  isolation: isolate;
 }
 
 .add-note-btn:hover {
@@ -671,13 +878,15 @@ html[data-compact="1"] .notes-list {
 .domain-actions .icon-btn {
   width: 32px;
   height: 32px;
-  border-radius: 10px;
+  border-radius: 50%;
   /* Glass base */
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-inset), var(--glass-shadow);
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  position: relative;
+  isolation: isolate; /* contain pseudo-element blending */
 }
 .note-actions .icon-btn svg,
 .domain-actions .icon-btn svg {
@@ -830,7 +1039,7 @@ html[data-compact="1"] .domain-notes-list {
 .note-item {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 8px 10px;
   margin-bottom: 6px;
   cursor: pointer;
@@ -852,17 +1061,19 @@ html[data-compact="1"] .domain-notes-list {
 
 /* Round corners more for top-level notes (not inside dropdown domain groups) */
 .notes-list > .note-item {
-  border-radius: 12px;
+  border-radius: 20px;
   /* Apply same layered background effect as domain groups */
   background-image:
     radial-gradient(100% 150% at 0% -20%, rgba(255,255,255,0.07), transparent 55%),
     linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03)),
     linear-gradient(135deg, color-mix(in oklab, var(--accent-primary) 6%, transparent), transparent 75%);
+  position: relative;
+  isolation: isolate;
 }
 
 /* Apply same rounding to notes inside dropdown domain groups */
 .domain-notes-list .note-item {
-  border-radius: 12px;
+  border-radius: 20px;
 }
 
 /* Delete buttons: match New Note accent glass with white icon (except confirm/danger) */
@@ -1018,7 +1229,7 @@ html[data-compact="1"] .domain-notes-list {
 .domain-group {
   margin-bottom: 6px; /* match note item spacing */
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 20px;
   background: var(--bg-primary); /* lighter element background */
   background-image:
     radial-gradient(100% 150% at 0% -20%, rgba(255,255,255,0.07), transparent 55%),
@@ -1028,6 +1239,69 @@ html[data-compact="1"] .domain-notes-list {
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
   box-shadow: inset 0 1px 0 var(--shadow-light);
+  position: relative;
+  isolation: isolate;
+}
+
+/* Shimmering glass outline (neutral glass) */
+.note-actions .icon-btn::after,
+.domain-actions .icon-btn::after,
+.header .icon-btn::after,
+.site-icon .icon-btn::after,
+.search-wrapper::after,
+.filter-wrapper::after,
+.notes-list > .note-item::after,
+.domain-group::after {
+  content: "";
+  position: absolute;
+  inset: 0; /* sit on top of border */
+  border-radius: inherit;
+  pointer-events: none;
+  padding: 1px; /* outline thickness */
+  background:
+    conic-gradient(from 200deg at 50% 50%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 70deg,
+      rgba(0,0,0,0.18) 140deg,
+      rgba(255,255,255,0.12) 220deg,
+      rgba(255,255,255,0.55) 360deg);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude; /* show only ring */
+  mix-blend-mode: normal; /* stable across themes */
+  opacity: 0.9;
+}
+
+/* Accent-tinted glass outline for accent surfaces */
+.add-note-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  padding: 0.5px;
+  background:
+    conic-gradient(from 200deg at 50% 50%,
+      color-mix(in oklab, var(--accent-primary) 65%, white 35%) 0deg,
+      color-mix(in oklab, var(--accent-primary) 20%, white 0%) 70deg,
+      color-mix(in oklab, var(--accent-primary) 20%, black 60%) 140deg,
+      color-mix(in oklab, var(--accent-primary) 30%, white 10%) 220deg,
+      color-mix(in oklab, var(--accent-primary) 65%, white 35%) 360deg);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  mix-blend-mode: normal;
+  opacity: 0.72;
 }
 
 .domain-group-header {
@@ -1115,7 +1389,7 @@ html[data-compact="1"] .ad-placeholder {
   width: 100%;
   height: 48px;
   border: 1px dashed var(--border-color);
-  border-radius: 8px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -21,6 +21,40 @@
   box-sizing: border-box;
 }
 
+/* Vary shimmer direction for editor controls */
+.back-btn::after { background:
+  conic-gradient(from 140deg at 50% 50%,
+    rgba(255,255,255,0.55) 0deg,
+    rgba(255,255,255,0.10) 70deg,
+    rgba(0,0,0,0.18) 140deg,
+    rgba(255,255,255,0.12) 220deg,
+    rgba(255,255,255,0.55) 360deg);
+}
+.delete-btn::after { background:
+  conic-gradient(from 200deg at 50% 50%,
+    rgba(255,255,255,0.55) 0deg,
+    rgba(255,255,255,0.10) 70deg,
+    rgba(0,0,0,0.18) 140deg,
+    rgba(255,255,255,0.12) 220deg,
+    rgba(255,255,255,0.55) 360deg);
+}
+.ai-rewrite-btn::after { background:
+  conic-gradient(from 260deg at 50% 50%,
+    rgba(255,255,255,0.55) 0deg,
+    rgba(255,255,255,0.10) 70deg,
+    rgba(0,0,0,0.18) 140deg,
+    rgba(255,255,255,0.12) 220deg,
+    rgba(255,255,255,0.55) 360deg);
+}
+.save-btn::after { background:
+  conic-gradient(from 320deg at 50% 50%,
+    rgba(255,255,255,0.55) 0deg,
+    rgba(255,255,255,0.10) 70deg,
+    rgba(0,0,0,0.18) 140deg,
+    rgba(255,255,255,0.12) 220deg,
+    rgba(255,255,255,0.55) 360deg);
+}
+
 /* Keep the editor in view once opened */
 .note-editor.open {
   transform: translateY(0);
@@ -37,11 +71,13 @@
   overflow: hidden;
 }
 
+/* removed header shimmer per request */
+
 .back-btn {
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 10px;
+  border-radius: 50%;
   background: var(--bg-primary); /* stronger contrast */
   border: 1px solid var(--border-color);
   color: var(--text-primary);
@@ -50,6 +86,12 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
+  position: relative;
+  isolation: isolate;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
+  line-height: 0;
+  box-sizing: border-box;
 }
 
 /* Strong focus ring for back button on dark bg */
@@ -64,17 +106,19 @@
   font-weight: 600;
   color: var(--text-primary);
   background: var(--bg-primary);
-  border: 1px solid var(--border-color);
+  border: 1px solid transparent;
   outline: none;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: 14px;
   transition: box-shadow 160ms ease, border-color 160ms ease, background 160ms ease, color 120ms ease;
   box-sizing: border-box; /* prevent layout shift on focus */
+  position: relative;
+  isolation: isolate;
 }
 
 #noteTitleHeader:focus-visible,
 #noteTitleHeader:focus {
-  border-color: var(--border-color);
+  border-color: transparent;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.06);
 }
 
@@ -116,16 +160,25 @@ html[data-compact="1"] .save-btn {
 .save-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  gap: 0;
   border: 1px solid var(--border-color);
-  border-radius: 10px;
-  background: var(--bg-primary); /* match adjacent editor buttons */
+  border-radius: 50%;
+  background: var(--bg-primary);
   color: var(--text-primary);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  position: relative;
+  isolation: isolate;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
+  line-height: 0;
+  box-sizing: border-box;
 }
 
 .save-btn:hover {
@@ -155,7 +208,7 @@ html[data-compact="1"] .save-btn {
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 10px;
+  border-radius: 50%;
   background: var(--bg-primary); /* stronger contrast */
   border: 1px solid var(--border-color);
   color: #ff4757;
@@ -164,6 +217,12 @@ html[data-compact="1"] .save-btn {
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
+  position: relative;
+  isolation: isolate;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
+  line-height: 0;
+  box-sizing: border-box;
 }
 
 .delete-btn:hover {
@@ -179,7 +238,7 @@ html[data-compact="1"] .save-btn {
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 10px;
+  border-radius: 50%;
   background: var(--bg-primary); /* stronger contrast */
   border: 1px solid var(--border-color);
   color: var(--text-primary);
@@ -188,6 +247,12 @@ html[data-compact="1"] .save-btn {
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
+  position: relative;
+  isolation: isolate;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
+  line-height: 0;
+  box-sizing: border-box;
 }
 
 .ai-rewrite-btn:hover {
@@ -217,7 +282,7 @@ html[data-compact="1"] .save-btn {
   min-height: 0;  /* allow flex item to grow/shrink */
   /* no max-height so it can take available space */
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--bg-secondary);
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
@@ -230,6 +295,8 @@ html[data-compact="1"] .save-btn {
   font-family: inherit;
   box-shadow: inset 0 1px 0 var(--shadow-light);
   overflow-y: auto; /* scroll inside the editor box */
+  position: relative;
+  isolation: isolate;
 }
 
 .note-content-input:focus-visible,
@@ -241,11 +308,13 @@ html[data-compact="1"] .save-btn {
 .note-content-preview {
   flex: 1;
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 16px;
   background: var(--bg-secondary);
   padding: 12px;
   font-size: 14px;
   color: var(--text-primary);
+  position: relative;
+  isolation: isolate;
 }
 
 /* Editor Meta */
@@ -278,12 +347,50 @@ gap: 8px;
   max-width: 80%;
   width: 100%;
   padding: 6px 10px;
-  border-radius: 10px;
+  border-radius: 14px;
   border: 1px solid var(--border-color);
   background: var(--bg-primary);
   color: var(--text-primary);
   outline: none;
   box-shadow: inset 0 1px 0 var(--shadow-light);
+  position: relative;
+  isolation: isolate;
+}
+
+/* Hide label to keep save circular */
+.save-btn span { display: none; }
+
+/* Shimmering glass outline around editor controls & fields */
+.back-btn::after,
+.delete-btn::after,
+.ai-rewrite-btn::after,
+.save-btn::after,
+.note-editor .tags-input::after,
+.note-content-input::after,
+.note-content-preview::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  padding: 1px;
+  background:
+    conic-gradient(from 200deg at 50% 50%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 70deg,
+      rgba(0,0,0,0.18) 140deg,
+      rgba(255,255,255,0.12) 220deg,
+      rgba(255,255,255,0.55) 360deg);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  mix-blend-mode: normal;
+  opacity: 0.9;
 }
 .note-editor .tags-input:hover {
   background: color-mix(in oklab, var(--bg-primary) 85%, white 15%);
