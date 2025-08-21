@@ -53,15 +53,32 @@ class NotesStorage {
     });
   }
 
-  // Add or update a note
   async saveNote(note) {
     if (!this.db) await this.init();
-
+  
+    // 1. ENCRYPT THE NOTE BEFORE SAVING
+    let userKey;
+    try {
+      userKey = await window.supabaseClient?.getUserEncryptionKey();
+      if (userKey) {
+        const encryptedNote = await window.noteEncryption.encryptNoteForCloud(note, userKey);
+        // Update the note with encrypted fields
+        note.title_encrypted = encryptedNote.title_encrypted;
+        note.content_encrypted = encryptedNote.content_encrypted;
+        note.content_hash = encryptedNote.content_hash;
+      }
+    } catch (error) {
+      console.warn('Failed to encrypt note, saving unencrypted:', error);
+    }
+  
+    // 2. INCREMENT VERSION NUMBER
+    note.version = (note.version || 1) + 1;
+  
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(['notes', 'versions'], 'readwrite');
       const notesStore = transaction.objectStore('notes');
       const versionsStore = transaction.objectStore('versions');
-
+  
       // Save current version to history before updating
       if (note.version > 1) {
         const versionRecord = {
@@ -74,36 +91,15 @@ class NotesStorage {
         };
         versionsStore.add(versionRecord);
       }
-
+  
       // Update search index
       this.updateSearchIndex(note);
-
+  
       const request = notesStore.put(note);
-      request.onsuccess = () => resolve(note);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  // Get notes by domain
-  async getNotesByDomain(domain, includeUrlSpecific = true) {
-    if (!this.db) await this.init();
-
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction(['notes'], 'readonly');
-      const store = transaction.objectStore('notes');
-      const index = store.index('domain');
-      const request = index.getAll(domain);
-
       request.onsuccess = () => {
-        let notes = request.result;
-        
-        if (!includeUrlSpecific) {
-          notes = notes.filter(note => !note.isUrlSpecific);
-        }
-        
-        // Sort by updatedAt descending
-        notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-        resolve(notes);
+        // EMIT EVENT TO TRIGGER SYNC
+        window.eventBus?.emit('notes:updated', { noteId: note.id, note });
+        resolve(note);
       };
       request.onerror = () => reject(request.error);
     });
@@ -131,13 +127,41 @@ class NotesStorage {
   // Get a single note by ID
   async getNote(id) {
     if (!this.db) await this.init();
-
-    return new Promise((resolve, reject) => {
+  
+    return new Promise(async (resolve, reject) => {
       const transaction = this.db.transaction(['notes'], 'readonly');
       const store = transaction.objectStore('notes');
       const request = store.get(id);
-
-      request.onsuccess = () => resolve(request.result);
+  
+      request.onsuccess = async () => {
+        const storedNote = request.result;
+        if (!storedNote) {
+          resolve(null);
+          return;
+        }
+  
+        // Check if note is already encrypted
+        if (storedNote.content_encrypted && storedNote.title_encrypted) {
+          // Note is encrypted - decrypt it
+          try {
+            const userKey = await window.supabaseClient?.getUserEncryptionKey();
+            if (userKey) {
+              const decryptedNote = await window.noteEncryption.decryptNoteFromCloud(storedNote, userKey);
+              resolve(decryptedNote);
+            } else {
+              resolve(storedNote); // Fallback
+            }
+          } catch (error) {
+            console.warn('Failed to decrypt note, returning encrypted version:', error);
+            resolve(storedNote);
+          }
+        } else {
+          // Note is NOT encrypted - return as-is (this is the current case)
+          console.log('Note not encrypted, returning unencrypted version:', storedNote.id);
+          resolve(storedNote);
+        }
+      };
+      
       request.onerror = () => reject(request.error);
     });
   }
