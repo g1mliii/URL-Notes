@@ -1668,7 +1668,37 @@ class URLNotesApp {
     // Sort master list again to be safe
     this.allNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
-    if (opts.showToast) Utils.showToast('Note saved!');
+    try {
+      // Save locally first
+      await this.storageManager.saveNote(this.currentNote);
+      
+      // Show "Note Saved" popup
+      this.showNoteSavedPopup('Note saved locally');
+      
+      // If user is premium and authenticated, sync to cloud
+      if (window.supabaseClient?.isAuthenticated() && window.syncEngine?.canSync()) {
+        try {
+          // Show sync in progress
+          this.showNoteSavedPopup('Syncing to cloud...', 'sync');
+          
+          // Perform sync
+          await window.syncEngine.pushToCloud();
+          
+          // Show sync success
+          this.showNoteSavedPopup('Synced to cloud', 'synced');
+          
+        } catch (syncError) {
+          console.error('Sync failed:', syncError);
+          // Show sync error but keep "Note Saved" message
+          this.showNoteSavedPopup('Note saved (sync failed)', 'sync-error');
+        }
+      }
+      
+    } catch (error) {
+      console.error('Save failed:', error);
+      this.showNoteSavedPopup('Save failed', 'error');
+    }
+
     // Clear draft and/or close according to options
     if (opts.closeEditorAfterSave) {
       this.editorManager.closeEditor({ clearDraft: !!opts.clearDraftAfterSave });
@@ -1688,6 +1718,76 @@ class URLNotesApp {
       // Still need to re-render to show the saved note
       this.render();
     }
+  }
+
+  // Add new method for sync-aware popup
+  showNoteSavedPopup(message, type = 'saved') {
+    const popup = document.createElement('div');
+    popup.className = `note-saved-popup ${type}`;
+    
+    let icon = '✓';
+    let bgColor = 'var(--accent-primary)';
+    
+    switch (type) {
+      case 'sync':
+        icon = '⟳';
+        bgColor = 'var(--accent-secondary)';
+        break;
+      case 'synced':
+        icon = '✓';
+        bgColor = 'var(--accent-primary)';
+        break;
+      case 'sync-error':
+        icon = '⚠';
+        bgColor = '#ff6b6b';
+        break;
+      case 'error':
+        icon = '✗';
+        bgColor = '#ff6b6b';
+        break;
+    }
+    
+    popup.innerHTML = `
+      <div class="popup-content">
+        <span class="popup-icon">${icon}</span>
+        <span class="popup-message">${message}</span>
+      </div>
+    `;
+    
+    popup.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${bgColor};
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 10000;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      max-width: 300px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    `;
+    
+    document.body.appendChild(popup);
+    
+    // Animate in
+    setTimeout(() => {
+      popup.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // Auto-hide after delay
+    setTimeout(() => {
+      popup.style.transform = 'translateX(100%)';
+      setTimeout(() => {
+        if (popup.parentNode) {
+          popup.parentNode.removeChild(popup);
+        }
+      }, 300);
+    }, type === 'sync' ? 2000 : 3000);
   }
 
   // Delete current note (from editor)

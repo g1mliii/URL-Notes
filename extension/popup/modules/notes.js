@@ -239,7 +239,7 @@ class NotesManager {
                   <line x1="10" y1="14" x2="21" y2="3"></line>
                 </svg>
               </button>
-              ${window.notesStorage?.isVersionHistoryAvailable ? `
+              ${window.notesStorage?.isVersionHistoryAvailable() ? `
               <button class="icon-btn sm version-history-btn" title="Version History">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2"/>
@@ -312,6 +312,101 @@ class NotesManager {
       }, 2000);
     } catch (_) {
       onConfirm && onConfirm();
+    }
+  }
+
+  // Add method to show version history
+  async showVersionHistory(note) {
+    try {
+      const versions = await window.notesStorage.getVersionHistory(note.id);
+      
+      if (versions.length === 0) {
+        window.showToast('No version history available', 'info');
+        return;
+      }
+      
+      // Create version history dialog
+      const dialog = document.createElement('div');
+      dialog.className = 'version-history-dialog';
+      dialog.innerHTML = `
+        <div class="version-history-content">
+          <div class="version-history-header">
+            <h3>Version History</h3>
+            <button class="close-btn">&times;</button>
+          </div>
+          <div class="version-list">
+            ${versions.map((version, index) => `
+              <div class="version-item ${index === 0 ? 'current' : ''}">
+                <div class="version-header">
+                  <span class="version-number">v${version.version}</span>
+                  <span class="version-date">${new Date(version.createdAt).toLocaleDateString()}</span>
+                  ${index === 0 ? '<span class="current-badge">Current</span>' : ''}
+                </div>
+                <div class="version-preview">${this.buildPreviewHtml(version.content)}</div>
+                <button class="restore-btn" data-version="${version.version}">Restore</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      
+      // Add event listeners
+      dialog.querySelector('.close-btn').addEventListener('click', () => {
+        document.body.removeChild(dialog);
+      });
+      
+      dialog.querySelectorAll('.restore-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const versionNum = parseInt(e.target.dataset.version);
+          await this.restoreVersion(note.id, versionNum);
+          document.body.removeChild(dialog);
+        });
+      });
+      
+      document.body.appendChild(dialog);
+      
+    } catch (error) {
+      console.error('Failed to show version history:', error);
+      window.showToast('Failed to load version history', 'error');
+    }
+  }
+
+  // Add method to restore a version
+  async restoreVersion(noteId, versionNum) {
+    try {
+      const versions = await window.notesStorage.getVersionHistory(noteId);
+      const targetVersion = versions.find(v => v.version === versionNum);
+      
+      if (!targetVersion) {
+        throw new Error('Version not found');
+      }
+      
+      // Get current note
+      const currentNote = await window.notesStorage.getNote(noteId);
+      if (!currentNote) {
+        throw new Error('Note not found');
+      }
+      
+      // Create new version with restored content
+      const restoredNote = {
+        ...currentNote,
+        title: targetVersion.title,
+        content: targetVersion.content,
+        version: currentNote.version + 1,
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Save the restored note
+      await window.notesStorage.saveNote(restoredNote);
+      
+      // Refresh the UI
+      window.eventBus?.emit('notes:updated', { noteId });
+      
+      window.showToast('Version restored successfully', 'success');
+      
+    } catch (error) {
+      console.error('Failed to restore version:', error);
+      window.showToast('Failed to restore version', 'error');
     }
   }
 
