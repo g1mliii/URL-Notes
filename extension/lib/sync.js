@@ -145,9 +145,11 @@ class SyncEngine {
       // Save versions before pushing
       for (const change of localChanges) {
         if (change.operation === 'update' && change.note) {
-          await window.storageManager.saveNoteVersion(change.note);
-          // Clean up old versions
-          await window.storageManager.cleanupOldVersions(change.note.id, 10);
+          // Save version for premium users
+          if (change.note && window.notesStorage?.isVersionHistoryAvailable?.()) {
+            await window.notesStorage.saveNoteVersion(change.note);
+            await window.notesStorage.cleanupOldVersions(change.note.id, 10);
+          }
         }
       }
       
@@ -184,13 +186,16 @@ class SyncEngine {
   // Get local changes since last sync
   async getLocalChanges() {
     try {
-      const allNotes = await window.storageManager.getAllNotes();
+      const allNotes = await window.notesStorage.getAllNotes();
       const changes = [];
       
       for (const note of allNotes) {
-        // Check if note was modified after last sync
-        if (!this.lastSyncTime || new Date(note.updatedAt) > new Date(this.lastSyncTime)) {
-          changes.push(note);
+        // Check if note was modified since last sync
+        if (new Date(note.updatedAt) > new Date(this.lastSyncTime || 0)) {
+          changes.push({
+            operation: 'update',
+            note: note
+          });
         }
       }
       
@@ -205,11 +210,11 @@ class SyncEngine {
   async mergeCloudNotes(cloudNotes) {
     try {
       for (const cloudNote of cloudNotes) {
-        const localNote = await window.storageManager.getNote(cloudNote.id);
+        const localNote = await window.notesStorage.getNote(cloudNote.id);
         
         if (!localNote) {
           // New note from cloud - add to local storage
-          await window.storageManager.saveNote(cloudNote);
+          await window.notesStorage.saveNote(cloudNote);
         } else {
           // Check for conflicts
           const hasConflict = await this.detectConflict(localNote, cloudNote);
@@ -217,10 +222,10 @@ class SyncEngine {
           if (hasConflict) {
             // Resolve conflict using last-write-wins
             const resolvedNote = await this.resolveConflict(localNote, cloudNote);
-            await window.storageManager.saveNote(resolvedNote);
+            await window.notesStorage.saveNote(resolvedNote);
           } else if (new Date(cloudNote.updatedAt) > new Date(localNote.updatedAt)) {
             // Cloud version is newer - update local
-            await window.storageManager.saveNote(cloudNote);
+            await window.notesStorage.saveNote(cloudNote);
           }
         }
       }
@@ -271,7 +276,7 @@ class SyncEngine {
       const resolvedNote = await this.resolveConflict(conflict.local, conflict.server);
       
       // Update local storage
-      await window.storageManager.saveNote(resolvedNote);
+      await window.notesStorage.saveNote(resolvedNote);
       
       // Mark as resolved in cloud
       await window.supabaseClient.resolveConflict(

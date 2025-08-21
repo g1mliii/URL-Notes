@@ -1722,38 +1722,43 @@ class URLNotesApp {
 
   // Add new method for sync-aware popup
   showNoteSavedPopup(message, type = 'saved') {
+    // Remove any existing popups first to prevent overlapping
+    const existingPopups = document.querySelectorAll('.note-saved-popup');
+    existingPopups.forEach(popup => {
+      if (popup.parentNode) {
+        popup.parentNode.removeChild(popup);
+      }
+    });
+
     const popup = document.createElement('div');
     popup.className = `note-saved-popup ${type}`;
-    
+
     let icon = '✓';
-    let bgColor = 'var(--accent-primary)';
-    
+    let bgColor = 'rgba(0, 122, 255, 0.9)';
+
     switch (type) {
       case 'sync':
         icon = '⟳';
-        bgColor = 'var(--accent-secondary)';
+        bgColor = 'rgba(255, 149, 0, 0.9)';
         break;
       case 'synced':
         icon = '✓';
-        bgColor = 'var(--accent-primary)';
+        bgColor = 'rgba(52, 199, 89, 0.9)';
         break;
       case 'sync-error':
         icon = '⚠';
-        bgColor = '#ff6b6b';
-        break;
-      case 'error':
-        icon = '✗';
-        bgColor = '#ff6b6b';
+        bgColor = 'rgba(255, 59, 48, 0.9)';
         break;
     }
-    
+
     popup.innerHTML = `
       <div class="popup-content">
         <span class="popup-icon">${icon}</span>
         <span class="popup-message">${message}</span>
       </div>
     `;
-    
+
+    // Apply the same styling as sync button toast
     popup.style.cssText = `
       position: fixed;
       top: 20px;
@@ -1762,32 +1767,32 @@ class URLNotesApp {
       color: white;
       padding: 12px 16px;
       border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       z-index: 10000;
-      transform: translateX(100%);
-      transition: transform 0.3s ease;
+      font-size: 14px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
       max-width: 300px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      animation: slideInRight 0.3s ease-out;
     `;
-    
+
     document.body.appendChild(popup);
-    
-    // Animate in
+
+    // Auto-remove after 3 seconds
     setTimeout(() => {
-      popup.style.transform = 'translateX(0)';
-    }, 100);
-    
-    // Auto-hide after delay
-    setTimeout(() => {
-      popup.style.transform = 'translateX(100%)';
-      setTimeout(() => {
-        if (popup.parentNode) {
-          popup.parentNode.removeChild(popup);
-        }
-      }, 300);
-    }, type === 'sync' ? 2000 : 3000);
+      if (popup.parentNode) {
+        popup.style.animation = 'slideOutRight 0.3s ease-in';
+        setTimeout(() => {
+          if (popup.parentNode) {
+            popup.parentNode.removeChild(popup);
+          }
+        }, 300);
+      }
+    }, 3000);
   }
 
   // Delete current note (from editor)
@@ -2143,6 +2148,79 @@ class URLNotesApp {
     } catch (error) {
       console.error('Error switching filter:', error);
     }
+  }
+
+  // Show notification message
+  showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    
+    let icon = 'ℹ';
+    let bgColor = 'rgba(0, 122, 255, 0.9)';
+    
+    switch (type) {
+      case 'success':
+        icon = '✓';
+        bgColor = 'rgba(52, 199, 89, 0.9)';
+        break;
+      case 'warning':
+        icon = '⚠';
+        bgColor = 'rgba(255, 149, 0, 0.9)';
+        break;
+      case 'error':
+        icon = '✗';
+        bgColor = 'rgba(255, 59, 48, 0.9)';
+        break;
+    }
+    
+    notification.innerHTML = `
+      <span class="notification-icon">${icon}</span>
+      <span class="notification-message">${message}</span>
+    `;
+    
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${bgColor};
+      color: white;
+      padding: 12px 16px;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      z-index: 10000;
+      transform: translateX(100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      max-width: 300px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+      notification.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // Auto-hide after delay
+    setTimeout(() => {
+      notification.style.transform = 'translateX(100%)';
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      }, 300);
+    }, 3000);
   }
 
 }

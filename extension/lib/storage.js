@@ -480,30 +480,38 @@ class NotesStorage {
     });
   }
 
-  // Check if user has premium access for version history features
+  // Check if user has premium access
   async checkPremiumAccess() {
     try {
-      // Try to get premium status from storage
-      const { userTier } = await chrome.storage.local.get(['userTier']);
-      if (userTier && userTier.active && userTier.tier !== 'free') {
+      // Check if we have premium status cached in the app
+      if (window.urlNotesApp?.premiumStatus?.isPremium) {
         return true;
       }
-      
-      // Fallback: check if premium status exists in memory
-      if (window.premiumStatus && window.premiumStatus.isPremium) {
-        return true;
+      // Check chrome storage for cached premium status
+      const result = await chrome.storage.local.get(['userTier']);
+      if (result.userTier) {
+        return result.userTier.active && result.userTier.tier !== 'free';
       }
-      
+      // If no cached status, check with Supabase
+      if (window.supabaseClient?.isAuthenticated()) {
+        const status = await window.supabaseClient.getSubscriptionStatus();
+        return status.active && status.tier !== 'free';
+      }
       return false;
     } catch (error) {
-      console.warn('Failed to check premium status:', error);
+      console.error('Error checking premium access:', error);
       return false;
     }
   }
 
-  // Check if version history is available for UI purposes
+  // Check if version history is available
   async isVersionHistoryAvailable() {
-    return await this.checkPremiumAccess();
+    try {
+      return await this.checkPremiumAccess();
+    } catch (error) {
+      console.error('Error checking version history availability:', error);
+      return false;
+    }
   }
 
   // Get version count for a note (always available, but content access requires premium)

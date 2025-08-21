@@ -34,6 +34,9 @@ class SettingsManager {
     this.authSignOutBtn = document.getElementById('authSignOutBtn');
     this.authStatusText = document.getElementById('authStatusText');
     
+    // Sync elements
+    this.manualSyncBtn = document.getElementById('manualSyncBtn');
+    
     this.currentFont = 'Default';
     this.currentFontSize = 12;
     
@@ -74,14 +77,17 @@ class SettingsManager {
         if (syncManagement) {
           try {
             const status = await window.supabaseClient?.getSubscriptionStatus?.();
+            console.log('Premium status check:', status);
             const shouldShow = status?.active && status?.tier !== 'free';
+            console.log('Should show sync management:', shouldShow);
             show(syncManagement, shouldShow);
             
             // Update storage usage if sync is visible
             if (shouldShow) {
               this.updateStorageUsage();
             }
-          } catch (_) {
+          } catch (e) {
+            console.error('Error checking premium status:', e);
             show(syncManagement, false);
           }
         }
