@@ -1,73 +1,5 @@
-// Simple IndexedDB storage for background script context menu
-let notesStorage = null;
-
-async function initStorage() {
-  if (!notesStorage) {
-    notesStorage = {
-      dbName: 'URLNotesDB',
-      version: 1,
-      db: null,
-      
-      async init() {
-        return new Promise((resolve, reject) => {
-          const request = indexedDB.open(this.dbName, this.version);
-          
-          request.onerror = () => reject(request.error);
-          request.onsuccess = () => {
-            this.db = request.result;
-            resolve();
-          };
-          
-          request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            
-            // Notes store
-            if (!db.objectStoreNames.contains('notes')) {
-              const notesStore = db.createObjectStore('notes', { keyPath: 'id' });
-              notesStore.createIndex('domain', 'domain', { unique: false });
-              notesStore.createIndex('updatedAt', 'updatedAt', { unique: false });
-            }
-          };
-        });
-      },
-      
-      async saveNote(note) {
-        if (!this.db) await this.init();
-        
-        return new Promise((resolve, reject) => {
-          const transaction = this.db.transaction(['notes'], 'readwrite');
-          const store = transaction.objectStore('notes');
-          const request = store.put(note);
-          
-          request.onsuccess = () => resolve();
-          request.onerror = () => reject(request.error);
-        });
-      },
-      
-      async getNotesByDomain(domain) {
-        if (!this.db) await this.init();
-        
-        return new Promise((resolve, reject) => {
-          const transaction = this.db.transaction(['notes'], 'readonly');
-          const store = transaction.objectStore('notes');
-          const index = store.index('domain');
-          const request = index.getAll(domain);
-          
-          request.onsuccess = () => {
-            const notes = request.result || [];
-            const activeNotes = notes.filter(note => !note.is_deleted);
-            activeNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-            resolve(activeNotes);
-          };
-          request.onerror = () => reject(request.error);
-        });
-      }
-    };
-    
-    await notesStorage.init();
-  }
-  return notesStorage;
-}
+// Context menu now uses the same storage system as the main extension
+// No separate storage abstraction needed
 
 // Keyboard commands
 try {
@@ -192,7 +124,20 @@ setupContextMenus();
 async function addSelectionToNewNote(info, tab) {
   const { selectionText, pageUrl } = info;
   const { title, favIconUrl } = tab;
+  
+  // Validate that we have a proper URL and domain
+  if (!pageUrl || !pageUrl.startsWith('http')) {
+    console.error('Context menu: Invalid pageUrl:', pageUrl);
+    return;
+  }
+  
   const domain = new URL(pageUrl).hostname;
+  if (!domain || domain === 'localhost') {
+    console.error('Context menu: Invalid domain:', domain);
+    return;
+  }
+  
+  console.log('Context menu: Creating note for domain:', domain, 'from URL:', pageUrl);
 
   // 1. Prepare display text and Text Fragment URL
   const parts = getClipParts(selectionText, pageUrl);
@@ -219,37 +164,25 @@ async function addSelectionToNewNote(info, tab) {
     version: 1
   };
 
-      // 4. Save the note to IndexedDB storage
-    try {
-      const storage = await initStorage();
-      await storage.saveNote(newNote);
-      console.log('New note saved from selection:', newNote);
-      
-      // 5. Mark last action so popup can prioritize showing this note
-      await chrome.storage.local.set({ 
-        lastAction: { 
-          type: 'new_from_selection', 
-          domain, 
-          noteId: newNote.id, 
-          ts: Date.now() 
-        } 
-      });
-      
-      // 6. Notify all popups about the new note
-      try {
-        chrome.runtime.sendMessage({
-          action: 'note_updated',
-          note: newNote,
-          type: 'new_note'
-        }).catch(() => {
-          // Popup might not be open, that's okay - this is expected
-        });
-      } catch (e) {
-        // Popup might not be open, that's okay - this is expected
-      }
-      
-      // 7. Open the extension UI to show the result
-      openExtensionUi();
+  // 4. Save the note using the same storage system as main extension
+  try {
+    // Store note in chrome.storage.local with proper key (same as main extension)
+    const key = `note_${newNote.id}`;
+    await chrome.storage.local.set({ [key]: newNote });
+    console.log('Context menu: New note saved to chrome.storage.local with key:', key);
+    
+    // 5. Mark last action so popup can prioritize showing this note
+    await chrome.storage.local.set({ 
+      lastAction: { 
+        type: 'new_from_selection', 
+        domain, 
+        noteId: newNote.id, 
+        ts: Date.now() 
+      } 
+    });
+    
+    // 6. Open the extension UI to show the result
+    openExtensionUi();
 
   } catch (error) {
     console.error('Failed to save new note from selection:', error);
@@ -259,31 +192,54 @@ async function addSelectionToNewNote(info, tab) {
 // Function: append selection to most recently updated note for this domain
 async function addSelectionToExistingNote(info, tab) {
   const { selectionText, pageUrl } = info;
+  
+  // Validate that we have a proper URL and domain
+  if (!pageUrl || !pageUrl.startsWith('http')) {
+    console.error('Context menu: Invalid pageUrl:', pageUrl);
+    return;
+  }
+  
   const domain = new URL(pageUrl).hostname;
+  if (!domain || domain === 'localhost') {
+    console.error('Context menu: Invalid domain:', domain);
+    return;
+  }
+  
+  console.log('Context menu: Adding to existing note for domain:', domain, 'from URL:', pageUrl);
+  
   const parts = getClipParts(selectionText, pageUrl);
   if (!parts) return;
   const { displayText, fragmentUrl } = parts;
   const bullet = `- [${displayText}](${fragmentUrl})`;
 
   try {
-    const storage = await initStorage();
-    
-    // Check for cached editor state first to avoid overwriting unsaved changes
+    // Check for cached editor state first (like AI rewrite system)
     const { editorState } = await chrome.storage.local.get(['editorState']);
     let targetNote = null;
+    let isDraftNote = false;
     
     // If editor is open with unsaved changes, use the cached note
     if (editorState && editorState.open && editorState.noteDraft) {
       const cachedNote = editorState.noteDraft;
       if (cachedNote.domain === domain) {
-        targetNote = cachedNote;
-        console.log('Using cached note from editor for context menu append');
+        targetNote = { ...cachedNote }; // Copy to avoid modifying original
+        isDraftNote = true;
+        console.log('Context menu: Appending to open draft note for domain:', domain);
       }
     }
     
-    // If no cached note, get from IndexedDB storage
+    // If no cached note, get from storage
     if (!targetNote) {
-      const notes = await storage.getNotesByDomain(domain);
+      try {
+        // Use the same storage system as the main extension
+        const allKeys = await chrome.storage.local.get(null);
+        const notes = [];
+        
+        for (const [key, value] of Object.entries(allKeys)) {
+          if (key.startsWith('note_') && value && value.domain === domain && !value.is_deleted) {
+            notes.push(value);
+          }
+        }
       if (notes.length === 0) {
         // No existing note for this domain; fallback to creating a new one
         return addSelectionToNewNote(info, tab);
@@ -291,40 +247,81 @@ async function addSelectionToExistingNote(info, tab) {
       // Pick most recently updated
       notes.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
       targetNote = notes[0];
+      } catch (error) {
+        console.error('Context menu: Failed to get notes from storage, creating new note:', error);
+        return addSelectionToNewNote(info, tab);
+      }
     }
     
-    // Append to the target note
-    targetNote.content = (targetNote.content ? `${targetNote.content}\n` : '') + bullet;
-    targetNote.updatedAt = new Date().toISOString();
-    
-    // Save to IndexedDB storage
-    await storage.saveNote(targetNote);
-    
-    // Update cached editor state if it exists
-    if (editorState && editorState.open && editorState.noteDraft && editorState.noteDraft.id === targetNote.id) {
-      editorState.noteDraft = { ...targetNote };
+    if (isDraftNote) {
+      // For draft notes, ONLY update content and timestamp, preserve all other properties
+      const updatedDraft = {
+        ...targetNote,
+        content: (targetNote.content ? `${targetNote.content}\n` : '') + bullet,
+        updatedAt: new Date().toISOString()
+        // Keep original title, domain, url, pageTitle, etc. from the draft
+      };
+      
+      // Update the draft in chrome.storage.local to preserve unsaved changes
+      editorState.noteDraft = updatedDraft;
       await chrome.storage.local.set({ editorState });
-      console.log('Updated cached editor state with appended content');
-    }
-    
-    console.log('Appended selection to existing note:', targetNote.id);
-    
-    // Notify all popups about the updated note
-    try {
+      console.log('Context menu: Updated draft note with appended content, preserved original properties');
+      
+      // Send message to popup to refresh the editor content
       chrome.runtime.sendMessage({
-        action: 'note_updated',
+        action: 'context_menu_draft_updated',
+        note: updatedDraft,
+        type: 'append_to_draft'
+      }).catch(() => {
+        // Popup might not be open, that's okay
+      });
+      
+      // Mark last action for draft updates
+      await chrome.storage.local.set({ 
+        lastAction: { 
+          type: 'append_selection', 
+          domain, 
+          noteId: targetNote.id, 
+          isDraft: true,
+          ts: Date.now() 
+        } 
+      });
+      
+      // Open extension UI to show the appended content
+      openExtensionUi();
+    } else {
+      // For existing saved notes, update content and timestamp
+      targetNote.content = (targetNote.content ? `${targetNote.content}\n` : '') + bullet;
+      targetNote.updatedAt = new Date().toISOString();
+      
+      // Update them in storage
+      const key = `note_${targetNote.id}`;
+      await chrome.storage.local.set({ [key]: targetNote });
+      console.log('Context menu: Appended to existing saved note:', targetNote.id);
+      
+      // Send message to popup to refresh the notes list
+      chrome.runtime.sendMessage({
+        action: 'context_menu_note_saved',
         note: targetNote,
         type: 'append_selection'
       }).catch(() => {
-        // Popup might not be open, that's okay - this is expected
+        // Popup might not be open, that's okay
       });
-    } catch (e) {
-      // Popup might not be open, that's okay - this is expected
+      
+      // Mark last action and open extension to show result
+      await chrome.storage.local.set({ 
+        lastAction: { 
+          type: 'append_selection', 
+          domain, 
+          noteId: targetNote.id, 
+          isDraft: false,
+          ts: Date.now() 
+        } 
+      });
+      
+      // Open extension UI to show the result for saved notes
+      openExtensionUi();
     }
-    
-    // Mark last action so popup can refresh/open the appended note immediately
-    await chrome.storage.local.set({ lastAction: { type: 'append_selection', domain, noteId: targetNote.id, ts: Date.now() } });
-    openExtensionUi();
   } catch (e) {
     console.error('Failed to append to existing note:', e);
   }
@@ -347,11 +344,15 @@ function getClipParts(selectionText, pageUrl) {
 function openExtensionUi() {
   // Prefer opening the action popup (Chrome >= MV3). This keeps UX in the same window.
   if (chrome.action && chrome.action.openPopup) {
-    chrome.action.openPopup().catch(() => {
+    try {
+      chrome.action.openPopup();
+    } catch (error) {
+      // Fallback to creating a new tab
       const url = chrome.runtime.getURL('popup/popup.html');
       chrome.tabs.create({ url }).catch(() => {});
-    });
+    }
   } else {
+    // Fallback for older Chrome versions
     const url = chrome.runtime.getURL('popup/popup.html');
     chrome.tabs.create({ url }).catch(() => {});
   }

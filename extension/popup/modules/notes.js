@@ -13,7 +13,21 @@ class NotesManager {
     const searchInput = document.getElementById('searchInput');
     const notesCounter = document.getElementById('notesCounter');
     if (!notesList) return;
-    notesList.innerHTML = '';
+    
+    // Use DocumentFragment for smoother rendering
+    const fragment = document.createDocumentFragment();
+    
+    // Show empty state if no notes exist
+    if (!app.allNotes || app.allNotes.length === 0) {
+      this.showEmptyState(notesList, 'No notes yet', 'Create your first note to get started!');
+      if (notesCounter) notesCounter.classList.add('hidden');
+      return;
+    }
+    
+    // Only clear if we have notes to clear
+    if (notesList.children.length > 0) {
+      notesList.innerHTML = '';
+    }
 
     // Safety check: ensure allNotes is available
     if (!app.allNotes || !Array.isArray(app.allNotes)) {
@@ -25,14 +39,15 @@ class NotesManager {
 
     // 1) Filter
     let filteredNotes = [];
+    
     if (app.filterMode === 'site') {
       // Only filter by site if we have a valid currentSite with domain
       if (app.currentSite && app.currentSite.domain && app.currentSite.domain !== 'localhost') {
         filteredNotes = app.allNotes.filter(n => n.domain === app.currentSite.domain);
       } else {
-        // If no valid currentSite, show all notes instead of filtering to empty
-        console.log('NotesManager.render: No valid currentSite domain (extension opened outside web page), showing all notes for site filter');
+        // If no valid currentSite, show all notes instead of empty state to prevent pop-in
         filteredNotes = app.allNotes;
+        console.log('NotesManager.render: No valid currentSite domain, showing all notes for site filter');
       }
     } else if (app.filterMode === 'page') {
       // Only filter by page if we have a valid currentSite with URL
@@ -40,9 +55,9 @@ class NotesManager {
         const currentKey = app.normalizePageKey(app.currentSite.url);
         filteredNotes = app.allNotes.filter(n => app.normalizePageKey(n.url) === currentKey);
       } else {
-        // If no valid currentSite URL, show all notes instead of filtering to empty
-        console.log('NotesManager.render: No valid currentSite URL (extension opened outside web page), showing all notes for page filter');
+        // If no valid currentSite URL, show all notes instead of empty state to prevent pop-in
         filteredNotes = app.allNotes;
+        console.log('NotesManager.render: No valid currentSite URL, showing all notes for page filter');
       }
     } else {
       filteredNotes = app.allNotes;
@@ -82,7 +97,7 @@ class NotesManager {
       this.updateCounterPosition(notesCounter);
     }
     
-    notesList.innerHTML = '';
+    // Don't clear again - already cleared at the beginning
 
     // Search placeholder is now handled centrally in popup.js to prevent caching conflicts
     // No need to update it here anymore
@@ -93,10 +108,14 @@ class NotesManager {
        // Check premium status once for all notes
        const isPremium = await window.notesStorage?.checkPremiumAccess?.() || false;
        
+       // Use DocumentFragment for smoother rendering
        for (const note of filteredNotes) {
          const el = await this.createNoteElement(note, isPremium);
-         notesList.appendChild(el);
+         fragment.appendChild(el);
        }
+       
+              // Append all notes at once for better performance
+       notesList.appendChild(fragment);
     }
   }
 
@@ -126,6 +145,7 @@ class NotesManager {
     const grouped = this.groupNotesByDomain(notes);
     const sortedDomains = Object.keys(grouped).sort();
     
+    // Clear container for new content
     container.innerHTML = '';
     container.classList.add('notes-fade-in');
 
@@ -213,6 +233,8 @@ class NotesManager {
       
       container.appendChild(domainGroup);
     }
+    
+    // Grouped notes rendered successfully
   }
 
   groupNotesByDomain(notes) {
@@ -538,7 +560,10 @@ class NotesManager {
       if (messageEl) messageEl.textContent = message;
     }
     
-    notesList.innerHTML = '';
+    // Only clear if there are other children to prevent unnecessary clearing
+    if (notesList.children.length > 0 && !notesList.querySelector('#emptyState')) {
+      notesList.innerHTML = '';
+    }
     notesList.appendChild(emptyState);
     emptyState.style.display = 'flex';
   }
@@ -607,5 +632,4 @@ class NotesManager {
 }
 
 // Debug: Check if NotesManager is defined
-console.log('NotesManager defined:', typeof NotesManager);
-console.log('NotesManager class:', NotesManager);
+// NotesManager loaded successfully

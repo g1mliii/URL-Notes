@@ -931,7 +931,7 @@ class NotesStorage {
               console.log('Subscription check failed, falling back to cached status:', statusError.message);
             }
           } else {
-            console.log('User not authenticated via Supabase');
+            // User not authenticated via Supabase
           }
         } catch (authError) {
           console.log('Supabase auth check failed:', authError.message);
@@ -945,7 +945,7 @@ class NotesStorage {
         const result = await chrome.storage.local.get(['userTier']);
         if (result.userTier) {
           const isPremium = result.userTier.active && result.userTier.tier !== 'free';
-          console.log('Premium access via cached status:', { userTier: result.userTier, isPremium });
+          // Premium access via cached status
           return isPremium;
         }
       } catch (storageError) {

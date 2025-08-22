@@ -41,14 +41,14 @@ class SyncEngine {
 
     // Listen for note changes to track last version update time
     window.eventBus?.on('notes:updated', (payload) => {
-      console.log('Sync engine: notes:updated event received:', payload);
+      // Note: Removed verbose logging for cleaner console
       this.lastVersionUpdateTime = Date.now();
       // NO automatic sync - only local behavior
     });
 
     // Listen for note deletions
     window.eventBus?.on('notes:deleted', (payload) => {
-      console.log('Sync engine: notes:deleted event received:', payload);
+      // Note: Removed verbose logging for cleaner console
       // NO automatic sync - only local behavior
     });
 
@@ -87,13 +87,13 @@ class SyncEngine {
     try {
       // Early exit if no Supabase client
       if (!window.supabaseClient) {
-        console.log('Sync engine: No Supabase client available');
+        // Note: Removed verbose logging for cleaner console
         return { authenticated: false, status: null, canSync: false };
       }
 
       // Check if auth is available before calling getUser
       if (typeof window.supabaseClient.isAuthenticated !== 'function') {
-        console.log('Sync engine: Supabase auth not available');
+        // Note: Removed verbose logging for cleaner console
         return { authenticated: false, status: null, canSync: false };
       }
 
@@ -105,22 +105,22 @@ class SyncEngine {
         const status = await window.supabaseClient.getSubscriptionStatus();
         const canSync = status && status.active;
         
-        console.log('Sync engine: canSync check:', { authenticated: true, status, canSync });
+        // Note: Removed verbose logging for cleaner console
         return { authenticated: true, status, canSync };
       } catch (statusError) {
-        console.log('Sync engine: Subscription check failed:', statusError.message);
+        // Note: Removed verbose logging for cleaner console
         return { authenticated: true, status: null, canSync: false };
           }
         } else {
-          console.log('Sync engine: User not authenticated');
+          // Note: Removed verbose logging for cleaner console
           return { authenticated: false, status: null, canSync: false };
         }
       } catch (authError) {
-        console.log('Sync engine: Auth check failed:', authError.message);
+        // Note: Removed verbose logging for cleaner console
         return { authenticated: false, status: null, canSync: false };
       }
     } catch (error) {
-      console.log('Sync engine: Error checking sync capability:', error.message);
+      // Note: Removed verbose logging for cleaner console
       return { authenticated: false, status: null, canSync: false };
     }
   }
@@ -128,7 +128,7 @@ class SyncEngine {
   // Perform initial sync when user first signs in
   async performInitialSync() {
     try {
-      console.log('Performing initial sync...');
+      // Note: Removed verbose logging for cleaner console
       await this.performSync();
       this.startPeriodicSync();
     } catch (error) {
@@ -146,17 +146,17 @@ class SyncEngine {
     
     const syncCheck = await this.canSync();
     if (!syncCheck.canSync) {
-      console.log('Sync engine: Cannot sync, user not authenticated or premium');
+      // Note: Removed verbose logging for cleaner console
       return;
     }
 
     this.isSyncing = true;
-    console.log('Sync engine: Starting sync...');
+    // Note: Removed verbose logging for cleaner console
 
     try {
       // Get notes for sync - only latest versions of active notes
       const localNotes = await window.notesStorage.getNotesForSync();
-      console.log(`Sync engine: Retrieved ${localNotes?.length || 0} local notes for sync`);
+      // Note: Removed verbose logging for cleaner console
       
       // Validate localNotes is an array
       if (!Array.isArray(localNotes)) {
@@ -166,7 +166,7 @@ class SyncEngine {
       
       // Get local deletions
       const localDeletions = await this.getLocalDeletions();
-      console.log(`Sync engine: Retrieved ${localDeletions?.length || 0} local deletions`);
+      // Note: Removed verbose logging for cleaner console
       
       // Validate localDeletions is an array
       if (!Array.isArray(localDeletions)) {
@@ -179,7 +179,7 @@ class SyncEngine {
         ? localNotes.filter(note => new Date(note.updatedAt) > new Date(this.lastSyncTime))
         : localNotes; // If no last sync time, sync all notes
       
-      console.log(`Sync engine: Syncing ${notesToSync.length} changed notes out of ${localNotes.length} total`);
+      // Note: Removed verbose logging for cleaner console
       
       // Prepare sync payload - only essential fields, no version history data
       const syncPayload = {
@@ -197,11 +197,7 @@ class SyncEngine {
         timestamp: Date.now()
       };
 
-      console.log('Sync engine: Prepared sync payload:', {
-        notesCount: syncPayload.notes.length,
-        deletionsCount: syncPayload.deletions.length,
-        operation: syncPayload.operation
-      });
+      // Note: Removed verbose logging for cleaner console
 
       // Send to server
       const result = await window.supabaseClient.syncNotes(syncPayload);
@@ -210,7 +206,7 @@ class SyncEngine {
         // Get any missing notes from server (local priority - only add missing notes)
         const missingNotes = result.missingNotes || [];
         if (missingNotes.length > 0) {
-          console.log(`Sync engine: Adding ${missingNotes.length} missing notes from server`);
+          // Note: Removed verbose logging for cleaner console
           for (const serverNote of missingNotes) {
             // Only add if note doesn't exist locally
             const localNote = localNotes.find(n => n.id === serverNote.id);
@@ -223,17 +219,17 @@ class SyncEngine {
         // Mark deletions as synced using server response
         if (localDeletions.length > 0) {
           const processedDeletions = result.processedDeletions || [];
-          console.log(`Sync engine: Server processed ${processedDeletions.length} deletions`);
+          // Note: Removed verbose logging for cleaner console
           
           if (processedDeletions.length > 0) {
             // Extract note IDs from processed deletions
             const processedNoteIds = processedDeletions.map(del => del.id);
-            console.log(`Sync engine: Marking deletions as synced for note IDs:`, processedNoteIds);
+            // Note: Removed verbose logging for cleaner console
             
             // Mark deletions as synced by note ID (not deletion record ID)
             await window.notesStorage.markDeletionsAsSyncedByNoteIds(processedNoteIds);
-          } else {
-            console.log('Sync engine: No deletions were processed by server');
+        } else {
+            // Note: Removed verbose logging for cleaner console
           }
         }
 
@@ -242,9 +238,9 @@ class SyncEngine {
         await this.saveLastSyncTime(now);
         this.lastSyncTime = now;
         
-        console.log('Sync engine: Sync completed successfully');
+        // Note: Removed verbose logging for cleaner console
         this.showSyncSuccess('Sync completed successfully');
-        } else {
+      } else {
         throw new Error(result.error || 'Sync failed');
       }
       
@@ -264,19 +260,19 @@ class SyncEngine {
     
     // Sync every 5 minutes (300,000 milliseconds)
     this.syncInterval = setInterval(async () => {
-      console.log('Sync engine: Periodic sync triggered (every 5 minutes)');
+      // Note: Removed verbose logging for cleaner console
       
       // Check if we can sync before proceeding
       const syncCheck = await this.canSync();
       if (syncCheck.canSync) {
-        console.log('Sync engine: Starting periodic sync...');
+        // Note: Removed verbose logging for cleaner console
         await this.performSync();
       } else {
-        console.log('Sync engine: Periodic sync skipped - user not authenticated or premium');
+        // Note: Removed verbose logging for cleaner console
       }
     }, this.syncIntervalMs);
     
-    console.log(`Sync engine: Periodic sync started (every ${this.syncIntervalMs / 1000 / 60} minutes)`);
+    // Note: Removed verbose logging for cleaner console
   }
 
   // Stop periodic sync
@@ -308,7 +304,7 @@ class SyncEngine {
     }
     
     try {
-      console.log('Sync engine: Starting manual sync...');
+      // Note: Removed verbose logging for cleaner console
       await this.performSync();
       this.showSyncSuccess('Manual sync completed successfully');
     } catch (error) {
@@ -328,7 +324,7 @@ class SyncEngine {
         deletedAt: deletion.deletedAt
       }));
       
-      console.log(`Found ${formattedDeletions.length} unsynced deletions`);
+      // Note: Removed verbose logging for cleaner console
       return formattedDeletions;
     } catch (error) {
       console.warn('Failed to get local deletions:', error);
@@ -353,7 +349,7 @@ class SyncEngine {
   // Handle note update events
   handleNoteUpdate(event) {
     const { noteId, note } = event;
-    console.log(`Sync engine: Note updated: ${noteId}`);
+    // Note: Removed verbose logging for cleaner console
     
     // Update last version update time (for tracking purposes only)
     this.lastVersionUpdateTime = Date.now();
@@ -365,7 +361,7 @@ class SyncEngine {
   // Handle note deletion events
   handleNoteDeletion(event) {
     const { noteId, note } = event;
-    console.log(`Sync engine: Note deleted: ${noteId}`);
+    // Note: Removed verbose logging for cleaner console
     
     // NO automatic sync - only local behavior
     // Sync will happen on timer or manual button press
@@ -374,7 +370,7 @@ class SyncEngine {
   // Handle domain deletion events
   handleDomainDeletion(event) {
     const { domain, deletedCount } = event;
-    console.log(`Sync engine: Domain deleted: ${domain} (${deletedCount} notes)`);
+    // Note: Removed verbose logging for cleaner console
     
     // NO automatic sync - only local behavior
     // Sync will happen on timer or manual button press

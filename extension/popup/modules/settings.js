@@ -74,8 +74,7 @@ class SettingsManager {
         }
         
         // Show sync management for premium users
-        console.log('Settings: Looking for syncManagement element...');
-        console.log('Settings: syncManagement element found:', !!syncManagement);
+        // Looking for syncManagement element
         if (syncManagement) {
           try {
             const status = await window.supabaseClient?.getSubscriptionStatus?.();
@@ -83,7 +82,7 @@ class SettingsManager {
             const shouldShow = status?.active && status?.tier !== 'free';
             console.log('Should show sync management:', shouldShow);
             show(syncManagement, shouldShow);
-            console.log('Settings: Sync management display set to:', syncManagement.style.display);
+            // Sync management display updated
             
             // Update storage usage if sync is visible
             if (shouldShow) {

@@ -224,6 +224,21 @@ class StorageManager {
     } catch (_) { }
   }
 
+  // Clear all editor drafts (for complete state reset)
+  async clearAllEditorDrafts() {
+    try {
+      await chrome.storage.local.remove(['editorState']);
+      // Also clear any other draft-related storage
+      const keys = await chrome.storage.local.get(null);
+      const draftKeys = Object.keys(keys).filter(key => 
+        key.includes('draft') || key.includes('editor')
+      );
+      if (draftKeys.length > 0) {
+        await chrome.storage.local.remove(draftKeys);
+      }
+    } catch (_) { }
+  }
+
   // Get editor state
   async getEditorState() {
     try {

@@ -139,14 +139,69 @@
         </button>
         <input type="text" class="note-title-header" placeholder="Note title..." id="noteTitleHeader">
         <div class="editor-actions">
-          <button class="icon-btn ai-rewrite-btn" id="aiRewriteBtn" title="Rewrite with AI (Premium)">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 3L12 21"></path>
-              <path d="M20 12L4 12"></path>
-              <path d="M18 6L6 18"></path>
-              <path d="M18 18L6 6"></path>
-            </svg>
-          </button>
+          <div class="ai-dropdown-container">
+            <button class="icon-btn ai-rewrite-btn ai-dropdown-trigger" id="aiRewriteBtn" title="Rewrite with AI">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 3L12 21"></path>
+                <path d="M20 12L4 12"></path>
+                <path d="M18 6L6 18"></path>
+                <path d="M18 18L6 6"></path>
+              </svg>
+              <div class="dropdown-indicator">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6,9 12,15 18,9"></polyline>
+                </svg>
+              </div>
+            </button>
+            
+            <div class="ai-dropdown-menu" id="aiDropdownMenu">
+              <div class="dropdown-header">
+                <h4>AI Rewrite</h4>
+                <div class="usage-badge" id="usageBadge">
+                  <span id="remainingCalls">0</span> remaining
+                </div>
+              </div>
+              
+              <div class="style-selection">
+                <h5>Choose Style:</h5>
+                <div class="style-grid">
+                  <button class="style-option" data-style="formal">
+                    <span class="style-icon">🎩</span>
+                    <span class="style-name">Formal</span>
+                  </button>
+                  <button class="style-option" data-style="casual">
+                    <span class="style-icon">😊</span>
+                    <span class="style-name">Casual</span>
+                  </button>
+                  <button class="style-option" data-style="professional">
+                    <span class="style-icon">💼</span>
+                    <span class="style-name">Professional</span>
+                  </button>
+                  <button class="style-option" data-style="creative">
+                    <span class="style-icon">✨</span>
+                    <span class="style-name">Creative</span>
+                  </button>
+                  <button class="style-option" data-style="concise">
+                    <span class="style-icon">⚡</span>
+                    <span class="style-name">Concise</span>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="context-preview" id="contextPreview">
+                <h5>Context:</h5>
+                <div class="context-tags">
+                  <span class="context-tag" id="contextDomain">🌐 general</span>
+                  <span class="context-tag" id="contextIntent">🎯 General Note</span>
+                  <span class="context-tag" id="contextStyle">✍️ Neutral</span>
+                </div>
+              </div>
+              
+              <div class="dropdown-actions">
+                <button class="btn-primary" id="executeAIRewrite">Rewrite Note</button>
+              </div>
+            </div>
+          </div>
           <button class="icon-btn delete-btn" id="deleteNoteBtn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="3 6 5 6 21 6"></polyline>
@@ -183,6 +238,55 @@
     </div>
 
     
+
+    <!-- AI Rewrite Dialog (Hidden by default) -->
+    <div class="ai-rewrite-dialog" id="aiRewriteDialog" style="display: none;">
+      <div class="dialog-header">
+        <h3>AI Rewrite</h3>
+        <button class="close-btn" id="aiRewriteCloseBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="dialog-content">
+        <div class="rewrite-options" id="rewriteOptions">
+          <div class="usage-info" id="usageInfo" style="display: none;">
+            <p class="usage-text">You have <span id="remainingCalls">0</span> AI rewrites remaining this month</p>
+            <p class="usage-reset">Resets on <span id="resetDate">-</span></p>
+          </div>
+          <div class="context-info" id="contextInfo" style="display: none;">
+            <h5>Context for AI:</h5>
+            <div class="context-details">
+              <span class="context-item" id="contextDomain"></span>
+              <span class="context-item" id="contextIntent"></span>
+              <span class="context-item" id="contextStyle"></span>
+            </div>
+          </div>
+          <h4>Choose rewrite style:</h4>
+          <div class="rewrite-style-buttons">
+            <button class="rewrite-style-btn" data-style="formal">Formal</button>
+            <button class="rewrite-style-btn" data-style="casual">Casual</button>
+            <button class="rewrite-style-btn" data-style="professional">Professional</button>
+            <button class="rewrite-style-btn" data-style="creative">Creative</button>
+            <button class="rewrite-style-btn" data-style="concise">Concise</button>
+          </div>
+        </div>
+        <div class="rewrite-preview" id="rewritePreview" style="display: none;">
+          <h4>Preview:</h4>
+          <div class="preview-content" id="previewContent"></div>
+          <div class="preview-actions">
+            <button class="btn-secondary" id="tryAnotherStyleBtn">Try Another Style</button>
+            <button class="btn-primary" id="applyRewriteBtn">Apply Rewrite</button>
+          </div>
+        </div>
+        <div class="rewrite-loading" id="rewriteLoading" style="display: none;">
+          <div class="loading-spinner"></div>
+          <p>AI is rewriting your note...</p>
+        </div>
+      </div>
+    </div>
 
     <!-- Settings Panel (Hidden by default) -->
     <div class="settings-panel" id="settingsPanel" style="display: none;">
