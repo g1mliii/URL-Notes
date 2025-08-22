@@ -224,6 +224,9 @@ class URLNotesApp {
     try {
       if (window.supabaseClient && typeof window.supabaseClient.init === 'function') {
         await window.supabaseClient.init();
+        // Refresh premium status after Supabase client is initialized
+        this.premiumStatus = await getPremiumStatus();
+        await this.updatePremiumUI();
       }
     } catch (e) {
       console.warn('Supabase init failed:', e);
@@ -452,7 +455,13 @@ class URLNotesApp {
   // Handle auth change: refresh premium from storage (set by api.js) and update UI
   async handleAuthChanged(payload) {
     try {
-      await this.refreshPremiumFromStorage();
+      // Refresh premium status from both storage and Supabase client
+      this.premiumStatus = await getPremiumStatus();
+      await this.updatePremiumUI();
+      // Also refresh notes to show version history buttons if premium
+      if (this.premiumStatus?.isPremium) {
+        this.render();
+      }
     } catch (_) {}
   }
 
@@ -1096,6 +1105,9 @@ class URLNotesApp {
     const pageIndicator = (this.filterMode !== 'page' && this.isCurrentPageNote(note)) ?
       '<span class="page-indicator" data-tooltip="Current page note">•</span>' : '';
 
+    // Check if user has premium access for version history button
+    const hasVersionHistory = this.premiumStatus?.isPremium || false;
+
     noteDiv.innerHTML = `
       <div class="note-content">
         <div class="note-main">
@@ -1111,11 +1123,18 @@ class URLNotesApp {
                 <line x1="10" y1="14" x2="21" y2="3"></line>
               </svg>
             </button>
+            ${hasVersionHistory ? `
+              <button class="icon-btn version-history-btn" title="Version History">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2"/>
+                </svg>
+              </button>
+            ` : ''}
             <button class="icon-btn delete-note-btn" data-note-id="${note.id}" title="Delete note">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3,6 5,6 21,6"></polyline>
-                <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2,0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
-                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <path d="m19,6v14a2,2 0 0,1 -2,2H7a2 2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2 2 0 0,1 2,2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="3"></line>
                 <line x1="14" y1="11" x2="14" y2="17"></line>
               </svg>
             </button>
@@ -1136,6 +1155,21 @@ class URLNotesApp {
         e.stopPropagation();
         const displayText = note.title || note.pageTitle || '';
         this.openLinkAndHighlight(note.url, displayText);
+      });
+    }
+
+    // Add version history button event listener
+    const versionBtn = noteDiv.querySelector('.version-history-btn');
+    if (versionBtn) {
+      versionBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        console.log('Version history button clicked for note:', note.id);
+        // Call the version history method from notes.js module
+        if (window.notesManager && window.notesManager.showVersionHistory) {
+          window.notesManager.showVersionHistory(note);
+        } else {
+          console.warn('Version history functionality not available');
+        }
       });
     }
 
@@ -1861,24 +1895,8 @@ class URLNotesApp {
       // Show "Note Saved" popup
       this.showNoteSavedPopup('Note saved locally');
       
-      // If user is premium and authenticated, sync to cloud
-      if (window.supabaseClient?.isAuthenticated() && window.syncEngine?.canSync()) {
-        try {
-          // Show sync in progress
-          this.showNoteSavedPopup('Syncing to cloud...', 'sync');
-          
-          // Perform sync
-          await window.syncEngine.pushToCloud();
-          
-          // Show sync success
-          this.showNoteSavedPopup('Synced to cloud', 'synced');
-          
-        } catch (syncError) {
-          console.error('Sync failed:', syncError);
-          // Show sync error but keep "Note Saved" message
-          this.showNoteSavedPopup('Note saved (sync failed)', 'sync-error');
-        }
-      }
+      // NO automatic sync - notes are saved locally only
+      // Sync will happen on timer (every 5 minutes) or manual button press
       
     } catch (error) {
       console.error('Save failed:', error);
@@ -2576,4 +2594,9 @@ async function getPremiumStatus() {
 document.addEventListener('DOMContentLoaded', () => {
   // Expose the app globally so modules (e.g., editor.js) can read premiumStatus
   window.urlNotesApp = new URLNotesApp();
+  
+  // Expose notesManager globally for version history functionality
+  if (window.urlNotesApp && window.urlNotesApp.notesManager) {
+    window.notesManager = window.urlNotesApp.notesManager;
+  }
 });

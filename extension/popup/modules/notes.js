@@ -445,26 +445,27 @@ class NotesManager {
         throw new Error('Note not found');
       }
       
-      // Create new version with restored content
-      const restoredNote = {
+      // Instead of creating a new version, open the restored content as a draft
+      // This allows the user to review and manually save if they want to keep it
+      const restoredContent = {
         ...currentNote,
         title: targetVersion.title,
         content: targetVersion.content,
-        version: currentNote.version + 1,
-        updatedAt: new Date().toISOString()
+        // Don't increment version - this is just a draft
+        // Don't update updatedAt - this will happen when they manually save
+        isDraft: true,
+        draftSource: `Restored from version ${versionNum}`,
+        draftTimestamp: new Date().toISOString()
       };
       
-      // Save the restored note
-      await window.notesStorage.saveNote(restoredNote);
-      
-      // Refresh the UI
-      window.eventBus?.emit('notes:updated', { noteId });
+      // Open the note in the editor with restored content
+      if (this.app && this.app.openNote) {
+        this.app.openNote(restoredContent);
+      }
       
       // Use the app's notification method instead of window.showToast
       if (this.app && this.app.showNotification) {
-        this.app.showNotification('Version restored successfully', 'success');
-      } else {
-        console.log('Version restored successfully');
+        this.app.showNotification('Version restored as draft - save to keep changes', 'info');
       }
       
     } catch (error) {

@@ -524,41 +524,57 @@ class SupabaseClient {
   }
 
   // Sync notes to cloud using Edge Function
-  async syncNotes(notes) {
+  async syncNotes(syncPayload) {
     if (!this.isAuthenticated()) {
       throw new Error('User not authenticated');
     }
 
     try {
       console.log('Starting sync with token:', this.accessToken ? 'Present' : 'Missing');
+      console.log('API: Sync payload structure:', {
+        operation: syncPayload.operation,
+        notesCount: syncPayload.notes?.length || 0,
+        deletionsCount: syncPayload.deletions?.length || 0,
+        hasLastSyncTime: !!syncPayload.lastSyncTime,
+        timestamp: syncPayload.timestamp
+      });
       
       const encryptedNotes = [];
       
-      // Encrypt notes before uploading
-      for (const note of notes) {
-        console.log('API: Original note before encryption:', {
-          id: note.id,
-          title: note.title,
-          operation: note.operation,
-          hasContent: !!note.content,
-          hasEncrypted: !!note.title_encrypted
-        });
-        
-        const encryptedNote = await window.noteEncryption.encryptNoteForCloud(
-          note, 
-          await this.getUserEncryptionKey()
-        );
-        
-        console.log('API: Encrypted note for sync:', {
-          id: encryptedNote.id,
-          operation: encryptedNote.operation,
-          hasTitleEncrypted: !!encryptedNote.title_encrypted,
-          hasContentEncrypted: !!encryptedNote.content_encrypted,
-          hasContentHash: !!encryptedNote.content_hash
-        });
-        
-        encryptedNotes.push(encryptedNote);
+      // Encrypt notes before uploading (only if notes exist)
+      if (syncPayload.notes && Array.isArray(syncPayload.notes)) {
+        for (const note of syncPayload.notes) {
+          console.log('API: Original note before encryption:', {
+            id: note.id,
+            title: note.title,
+            hasContent: !!note.content,
+            domain: note.domain
+          });
+          
+          const encryptedNote = await window.noteEncryption.encryptNoteForCloud(
+            note, 
+            await this.getUserEncryptionKey()
+          );
+          
+          console.log('API: Encrypted note for sync:', {
+            id: encryptedNote.id,
+            hasTitleEncrypted: !!encryptedNote.title_encrypted,
+            hasContentEncrypted: !!encryptedNote.content_encrypted,
+            hasContentHash: !!encryptedNote.content_hash
+          });
+          
+          encryptedNotes.push(encryptedNote);
+        }
       }
+
+      // Prepare the final payload for the Edge Function
+      const edgeFunctionPayload = {
+        operation: syncPayload.operation,
+        notes: encryptedNotes,
+        deletions: syncPayload.deletions || [],
+        lastSyncTime: syncPayload.lastSyncTime,
+        timestamp: syncPayload.timestamp
+      };
 
       // Use Edge Function for sync
       const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-notes`, {
@@ -568,10 +584,7 @@ class SupabaseClient {
           'Authorization': `Bearer ${this.accessToken}`,
           'apikey': this.supabaseAnonKey
         },
-        body: JSON.stringify({
-          operation: 'push',
-          notes: encryptedNotes
-        })
+        body: JSON.stringify(edgeFunctionPayload)
       });
 
       console.log('Sync response status:', response.status);

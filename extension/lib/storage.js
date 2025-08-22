@@ -4,18 +4,59 @@
 class NotesStorage {
   constructor() {
     this.dbName = 'URLNotesDB';
-    this.version = 1;
+    this.dbVersion = 2; // Increment from 1 to 2 to trigger upgrade
     this.db = null;
   }
 
-  // Initialize IndexedDB
+  // Initialize database
   async init() {
+    if (this.db) return; // Already initialized
+    
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.dbName, this.version);
-
+      const request = indexedDB.open(this.dbName, this.dbVersion);
+      
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
         this.db = request.result;
+        
+        // Check if all required stores exist
+        const requiredStores = ['notes', 'attachments', 'versions', 'searchIndex', 'deletions'];
+        const missingStores = requiredStores.filter(storeName => !this.db.objectStoreNames.contains(storeName));
+        
+        if (missingStores.length > 0) {
+          console.log('Storage: Missing stores detected:', missingStores);
+          console.log('Storage: Backing up existing data...');
+          
+          // Backup existing data before deletion
+          this.backupExistingData().then(backup => {
+            // Close current connection and delete database
+            this.db.close();
+            const deleteRequest = indexedDB.deleteDatabase(this.dbName);
+            
+            deleteRequest.onsuccess = () => {
+              console.log('Storage: Database deleted, recreating...');
+              // Try to initialize again
+              this.init().then(async () => {
+                // Restore backed up data
+                if (backup) {
+                  await this.restoreData(backup);
+                }
+                resolve();
+              }).catch(reject);
+            };
+            
+            deleteRequest.onerror = () => {
+              console.error('Storage: Failed to delete database:', deleteRequest.error);
+              reject(deleteRequest.error);
+            };
+          }).catch(error => {
+            console.error('Storage: Failed to backup data:', error);
+            reject(error);
+          });
+          
+          return;
+        }
+        
         // Migrate existing notes to add updatedAt field if missing
         this.migrateExistingNotes().then(() => {
           // Migrate existing notes to use proper UUID format
@@ -26,36 +67,50 @@ class NotesStorage {
           });
         });
       };
-
+      
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
-
-        // Notes store
+        console.log('Storage: Database upgrade needed, creating stores...');
+        
+        // Create notes store if it doesn't exist
         if (!db.objectStoreNames.contains('notes')) {
           const notesStore = db.createObjectStore('notes', { keyPath: 'id' });
           notesStore.createIndex('domain', 'domain', { unique: false });
           notesStore.createIndex('url', 'url', { unique: false });
           notesStore.createIndex('updatedAt', 'updatedAt', { unique: false });
-          notesStore.createIndex('domain_url', ['domain', 'url'], { unique: false });
+          notesStore.createIndex('is_deleted', 'is_deleted', { unique: false });
+          console.log('Storage: Created notes store');
         }
-
-        // Attachments store (for local file attachments)
+        
+        // Create attachments store if it doesn't exist
         if (!db.objectStoreNames.contains('attachments')) {
           const attachmentsStore = db.createObjectStore('attachments', { keyPath: 'id' });
           attachmentsStore.createIndex('noteId', 'noteId', { unique: false });
+          console.log('Storage: Created attachments store');
         }
-
-        // Search index store
-        if (!db.objectStoreNames.contains('searchIndex')) {
-          const searchStore = db.createObjectStore('searchIndex', { keyPath: 'id' });
-          searchStore.createIndex('term', 'term', { unique: false });
-        }
-
-        // Version history store
+        
+        // Create versions store if it doesn't exist
         if (!db.objectStoreNames.contains('versions')) {
           const versionsStore = db.createObjectStore('versions', { keyPath: 'id' });
           versionsStore.createIndex('noteId', 'noteId', { unique: false });
           versionsStore.createIndex('noteId_version', ['noteId', 'version'], { unique: true });
+          console.log('Storage: Created versions store');
+        }
+        
+        // Create search index store if it doesn't exist
+        if (!db.objectStoreNames.contains('searchIndex')) {
+          const searchStore = db.createObjectStore('searchIndex', { keyPath: 'id' });
+          searchStore.createIndex('term', 'term', { unique: false });
+          searchStore.createIndex('noteId', 'noteId', { unique: false });
+          console.log('Storage: Created search index store');
+        }
+
+        // Create deletions store if it doesn't exist
+        if (!db.objectStoreNames.contains('deletions')) {
+          const deletionsStore = db.createObjectStore('deletions', { keyPath: 'id' });
+          deletionsStore.createIndex('noteId', 'noteId', { unique: false });
+          deletionsStore.createIndex('synced', 'synced', { unique: false });
+          console.log('Storage: Created deletions store');
         }
       };
     });
@@ -208,8 +263,9 @@ class NotesStorage {
     if (!this.db) await this.init();
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction(['notes'], 'readwrite');
+      const transaction = this.db.transaction(['notes', 'deletions'], 'readwrite');
       const notesStore = transaction.objectStore('notes');
+      const deletionsStore = transaction.objectStore('deletions');
 
       // Get the note first to soft delete it
       const getRequest = notesStore.get(id);
@@ -225,9 +281,25 @@ class NotesStorage {
           // Update the note in storage
           const updateRequest = notesStore.put(note);
           updateRequest.onsuccess = () => {
-            // Emit event to trigger sync
-            window.eventBus?.emit('notes:updated', { noteId: note.id, note });
-            resolve();
+            // Track deletion for sync within the same transaction
+            const deletionRecord = {
+              id: crypto.randomUUID(),
+              noteId: id,
+              deletedAt: new Date().toISOString(),
+              synced: false
+            };
+
+            const deletionRequest = deletionsStore.add(deletionRecord);
+            deletionRequest.onsuccess = () => {
+              // Emit event to trigger sync
+              window.eventBus?.emit('notes:deleted', { noteId: note.id, note });
+              resolve();
+            };
+            deletionRequest.onerror = () => {
+              console.error('Failed to track deletion:', deletionRequest.error);
+              // Still resolve since the note was deleted
+              resolve();
+            };
           };
           updateRequest.onerror = () => reject(updateRequest.error);
         } else {
@@ -313,8 +385,8 @@ class NotesStorage {
         
         for (const note of notes) {
           if (!note.is_deleted) {
-            const cleaned = await this.cleanupOldVersions(note.id, 5);
-            if (cleaned > 0) totalCleaned += cleaned;
+            const result = await this.maintainVersionHistory(note.id, 5);
+            if (result.deleted > 0) totalCleaned += result.deleted;
           }
         }
         
@@ -463,6 +535,47 @@ class NotesStorage {
     });
   }
 
+  // Get notes for sync - only latest versions of active notes
+  async getNotesForSync() {
+    if (!this.db) await this.init();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['notes'], 'readonly');
+      const store = transaction.objectStore('notes');
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const notes = request.result || [];
+        
+        // Filter out deleted notes and only get active notes
+        const activeNotes = notes.filter(note => !note.is_deleted);
+        
+        // Sort by updatedAt descending
+        activeNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        
+        // Only include essential fields for sync (no version history data)
+        const syncNotes = activeNotes.map(note => ({
+          id: note.id,
+          title: note.title,
+          content: note.content,
+          createdAt: note.createdAt,
+          updatedAt: note.updatedAt
+          // Explicitly exclude: url, domain, tags, version, parent_version_id, etc.
+        }));
+        
+        console.log('Storage: Retrieved notes for sync:', syncNotes.map(n => ({
+          id: n.id,
+          title: n.title,
+          updatedAt: n.updatedAt,
+          hasContent: !!n.content
+        })));
+        
+        resolve(syncNotes);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
   // Get all notes for display (excludes deleted notes)
   async getAllNotesForDisplay() {
     if (!this.db) await this.init();
@@ -534,12 +647,14 @@ class NotesStorage {
     });
   }
 
-  // Save note version (for version history) - Always stores data for all users
-  async saveNoteVersion(note) {
+  // Save note version (for version history) - Only on manual save, not auto-save
+  async saveNoteVersion(note, changeReason = 'manual_save') {
     if (!this.db) await this.init();
     
-    // Clean up old versions before adding new one (keep only last 5 versions)
-    await this.cleanupOldVersions(note.id, 5);
+    // Only create versions for manual saves, not auto-saves
+    if (changeReason === 'auto_save') {
+      return null; // Don't create version for auto-save
+    }
     
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(['versions'], 'readwrite');
@@ -553,11 +668,20 @@ class NotesStorage {
         contentHash: note.contentHash,
         version: note.version || 1,
         createdAt: new Date().toISOString(),
-        changeReason: 'auto_save'
+        changeReason: changeReason
       };
 
       const request = store.add(version);
-      request.onsuccess = () => resolve(version);
+      request.onsuccess = async () => {
+        try {
+          // After adding the new version, maintain exactly 5 versions
+          await this.maintainVersionHistory(note.id, 5);
+          resolve(version);
+        } catch (error) {
+          console.warn('Failed to maintain version history after adding new version:', error);
+          resolve(version); // Still resolve since version was added
+        }
+      };
       request.onerror = () => reject(request.error);
     });
   }
@@ -579,13 +703,16 @@ class NotesStorage {
             // Sort by version number (newest first)
             versions.sort((a, b) => (b.version || 0) - (a.version || 0));
             
-            // Delete old versions beyond the limit
+            // Keep the newest maxVersions and delete the rest (oldest ones)
+            const toKeep = versions.slice(0, maxVersions);
             const toDelete = versions.slice(maxVersions);
+            
+            // Delete the oldest versions
             toDelete.forEach(version => {
               store.delete(version.id);
             });
             
-            console.log(`Storage: Cleaned up ${toDelete.length} old versions for note ${noteId}, keeping ${maxVersions} most recent`);
+            console.log(`Storage: Cleaned up ${toDelete.length} old versions for note ${noteId}, keeping ${toKeep.length} most recent`);
             resolve(toDelete.length);
           } else {
             resolve(0); // No cleanup needed
@@ -600,6 +727,50 @@ class NotesStorage {
     } catch (error) {
       console.warn('Error during version cleanup:', error);
       return 0; // Indicate failed cleanup
+    }
+  }
+
+  // Ensure version history is always maintained at exactly maxVersions
+  async maintainVersionHistory(noteId, maxVersions = 5) {
+    if (!this.db) await this.init();
+    
+    try {
+      const transaction = this.db.transaction(['versions'], 'readwrite');
+      const store = transaction.objectStore('versions');
+      const index = store.index('noteId');
+      const request = index.getAll(noteId);
+      
+      return new Promise((resolve) => {
+        request.onsuccess = () => {
+          const versions = request.result || [];
+          if (versions.length > maxVersions) {
+            // Sort by version number (newest first)
+            versions.sort((a, b) => (b.version || 0) - (a.version || 0));
+            
+            // Keep the newest maxVersions and delete the rest (oldest ones)
+            const toKeep = versions.slice(0, maxVersions);
+            const toDelete = versions.slice(maxVersions);
+            
+            // Delete the oldest versions
+            toDelete.forEach(version => {
+              store.delete(version.id);
+            });
+            
+            console.log(`Storage: Maintained version history for note ${noteId}: kept ${toKeep.length}, deleted ${toDelete.length} oldest versions`);
+            resolve({ kept: toKeep.length, deleted: toDelete.length });
+          } else {
+            resolve({ kept: versions.length, deleted: 0 }); // No cleanup needed
+          }
+        };
+        
+        request.onerror = () => {
+          console.warn('Failed to maintain version history:', request.error);
+          resolve({ kept: 0, deleted: 0 }); // Indicate failed operation
+        };
+      });
+    } catch (error) {
+      console.warn('Error during version history maintenance:', error);
+      return { kept: 0, deleted: 0 }; // Indicate failed operation
     }
   }
 
@@ -728,12 +899,13 @@ class NotesStorage {
     if (!this.db) await this.init();
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction(['notes', 'attachments', 'versions', 'searchIndex'], 'readwrite');
+      const transaction = this.db.transaction(['notes', 'attachments', 'versions', 'searchIndex', 'deletions'], 'readwrite');
       
       transaction.objectStore('notes').clear();
       transaction.objectStore('attachments').clear();
       transaction.objectStore('versions').clear();
       transaction.objectStore('searchIndex').clear();
+      transaction.objectStore('deletions').clear();
 
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error);
@@ -744,31 +916,44 @@ class NotesStorage {
   async checkPremiumAccess() {
     try {
       // First check if we have a working Supabase client
-      if (window.supabaseClient) {
+      if (window.supabaseClient && typeof window.supabaseClient.isAuthenticated === 'function') {
         try {
-          // Check if user is authenticated
-          const { data: { user }, error } = await window.supabaseClient.auth.getUser();
-          if (user) {
+          // Check if user is authenticated using custom client method
+          if (window.supabaseClient.isAuthenticated()) {
             // User is authenticated, check subscription status
-            const status = await window.supabaseClient.getSubscriptionStatus();
-            return status && status.active && status.tier !== 'free';
+            try {
+              const status = await window.supabaseClient.getSubscriptionStatus();
+              if (status && status.active && status.tier !== 'free') {
+                console.log('Premium access confirmed via Supabase:', status);
+                return true;
+              }
+            } catch (statusError) {
+              console.log('Subscription check failed, falling back to cached status:', statusError.message);
+            }
+          } else {
+            console.log('User not authenticated via Supabase');
           }
         } catch (authError) {
-          console.log('Auth check failed, user not authenticated');
+          console.log('Supabase auth check failed:', authError.message);
         }
+      } else {
+        console.log('Supabase client not available for auth check');
       }
       
       // Fallback: check chrome storage for cached premium status
       try {
         const result = await chrome.storage.local.get(['userTier']);
         if (result.userTier) {
-          return result.userTier.active && result.userTier.tier !== 'free';
+          const isPremium = result.userTier.active && result.userTier.tier !== 'free';
+          console.log('Premium access via cached status:', { userTier: result.userTier, isPremium });
+          return isPremium;
         }
       } catch (storageError) {
-        console.log('Chrome storage check failed');
+        console.log('Chrome storage check failed:', storageError.message);
       }
       
       // Default to false (no premium access)
+      console.log('No premium access confirmed, defaulting to false');
       return false;
     } catch (error) {
       console.error('Error checking premium access:', error);
@@ -978,8 +1163,9 @@ class NotesStorage {
     if (!this.db) await this.init();
     
     return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction(['notes'], 'readwrite');
+      const transaction = this.db.transaction(['notes', 'deletions'], 'readwrite');
       const notesStore = transaction.objectStore('notes');
+      const deletionsStore = transaction.objectStore('deletions');
       
       // Get all notes for the domain
       const domainIndex = notesStore.index('domain');
@@ -989,7 +1175,18 @@ class NotesStorage {
         const notes = request.result || [];
         let deletedCount = 0;
         
-        notes.forEach(note => {
+        // Prevent infinite loops by checking if notes are already deleted
+        const notesToDelete = notes.filter(note => !note.is_deleted);
+        
+        if (notesToDelete.length === 0) {
+          console.log(`Storage: No active notes found for domain: ${domain}`);
+          resolve(0);
+          return;
+        }
+        
+        console.log(`Storage: Soft deleting ${notesToDelete.length} notes for domain: ${domain}`);
+        
+        notesToDelete.forEach(note => {
           // Soft delete: mark as deleted and set deleted timestamp
           note.is_deleted = true;
           note.deleted_at = new Date().toISOString();
@@ -998,21 +1195,39 @@ class NotesStorage {
           
           // Update the note in storage
           notesStore.put(note);
-          deletedCount++;
           
-          // Emit event to trigger sync for each note
-          window.eventBus?.emit('notes:updated', { noteId: note.id, note });
+          // Track deletion for sync
+          const deletionRecord = {
+            id: crypto.randomUUID(),
+            noteId: note.id,
+            deletedAt: new Date().toISOString(),
+            synced: false
+          };
+          deletionsStore.add(deletionRecord);
+          
+          deletedCount++;
         });
         
         transaction.oncomplete = () => {
           console.log(`Storage: Soft deleted ${deletedCount} notes for domain: ${domain}`);
+          
+          // Emit a single event for the domain deletion instead of individual note events
+          // This prevents infinite loops
+          window.eventBus?.emit('notes:domain_deleted', { domain, deletedCount });
+          
           resolve(deletedCount);
         };
         
-        transaction.onerror = () => reject(transaction.error);
+        transaction.onerror = () => {
+          console.error('Storage: Transaction error in deleteNotesByDomain:', transaction.error);
+          reject(transaction.error);
+        };
       };
       
-      request.onerror = () => reject(request.error);
+      request.onerror = () => {
+        console.error('Storage: Error getting notes for domain:', request.error);
+        reject(request.error);
+      };
     });
   }
 
@@ -1092,6 +1307,219 @@ class NotesStorage {
       const v = c === 'x' ? r : (r & 0x3 | 0x8);
       return v.toString(16);
     });
+  }
+
+  // Get local deletions that need to be synced
+  async getLocalDeletions() {
+    try {
+      // This would need to be implemented in storage.js to track deletions
+      // For now, return empty array
+      return [];
+    } catch (error) {
+      console.warn('Failed to get local deletions:', error);
+      return [];
+    }
+  }
+
+  // Track note deletion for sync
+  async trackNoteDeletion(noteId) {
+    if (!this.db) await this.init();
+    
+    try {
+      const deletionRecord = {
+        id: crypto.randomUUID(),
+        noteId: noteId,
+        deletedAt: new Date().toISOString(),
+        synced: false
+      };
+
+      const transaction = this.db.transaction(['deletions'], 'readwrite');
+      const store = transaction.objectStore('deletions');
+      const request = store.add(deletionRecord);
+
+      return new Promise((resolve, reject) => {
+        request.onsuccess = () => {
+          console.log(`Storage: Tracked deletion for note ${noteId}`);
+          resolve(deletionRecord);
+        };
+        request.onerror = () => {
+          console.error(`Storage: Failed to track deletion for note ${noteId}:`, request.error);
+          reject(request.error);
+        };
+      });
+    } catch (error) {
+      console.error('Storage: Error in trackNoteDeletion:', error);
+      throw error;
+    }
+  }
+
+  // Get unsynced deletions
+  async getUnsyncedDeletions() {
+    if (!this.db) await this.init();
+    
+    return new Promise((resolve) => {
+      try {
+        const transaction = this.db.transaction(['deletions'], 'readonly');
+        const store = transaction.objectStore('deletions');
+        const request = store.getAll();
+
+        request.onsuccess = () => {
+          try {
+            const deletions = request.result || [];
+            const unsynced = deletions.filter(d => !d.synced);
+            console.log(`Storage: Found ${unsynced.length} unsynced deletions out of ${deletions.length} total`);
+            resolve(unsynced);
+          } catch (error) {
+            console.error('Storage: Error processing deletions result:', error);
+            resolve([]); // Return empty array on error
+          }
+        };
+        
+        request.onerror = () => {
+          console.error('Storage: Error getting deletions:', request.error);
+          resolve([]); // Return empty array on error
+        };
+        
+        transaction.onerror = () => {
+          console.error('Storage: Transaction error in getUnsyncedDeletions:', transaction.error);
+          resolve([]); // Return empty array on error
+        };
+        
+        transaction.oncomplete = () => {
+          // Transaction completed successfully
+        };
+        
+      } catch (error) {
+        console.error('Storage: Error in getUnsyncedDeletions:', error);
+        resolve([]); // Return empty array on error
+      }
+    });
+  }
+
+  // Mark deletions as synced
+  async markDeletionsAsSynced(deletionIds) {
+    if (!this.db) await this.init();
+    
+    try {
+      const transaction = this.db.transaction(['deletions'], 'readwrite');
+      const store = transaction.objectStore('deletions');
+      
+      let markedCount = 0;
+      for (const deletionId of deletionIds) {
+        const request = store.get(deletionId);
+        request.onsuccess = () => {
+          const deletion = request.result;
+          if (deletion) {
+            deletion.synced = true;
+            store.put(deletion);
+            markedCount++;
+          }
+        };
+      }
+      
+      transaction.oncomplete = () => {
+        console.log(`Storage: Marked ${markedCount} deletions as synced`);
+      };
+      
+      transaction.onerror = () => {
+        console.error('Storage: Error marking deletions as synced:', transaction.error);
+      };
+    } catch (error) {
+      console.error('Storage: Error in markDeletionsAsSynced:', error);
+    }
+  }
+
+  // Backup existing data before database recreation
+  async backupExistingData() {
+    if (!this.db) return null;
+    
+    try {
+      const backup = {};
+      
+      // Backup notes
+      const notesTransaction = this.db.transaction(['notes'], 'readonly');
+      const notesStore = notesTransaction.objectStore('notes');
+      const notesRequest = notesStore.getAll();
+      
+      backup.notes = await new Promise((resolve) => {
+        notesRequest.onsuccess = () => resolve(notesRequest.result || []);
+        notesRequest.onerror = () => resolve([]);
+      });
+      
+      // Backup versions
+      const versionsTransaction = this.db.transaction(['versions'], 'readonly');
+      const versionsStore = versionsTransaction.objectStore('versions');
+      const versionsRequest = versionsStore.getAll();
+      
+      backup.versions = await new Promise((resolve) => {
+        versionsRequest.onsuccess = () => resolve(versionsRequest.result || []);
+        versionsRequest.onerror = () => resolve([]);
+      });
+      
+      // Backup attachments
+      const attachmentsTransaction = this.db.transaction(['attachments'], 'readonly');
+      const attachmentsStore = attachmentsTransaction.objectStore('attachments');
+      const attachmentsRequest = attachmentsStore.getAll();
+      
+      backup.attachments = await new Promise((resolve) => {
+        attachmentsRequest.onsuccess = () => resolve(attachmentsRequest.result || []);
+        attachmentsRequest.onerror = () => resolve([]);
+      });
+      
+      console.log(`Storage: Backed up ${backup.notes.length} notes, ${backup.versions.length} versions, ${backup.attachments.length} attachments`);
+      return backup;
+      
+    } catch (error) {
+      console.error('Storage: Error backing up data:', error);
+      return null;
+    }
+  }
+
+  // Restore data after database recreation
+  async restoreData(backup) {
+    if (!backup || !this.db) return;
+    
+    try {
+      console.log('Storage: Restoring backed up data...');
+      
+      // Restore notes
+      if (backup.notes && backup.notes.length > 0) {
+        const notesTransaction = this.db.transaction(['notes'], 'readwrite');
+        const notesStore = notesTransaction.objectStore('notes');
+        
+        for (const note of backup.notes) {
+          notesStore.put(note);
+        }
+        console.log(`Storage: Restored ${backup.notes.length} notes`);
+      }
+      
+      // Restore versions
+      if (backup.versions && backup.versions.length > 0) {
+        const versionsTransaction = this.db.transaction(['versions'], 'readwrite');
+        const versionsStore = versionsTransaction.objectStore('versions');
+        
+        for (const version of backup.versions) {
+          versionsStore.put(version);
+        }
+        console.log(`Storage: Restored ${backup.versions.length} versions`);
+      }
+      
+      // Restore attachments
+      if (backup.attachments && backup.attachments.length > 0) {
+        const attachmentsTransaction = this.db.transaction(['attachments'], 'readwrite');
+        const attachmentsStore = attachmentsTransaction.objectStore('attachments');
+        
+        for (const attachment of backup.attachments) {
+          attachmentsStore.put(attachment);
+        }
+        console.log(`Storage: Restored ${backup.attachments.length} attachments`);
+      }
+      
+      console.log('Storage: Data restoration completed');
+      
+    } catch (error) {
+      console.error('Storage: Error restoring data:', error);
+    }
   }
 }
 
