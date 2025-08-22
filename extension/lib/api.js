@@ -968,6 +968,43 @@ class SupabaseClient {
       return { success: false, error: error.message };
     }
   }
+
+  // Call Supabase RPC functions
+  async rpc(functionName, params = {}) {
+    if (!this.isAuthenticated()) {
+      throw new Error('User not authenticated');
+    }
+
+    try {
+      const response = await fetch(`${this.supabaseUrl}/rest/v1/rpc/${functionName}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.accessToken}`,
+          'apikey': this.supabaseAnonKey
+        },
+        body: JSON.stringify(params)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`RPC ${functionName} error response:`, errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { error: errorText || `RPC ${functionName} failed` };
+        }
+        throw new Error(errorData.error || `RPC ${functionName} failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      return { data, error: null };
+    } catch (error) {
+      console.error(`RPC ${functionName} error:`, error);
+      return { data: null, error: error.message };
+    }
+  }
 }
 
 // Export singleton instance

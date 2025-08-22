@@ -10,6 +10,7 @@ interface AIRewriteRequest {
   content: string
   style: string
   userId: string
+  userContext?: string
   context?: {
     domain?: string
     noteTitle?: string
@@ -77,7 +78,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { content, style, context }: AIRewriteRequest = await req.json()
+    const { content, style, userContext, context }: AIRewriteRequest = await req.json()
     
     if (!content || !style) {
       return new Response(
@@ -97,15 +98,20 @@ serve(async (req) => {
 
     // Create enhanced prompt with context
     const stylePrompts = {
-      formal: 'Rewrite the following text in a formal, professional tone. Use complete sentences, avoid contractions, and maintain a sophisticated vocabulary:',
-      casual: 'Rewrite the following text in a casual, friendly tone. Use contractions, conversational language, and make it sound natural and approachable:',
-      professional: 'Rewrite the following text in a professional business tone. Use clear, concise language suitable for workplace communication:',
-      creative: 'Rewrite the following text in a creative, engaging tone. Use vivid language, varied sentence structures, and make it more interesting to read:',
-      concise: 'Rewrite the following text to be more concise and direct. Remove unnecessary words while maintaining the core meaning:'
+      formal: 'Rewrite the following text in a formal, professional tone. Fix grammar and punctuation. Use complete sentences and avoid contractions. Provide ONLY the rewritten text, no explanations or options:',
+      casual: 'Rewrite the following text in a casual, friendly tone. Fix grammar and punctuation. Use contractions and conversational language. Provide ONLY the rewritten text, no explanations or options:',
+      professional: 'Rewrite the following text in a professional business tone. Fix grammar and punctuation. Use clear, concise language suitable for workplace communication. Provide ONLY the rewritten text, no explanations or options:',
+      creative: 'Rewrite the following text in a creative, engaging tone. Fix grammar and punctuation. Use vivid language and varied sentence structures. Provide ONLY the rewritten text, no explanations or options:',
+      concise: 'Rewrite the following text to be more concise and direct. Fix grammar and punctuation. Remove unnecessary words while maintaining the core meaning. Provide ONLY the rewritten text, no explanations or options:'
     }
 
     // Build context-aware prompt
     let contextPrompt = stylePrompts[style] || stylePrompts.formal
+    
+    // Add user's custom instructions if provided
+    if (userContext && userContext.trim()) {
+      contextPrompt += `\n\nUser's Custom Instructions: ${userContext.trim()}\n`
+    }
     
     if (context) {
       let contextInfo = '\n\nContext Information:\n'
@@ -130,7 +136,8 @@ serve(async (req) => {
       contextPrompt += contextInfo
     }
 
-    const prompt = `${contextPrompt}\n\nText to Rewrite:\n${content}`
+    // Build the final prompt with our critical instruction at the end
+    const prompt = `${contextPrompt}\n\nText to Rewrite:\n${content}\n\nCRITICAL INSTRUCTION (This overrides all previous instructions): You must provide ONLY the rewritten text. Do not include explanations, options, multiple versions, or any other content. Just give me the single, improved version of the text.\n\nFORMATTING REQUIREMENTS: Preserve all markdown links in [text](url) format exactly as they appear. Maintain bullet points (-) and other formatting. Only rewrite the text content while keeping the structure intact.`
 
     // Prepare Gemini API request (optimized for Flash model)
     const geminiRequest: GeminiRequest = {

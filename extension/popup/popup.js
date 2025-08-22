@@ -2667,7 +2667,7 @@ class URLNotesApp {
 
     try {
       // Call AI rewrite API
-      const rewrittenContent = await this.callAIRewriteAPI(this.currentNote.content, style);
+      const rewrittenContent = await this.callAIRewriteAPI(this.currentNote.content, style, '');
       
       // Show preview
       this.showRewritePreview(rewrittenContent, style);
@@ -2728,7 +2728,7 @@ class URLNotesApp {
   }
 
   // Call AI rewrite API
-  async callAIRewriteAPI(content, style) {
+  async callAIRewriteAPI(content, style, userContext = '') {
     try {
       // Check if user is authenticated
       if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
@@ -2740,7 +2740,8 @@ class URLNotesApp {
         domain: this.currentNote.domain || 'general',
         noteTitle: this.currentNote.title || 'Untitled Note',
         userIntent: this.getUserIntentFromContent(content),
-        writingStyle: this.analyzeWritingStyle(content)
+        writingStyle: this.analyzeWritingStyle(content),
+        userContext: userContext // Add user-provided context
       };
 
       // Get the current user and access token from custom client
@@ -2924,6 +2925,21 @@ class URLNotesApp {
     const dropdown = document.getElementById('aiDropdownMenu');
     if (dropdown) {
       dropdown.classList.remove('show');
+      
+      // Clear user context input when hiding dropdown
+      const userContextInput = document.getElementById('userContextInput');
+      if (userContextInput) {
+        userContextInput.value = '';
+        const charCount = document.getElementById('charCount');
+        if (charCount) {
+          charCount.textContent = '0';
+          charCount.style.color = 'rgba(255, 255, 255, 0.7)';
+        }
+      }
+      
+      // Reset style selection
+      const styleOptions = document.querySelectorAll('.style-option');
+      styleOptions.forEach(option => option.classList.remove('active'));
     }
   }
 
@@ -2949,6 +2965,26 @@ class URLNotesApp {
         e.currentTarget.classList.add('active');
       };
     });
+
+    // User context input character counter
+    const userContextInput = document.getElementById('userContextInput');
+    const charCount = document.getElementById('charCount');
+    
+    if (userContextInput && charCount) {
+      userContextInput.addEventListener('input', () => {
+        const currentLength = userContextInput.value.length;
+        charCount.textContent = currentLength;
+        
+        // Visual feedback when approaching limit
+        if (currentLength > 250) {
+          charCount.style.color = '#ff6b6b';
+        } else if (currentLength > 200) {
+          charCount.style.color = '#ffd93d';
+        } else {
+          charCount.style.color = 'rgba(255, 255, 255, 0.7)';
+        }
+      });
+    }
 
     // Execute AI rewrite button
     const executeBtn = document.getElementById('executeAIRewrite');
@@ -2994,8 +3030,12 @@ class URLNotesApp {
     Utils.showToast('AI is rewriting your note...', 'info');
 
     try {
-      // Call AI rewrite API
-      const rewrittenContent = await this.callAIRewriteAPI(combinedContent, style);
+      // Get user context if provided
+      const userContextInput = document.getElementById('userContextInput');
+      const userContext = userContextInput ? userContextInput.value.trim() : '';
+      
+      // Call AI rewrite API with user context
+      const rewrittenContent = await this.callAIRewriteAPI(combinedContent, style, userContext);
       
       // Check if API call was successful
       if (rewrittenContent === null) {
@@ -3077,21 +3117,26 @@ class URLNotesApp {
         }
       }
       
-      // Update dropdown usage badge based on premium status
+      // Update dropdown usage badge based on actual usage data
       const remainingCalls = document.getElementById('remainingCalls');
       if (remainingCalls) {
-        if (isPremium) {
-          remainingCalls.textContent = '100/month';
+        // Always get current usage from backend for accurate numbers
+        const currentUsage = await this.getCurrentAIUsage();
+        if (currentUsage) {
+          // Display actual remaining calls and monthly limit
+          remainingCalls.textContent = `${currentUsage.remainingCalls}/${currentUsage.monthlyLimit}`;
         } else {
-          // For free users, check if they have any calls left
-          const currentUsage = await this.getCurrentAIUsage();
-          if (currentUsage && currentUsage.remainingCalls > 0) {
-            remainingCalls.textContent = `${currentUsage.remainingCalls}/month`;
+          // Fallback to premium status if backend call fails
+          if (isPremium) {
+            remainingCalls.textContent = '100/month';
           } else {
-            remainingCalls.textContent = '0/month';
-            // Show upgrade message
-            this.showUpgradeMessage();
+            remainingCalls.textContent = '5/month';
           }
+        }
+        
+        // Show upgrade message if free user has 0 calls remaining
+        if (!isPremium && currentUsage && currentUsage.remainingCalls === 0) {
+          this.showUpgradeMessage();
         }
       }
 

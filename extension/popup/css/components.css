@@ -2250,6 +2250,66 @@ html[data-view="site"] .note-item:hover::after {
   font-size: 0.9rem;
 }
 
+/* User Context Input Styles */
+.user-context-section {
+  margin-bottom: 16px;
+}
+
+.user-context-section h5 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  opacity: 0.9;
+}
+
+.context-input-container {
+  position: relative;
+}
+
+.context-input {
+  width: 100%;
+  min-height: 60px;
+  max-height: 80px;
+  padding: 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: var(--glass-bg);
+  color: white;
+  font-size: 12px;
+  line-height: 1.4;
+  resize: vertical;
+  transition: all 0.2s ease;
+  box-shadow: var(--glass-inset);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+}
+
+.context-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: var(--glass-inset), 0 0 0 2px rgba(0, 122, 255, 0.2);
+  background: var(--glass-bg-hover);
+}
+
+.context-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+  opacity: 0.7;
+}
+
+.char-counter {
+  position: absolute;
+  bottom: -25px;
+  right: 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  opacity: 0.8;
+  background: var(--glass-bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--glass-border);
+}
+
 /* AI Dropdown Styles */
 .ai-dropdown-container {
   position: relative;
