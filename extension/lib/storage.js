@@ -1159,7 +1159,10 @@ class NotesStorage {
   }
 
   // Delete all notes for a specific domain (soft delete for sync)
+  // Note: Domain functionality is deprecated in simplified sync system
   async deleteNotesByDomain(domain) {
+    console.warn('Storage: Domain deletion is deprecated in simplified sync system');
+    
     if (!this.db) await this.init();
     
     return new Promise((resolve, reject) => {
@@ -1167,16 +1170,24 @@ class NotesStorage {
       const notesStore = transaction.objectStore('notes');
       const deletionsStore = transaction.objectStore('deletions');
       
-      // Get all notes for the domain
-      const domainIndex = notesStore.index('domain');
-      const request = domainIndex.getAll(domain);
+      // Get all notes (since we no longer have domain column)
+      const request = notesStore.getAll();
       
       request.onsuccess = () => {
         const notes = request.result || [];
         let deletedCount = 0;
         
-        // Prevent infinite loops by checking if notes are already deleted
-        const notesToDelete = notes.filter(note => !note.is_deleted);
+        // Filter notes by domain using the old domain field if it exists, or skip if not
+        const notesToDelete = notes.filter(note => {
+          // Skip if already deleted
+          if (note.is_deleted) return false;
+          
+          // Check if note has domain field (for backward compatibility)
+          if (note.domain && note.domain === domain) return true;
+          
+          // If no domain field, skip this note
+          return false;
+        });
         
         if (notesToDelete.length === 0) {
           console.log(`Storage: No active notes found for domain: ${domain}`);
@@ -1225,7 +1236,7 @@ class NotesStorage {
       };
       
       request.onerror = () => {
-        console.error('Storage: Error getting notes for domain:', request.error);
+        console.error('Storage: Error getting notes:', request.error);
         reject(request.error);
       };
     });
@@ -1519,6 +1530,44 @@ class NotesStorage {
       
     } catch (error) {
       console.error('Storage: Error restoring data:', error);
+    }
+  }
+
+  // Mark deletions as synced by note IDs (for simplified sync)
+  async markDeletionsAsSyncedByNoteIds(noteIds) {
+    if (!this.db) await this.init();
+    
+    try {
+      const transaction = this.db.transaction(['deletions'], 'readwrite');
+      const store = transaction.objectStore('deletions');
+      
+      let markedCount = 0;
+      
+      // Get all unsynced deletions
+      const getAllRequest = store.getAll();
+      
+      getAllRequest.onsuccess = () => {
+        const allDeletions = getAllRequest.result || [];
+        
+        // Mark deletions as synced if their noteId matches any of the processed note IDs
+        for (const deletion of allDeletions) {
+          if (!deletion.synced && noteIds.includes(deletion.noteId)) {
+            deletion.synced = true;
+            store.put(deletion);
+            markedCount++;
+          }
+        }
+      };
+      
+      transaction.oncomplete = () => {
+        console.log(`Storage: Marked ${markedCount} deletions as synced by note IDs`);
+      };
+      
+      transaction.onerror = () => {
+        console.error('Storage: Error marking deletions as synced by note IDs:', transaction.error);
+      };
+    } catch (error) {
+      console.error('Storage: Error in markDeletionsAsSyncedByNoteIds:', error);
     }
   }
 }

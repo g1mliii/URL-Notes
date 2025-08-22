@@ -184,11 +184,11 @@ class NotesManager {
       const openDomainBtn = domainGroup.querySelector('.open-domain-btn');
       const domainNotesList = domainGroup.querySelector('.domain-notes-list');
 
-      // Two-tap delete confirmation
+      // Two-tap delete confirmation - updated for simplified sync
       deleteDomainBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         e.preventDefault();
-        this.handleTwoTapDelete(deleteDomainBtn, () => this.app.deleteNotesByDomain(domain, true));
+        this.handleTwoTapDelete(deleteDomainBtn, () => this.deleteDomainNotesIndividually(domainNotes));
       });
 
       if (openDomainBtn) {
@@ -574,6 +574,34 @@ class NotesManager {
       console.warn('Failed to update counter position:', error);
       // Fallback to default position
       counter.style.bottom = '16px';
+    }
+  }
+
+  // Delete domain notes individually (for simplified sync)
+  async deleteDomainNotesIndividually(domainNotes) {
+    try {
+      let deletedCount = 0;
+      
+      // Delete each note individually
+      for (const note of domainNotes) {
+        try {
+          await this.app.storageManager.deleteNote(note.id);
+          deletedCount++;
+        } catch (error) {
+          console.warn(`Failed to delete note ${note.id}:`, error);
+        }
+      }
+      
+      // Show success message
+      if (deletedCount > 0) {
+        this.app.showNotification(`Deleted ${deletedCount} notes`, 'success');
+        // Refresh the notes display
+        this.render();
+      }
+      
+    } catch (error) {
+      console.error('Error deleting domain notes individually:', error);
+      this.app.showNotification('Failed to delete some notes', 'error');
     }
   }
 }

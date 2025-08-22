@@ -101,15 +101,15 @@ class SyncEngine {
       try {
         if (window.supabaseClient.isAuthenticated()) {
           // User is authenticated, check subscription status
-          try {
-            const status = await window.supabaseClient.getSubscriptionStatus();
-            const canSync = status && status.active;
-            
-            console.log('Sync engine: canSync check:', { authenticated: true, status, canSync });
-            return { authenticated: true, status, canSync };
-          } catch (statusError) {
-            console.log('Sync engine: Subscription check failed:', statusError.message);
-            return { authenticated: true, status: null, canSync: false };
+      try {
+        const status = await window.supabaseClient.getSubscriptionStatus();
+        const canSync = status && status.active;
+        
+        console.log('Sync engine: canSync check:', { authenticated: true, status, canSync });
+        return { authenticated: true, status, canSync };
+      } catch (statusError) {
+        console.log('Sync engine: Subscription check failed:', statusError.message);
+        return { authenticated: true, status: null, canSync: false };
           }
         } else {
           console.log('Sync engine: User not authenticated');
@@ -143,7 +143,7 @@ class SyncEngine {
       console.log('Sync engine: Sync already in progress, skipping...');
       return;
     }
-
+    
     const syncCheck = await this.canSync();
     if (!syncCheck.canSync) {
       console.log('Sync engine: Cannot sync, user not authenticated or premium');
@@ -220,10 +220,21 @@ class SyncEngine {
           }
         }
 
-        // Mark deletions as synced
+        // Mark deletions as synced using server response
         if (localDeletions.length > 0) {
-          const deletionIds = localDeletions.map(d => d.id);
-          await window.notesStorage.markDeletionsAsSynced(deletionIds);
+          const processedDeletions = result.processedDeletions || [];
+          console.log(`Sync engine: Server processed ${processedDeletions.length} deletions`);
+          
+          if (processedDeletions.length > 0) {
+            // Extract note IDs from processed deletions
+            const processedNoteIds = processedDeletions.map(del => del.id);
+            console.log(`Sync engine: Marking deletions as synced for note IDs:`, processedNoteIds);
+            
+            // Mark deletions as synced by note ID (not deletion record ID)
+            await window.notesStorage.markDeletionsAsSyncedByNoteIds(processedNoteIds);
+          } else {
+            console.log('Sync engine: No deletions were processed by server');
+          }
         }
 
         // Update sync time
@@ -233,7 +244,7 @@ class SyncEngine {
         
         console.log('Sync engine: Sync completed successfully');
         this.showSyncSuccess('Sync completed successfully');
-      } else {
+        } else {
         throw new Error(result.error || 'Sync failed');
       }
       

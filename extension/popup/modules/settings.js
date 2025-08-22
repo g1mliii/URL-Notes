@@ -51,7 +51,7 @@ class SettingsManager {
       const actions = document.getElementById('authActions');
       const syncManagement = document.getElementById('syncManagement');
       // Helper to toggle element visibility
-      const show = (el, on = true) => { if (el) el.style.display = on ? '' : 'none'; };
+      const show = (el, on = true) => { if (el) el.style.display = on ? 'block' : 'none'; };
 
       if (isAuthed && user) {
         // Show compact logged-in state: only status + Sign Out
@@ -74,6 +74,8 @@ class SettingsManager {
         }
         
         // Show sync management for premium users
+        console.log('Settings: Looking for syncManagement element...');
+        console.log('Settings: syncManagement element found:', !!syncManagement);
         if (syncManagement) {
           try {
             const status = await window.supabaseClient?.getSubscriptionStatus?.();
@@ -81,6 +83,7 @@ class SettingsManager {
             const shouldShow = status?.active && status?.tier !== 'free';
             console.log('Should show sync management:', shouldShow);
             show(syncManagement, shouldShow);
+            console.log('Settings: Sync management display set to:', syncManagement.style.display);
             
             // Update storage usage if sync is visible
             if (shouldShow) {
@@ -90,6 +93,8 @@ class SettingsManager {
             console.error('Error checking premium status:', e);
             show(syncManagement, false);
           }
+        } else {
+          console.error('Settings: syncManagement element not found!');
         }
       } else {
         // Show full account area; remove "Not signed in" copy
@@ -667,8 +672,8 @@ class SettingsManager {
       background: var(--glass-bg);
       border: 1px solid var(--glass-border);
       box-shadow: var(--glass-inset), var(--glass-shadow);
-      backdrop-filter: blur(var(--backdrop-blur));
-      -webkit-backdrop-filter: blur(var(--backdrop-blur);
+             backdrop-filter: blur(var(--backdrop-blur));
+       -webkit-backdrop-filter: blur(var(--backdrop-blur));
       transform: translateX(100%);
       transition: transform 0.3s ease;
       display: flex;
