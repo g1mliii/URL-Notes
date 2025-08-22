@@ -11,7 +11,7 @@ class NotesManager {
     const { app } = this;
     const notesList = document.getElementById('notesList');
     const searchInput = document.getElementById('searchInput');
-    let emptyState = document.getElementById('emptyState');
+    const notesCounter = document.getElementById('notesCounter');
     if (!notesList) return;
     notesList.innerHTML = '';
 
@@ -19,6 +19,7 @@ class NotesManager {
     if (!app.allNotes || !Array.isArray(app.allNotes)) {
       console.warn('NotesManager.render: app.allNotes is not available, showing empty state');
       this.showEmptyState(notesList, 'Loading notes...');
+      if (notesCounter) notesCounter.classList.add('hidden');
       return;
     }
 
@@ -67,10 +68,20 @@ class NotesManager {
     // 3) Render list or empty state
     if (filteredNotes.length === 0) {
       this.showEmptyState(notesList, 'No notes found', 'Try a different filter or create a new note.');
+      if (notesCounter) notesCounter.classList.add('hidden');
       return;
     }
 
-    if (emptyState) emptyState.style.display = 'none';
+    // Show counter and position it correctly
+    if (notesCounter) {
+      notesCounter.classList.remove('hidden');
+      const counterNumber = notesCounter.querySelector('#counterNumber');
+      if (counterNumber) counterNumber.textContent = filteredNotes.length;
+      
+      // Check if ads are present and position counter accordingly
+      this.updateCounterPosition(notesCounter);
+    }
+    
     notesList.innerHTML = '';
 
     // Search placeholder is now handled centrally in popup.js to prevent caching conflicts
@@ -93,7 +104,20 @@ class NotesManager {
   async renderGroupedNotes(notes, container) {
     if (!notes || !Array.isArray(notes) || notes.length === 0) {
       container.innerHTML = '<div class="empty-state">No notes found</div>';
+      const notesCounter = document.getElementById('notesCounter');
+      if (notesCounter) notesCounter.classList.add('hidden');
       return;
+    }
+
+    // Show counter for grouped notes
+    const notesCounter = document.getElementById('notesCounter');
+    if (notesCounter) {
+      notesCounter.classList.remove('hidden');
+      const counterNumber = notesCounter.querySelector('#counterNumber');
+      if (counterNumber) counterNumber.textContent = notes.length;
+      
+      // Check if ads are present and position counter accordingly
+      this.updateCounterPosition(notesCounter);
     }
 
     // Check premium status once for all notes
@@ -246,6 +270,11 @@ class NotesManager {
         <div class="note-main">
           <h4 class="note-title">${pageIndicator}${note.title || 'Untitled'}</h4>
           <div class="note-date-inline">${Utils.formatDate(note.updatedAt)}</div>
+          ${(note.tags && note.tags.length > 0) ? `
+            <div class="note-tags-inline">
+              ${note.tags.slice(0, 3).map(t => `<span class="note-tag-inline">${t}</span>`).join('')}
+            </div>
+          ` : ''}
         </div>
         <div class="note-sidebar">
           <div class="note-actions">
@@ -266,14 +295,13 @@ class NotesManager {
               <button class="icon-btn sm delete-note-btn" data-note-id="${note.id}" title="Delete note">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="3,6 5,6 21,6"></polyline>
-                  <path d="m19,6v14a2,2,0,0,1-2,2H7a2,2 0,0,1 -2,-2V6m3,0V4a2,2 0,0,1 2,-2h4a2,2 0,0,1 2,2v2"></path>
+                  <path d="m19,6v14a2,2,0,0,1-2,2H7a2 2 0,0,1 -2,-2V6m3,0V4a2 2 0,0,1 2,-2h4a2 2 0,0,1 2,2v2"></path>
                   <line x1="10" y1="11" x2="10" y2="17"></line>
                   <line x1="14" y1="11" x2="14" y2="17"></line>
                 </svg>
               </button>
           </div>
         </div>
-        ${(note.tags && note.tags.length > 0) ? `<div class="note-tags">${note.tags.map(t => `<span class=\"note-tag\">${t}</span>`).join('')}</div>` : ''}
       </div>
     `;
 
@@ -523,6 +551,29 @@ class NotesManager {
         .filter(Boolean);
       chrome.storage.local.set({ allNotesOpenDomains: currentlyOpen });
     } catch (_) {}
+  }
+
+  // Update counter position based on ads visibility
+  updateCounterPosition(counter) {
+    if (!counter) return;
+    
+    try {
+      const adContainer = document.getElementById('adContainer');
+      const isAdsVisible = adContainer && 
+        adContainer.style.display !== 'none' && 
+        !adContainer.hidden && 
+        adContainer.offsetHeight > 0;
+      
+      if (isAdsVisible) {
+        counter.style.bottom = '80px'; // Above ads
+      } else {
+        counter.style.bottom = '16px'; // At bottom
+      }
+    } catch (error) {
+      console.warn('Failed to update counter position:', error);
+      // Fallback to default position
+      counter.style.bottom = '16px';
+    }
   }
 }
 

@@ -638,6 +638,7 @@ html, body {
   max-height: 100%; /* prevent container from expanding beyond viewport */
   /* Constrain visual content width for a more natural reading measure */
   --content-max: 660px;
+  position: relative; /* For absolute positioning of counter */
 }
 
 /* Notes header background band */
@@ -859,7 +860,7 @@ body {
   background: var(--canvas-bg);
 }
 
-/* Toast Notification */
+/* Toast Notification - Updated to match sync notification theme */
 .toast {
   position: absolute; /* within .app-container (relative) */
   left: 50%;
@@ -868,23 +869,85 @@ body {
   transform: translate(-50%, -8px);
   z-index: 10001; /* above .note-editor (9999) */
   max-width: calc(100% - 24px);
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: color-mix(in oklab, var(--bg-primary) 94%, black 6%);
-  border: 1px solid var(--border-color);
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   color: var(--text-primary);
-  box-shadow: 0 6px 20px var(--shadow-dark), inset 0 1px 0 var(--shadow-light);
+  box-shadow: var(--glass-inset), var(--glass-shadow);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
   opacity: 0;
   pointer-events: none; /* let clicks pass through */
   transition: opacity 160ms ease, transform 160ms ease;
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .toast.show {
   opacity: 1;
   transform: translate(-50%, 0);
+}
+
+/* Toast variants for different message types */
+.toast.success {
+  background: color-mix(in oklab, var(--accent-primary) 20%, var(--glass-bg) 80%);
+  border-color: color-mix(in oklab, var(--accent-primary) 40%, var(--glass-border) 60%);
+  color: var(--text-primary);
+}
+
+.toast.error {
+  background: color-mix(in oklab, #ff3b30 20%, var(--glass-bg) 80%);
+  border-color: color-mix(in oklab, #ff3b30 40%, var(--glass-border) 60%);
+  color: var(--text-primary);
+}
+
+.toast.info {
+  background: color-mix(in oklab, #007aff 20%, var(--glass-bg) 80%);
+  border-color: color-mix(in oklab, #007aff 40%, var(--glass-border) 60%);
+  color: var(--text-primary);
+}
+
+/* Notification icon styling */
+.notification-icon {
+  font-size: 16px;
+  font-weight: bold;
+  opacity: 0.9;
+}
+
+.notification-message {
+  flex: 1;
+  line-height: 1.4;
+}
+
+/* Notification animations */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.notification {
+  animation: slideInRight 0.3s ease-out;
 }
 
 /* Notes List */
@@ -1006,6 +1069,49 @@ html[data-compact="1"] .notes-list {
 .note-date-inline {
   font-size: 12px;
   color: var(--text-tertiary);
+}
+
+.note-tags-inline {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+
+.note-tag-inline {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 1px 4px;
+  border-radius: 6px;
+  font-size: 9px;
+  font-weight: 500;
+  white-space: nowrap;
+  line-height: 1.2;
+  opacity: 0.85;
+  min-width: 16px; /* Ensure consistent minimum width */
+  text-align: center;
+  display: inline-block;
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+}
+
+/* Ensure consistent sizing for notes with and without tags */
+.note-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding-right: 112px; /* reserve space for right sidebar (actions/tags area) */
+  min-height: 32px; /* ensure consistent height */
+}
+
+/* Add placeholder for notes without tags to maintain consistent height */
+.note-tags-inline:empty::before {
+  content: '';
+  display: block;
+  height: 12px; /* Match tag height */
+  visibility: hidden;
 }
 
 .note-sidebar {
@@ -1209,6 +1315,7 @@ html[data-compact="1"] .domain-notes-list {
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
   box-shadow: inset 0 1px 0 var(--shadow-light);
   overflow: hidden; /* prevent inner abs elements from poking past rounding */
+  z-index: 1; /* Ensure glass outline is above */
 }
 
 /* Use lighter element background for cards */
@@ -1223,41 +1330,11 @@ html[data-compact="1"] .domain-notes-list {
   margin-left: auto;
   margin-right: auto;
   margin-bottom: 10px; /* consistent spacing for top-level cards */
-  /* Apply same layered background effect as domain groups */
-  background-image:
-    radial-gradient(100% 150% at 0% -20%, rgba(255,255,255,0.07), transparent 55%),
-    linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03)),
-    linear-gradient(135deg, color-mix(in oklab, var(--accent-primary) 6%, transparent), transparent 75%);
+  /* Remove layered background effect */
+  background: var(--bg-primary);
   position: relative;
   isolation: isolate;
-}
-
-/* (Removed TEMP debug rule that capped width and added outline) */
-
-/* Page/Site: visually narrower notes using active filter state in the search bar */
-.search-container:has(.filter-option.active[data-filter="site"]) ~ .notes-container .notes-list > .note-item,
-.search-container:has(.filter-option.active[data-filter="page"]) ~ .notes-container .notes-list > .note-item {
-  max-width: 480px !important; /* only applies when Page or Site is active */
-  flex: 0 0 auto; /* prevent stretching to full width */
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.search-container:has(.filter-option.active[data-filter="site"]) ~ .notes-container .notes-list,
-.search-container:has(.filter-option.active[data-filter="page"]) ~ .notes-container .notes-list {
-  padding-left: 16px;
-  padding-right: 16px;
-}
-
-/* Compact mode: a touch tighter */
-html[data-compact="1"] .search-container:has(.filter-option.active[data-filter="site"]) ~ .notes-container .notes-list > .note-item,
-html[data-compact="1"] .search-container:has(.filter-option.active[data-filter="page"]) ~ .notes-container .notes-list > .note-item {
-  max-width: 460px !important;
-}
-html[data-compact="1"] .search-container:has(.filter-option.active[data-filter="site"]) ~ .notes-container .notes-list,
-html[data-compact="1"] .search-container:has(.filter-option.active[data-filter="page"]) ~ .notes-container .notes-list {
-  padding-left: 14px;
-  padding-right: 14px;
+  z-index: 1; /* Ensure glass outline is above */
 }
 
 /* Apply same rounding to notes inside dropdown domain groups */
@@ -1266,201 +1343,8 @@ html[data-compact="1"] .search-container:has(.filter-option.active[data-filter="
   max-width: var(--content-max);
   margin-left: auto;
   margin-right: auto;
-}
-
-/* Delete buttons: match New Note accent glass with white icon (except confirm/danger) */
-.note-actions .delete-note-btn:not(.confirm):not(.danger),
-.domain-actions .delete-domain-btn:not(.confirm):not(.danger) {
-  background: var(--accent-glass-bg);
-  border: 1px solid var(--accent-glass-border);
-  box-shadow: var(--accent-glass-inset), var(--accent-glass-shadow);
-}
-.note-actions .delete-note-btn:not(.confirm):not(.danger):hover,
-.domain-actions .delete-domain-btn:not(.confirm):not(.danger):hover {
-  background: var(--accent-glass-bg-hover);
-}
-.note-actions .delete-note-btn:not(.confirm):not(.danger) svg,
-.domain-actions .delete-domain-btn:not(.confirm):not(.danger) svg {
-  color: #fff;
-  stroke: #fff;
-  opacity: 1;
-}
-
-/* Open/link buttons: same accent glass + white icon for visual parity */
-.note-actions .open-page-btn,
-.domain-actions .open-domain-btn,
-.domain-actions .open-link-btn,
-.domain-actions .link-btn,
-.domain-actions .open-link,
-/* apply directly to class in case button isn't under .domain-actions wrapper */
-.open-domain-btn {
-  background: var(--accent-glass-bg);
-  border: 1px solid var(--accent-glass-border);
-  box-shadow: var(--accent-glass-inset), var(--accent-glass-shadow);
-}
-.note-actions .open-page-btn:hover,
-.domain-actions .open-domain-btn:hover,
-.domain-actions .open-link-btn:hover,
-.domain-actions .link-btn:hover,
-.domain-actions .open-link:hover,
-.open-domain-btn:hover {
-  background: var(--accent-glass-bg-hover);
-}
-.note-actions .open-page-btn svg,
-.domain-actions .open-domain-btn svg,
-.domain-actions .open-link-btn svg,
-.domain-actions .link-btn svg,
-.domain-actions .open-link svg,
-.open-domain-btn svg {
-  color: #fff;
-  stroke: #fff;
-  opacity: 1;
-}
-
-/* Increase specificity so accent wins over generic .domain-actions .icon-btn base */
-.icon-btn.open-domain-btn {
-  background: var(--accent-glass-bg) !important;
-  border: 1px solid var(--accent-glass-border) !important;
-  box-shadow: var(--accent-glass-inset), var(--accent-glass-shadow) !important;
-}
-.icon-btn.open-domain-btn:hover {
-  background: var(--accent-glass-bg-hover) !important;
-}
-.icon-btn.open-domain-btn svg {
-  color: #fff !important;
-  stroke: #fff !important;
-  opacity: 1 !important;
-}
-
-/* Highest specificity fallbacks */
-button.icon-btn.open-domain-btn,
-.domain-actions .icon-btn.open-domain-btn {
-  background: var(--accent-glass-bg) !important;
-  border: 1px solid var(--accent-glass-border) !important;
-  box-shadow: var(--accent-glass-inset), var(--accent-glass-shadow) !important;
-}
-button.icon-btn.open-domain-btn:hover,
-.domain-actions .icon-btn.open-domain-btn:hover {
-  background: var(--accent-glass-bg-hover) !important;
-}
-button.icon-btn.open-domain-btn svg,
-.domain-actions .icon-btn.open-domain-btn svg {
-  color: #fff !important;
-  stroke: #fff !important;
-  opacity: 1 !important;
-}
-
-.note-item:hover {
-  /* Lightweight hover: avoid transforms and outer shadows to prevent flashing */
-  background-color: var(--bg-tertiary);
-  border-color: var(--border-color);
-  box-shadow: inset 0 1px 0 var(--shadow-light);
-}
-
-.note-item:active {
-  transform: translateY(0);
-}
-
-.note-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.note-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 2px 0;
-  line-height: 1.2;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* Small dot before title indicating current page note */
-.note-title .page-indicator {
-  display: inline-block;
-  color: var(--accent-primary);
-  margin-right: 4px;
-  font-size: 12px;
-  line-height: 1;
-  vertical-align: baseline;
-}
-
-.note-preview {
-  font-size: 11px;
-  color: var(--text-secondary);
-  line-height: 1.3;
-  margin-bottom: 4px;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.note-content {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  width: 100%;
-}
-
-.note-main {
-  flex: 1;
-  min-width: 0;
-  padding-right: 112px; /* reserve space for right sidebar */
-  padding-top: 3px; /* lower title slightly more from card outline */
-}
-
-.note-sidebar {
-  position: absolute;
-  right: 6px;
-  top: 8px;
-  width: 112px; /* vertical space below is reserved for tags */
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: flex-start; /* actions at the top */
-  gap: 6px;
-}
-
-.note-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.note-item:hover .note-actions { opacity: 1; }
-
-.note-meta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  font-size: 9px;
-  color: var(--text-tertiary);
-}
-
-/* Pin tags at bottom-right of the tile, wrap leftwards within sidebar width */
-/* Temporarily remove note tags in list view */
-.note-tags { display: none !important; }
-
-.note-tag {
-  background: var(--accent-color);
-  color: white;
-  padding: 1px 4px;
-  border-radius: 8px;
-  font-size: 8px;
-  font-weight: 500;
-}
-
-.note-date {
-  white-space: nowrap;
+  background: var(--bg-primary);
+  z-index: 1; /* Ensure glass outline is above */
 }
 
 /* Domain Group Styles */
@@ -1469,16 +1353,15 @@ button.icon-btn.open-domain-btn svg,
   border: 1px solid var(--border-color);
   border-radius: 20px;
   background: var(--bg-primary); /* lighter element background */
-  background-image:
-    radial-gradient(100% 150% at 0% -20%, rgba(255,255,255,0.07), transparent 55%),
-    linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03)),
-    linear-gradient(135deg, color-mix(in oklab, var(--accent-primary) 6%, transparent), transparent 75%);
+  /* Remove layered background effect */
+  background: var(--bg-primary);
   overflow: hidden;
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
   box-shadow: inset 0 1px 0 var(--shadow-light);
   position: relative;
   isolation: isolate;
+  z-index: 1; /* Ensure glass outline is above */
 }
 
 /* Shimmering glass outline (neutral glass) */
@@ -1513,6 +1396,108 @@ button.icon-btn.open-domain-btn svg,
           mask-composite: exclude; /* show only ring */
   mix-blend-mode: normal; /* stable across themes */
   opacity: 0.9;
+  z-index: 2; /* Ensure outline is above content */
+}
+
+/* Add glass outline to individual note items inside domain groups */
+.domain-notes-list .note-item::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  padding: 1px;
+  background:
+    conic-gradient(from 200deg at 50% 50%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 70deg,
+      rgba(0,0,0,0.18) 140deg,
+      rgba(255,255,255,0.12) 220deg,
+      rgba(255,255,255,0.55) 360deg);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  mix-blend-mode: normal;
+  opacity: 0.9;
+  z-index: 2; /* Ensure outline is above note content */
+}
+
+/* Ensure all note items have the glass outline effect with variations */
+.note-item::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  padding: 1px;
+  background:
+    conic-gradient(from 200deg at 50% 50%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 70deg,
+      rgba(0,0,0,0.18) 140deg,
+      rgba(255,255,255,0.12) 220deg,
+      rgba(255,255,255,0.55) 360deg);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  mix-blend-mode: normal;
+  opacity: 0.9;
+  z-index: 2; /* Ensure outline is above note content */
+}
+
+/* Vary glass outline for different note positions to avoid identical look */
+.note-item:nth-child(2n)::after {
+  background:
+    conic-gradient(from 280deg at 45% 55%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 65deg,
+      rgba(0,0,0,0.20) 145deg,
+      rgba(255,255,255,0.12) 225deg,
+      rgba(255,255,255,0.55) 360deg);
+  padding: 0.8px;
+}
+
+.note-item:nth-child(3n)::after {
+  background:
+    conic-gradient(from 140deg at 55% 45%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 75deg,
+      rgba(0,0,0,0.16) 155deg,
+      rgba(255,255,255,0.12) 235deg,
+      rgba(255,255,255,0.55) 360deg);
+  padding: 1.2px;
+}
+
+.note-item:nth-child(4n)::after {
+  background:
+    conic-gradient(from 320deg at 48% 52%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 60deg,
+      rgba(0,0,0,0.22) 140deg,
+      rgba(255,255,255,0.12) 220deg,
+      rgba(255,255,255,0.55) 360deg);
+  padding: 0.6px;
+}
+
+.note-item:nth-child(5n)::after {
+  background:
+    conic-gradient(from 100deg at 52% 48%,
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.10) 80deg,
+      rgba(0,0,0,0.18) 160deg,
+      rgba(255,255,255,0.12) 240deg,
+      rgba(255,255,255,0.55) 360deg);
+  padding: 0.9px;
 }
 
 /* Accent-tinted glass outline for accent surfaces */
@@ -1656,6 +1641,12 @@ html, body {
 .notes-list {
   scrollbar-gutter: auto !important; /* do not reserve space for scrollbar */
   -webkit-overflow-scrolling: touch;  /* smooth momentum on iOS */
+  padding-bottom: 80px; /* Add bottom padding to prevent overlap with counter */
+}
+
+/* Compact mode: adjust padding */
+html[data-compact="1"] .notes-list {
+  padding-bottom: 70px;
 }
 
 /* Version History Button */
@@ -1788,6 +1779,7 @@ html, body {
   margin-bottom: 12px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -1828,4 +1820,184 @@ html, body {
 
 .popup-message {
   font-size: 14px;
+}
+
+/* Notes Counter */
+.notes-counter {
+  position: absolute; /* Use absolute positioning within the notes container */
+  bottom: 80px; /* Position above ads space */
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  box-shadow: var(--glass-inset), var(--glass-shadow);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  font-size: 11px;
+  color: var(--text-secondary);
+  z-index: 100; /* Ensure it's above all content */
+  transition: opacity 0.2s ease, bottom 0.3s ease;
+  pointer-events: none; /* Don't interfere with scrolling */
+}
+
+/* When ads are not present (premium mode or no ads), position counter at the very bottom */
+.ad-container:not(:has(.ad-content:not(.ad-placeholder))) ~ .notes-container .notes-counter,
+.ad-container:has(.ad-content:not(.ad-placeholder):empty) ~ .notes-container .notes-counter,
+.ad-container[style*="display: none"] ~ .notes-container .notes-counter {
+  bottom: 16px;
+}
+
+/* Alternative check for when ad container is hidden */
+body:not(:has(.ad-container:not([style*="display: none"]))) .notes-counter {
+  bottom: 16px;
+}
+
+.notes-counter .counter-number {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.notes-counter .counter-label {
+  opacity: 0.8;
+}
+
+/* Hide counter when no notes */
+.notes-counter.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Compact mode adjustments */
+html[data-compact="1"] .notes-counter {
+  bottom: 70px; /* Adjust for compact mode */
+  right: 12px;
+  padding: 4px 8px;
+  font-size: 10px;
+}
+
+html[data-compact="1"] .notes-counter .counter-number {
+  font-size: 11px;
+}
+
+/* Delete buttons: match New Note accent glass with white icon (except confirm/danger) */
+.note-actions .delete-note-btn:not(.confirm):not(.danger),
+.domain-actions .delete-domain-btn:not(.confirm):not(.danger) {
+  background: var(--accent-glass-bg);
+  border: 1px solid var(--accent-glass-border);
+  box-shadow: var(--accent-glass-inset), var(--accent-glass-shadow);
+}
+.note-actions .delete-note-btn:not(.confirm):not(.danger):hover,
+.domain-actions .delete-domain-btn:not(.confirm):not(.danger):hover {
+  background: var(--accent-glass-bg-hover);
+}
+.note-actions .delete-note-btn:not(.confirm):not(.danger) svg,
+.domain-actions .delete-domain-btn:not(.confirm):not(.danger) svg {
+  color: #fff;
+  stroke: #fff;
+  opacity: 1;
+}
+
+/* Open/link buttons: same accent glass + white icon for visual parity */
+.note-actions .open-page-btn,
+.domain-actions .open-domain-btn,
+.domain-actions .open-link-btn,
+.domain-actions .link-btn,
+.domain-actions .open-link,
+/* apply directly to class in case button isn't under .domain-actions wrapper */
+.open-domain-btn {
+  background: var(--accent-glass-bg);
+  border: 1px solid var(--accent-glass-border);
+  box-shadow: var(--accent-glass-inset), var(--accent-glass-shadow);
+}
+.note-actions .open-page-btn:hover,
+.domain-actions .open-domain-btn:hover,
+.domain-actions .open-link-btn:hover,
+.domain-actions .link-btn:hover,
+.domain-actions .open-link:hover,
+.open-domain-btn:hover {
+  background: var(--accent-glass-bg-hover);
+}
+.note-actions .open-page-btn svg,
+.domain-actions .open-domain-btn svg,
+.domain-actions .open-link-btn svg,
+.domain-actions .link-btn svg,
+.domain-actions .open-link svg,
+.open-domain-btn svg {
+  color: #fff;
+  stroke: #fff;
+  opacity: 1;
+}
+
+/* Increase specificity so accent wins over generic .domain-actions .icon-btn base */
+.icon-btn.open-domain-btn {
+  background: var(--accent-glass-bg) !important;
+  border: 1px solid var(--accent-glass-border) !important;
+  box-shadow: var(--accent-glass-inset), var(--accent-glass-shadow) !important;
+}
+.icon-btn.open-domain-btn:hover {
+  background: var(--accent-glass-bg-hover) !important;
+}
+.icon-btn.open-domain-btn svg {
+  color: #fff !important;
+  stroke: #fff !important;
+  opacity: 1 !important;
+}
+
+/* Highest specificity fallbacks */
+button.icon-btn.open-domain-btn,
+.domain-actions .icon-btn.open-domain-btn {
+  background: var(--accent-glass-bg) !important;
+  border: 1px solid var(--accent-glass-border) !important;
+  box-shadow: var(--accent-glass-inset), var(--accent-glass-shadow) !important;
+}
+button.icon-btn.open-domain-btn:hover,
+.domain-actions .icon-btn.open-domain-btn:hover {
+  background: var(--accent-glass-bg-hover) !important;
+}
+button.icon-btn.open-domain-btn svg,
+.domain-actions .icon-btn.open-domain-btn svg {
+  color: #fff !important;
+  stroke: #fff !important;
+  opacity: 1 !important;
+}
+
+.note-item:hover {
+  /* Lightweight hover: avoid transforms and outer shadows to prevent flashing */
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+}
+
+.note-item:active {
+  transform: translateY(0);
+}
+
+/* Stronger hover effects for This Page and This Site sections */
+html[data-view="page"] .note-item:hover,
+html[data-view="site"] .note-item:hover {
+  background-color: color-mix(in oklab, var(--bg-tertiary) 80%, white 20%);
+  border-color: color-mix(in oklab, var(--border-color) 70%, white 30%);
+  box-shadow: inset 0 1px 0 var(--shadow-light), 0 2px 8px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+}
+
+/* Ensure glass outline is visible on hover */
+.note-item:hover::after {
+  opacity: 1;
+}
+
+/* Stronger glass outline on hover for page/site views */
+html[data-view="page"] .note-item:hover::after,
+html[data-view="site"] .note-item:hover::after {
+  opacity: 1;
+  padding: 1.5px;
+}
+
+.domain-group:hover::after {
+  opacity: 1;
 }

@@ -10,13 +10,13 @@ class EditorManager {
 
   // Create a new note
   createNewNote(currentSite) {
-    // Handle case where currentSite might be null
+    // Handle case where currentSite might be null (e.g., extension opened from management page)
     if (!currentSite) {
-      console.warn('createNewNote: currentSite is null, using fallback values');
+      console.log('createNewNote: No valid site context, creating note with fallback values');
       currentSite = {
-        domain: 'unknown',
-        url: 'unknown',
-        title: 'Unknown Page'
+        domain: 'general',
+        url: 'chrome://extensions',
+        title: 'General Note'
       };
     }
     

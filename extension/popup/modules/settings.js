@@ -596,7 +596,7 @@ class SettingsManager {
       const importData = JSON.parse(text);
       
       // Validate import data structure
-      if (!importData.notes || !Array.isArray(importData.notes)) {
+      if (!this.isValidImportFormat(importData)) {
         throw new Error('Invalid import file format');
       }
       
@@ -620,28 +620,73 @@ class SettingsManager {
     }
   }
 
-  // Show notification message
+  // Check if import data has valid format
+  isValidImportFormat(importData) {
+    // Valid format has domain keys with arrays of notes
+    for (const key in importData) {
+      if (Array.isArray(importData[key])) {
+        // Check if it looks like a notes array
+        const firstItem = importData[key][0];
+        if (firstItem && typeof firstItem === 'object' && firstItem.domain) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // Show notification message - Updated to match sync notification theme
   showNotification(message, type = 'info') {
     // Create notification element
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
-    notification.textContent = message;
+    
+    // Add icon based on type
+    let icon = 'ℹ';
+    if (type === 'success') icon = '✓';
+    if (type === 'error') icon = '⚠';
+    
+    notification.innerHTML = `
+      <span class="notification-icon">${icon}</span>
+      <span class="notification-message">${message}</span>
+    `;
+    
+    // Apply glass morphism styling to match sync notifications
     notification.style.cssText = `
       position: fixed;
-      top: 10px;
-      right: 10px;
+      top: 20px;
+      right: 20px;
       padding: 12px 16px;
-      border-radius: 6px;
-      color: white;
+      border-radius: 8px;
+      color: var(--text-primary);
       font-size: 14px;
+      font-weight: 500;
       z-index: 10000;
       max-width: 300px;
       word-wrap: break-word;
-      background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-inset), var(--glass-shadow);
+      backdrop-filter: blur(var(--backdrop-blur));
+      -webkit-backdrop-filter: blur(var(--backdrop-blur);
       transform: translateX(100%);
       transition: transform 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     `;
+    
+    // Apply type-specific styling
+    if (type === 'success') {
+      notification.style.background = 'color-mix(in oklab, var(--accent-primary) 20%, var(--glass-bg) 80%)';
+      notification.style.borderColor = 'color-mix(in oklab, var(--accent-primary) 40%, var(--glass-border) 60%)';
+    } else if (type === 'error') {
+      notification.style.background = 'color-mix(in oklab, #ff3b30 20%, var(--glass-bg) 80%)';
+      notification.style.borderColor = 'color-mix(in oklab, #ff3b30 40%, var(--glass-border) 60%)';
+    } else if (type === 'info') {
+      notification.style.background = 'color-mix(in oklab, #007aff 20%, var(--glass-bg) 80%)';
+      notification.style.borderColor = 'color-mix(in oklab, #007aff 40%, var(--glass-border) 60%)';
+    }
     
     document.body.appendChild(notification);
     

@@ -21,6 +21,20 @@ class Utils {
   static formatDate(isoString) {
     if (!isoString) return '';
     const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffHours = diffMs / (1000 * 60 * 60);
+    
+    // If within last 24 hours, show time
+    if (diffHours < 24) {
+      return date.toLocaleTimeString(undefined, {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    }
+    
+    // Otherwise show date
     return date.toLocaleDateString(undefined, {
       month: 'short',
       day: 'numeric',
@@ -37,9 +51,16 @@ class Utils {
   }
 
   // Show a toast notification
-  static showToast(message) {
+  static showToast(message, type = 'info') {
     const toast = document.getElementById('toast');
     if (!toast) return;
+    
+    // Remove any existing type classes
+    toast.classList.remove('success', 'error', 'info');
+    
+    // Add the appropriate type class
+    toast.classList.add(type);
+    
     toast.textContent = message;
     toast.classList.add('show');
     setTimeout(() => {

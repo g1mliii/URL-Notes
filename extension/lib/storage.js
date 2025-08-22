@@ -895,9 +895,8 @@ class NotesStorage {
   // Export notes (compatibility method for StorageManager)
   async exportNotes() {
     try {
-      const notes = await this.getAllNotes();
-      const attachments = await this.getAllAttachments();
-      const versions = await this.getAllVersions();
+      // Only export notes that are visible in the UI (not deleted)
+      const notes = await this.getAllNotesForDisplay();
       
       // Group notes by domain for compatibility with StorageManager format
       const notesByDomain = {};
@@ -911,6 +910,37 @@ class NotesStorage {
       return notesByDomain;
     } catch (error) {
       console.error('Error exporting notes:', error);
+      throw error;
+    }
+  }
+
+  // Import notes from export data (compatibility method for StorageManager)
+  async importNotes(importedData) {
+    try {
+      let notesImportedCount = 0;
+      
+      // Import notes from domain-based structure
+      for (const domain in importedData) {
+        if (!Array.isArray(importedData[domain])) continue;
+        
+        const domainNotes = importedData[domain];
+        for (const note of domainNotes) {
+          if (note && note.id) {
+            // Ensure the note is not marked as deleted
+            note.is_deleted = false;
+            note.deleted_at = null;
+            note.updatedAt = note.updatedAt || new Date().toISOString();
+            
+            await this.saveNote(note);
+            notesImportedCount++;
+          }
+        }
+      }
+      
+      console.log(`Storage: Imported ${notesImportedCount} notes`);
+      return notesImportedCount;
+    } catch (error) {
+      console.error('Error importing notes:', error);
       throw error;
     }
   }

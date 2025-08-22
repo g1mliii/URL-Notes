@@ -643,8 +643,8 @@ class URLNotesApp {
 
     // Add new note
     document.getElementById('addNoteBtn').addEventListener('click', () => {
-      const newNote = this.editorManager.createNewNote(this.currentSite);
-      this.currentNote = newNote;
+      // Use the main createNewNote method which has better error handling
+      this.createNewNote();
     });
     
 
@@ -968,7 +968,7 @@ class URLNotesApp {
         : band === 'high'
         ? `Storage very high: ${est.usageInMB}/${est.quotaInMB} MB (${pct}%).`
         : `Storage usage high: ${est.usageInMB}/${est.quotaInMB} MB (${pct}%).`;
-      Utils.showToast(msg);
+      Utils.showToast(msg, 'info');
     } catch (_) { /* noop */ }
   }
 
@@ -1627,10 +1627,19 @@ class URLNotesApp {
   createNewNote() {
     this.isJotMode = false;
     
+    let noteContext;
+    
     // Check if we have a valid currentSite context
     if (!this.currentSite || !this.currentSite.domain) {
-      Utils.showToast('Cannot create note: No valid site context. Please open the extension from a web page.');
-      return;
+      console.log('No valid site context, creating general note');
+      // Create a general note when no site context is available
+      noteContext = {
+        domain: 'general',
+        url: 'chrome://extensions',
+        title: 'General Note'
+      };
+    } else {
+      noteContext = this.currentSite;
     }
     
     const newNote = {
@@ -1640,9 +1649,9 @@ class URLNotesApp {
       tags: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      domain: this.currentSite.domain,
-      url: this.currentSite.url,
-      pageTitle: this.currentSite.title
+      domain: noteContext.domain,
+      url: noteContext.url,
+      pageTitle: noteContext.title
     };
 
     this.currentNote = newNote;
@@ -1807,7 +1816,7 @@ class URLNotesApp {
       switchFilterAfterSave: true
     };
     if (!this.currentNote) {
-      Utils.showToast('No note open to save');
+      Utils.showToast('No note open to save', 'info');
       return;
     }
     
@@ -1975,7 +1984,7 @@ class URLNotesApp {
   // Delete current note (from editor)
   async deleteCurrentNote() {
     if (!this.currentNote) {
-      Utils.showToast('No note to delete');
+      Utils.showToast('No note to delete', 'info');
       return;
     }
 
@@ -1997,7 +2006,7 @@ class URLNotesApp {
     // Refresh notes list from storage to ensure consistency
     await this.loadNotes();
 
-    Utils.showToast('Note deleted');
+    Utils.showToast('Note deleted', 'success');
     // Clear draft cache and close editor
     this.editorManager.closeEditor({ clearDraft: true });
     await this.postDeleteRefresh();
@@ -2017,7 +2026,7 @@ class URLNotesApp {
     // Refresh notes list from storage to ensure consistency
     await this.loadNotes();
 
-    Utils.showToast('Note deleted');
+    Utils.showToast('Note deleted', 'success');
     await this.postDeleteRefresh();
   }
 
@@ -2162,7 +2171,7 @@ class URLNotesApp {
     await this.loadNotes();
 
     await this.postDeleteRefresh();
-    Utils.showToast(`Deleted all notes for ${domain}`);
+          Utils.showToast(`Deleted all notes for ${domain}`, 'success');
   }
 
   // After any deletion, optionally clear the search if it would show an empty list, then render
@@ -2215,7 +2224,7 @@ class URLNotesApp {
 
   // AI Rewrite (placeholder)
   aiRewrite() {
-    Utils.showToast('AI Rewrite coming soon!');
+          Utils.showToast('AI Rewrite coming soon!', 'info');
   }
 
   async updatePremiumUI() {
@@ -2334,15 +2343,15 @@ class URLNotesApp {
     try {
       await chrome.storage.local.set({ fontFamily });
       document.body.style.fontFamily = fontFamily;
-      Utils.showToast('Font updated');
+      Utils.showToast('Font updated', 'success');
     } catch (error) {
-      Utils.showToast('Failed to save font setting');
+              Utils.showToast('Failed to save font setting', 'error');
     }
   }
 
   // AI rewrite functionality
   async aiRewrite() {
-    Utils.showToast('AI rewrite feature coming soon');
+          Utils.showToast('AI rewrite feature coming soon', 'info');
   }
 
   // Export notes
@@ -2363,12 +2372,12 @@ class URLNotesApp {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        Utils.showToast('Notes exported');
+        Utils.showToast('Notes exported', 'success');
       } catch (e) {
-        Utils.showToast('Failed to export notes');
+                  Utils.showToast('Failed to export notes', 'error');
       }
     } else {
-      Utils.showToast('Export not available');
+              Utils.showToast('Export not available', 'info');
     }
   }
 
@@ -2451,19 +2460,19 @@ class URLNotesApp {
       
       if (this.storageManager && typeof this.storageManager.importNotes === 'function') {
         await this.storageManager.importNotes(data);
-        Utils.showToast('Notes imported successfully');
+        Utils.showToast('Notes imported successfully', 'success');
         // Refresh notes list
         await this.loadNotes();
         this.render();
       } else {
-        Utils.showToast('Import not available');
+        Utils.showToast('Import not available', 'info');
       }
       
       // Clear the input
       event.target.value = '';
     } catch (error) {
       console.error('Import failed:', error);
-      Utils.showToast('Failed to import notes');
+              Utils.showToast('Failed to import notes', 'error');
       // Clear the input
       event.target.value = '';
     }
