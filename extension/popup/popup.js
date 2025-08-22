@@ -13,13 +13,22 @@ class URLNotesApp {
     this.autosaveInterval = null;
     this.dialog = new CustomDialog();
     this.themeManager = new ThemeManager();
-    this.storageManager = new StorageManager();
+    // Use IndexedDB storage instead of Chrome storage for sync compatibility
+    this.storageManager = window.notesStorage || new StorageManager();
+    
+    // Ensure EditorManager is available before creating instance
+    if (typeof EditorManager === 'undefined') {
+      console.error('EditorManager not available, delaying initialization');
+      setTimeout(() => this.constructor(), 100);
+      return;
+    }
+    
     this.editorManager = new EditorManager(this.storageManager);
     this.settingsManager = new SettingsManager(this.storageManager);
     // Notes list/render manager (modularized)
     this.notesManager = new NotesManager(this);
     // Debounced draft saver for editorState caching
-    this.saveDraftDebounced = Utils.debounce(() => this.editorManager.saveEditorDraft(), 150);
+    this.saveDraftDebounced = Utils.debounce(() => this.saveEditorDraft(), 150);
     // Enable compact layout to ensure everything fits without scroll/clipping
     try { document.documentElement.setAttribute('data-compact', '1'); } catch {}
     
@@ -43,7 +52,7 @@ class URLNotesApp {
   async loadCurrentSite() {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (tab && tab.url) {
+      if (tab && tab.url && tab.url.startsWith('http')) {
         const url = new URL(tab.url);
         this.currentSite = {
           domain: url.hostname,
@@ -87,22 +96,120 @@ class URLNotesApp {
           const cached = await this.themeManager.getCachedAccent(this.currentSite.domain);
           if (cached) this.themeManager.setAccentVariables(cached);
         } catch (_) { }
+      } else {
+        // No valid tab or URL (e.g., extension popup opened from management page)
+        console.log('No valid tab context, setting currentSite to null');
+        this.currentSite = null;
+        
+        // Update UI to show no site context
+        const siteIcon = document.querySelector('.site-icon');
+        if (siteIcon) {
+          siteIcon.innerHTML = `
+            <div class="site-fallback" aria-label="No site context">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M3 12h18"></path>
+                <path d="M12 3a9 9 0 0 1 0 18 9 9 0 0 1 0-18z"></path>
+              </svg>
+            </div>`;
+        }
+        
+        const domainEl = document.getElementById('siteDomain');
+        const urlEl = document.getElementById('siteUrl');
+        if (domainEl) {
+          domainEl.textContent = 'No site context';
+          domainEl.title = 'Extension opened outside of web page';
+        }
+        if (urlEl) {
+          urlEl.textContent = 'No active tab';
+          urlEl.title = 'Extension opened outside of web page';
+        }
       }
     } catch (error) {
       console.error('Error loading current site:', error);
-      this.currentSite = {
-        domain: 'localhost',
-        url: 'http://localhost',
-        title: 'Local Development',
-        favicon: null
-      };
+      this.currentSite = null;
+      
+      // Update UI to show error state
+      const domainEl = document.getElementById('siteDomain');
+      const urlEl = document.getElementById('siteUrl');
+      if (domainEl) {
+        domainEl.textContent = 'Error loading site';
+        domainEl.title = 'Failed to load current site information';
+      }
+      if (urlEl) {
+        urlEl.textContent = 'Error';
+        urlEl.title = 'Failed to load current site information';
+      }
+    }
+  }
+
+  // Handle real-time note updates from context menu
+  async handleRealTimeNoteUpdate(message) {
+    try {
+      const { note, type } = message;
+      
+      if (type === 'new_note') {
+        // New note created - refresh the notes list and open it
+        await this.refreshNotesFromStorage();
+        this.currentNote = note;
+        await this.openEditor(true);
+        this.persistEditorOpen(true);
+        this.saveEditorDraft();
+      } else if (type === 'append_selection') {
+        // Note was appended to - update if it's currently open
+        if (this.currentNote && this.currentNote.id === note.id) {
+          // Update current note with new content
+          this.currentNote = { ...note };
+          
+          // Refresh editor content if it's open
+          const editor = document.getElementById('noteEditor');
+          if (editor && editor.style.display !== 'none') {
+            const titleHeader = document.getElementById('noteTitleHeader');
+            const contentInput = document.getElementById('noteContentInput');
+            const tagsInput = document.getElementById('tagsInput');
+            
+            if (titleHeader) titleHeader.value = this.currentNote.title || '';
+            if (contentInput) contentInput.innerHTML = this.buildContentHtml(this.currentNote.content || '');
+            if (tagsInput) tagsInput.value = (this.currentNote.tags || []).join(', ');
+          }
+          
+          // Show a subtle notification
+          Utils.showToast(`Note updated with new content`, 'success');
+        }
+        
+        // Refresh notes list to show updated content
+        await this.refreshNotesFromStorage();
+      }
+    } catch (error) {
+      console.error('Error handling real-time note update:', error);
+    }
+  }
+
+  // Refresh notes from storage and update UI
+  async refreshNotesFromStorage() {
+    try {
+      this.allNotes = await this.loadNotes();
+      this.render();
+    } catch (error) {
+      console.error('Error refreshing notes from storage:', error);
     }
   }
 
   async init() {
+    // Wait for IndexedDB storage to be ready
+    if (window.notesStorage && typeof window.notesStorage.init === 'function') {
+      try {
+        await window.notesStorage.init();
+        console.log('IndexedDB storage initialized');
+      } catch (error) {
+        console.warn('Failed to initialize IndexedDB storage, falling back to Chrome storage:', error);
+        this.storageManager = new StorageManager();
+      }
+    }
+    
     this.premiumStatus = await getPremiumStatus();
     // Apply premium-dependent UI immediately
-    try { this.updatePremiumUI(); } catch (_) {}
+    try { await this.updatePremiumUI(); } catch (_) {}
     
     // RESTORE CACHED VALUES IMMEDIATELY to prevent visual shifts
     await this.restoreCachedUIState();
@@ -110,7 +217,9 @@ class URLNotesApp {
     await this.loadCurrentSite();
     this.setupEventListeners();
     await this.themeManager.setupThemeDetection();
-    await this.themeManager.applyAccentFromFavicon(this.currentSite);
+    if (this.currentSite) {
+      await this.themeManager.applyAccentFromFavicon(this.currentSite);
+    }
     // Initialize Supabase session from storage so auth UI persists across popup reopen
     try {
       if (window.supabaseClient && typeof window.supabaseClient.init === 'function') {
@@ -143,21 +252,29 @@ class URLNotesApp {
     
     // Setup conflict banner event listeners
     this.setupConflictBannerListeners();
-    this.allNotes = await this.storageManager.loadNotes();
+    
+    // Load notes first, before any rendering
+    this.allNotes = await this.loadNotes();
+    
     await this.settingsManager.loadFontSetting();
     // Initialize settings UI once (font controls, preview, etc.)
     this.settingsManager.initSettings();
     Utils.checkStorageQuota();
     this.maybeShowQuotaWarning();
-    this.editorManager.updateCharCount();
-    this.editorManager.updateNotePreview();
+    // Note: These methods don't exist in editorManager, they're in the popup class
+    // this.updateCharCount();
+    // this.updateNotePreview();
+    
     // Restore last UI state (filter + possibly open editor)
     try {
       const { lastFilterMode, editorState, lastAction, lastSearchQuery } = await chrome.storage.local.get(['lastFilterMode', 'editorState', 'lastAction', 'lastSearchQuery']);
       if (lastFilterMode === 'site' || lastFilterMode === 'page' || lastFilterMode === 'all_notes') {
         this.filterMode = lastFilterMode;
       }
-      this.switchFilter(this.filterMode, { persist: false });
+      
+      // Set filter without rendering first
+      this.switchFilter(this.filterMode, { persist: false, render: false });
+      
       // Restore search query if present
       if (typeof lastSearchQuery === 'string' && lastSearchQuery.length > 0) {
         this.searchQuery = lastSearchQuery;
@@ -165,28 +282,33 @@ class URLNotesApp {
         const searchClearEl = document.getElementById('searchClear');
         if (searchInputEl) searchInputEl.value = lastSearchQuery;
         if (searchClearEl) searchClearEl.style.display = 'block';
-        // Render with restored search
-        this.render();
       }
+      
+      // Now render after everything is set up
+      this.render();
       // Priority 0: explicit keyboard command to create a new note
       if (lastAction && lastAction.type === 'new_note') {
-        const newNote = this.editorManager.createNewNote(this.currentSite);
-        this.currentNote = newNote;
-        chrome.storage.local.remove('lastAction');
-        return;
+        if (this.currentSite) {
+          const newNote = this.editorManager.createNewNote(this.currentSite);
+          this.currentNote = newNote;
+          chrome.storage.local.remove('lastAction');
+          return;
+        } else {
+          console.warn('Cannot create new note: No valid site context');
+          chrome.storage.local.remove('lastAction');
+        }
       }
       // Priority 1: incoming context menu action
       if (lastAction && lastAction.domain) {
         // Try to locate the target note by id in loaded notes
         const target = this.allNotes.find(n => n.id === lastAction.noteId);
         if (target) {
-          this.editorManager.currentNote = { ...target };
-          this.currentNote = this.editorManager.currentNote;
+          this.currentNote = { ...target };
           // Do NOT clear editorState; we want reopen to work if user closes popup
-          this.editorManager.openEditor(true);
+          await this.openEditor(true);
           // Ensure open flag and draft are persisted immediately
-          this.editorManager.persistEditorOpen(true);
-          this.editorManager.saveEditorDraft();
+          this.persistEditorOpen(true);
+          this.saveEditorDraft();
           // Remove action so it doesn't re-trigger on next open
           chrome.storage.local.remove('lastAction');
           return;
@@ -194,18 +316,19 @@ class URLNotesApp {
       }
       // Priority 2: previously open editor with cached draft
       if (editorState && editorState.open && editorState.noteDraft) {
-        this.editorManager.currentNote = { ...editorState.noteDraft };
-        this.currentNote = this.editorManager.currentNote;
+        this.currentNote = { ...editorState.noteDraft };
         if (this.currentSite) {
           this.currentNote.domain = this.currentNote.domain || this.currentSite.domain;
           this.currentNote.url = this.currentSite.url;
           this.currentNote.pageTitle = this.currentSite.title;
         }
-        this.editorManager.openEditor(true);
+        await this.openEditor(true);
       }
     } catch (_) {
       // Fallback to default filter
-      this.switchFilter(this.filterMode, { persist: false });
+      this.switchFilter(this.filterMode, { persist: false, render: false });
+      // Render after fallback setup
+      this.render();
     }
 
     // Ad bar UI only (no backend init)
@@ -334,11 +457,11 @@ class URLNotesApp {
   }
 
   // Handle tier change from api.js with status payload { active, tier }
-  handleTierChanged(status) {
+  async handleTierChanged(status) {
     try {
       const isPremium = !!(status && status.active && (status.tier || 'premium') !== 'free');
       this.premiumStatus = { isPremium };
-      this.updatePremiumUI();
+      await this.updatePremiumUI();
     } catch (_) {}
   }
 
@@ -439,32 +562,53 @@ class URLNotesApp {
       const { userTier } = await chrome.storage.local.get(['userTier']);
       const isPremium = !!(userTier && userTier !== 'free');
       this.premiumStatus = { isPremium };
-      this.updatePremiumUI();
+      await this.updatePremiumUI();
     } catch (_) {}
   }
 
   // Load all notes from storage into the master list
   async loadNotes() {
     try {
-      const allData = await chrome.storage.local.get(null);
-      let allNotes = [];
-      for (const key in allData) {
-        // Filter out settings or non-array data
-        if (key !== 'themeMode' && Array.isArray(allData[key])) {
-          allNotes = allNotes.concat(allData[key]);
+      // Use IndexedDB storage if available, fallback to Chrome storage
+      if (this.storageManager === window.notesStorage && typeof this.storageManager.getAllNotesForDisplay === 'function') {
+        // Use IndexedDB storage - get notes for display (excludes deleted notes)
+        this.allNotes = await this.storageManager.getAllNotesForDisplay();
+      } else {
+        // Fallback to Chrome storage
+        const allData = await chrome.storage.local.get(null);
+        let allNotes = [];
+        for (const key in allData) {
+          // Filter out settings or non-array data
+          if (key !== 'themeMode' && Array.isArray(allData[key])) {
+            allNotes = allNotes.concat(allData[key]);
+          }
         }
+        // Sort by most recently updated
+        allNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        this.allNotes = allNotes;
       }
-      // Sort by most recently updated
-      allNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-      this.allNotes = allNotes;
+      
+      // Ensure allNotes is always an array
+      if (!Array.isArray(this.allNotes)) {
+        this.allNotes = [];
+      }
+      
+      return this.allNotes;
     } catch (error) {
       console.error('Error loading notes:', error);
       this.allNotes = []; // Fallback to an empty list on error
+      return this.allNotes;
     }
   }
 
   // Setup event listeners
   setupEventListeners() {
+    // Listen for real-time note updates from context menu
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.action === 'note_updated') {
+        this.handleRealTimeNoteUpdate(message);
+      }
+    });
     // Filter between all notes and page-specific (deduplicated bindings)
     const on = (id, evt, handler) => {
       const el = document.getElementById(id);
@@ -530,7 +674,15 @@ class URLNotesApp {
     document.getElementById('saveNoteBtn').addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      // Save with same behavior as back button but keep editor open
+      // Same functionality as back button: save and close editor
+      const notesContainer = document.querySelector('.notes-container');
+      this.editorManager.closeEditor({ clearDraft: false });
+      // Animate notes list entrance
+      if (notesContainer) {
+        notesContainer.classList.add('panel-fade-in');
+        setTimeout(() => notesContainer.classList.remove('panel-fade-in'), 220);
+      }
+      // Use same save path as Back button
       saveStandard();
     });
     
@@ -540,15 +692,12 @@ class URLNotesApp {
 
     // Editor inputs
     document.getElementById('noteTitleHeader').addEventListener('input', () => {
-      this.editorManager.updateNotePreview();
-      this.editorManager.saveDraftDebounced();
+      this.saveDraftDebounced();
     });
     
     const contentInput = document.getElementById('noteContentInput');
     contentInput.addEventListener('input', () => {
-      this.editorManager.updateNotePreview();
-      this.editorManager.updateCharCount();
-      this.editorManager.saveDraftDebounced();
+      this.saveDraftDebounced();
     });
     // Paste sanitization: allow only text, links, and line breaks
     contentInput.addEventListener('paste', (e) => this.handleEditorPaste(e));
@@ -558,8 +707,7 @@ class URLNotesApp {
     // Skip textarea-specific key handling; editor is now contenteditable
     
     document.getElementById('tagsInput').addEventListener('input', () => {
-      this.editorManager.updateNotePreview();
-      this.editorManager.saveDraftDebounced();
+      this.saveDraftDebounced();
     });
 
     // Settings button simply opens the settings panel
@@ -590,10 +738,14 @@ class URLNotesApp {
       this.saveFontSetting(e.target.value);
     });
 
-    // Refresh notes when storage changes (e.g., context menu adds a note)
-    // Debounce to avoid thrashing on bulk updates/imports
-    const debouncedRefresh = Utils.debounce(async () => {
-      this.allNotes = await this.storageManager.loadNotes();
+
+
+
+
+  // Refresh notes when storage changes (e.g., context menu adds a note)
+  // Debounce to avoid thrashing on bulk updates/imports
+  const debouncedRefresh = Utils.debounce(async () => {
+      this.allNotes = await this.loadNotes();
       this.render();
       // If the currently open editor's note changed in storage, refresh its fields live
       if (this.currentNote) {
@@ -631,8 +783,7 @@ class URLNotesApp {
               }
             }
 
-            this.editorManager.updateNotePreview();
-            this.editorManager.updateCharCount();
+                         // Note: These methods don't exist in editorManager
           }
         }
       }
@@ -757,7 +908,7 @@ class URLNotesApp {
 
   // Switch between different note filters
   // options.persist: whether to store lastFilterMode (default: true)
-  switchFilter(filter, options = { persist: true }) {
+  switchFilter(filter, options = { persist: true, render: true }) {
     this.filterMode = filter;
     
     // Update filter UI
@@ -769,7 +920,8 @@ class URLNotesApp {
       'page': 'showPageBtn',
       'all_notes': 'showAllNotesBtn'
     }[filter];
-    document.getElementById(buttonId).classList.add('active');
+    const filterBtn = document.getElementById(buttonId);
+    if (filterBtn) filterBtn.classList.add('active');
 
     // Set data-view on root for view-specific styling (compact site/page)
     document.documentElement.setAttribute('data-view', filter);
@@ -777,7 +929,11 @@ class URLNotesApp {
     // Search placeholder is now handled centrally in restoreCachedUIState to prevent caching conflicts
     // No need to update it here anymore
 
-    this.render();
+    // Only render if explicitly requested and allNotes is available
+    if (options.render !== false && this.allNotes && Array.isArray(this.allNotes)) {
+      this.render();
+    }
+    
     // Persist last chosen filter unless suppressed
     if (!options || options.persist !== false) {
       chrome.storage.local.set({ lastFilterMode: this.filterMode });
@@ -1470,6 +1626,13 @@ class URLNotesApp {
   // Create a new note (hybrid - always save both domain and URL)
   createNewNote() {
     this.isJotMode = false;
+    
+    // Check if we have a valid currentSite context
+    if (!this.currentSite || !this.currentSite.domain) {
+      Utils.showToast('Cannot create note: No valid site context. Please open the extension from a web page.');
+      return;
+    }
+    
     const newNote = {
       id: this.generateId(),
       title: '',
@@ -1488,13 +1651,13 @@ class URLNotesApp {
   
 
   // Open existing note
-  openNote(note) {
+  async openNote(note) {
     this.currentNote = { ...note };
-    this.openEditor();
+    await this.openEditor(false);
   }
 
   // Open the note editor
-  openEditor(focusContent = false) {
+  async openEditor(focusContent = false) {
     const editor = document.getElementById('noteEditor');
     const titleHeader = document.getElementById('noteTitleHeader');
     const contentInput = document.getElementById('noteContentInput');
@@ -1502,30 +1665,79 @@ class URLNotesApp {
     const dateSpan = document.getElementById('noteDate');
     const aiRewriteBtn = document.getElementById('aiRewriteBtn');
 
-    // Populate editor with note data
-    titleHeader.value = this.currentNote.title;
-    // Render markdown/plain text to HTML for the contenteditable editor
-    contentInput.innerHTML = this.buildContentHtml(this.currentNote.content);
-    tagsInput.value = this.currentNote.tags.join(', ');
+    // First, try to restore from cached draft
+    const draftWasRestored = await this.restoreEditorDraft();
+    
+    // Populate editor with note data (either from note or restored draft)
+    // Note: restoreEditorDraft() already populated the fields if a draft was restored
+    if (!titleHeader.value) titleHeader.value = this.currentNote.title || '';
+    if (!contentInput.innerHTML) contentInput.innerHTML = this.buildContentHtml(this.currentNote.content || '');
+    if (!tagsInput.value) tagsInput.value = (this.currentNote.tags || []).join(', ');
     // Do not show created date inside the editor UI to avoid mid-editor clutter
     if (dateSpan) {
       dateSpan.textContent = '';
       dateSpan.style.display = 'none';
     }
 
-    // Show premium features
-    if (this.premiumStatus.isPremium) {
-      aiRewriteBtn.style.display = 'flex';
-    } else {
+    // Show premium features - use robust premium checking
+    try {
+      let isPremium = false;
+      
+      // First try notesStorage
+      if (window.notesStorage?.checkPremiumAccess) {
+        try {
+          isPremium = await window.notesStorage.checkPremiumAccess();
+        } catch (error) {
+          console.warn('notesStorage premium check failed in openEditor:', error);
+        }
+      }
+      
+      // Fallback to chrome storage if notesStorage failed
+      if (!isPremium) {
+        try {
+          const { userTier } = await chrome.storage.local.get(['userTier']);
+          isPremium = !!(userTier && userTier !== 'free');
+        } catch (error) {
+          console.warn('Chrome storage premium check failed in openEditor:', error);
+        }
+      }
+      
+      // Final fallback to instance variable
+      if (!isPremium && this.premiumStatus?.isPremium) {
+        isPremium = this.premiumStatus.isPremium;
+      }
+      
+      console.log('Premium status for AI button in openEditor:', isPremium);
+      
+      if (isPremium) {
+        aiRewriteBtn.style.display = 'flex';
+      } else {
+        aiRewriteBtn.style.display = 'none';
+      }
+      
+      // Also update the overall premium UI to ensure consistency
+      try {
+        await this.updatePremiumUI();
+      } catch (error) {
+        console.warn('Failed to update premium UI in openEditor:', error);
+      }
+    } catch (error) {
+      console.error('Premium check failed in openEditor:', error);
+      // Hide AI button on error
       aiRewriteBtn.style.display = 'none';
     }
 
     // Show editor with animation and persistent state
     editor.style.display = 'flex';
     editor.classList.add('open', 'slide-in', 'editor-fade-in');
-    // Mark editor as open and persist current draft immediately
+    // Mark editor as open but don't save draft yet (wait for user changes)
     this.persistEditorOpen(true);
-    this.saveEditorDraft();
+    
+    // Only save draft if we didn't restore one (to avoid overwriting restored content)
+    if (!draftWasRestored) {
+      // Save initial state as draft
+      setTimeout(() => this.saveEditorDraft(), 100);
+    }
     
     // Focus appropriately and try to restore caret from cached draft (if present)
     setTimeout(() => {
@@ -1549,35 +1761,23 @@ class URLNotesApp {
       } catch (_) {}
     }, 120);
     
-    this.editorManager.updateCharCount();
+    // Note: updateCharCount method doesn't exist in editorManager
   }
 
   // Close the note editor
   async closeEditor(options = { clearDraft: false }) {
     const editor = document.getElementById('noteEditor');
 
-    // Attempt silent autosave if content is non-empty and we have a currentNote
-    try {
-      if (this.currentNote && !options.clearDraft) {
-        const titleHeader = document.getElementById('noteTitleHeader');
-        const contentInput = document.getElementById('noteContentInput');
-        const tagsInput = document.getElementById('tagsInput');
-        const title = (titleHeader && titleHeader.value ? titleHeader.value : '').trim();
-        const content = this.editorManager.htmlToMarkdown(contentInput ? contentInput.innerHTML : '');
-        const tags = (tagsInput && tagsInput.value
-          ? tagsInput.value.split(',').map(t => t.trim()).filter(Boolean)
-          : []);
-        const nonEmpty = title || (content && content.trim()) || (tags && tags.length);
-        if (nonEmpty) {
-          await this.saveCurrentNote({
-            clearDraftAfterSave: true,
-            closeEditorAfterSave: false,
-            showToast: false,
-            switchFilterAfterSave: true
-          });
-        }
+    // Always save draft before closing (unless explicitly clearing)
+    if (!options.clearDraft && this.currentNote) {
+      try {
+        // Save the current editor content as a draft (don't modify currentNote)
+        await this.saveEditorDraft();
+        console.log('Draft saved before closing editor');
+      } catch (error) {
+        console.error('Failed to save editor draft:', error);
       }
-    } catch (_) {}
+    }
 
     editor.classList.add('slide-out');
     
@@ -1590,8 +1790,7 @@ class URLNotesApp {
         // Only when explicitly clearing the draft do we drop currentNote reference
         this.currentNote = null;
       } else {
-        // Cache latest draft immediately on close to avoid losing unsaved edits
-        this.saveEditorDraft();
+        // Mark editor as not open but keep draft cached
         this.persistEditorOpen(false);
       }
     }, 240);
@@ -1620,15 +1819,17 @@ class URLNotesApp {
     // Update note data from editor
     this.currentNote.title = (titleHeader && titleHeader.value ? titleHeader.value : '').trim();
     // Convert editor HTML back to markdown/plain text for storage
-    this.currentNote.content = this.editorManager.htmlToMarkdown(contentInput ? contentInput.innerHTML : '');
+    this.currentNote.content = this.htmlToMarkdown(contentInput ? contentInput.innerHTML : '');
     this.currentNote.tags = (tagsInput && tagsInput.value
       ? tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
       : []);
     this.currentNote.updatedAt = new Date().toISOString();
 
     // Update URL and page title for current context
-    this.currentNote.url = this.currentSite.url;
-    this.currentNote.pageTitle = this.currentSite.title;
+    if (this.currentSite) {
+      this.currentNote.url = this.currentSite.url;
+      this.currentNote.pageTitle = this.currentSite.title;
+    }
     
     // Don't save empty notes (title, content, and tags all empty)
     const isTitleEmpty = !this.currentNote.title;
@@ -1641,37 +1842,13 @@ class URLNotesApp {
       return;
     }
 
-    // Get all notes for the current domain from storage
-    const domain = this.currentNote.domain;
-    const data = await chrome.storage.local.get(domain);
-    const notesForDomain = data[domain] || [];
-
-    // Find and update the note, or add it if new
-    const noteIndex = notesForDomain.findIndex(n => n.id === this.currentNote.id);
-    if (noteIndex > -1) {
-      notesForDomain[noteIndex] = this.currentNote;
-    } else {
-      notesForDomain.push(this.currentNote);
-    }
-
-    // Save back to storage
-    await chrome.storage.local.set({ [domain]: notesForDomain });
-
-    // Update master list in memory
-    const masterIndex = this.allNotes.findIndex(n => n.id === this.currentNote.id);
-    if (masterIndex > -1) {
-      this.allNotes[masterIndex] = this.currentNote;
-    } else {
-      this.allNotes.unshift(this.currentNote); // Add to front for visibility
-    }
-
-    // Sort master list again to be safe
-    this.allNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    // Save note using storage manager (IndexedDB or Chrome storage)
+    await this.storageManager.saveNote(this.currentNote);
+    
+    // Refresh notes list from storage to ensure consistency
+    await this.loadNotes();
 
     try {
-      // Save locally first
-      await this.storageManager.saveNote(this.currentNote);
-      
       // Show "Note Saved" popup
       this.showNoteSavedPopup('Note saved locally');
       
@@ -1814,18 +1991,11 @@ class URLNotesApp {
       return;
     }
 
-    // Remove from master list in memory
-    const masterIndex = this.allNotes.findIndex(n => n.id === this.currentNote.id);
-    if (masterIndex > -1) {
-      this.allNotes.splice(masterIndex, 1);
-    }
-
-    // Remove from storage
-    const domain = this.currentNote.domain;
-    const data = await chrome.storage.local.get(domain);
-    let notesForDomain = data[domain] || [];
-    notesForDomain = notesForDomain.filter(n => n.id !== this.currentNote.id);
-    await chrome.storage.local.set({ [domain]: notesForDomain });
+    // Delete note using storage manager
+    await this.storageManager.deleteNote(this.currentNote.id);
+    
+    // Refresh notes list from storage to ensure consistency
+    await this.loadNotes();
 
     Utils.showToast('Note deleted');
     // Clear draft cache and close editor
@@ -1841,15 +2011,11 @@ class URLNotesApp {
     // This function is now only called directly when confirmed, so no need for dialog.
     // The inline confirmation is handled by the click listener in `createNoteElement`.
 
-    // Remove from master list
-    this.allNotes = this.allNotes.filter(n => n.id !== noteId);
-
-    // Remove from storage
-    const domain = note.domain;
-    const data = await chrome.storage.local.get(domain);
-    let notesForDomain = data[domain] || [];
-    notesForDomain = notesForDomain.filter(n => n.id !== noteId);
-    await chrome.storage.local.set({ [domain]: notesForDomain });
+    // Delete note using storage manager
+    await this.storageManager.deleteNote(noteId);
+    
+    // Refresh notes list from storage to ensure consistency
+    await this.loadNotes();
 
     Utils.showToast('Note deleted');
     await this.postDeleteRefresh();
@@ -1930,7 +2096,48 @@ class URLNotesApp {
       };
 
       await chrome.storage.local.set({ editorState: { open: true, noteDraft: draft } });
-    } catch (_) { }
+      console.log('Editor draft saved:', draft.id);
+    } catch (error) {
+      console.error('Failed to save editor draft:', error);
+    }
+  }
+
+  // Restore editor draft from storage
+  async restoreEditorDraft() {
+    try {
+      if (!this.currentNote) return;
+      
+      const { editorState } = await chrome.storage.local.get(['editorState']);
+      if (editorState && editorState.noteDraft && editorState.noteDraft.id === this.currentNote.id) {
+        const draft = editorState.noteDraft;
+        
+        // Restore draft content if it's newer than the note
+        if (draft.updatedAt && this.currentNote.updatedAt) {
+          const draftTime = new Date(draft.updatedAt).getTime();
+          const noteTime = new Date(this.currentNote.updatedAt).getTime();
+          
+          if (draftTime > noteTime) {
+            // Draft is newer, restore it to editor fields (don't modify currentNote)
+            const titleHeader = document.getElementById('noteTitleHeader');
+            const contentInput = document.getElementById('noteContentInput');
+            const tagsInput = document.getElementById('tagsInput');
+            
+            if (titleHeader) titleHeader.value = draft.title || this.currentNote.title || '';
+            if (contentInput) contentInput.innerHTML = this.buildContentHtml(draft.content || this.currentNote.content || '');
+            if (tagsInput) tagsInput.value = (draft.tags || this.currentNote.tags || []).join(', ');
+            
+            console.log('Editor draft restored for note:', draft.id, 'draft time:', draft.updatedAt, 'note time:', this.currentNote.updatedAt);
+            return true; // Indicate that a draft was restored
+          } else {
+            console.log('Note is newer than draft, not restoring:', draft.id, 'draft time:', draft.updatedAt, 'note time:', this.currentNote.updatedAt);
+          }
+        }
+      }
+      return false; // No draft was restored
+    } catch (error) {
+      console.error('Failed to restore editor draft:', error);
+      return false;
+    }
   }
 
   // Clear editor state entirely
@@ -1948,11 +2155,11 @@ class URLNotesApp {
       if (!userConfirmed) return;
     }
 
-    // Remove from storage by removing the domain key
-    await chrome.storage.local.remove(domain);
-
-    // Remove from master list in memory
-    this.allNotes = this.allNotes.filter(note => note.domain !== domain);
+    // Delete notes using storage manager
+    await this.storageManager.deleteNotesByDomain(domain);
+    
+    // Refresh notes list from storage to ensure consistency
+    await this.loadNotes();
 
     await this.postDeleteRefresh();
     Utils.showToast(`Deleted all notes for ${domain}`);
@@ -1963,10 +2170,22 @@ class URLNotesApp {
     // Compute what would be visible with current filter + search
     let filtered = [];
     if (this.filterMode === 'site') {
-      filtered = this.allNotes.filter(n => n.domain === (this.currentSite && this.currentSite.domain));
+      // Only filter by site if we have a valid currentSite with domain
+      if (this.currentSite && this.currentSite.domain && this.currentSite.domain !== 'localhost') {
+        filtered = this.allNotes.filter(n => n.domain === this.currentSite.domain);
+      } else {
+        // If no valid currentSite, show all notes instead of filtering to empty
+        filtered = this.allNotes;
+      }
     } else if (this.filterMode === 'page') {
-      const currentKey = this.currentSite ? this.normalizePageKey(this.currentSite.url) : '';
-      filtered = this.allNotes.filter(n => this.normalizePageKey(n.url) === currentKey);
+      // Only filter by page if we have a valid currentSite with URL
+      if (this.currentSite && this.currentSite.url && this.currentSite.url !== 'http://localhost') {
+        const currentKey = this.normalizePageKey(this.currentSite.url);
+        filtered = this.allNotes.filter(n => this.normalizePageKey(n.url) === currentKey);
+      } else {
+        // If no valid currentSite URL, show all notes instead of filtering to empty
+        filtered = this.allNotes;
+      }
     } else {
       filtered = this.allNotes;
     }
@@ -1999,16 +2218,53 @@ class URLNotesApp {
     Utils.showToast('AI Rewrite coming soon!');
   }
 
-  updatePremiumUI() {
+  async updatePremiumUI() {
     try {
-      const isPremium = !!(this.premiumStatus && this.premiumStatus.isPremium);
+      // Try multiple sources for premium status
+      let isPremium = false;
+      
+      // First try notesStorage
+      if (window.notesStorage?.checkPremiumAccess) {
+        try {
+          isPremium = await window.notesStorage.checkPremiumAccess();
+          console.log('Premium status from notesStorage:', isPremium);
+        } catch (error) {
+          console.warn('notesStorage premium check failed:', error);
+        }
+      }
+      
+      // Fallback to chrome storage if notesStorage failed
+      if (!isPremium) {
+        try {
+          const { userTier } = await chrome.storage.local.get(['userTier']);
+          isPremium = !!(userTier && userTier !== 'free');
+          console.log('Premium status from chrome storage:', isPremium, 'userTier:', userTier);
+        } catch (error) {
+          console.warn('Chrome storage premium check failed:', error);
+        }
+      }
+      
+      // Final fallback to instance variable
+      if (!isPremium && this.premiumStatus?.isPremium) {
+        isPremium = this.premiumStatus.isPremium;
+        console.log('Premium status from instance:', isPremium);
+      }
+      
+      console.log('Final premium status for UI update:', isPremium);
+      
       // AI button visibility
       const aiBtn = document.getElementById('aiRewriteBtn');
-      if (aiBtn) aiBtn.style.display = isPremium ? '' : 'none';
+      if (aiBtn) {
+        aiBtn.style.display = isPremium ? 'flex' : 'none';
+        console.log('AI button display set to:', isPremium ? 'flex' : 'none');
+      }
 
       // Ads container visibility
       const ad = document.getElementById('adContainer');
-      if (ad) ad.style.display = isPremium ? 'none' : '';
+      if (ad) {
+        ad.style.display = isPremium ? 'none' : 'block';
+        console.log('Ad container display set to:', isPremium ? 'none' : 'block');
+      }
 
       // Always allow All Notes view
       const allNotesBtn = document.getElementById('showAllNotesBtn');
@@ -2017,7 +2273,15 @@ class URLNotesApp {
         allNotesBtn.disabled = false;
         allNotesBtn.title = 'View all notes';
       }
-    } catch (_) { /* noop */ }
+    } catch (error) { 
+      console.error('updatePremiumUI failed:', error);
+      // Hide premium features if check fails
+      const aiBtn = document.getElementById('aiRewriteBtn');
+      if (aiBtn) aiBtn.style.display = 'none';
+      
+      const ad = document.getElementById('adContainer');
+      if (ad) ad.style.display = 'block';
+    }
   }
 
   // Handle paste events in editor
@@ -2125,28 +2389,83 @@ class URLNotesApp {
     }
   }
 
-  // Switch filter functionality
-  switchFilter(filterType, options = {}) {
+
+
+  // Generate a unique ID for new notes
+  generateId() {
     try {
-      const filterButtons = document.querySelectorAll('.filter-btn');
-      filterButtons.forEach(btn => btn.classList.remove('active'));
-      
-      const activeButton = document.querySelector(`[data-filter="${filterType}"]`);
-      if (activeButton) {
-        activeButton.classList.add('active');
+      // Use crypto.randomUUID if available (modern browsers)
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
       }
       
-      this.filterMode = filterType;
-      this.currentFilter = filterType;
-      
-      // Persist filter mode unless explicitly disabled
-      if (options.persist !== false) {
-        chrome.storage.local.set({ lastFilterMode: filterType }).catch(() => {});
-      }
-      
-      this.render();
+      // Fallback for older browsers
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
     } catch (error) {
-      console.error('Error switching filter:', error);
+      console.error('Failed to generate ID:', error);
+      // Final fallback
+      return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    }
+  }
+
+  // Apply font settings to editor
+  applyFont(fontName, size) {
+    try {
+      const contentInput = document.getElementById('noteContentInput');
+      if (contentInput) {
+        const fontFamily = (fontName === 'Default' || fontName === 'System')
+          ? '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+          : fontName;
+        contentInput.style.fontFamily = fontFamily;
+        contentInput.style.fontSize = `${size}px`;
+      }
+    } catch (error) {
+      console.warn('Failed to apply font:', error);
+    }
+  }
+
+  // Close settings panel
+  closeSettings() {
+    try {
+      const settingsPanel = document.getElementById('settingsPanel');
+      if (settingsPanel) {
+        settingsPanel.style.display = 'none';
+      }
+    } catch (error) {
+      console.warn('Failed to close settings:', error);
+    }
+  }
+
+  // Import notes from file
+  async importNotes(event) {
+    try {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const text = await file.text();
+      const data = JSON.parse(text);
+      
+      if (this.storageManager && typeof this.storageManager.importNotes === 'function') {
+        await this.storageManager.importNotes(data);
+        Utils.showToast('Notes imported successfully');
+        // Refresh notes list
+        await this.loadNotes();
+        this.render();
+      } else {
+        Utils.showToast('Import not available');
+      }
+      
+      // Clear the input
+      event.target.value = '';
+    } catch (error) {
+      console.error('Import failed:', error);
+      Utils.showToast('Failed to import notes');
+      // Clear the input
+      event.target.value = '';
     }
   }
 
@@ -2225,9 +2544,24 @@ class URLNotesApp {
 
 }
 
-// Mock premium status function (force premium for now)
+// Get premium status from storage or default to false
 async function getPremiumStatus() {
-  return { isPremium: true };
+  try {
+    // First try to get from notesStorage if available
+    if (window.notesStorage?.checkPremiumAccess) {
+      const isPremium = await window.notesStorage.checkPremiumAccess();
+      return { isPremium };
+    }
+    
+    // Fallback to chrome storage
+    const { userTier } = await chrome.storage.local.get(['userTier']);
+    const isPremium = !!(userTier && userTier !== 'free');
+    return { isPremium };
+  } catch (error) {
+    console.warn('Failed to get premium status:', error);
+    // Default to non-premium on error
+    return { isPremium: false };
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

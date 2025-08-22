@@ -1,3 +1,74 @@
+// Simple IndexedDB storage for background script context menu
+let notesStorage = null;
+
+async function initStorage() {
+  if (!notesStorage) {
+    notesStorage = {
+      dbName: 'URLNotesDB',
+      version: 1,
+      db: null,
+      
+      async init() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(this.dbName, this.version);
+          
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => {
+            this.db = request.result;
+            resolve();
+          };
+          
+          request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            
+            // Notes store
+            if (!db.objectStoreNames.contains('notes')) {
+              const notesStore = db.createObjectStore('notes', { keyPath: 'id' });
+              notesStore.createIndex('domain', 'domain', { unique: false });
+              notesStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+            }
+          };
+        });
+      },
+      
+      async saveNote(note) {
+        if (!this.db) await this.init();
+        
+        return new Promise((resolve, reject) => {
+          const transaction = this.db.transaction(['notes'], 'readwrite');
+          const store = transaction.objectStore('notes');
+          const request = store.put(note);
+          
+          request.onsuccess = () => resolve();
+          request.onerror = () => reject(request.error);
+        });
+      },
+      
+      async getNotesByDomain(domain) {
+        if (!this.db) await this.init();
+        
+        return new Promise((resolve, reject) => {
+          const transaction = this.db.transaction(['notes'], 'readonly');
+          const store = transaction.objectStore('notes');
+          const index = store.index('domain');
+          const request = index.getAll(domain);
+          
+          request.onsuccess = () => {
+            const notes = request.result || [];
+            const activeNotes = notes.filter(note => !note.is_deleted);
+            activeNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+            resolve(activeNotes);
+          };
+          request.onerror = () => reject(request.error);
+        });
+      }
+    };
+    
+    await notesStorage.init();
+  }
+  return notesStorage;
+}
+
 // Keyboard commands
 try {
   chrome.commands.onCommand.addListener(async (command) => {
@@ -134,30 +205,51 @@ async function addSelectionToNewNote(info, tab) {
   // 2. Create the note content (single clickable anchor)
   const noteContent = `- [${displayText}](${fragmentUrl})`;
 
-  // 3. Create the new note object
+  // 3. Create the new note object with proper UUID
   const newNote = {
-    id: `note_${Date.now()}`,
+    id: crypto.randomUUID ? crypto.randomUUID() : `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     url: pageUrl,
     domain: domain,
     title: title || 'Untitled',
-    favicon: favIconUrl,
+    pageTitle: title || 'Untitled',
     content: noteContent,
     tags: ['clipping'],
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
+    version: 1
   };
 
-  // 4. Save the note to storage
-  try {
-    const data = await chrome.storage.local.get(domain);
-    const notes = data[domain] || [];
-    notes.push(newNote);
-    await chrome.storage.local.set({ [domain]: notes });
-    console.log('New note saved from selection:', newNote);
-    // 5. Mark last action so popup can prioritize showing this note
-    await chrome.storage.local.set({ lastAction: { type: 'new_from_selection', domain, noteId: newNote.id, ts: Date.now() } });
-    // 6. Open the extension UI to show the result
-    openExtensionUi();
+      // 4. Save the note to IndexedDB storage
+    try {
+      const storage = await initStorage();
+      await storage.saveNote(newNote);
+      console.log('New note saved from selection:', newNote);
+      
+      // 5. Mark last action so popup can prioritize showing this note
+      await chrome.storage.local.set({ 
+        lastAction: { 
+          type: 'new_from_selection', 
+          domain, 
+          noteId: newNote.id, 
+          ts: Date.now() 
+        } 
+      });
+      
+      // 6. Notify all popups about the new note
+      try {
+        chrome.runtime.sendMessage({
+          action: 'note_updated',
+          note: newNote,
+          type: 'new_note'
+        }).catch(() => {
+          // Popup might not be open, that's okay - this is expected
+        });
+      } catch (e) {
+        // Popup might not be open, that's okay - this is expected
+      }
+      
+      // 7. Open the extension UI to show the result
+      openExtensionUi();
 
   } catch (error) {
     console.error('Failed to save new note from selection:', error);
@@ -174,6 +266,8 @@ async function addSelectionToExistingNote(info, tab) {
   const bullet = `- [${displayText}](${fragmentUrl})`;
 
   try {
+    const storage = await initStorage();
+    
     // Check for cached editor state first to avoid overwriting unsaved changes
     const { editorState } = await chrome.storage.local.get(['editorState']);
     let targetNote = null;
@@ -187,10 +281,9 @@ async function addSelectionToExistingNote(info, tab) {
       }
     }
     
-    // If no cached note, get from storage
+    // If no cached note, get from IndexedDB storage
     if (!targetNote) {
-      const data = await chrome.storage.local.get(domain);
-      const notes = (data[domain] || []).slice();
+      const notes = await storage.getNotesByDomain(domain);
       if (notes.length === 0) {
         // No existing note for this domain; fallback to creating a new one
         return addSelectionToNewNote(info, tab);
@@ -204,16 +297,8 @@ async function addSelectionToExistingNote(info, tab) {
     targetNote.content = (targetNote.content ? `${targetNote.content}\n` : '') + bullet;
     targetNote.updatedAt = new Date().toISOString();
     
-    // Save to storage
-    const data = await chrome.storage.local.get(domain);
-    const notes = (data[domain] || []).slice();
-    const noteIndex = notes.findIndex(n => n.id === targetNote.id);
-    if (noteIndex > -1) {
-      notes[noteIndex] = targetNote;
-    } else {
-      notes.push(targetNote);
-    }
-    await chrome.storage.local.set({ [domain]: notes });
+    // Save to IndexedDB storage
+    await storage.saveNote(targetNote);
     
     // Update cached editor state if it exists
     if (editorState && editorState.open && editorState.noteDraft && editorState.noteDraft.id === targetNote.id) {
@@ -223,6 +308,20 @@ async function addSelectionToExistingNote(info, tab) {
     }
     
     console.log('Appended selection to existing note:', targetNote.id);
+    
+    // Notify all popups about the updated note
+    try {
+      chrome.runtime.sendMessage({
+        action: 'note_updated',
+        note: targetNote,
+        type: 'append_selection'
+      }).catch(() => {
+        // Popup might not be open, that's okay - this is expected
+      });
+    } catch (e) {
+      // Popup might not be open, that's okay - this is expected
+    }
+    
     // Mark last action so popup can refresh/open the appended note immediately
     await chrome.storage.local.set({ lastAction: { type: 'append_selection', domain, noteId: targetNote.id, ts: Date.now() } });
     openExtensionUi();

@@ -10,20 +10,31 @@ class EditorManager {
 
   // Create a new note
   createNewNote(currentSite) {
+    // Handle case where currentSite might be null
+    if (!currentSite) {
+      console.warn('createNewNote: currentSite is null, using fallback values');
+      currentSite = {
+        domain: 'unknown',
+        url: 'unknown',
+        title: 'Unknown Page'
+      };
+    }
+    
     const newNote = {
       id: this.generateId(),
       title: '',
       content: '',
       tags: [],
-      domain: currentSite.domain,
-      url: currentSite.url,
-      pageTitle: currentSite.title,
+      domain: currentSite.domain || 'unknown',
+      url: currentSite.url || 'unknown',
+      pageTitle: currentSite.title || 'Unknown Page',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
     this.currentNote = newNote;
     this.openEditor();
+    this.populateEditor();
     return newNote;
   }
 
@@ -31,94 +42,139 @@ class EditorManager {
   openNote(note) {
     this.currentNote = { ...note };
     this.openEditor();
+    this.populateEditor();
+  }
+
+  // Populate editor with note data
+  populateEditor() {
+    try {
+      if (!this.currentNote) return;
+      
+      const titleHeader = document.getElementById('noteTitleHeader');
+      const contentInput = document.getElementById('noteContentInput');
+      const tagsInput = document.getElementById('tagsInput');
+      const dateSpan = document.getElementById('noteDate');
+      
+      // Populate title
+      if (titleHeader) {
+        titleHeader.value = this.currentNote.title || '';
+      }
+      
+      // Populate content
+      if (contentInput) {
+        contentInput.innerHTML = this.buildContentHtml(this.currentNote.content || '');
+      }
+      
+      // Populate tags
+      if (tagsInput) {
+        tagsInput.value = (this.currentNote.tags || []).join(', ');
+      }
+      
+      // Populate date
+      if (dateSpan) {
+        dateSpan.textContent = this.currentNote.createdAt ? 
+          new Date(this.currentNote.createdAt).toLocaleDateString() : '';
+      }
+      
+      // Update character count
+      this.updateCharCount();
+      
+    } catch (error) {
+      console.error('Error populating editor:', error);
+    }
   }
 
   // Open the note editor
-  openEditor(focusContent = false) {
+  async openEditor(focusContent = false) {
     const editor = document.getElementById('noteEditor');
-    const titleHeader = document.getElementById('noteTitleHeader');
-    const contentInput = document.getElementById('noteContentInput');
-    const tagsInput = document.getElementById('tagsInput');
-    const dateSpan = document.getElementById('noteDate');
+    const notesContainer = document.querySelector('.notes-container');
+    const searchContainer = document.querySelector('.search-container');
     const aiRewriteBtn = document.getElementById('aiRewriteBtn');
-
-    // Populate editor with note data
-    titleHeader.value = this.currentNote.title;
-    // Render markdown/plain text to HTML for the contenteditable editor
-    contentInput.innerHTML = this.buildContentHtml(this.currentNote.content);
-    tagsInput.value = this.currentNote.tags.join(', ');
-    // Do not show created date inside the editor UI to avoid mid-editor clutter
-    if (dateSpan) {
-      dateSpan.textContent = '';
+    
+    if (!editor || !notesContainer || !searchContainer) {
+      console.error('Editor elements not found');
+      return;
     }
 
-    // Toggle premium-only controls (AI button) based on app premium status
-    try {
-      const isPremium = !!(window.urlNotesApp && window.urlNotesApp.premiumStatus && window.urlNotesApp.premiumStatus.isPremium);
-      if (aiRewriteBtn) aiRewriteBtn.style.display = isPremium ? 'flex' : 'none';
-    } catch (_) {}
-
-    // Show editor with animation and persistent open state
+    // Hide notes list and show editor
+    notesContainer.style.display = 'none';
+    searchContainer.style.display = 'none';
+    
+    // Show editor and trigger slide-in animation
     editor.style.display = 'flex';
-    editor.classList.add('open', 'slide-in', 'editor-fade-in');
-    // Mark editor as open and persist current draft immediately
-    this.persistEditorOpen(true);
-    this.saveEditorDraft();
-    // Wire up live events for typing/paste to keep counter and draft in sync
-    try {
-      if (contentInput) {
-        contentInput.addEventListener('input', () => {
-          this.updateCharCount();
-          this.saveDraftDebounced();
-        });
-        contentInput.addEventListener('paste', (e) => this.handleEditorPaste(e));
-        contentInput.addEventListener('click', (e) => this.handleEditorLinkClick(e));
-        // Initialize count for existing content
-        this.updateCharCount();
-      }
-      if (titleHeader) {
-        titleHeader.addEventListener('input', () => this.saveDraftDebounced());
-      }
-      if (tagsInput) {
-        tagsInput.addEventListener('input', () => this.saveDraftDebounced());
-      }
-    } catch (_) {}
+    editor.classList.add('open');
     
-    // Focus content area after animation completes if requested
-    if (focusContent) {
-      setTimeout(() => {
-        try {
-          contentInput.focus();
-        } catch (_) {}
-      }, 280);
-    }
-    
-    // Restore caret position from cached draft if available
+    // Small delay to ensure display change is applied before animation
     setTimeout(() => {
-      try {
-        chrome.storage.local.get(['editorState']).then(({ editorState }) => {
-          if (!editorState || !editorState.noteDraft) return;
-          const d = editorState.noteDraft;
-          if (d.id === this.currentNote.id && typeof d.caretStart === 'number' && typeof d.caretEnd === 'number') {
-            // Ensure content area is focused before restoring selection
-            contentInput.focus();
-            this.setSelectionOffsets(contentInput, d.caretStart, d.caretEnd);
-          }
-        }).catch(() => {});
-      } catch (_) {}
-    }, 120);
-    
-    this.updateCharCount();
+      editor.classList.add('slide-in');
+    }, 10);
+
+    // Focus the editor
+    if (focusContent) {
+      const contentInput = document.getElementById('noteContentInput');
+      if (contentInput) {
+        contentInput.focus();
+        // Move cursor to end of content
+        const content = contentInput.textContent || '';
+        if (content.length > 0) {
+          const range = document.createRange();
+          const selection = window.getSelection();
+          range.selectNodeContents(contentInput);
+          range.collapse(false);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      }
+    } else {
+      const titleHeader = document.getElementById('noteTitleHeader');
+      if (titleHeader) titleHeader.focus();
+    }
+
+    // Toggle premium-only controls (AI button) based on premium access
+    try {
+      const isPremium = await window.notesStorage?.checkPremiumAccess?.() || false;
+      if (aiRewriteBtn) aiRewriteBtn.style.display = isPremium ? 'flex' : 'none';
+    } catch (_) {
+      // Hide AI button if premium check fails
+      if (aiRewriteBtn) aiRewriteBtn.style.display = 'none';
+    }
+
+    // Update premium UI to hide/show ads appropriately
+    try {
+      if (window.urlNotesApp && window.urlNotesApp.updatePremiumUI) {
+        await window.urlNotesApp.updatePremiumUI();
+      }
+    } catch (error) {
+      console.log('Could not update premium UI:', error.message);
+    }
+
+    // Emit editor opened event
+    window.eventBus?.emit('editor:opened');
   }
 
   // Close the note editor
   closeEditor(options = { clearDraft: false }) {
     const editor = document.getElementById('noteEditor');
+    const notesContainer = document.querySelector('.notes-container');
+    const searchContainer = document.querySelector('.search-container');
+    
+    if (!editor || !notesContainer || !searchContainer) {
+      console.error('Editor elements not found for closing');
+      return;
+    }
+    
+    // Add slide-out animation
     editor.classList.add('slide-out');
     
     setTimeout(() => {
+      // Hide editor and show notes
       editor.style.display = 'none';
+      notesContainer.style.display = 'block';
+      searchContainer.style.display = 'block';
+      
+      // Remove animation classes
       editor.classList.remove('open', 'slide-in', 'slide-out', 'editor-fade-in');
+      
       // If requested, clear cached draft; otherwise keep cached but mark not open
       if (options && options.clearDraft) {
         this.clearEditorState();
@@ -511,7 +567,64 @@ class EditorManager {
   }
 
   generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+    // Use crypto.randomUUID() if available (modern browsers)
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    
+    // Fallback to UUID v4 format for older browsers
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
+  // Save and close the editor
+  async saveAndClose() {
+    try {
+      // Save the current note
+      if (this.currentNote) {
+        await this.saveCurrentNote();
+      }
+      
+      // Close the editor
+      this.closeEditor({ clearDraft: true });
+    } catch (error) {
+      console.error('Error saving and closing:', error);
+    }
+  }
+
+  // Save the current note
+  async saveCurrentNote() {
+    try {
+      if (!this.currentNote) return;
+      
+      const titleHeader = document.getElementById('noteTitleHeader');
+      const contentInput = document.getElementById('noteContentInput');
+      const tagsInput = document.getElementById('tagsInput');
+      
+      // Update current note with editor values
+      this.currentNote.title = (titleHeader && titleHeader.value ? titleHeader.value : '').trim();
+      this.currentNote.content = this.htmlToMarkdown(contentInput ? contentInput.innerHTML : '');
+      this.currentNote.tags = (tagsInput && tagsInput.value
+        ? tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+        : []);
+      
+      // Update timestamp
+      this.currentNote.updatedAt = new Date().toISOString();
+      
+      // Save to storage
+      if (window.notesStorage) {
+        await window.notesStorage.saveNote(this.currentNote);
+      }
+      
+      // Emit note updated event
+      window.eventBus?.emit('notes:updated', { noteId: this.currentNote.id, note: this.currentNote });
+      
+    } catch (error) {
+      console.error('Error saving note:', error);
+    }
   }
 }
 

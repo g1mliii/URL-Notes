@@ -99,20 +99,24 @@
 /* Slide in from bottom */
 @keyframes slideInFromBottom {
   from {
-    transform: translateY(0);
+    transform: translateY(100%);
+    opacity: 0;
   }
   to {
-    transform: translateY(-100%);
+    transform: translateY(0);
+    opacity: 1;
   }
 }
 
 /* Slide out to bottom */
 @keyframes slideOutToBottom {
   from {
-    transform: translateY(-100%);
+    transform: translateY(0);
+    opacity: 1;
   }
   to {
-    transform: translateY(0);
+    transform: translateY(100%);
+    opacity: 0;
   }
 }
 

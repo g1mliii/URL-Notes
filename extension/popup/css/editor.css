@@ -11,13 +11,13 @@
   background: var(--bg-primary);
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
-  z-index: 9999; /* ensure overlay above all */
+  z-index: 9999;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   overflow-x: hidden;
-  transition: transform 0.24s ease; /* a bit snappier */
-  transform: translateY(100%); /* start off-canvas, slide up to 0 */
+  transition: transform 0.24s ease;
+  transform: translateY(100%);
   box-sizing: border-box;
 }
 
@@ -282,19 +282,19 @@ html[data-compact="1"] .save-btn {
 .editor-content {
   flex: 1;
   overflow-y: auto;
-  padding: 12px 12px; /* add horizontal breathing room */
+  padding: 12px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px; /* spacing between sections */
-  min-height: 0; /* allow flex child to shrink properly */
-  max-height: 100%; /* prevent content from expanding beyond container */
-  contain: content; /* improve performance */
+  gap: 10px;
+  min-height: 0;
+  max-height: 100%;
+  contain: content;
 }
 
 .note-content-input {
-  flex: 1 1 auto; /* fill remaining space */
-  min-height: 0;  /* allow flex item to grow/shrink */
-  height: 100%; /* ensure it fills the available space */
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
   border: 1px solid var(--border-color);
   border-radius: 12px;
   background: var(--bg-secondary);
@@ -308,16 +308,15 @@ html[data-compact="1"] .save-btn {
   line-height: 1.5;
   font-family: inherit;
   box-shadow: inset 0 1px 0 var(--shadow-light);
-  overflow-y: auto; /* Enable scrolling for content */
-  max-height: 100%; /* Prevent content from expanding beyond container */
+  overflow-y: auto;
+  max-height: 100%;
   position: relative;
   isolation: isolate;
-  overscroll-behavior: contain; /* Prevent pull-to-refresh and other overscroll behaviors */
-  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-  /* Hide scrollbar visuals while keeping scroll */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge legacy */
-  background-clip: padding-box; /* avoid border/background seam artifacts */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  background-clip: padding-box;
 }
 
 .note-content-input::-webkit-scrollbar { /* Chrome/Safari */

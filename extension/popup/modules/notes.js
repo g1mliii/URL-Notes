@@ -15,13 +15,34 @@ class NotesManager {
     if (!notesList) return;
     notesList.innerHTML = '';
 
+    // Safety check: ensure allNotes is available
+    if (!app.allNotes || !Array.isArray(app.allNotes)) {
+      console.warn('NotesManager.render: app.allNotes is not available, showing empty state');
+      this.showEmptyState(notesList, 'Loading notes...');
+      return;
+    }
+
     // 1) Filter
     let filteredNotes = [];
     if (app.filterMode === 'site') {
-      filteredNotes = app.allNotes.filter(n => n.domain === (app.currentSite && app.currentSite.domain));
+      // Only filter by site if we have a valid currentSite with domain
+      if (app.currentSite && app.currentSite.domain && app.currentSite.domain !== 'localhost') {
+        filteredNotes = app.allNotes.filter(n => n.domain === app.currentSite.domain);
+      } else {
+        // If no valid currentSite, show all notes instead of filtering to empty
+        console.log('NotesManager.render: No valid currentSite domain (extension opened outside web page), showing all notes for site filter');
+        filteredNotes = app.allNotes;
+      }
     } else if (app.filterMode === 'page') {
-      const currentKey = app.normalizePageKey(app.currentSite && app.currentSite.url);
-      filteredNotes = app.allNotes.filter(n => app.normalizePageKey(n.url) === currentKey);
+      // Only filter by page if we have a valid currentSite with URL
+      if (app.currentSite && app.currentSite.url && app.currentSite.url !== 'http://localhost') {
+        const currentKey = app.normalizePageKey(app.currentSite.url);
+        filteredNotes = app.allNotes.filter(n => app.normalizePageKey(n.url) === currentKey);
+      } else {
+        // If no valid currentSite URL, show all notes instead of filtering to empty
+        console.log('NotesManager.render: No valid currentSite URL (extension opened outside web page), showing all notes for page filter');
+        filteredNotes = app.allNotes;
+      }
     } else {
       filteredNotes = app.allNotes;
     }
@@ -45,27 +66,7 @@ class NotesManager {
 
     // 3) Render list or empty state
     if (filteredNotes.length === 0) {
-      if (!emptyState) {
-        emptyState = document.createElement('div');
-        emptyState.id = 'emptyState';
-        emptyState.className = 'empty-state';
-        emptyState.innerHTML = `
-          <div class="empty-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14,2 14,8 20,8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="13"></line>
-              <line x1="16" y1="17" x2="8" y2="17"></line>
-              <polyline points="10,9 9,9 8,9"></polyline>
-            </svg>
-          </div>
-          <h4>No notes found</h4>
-          <p>Try a different filter or create a new note.</p>
-        `;
-      }
-      notesList.innerHTML = '';
-      notesList.appendChild(emptyState);
-      emptyState.style.display = 'flex';
+      this.showEmptyState(notesList, 'No notes found', 'Try a different filter or create a new note.');
       return;
     }
 
@@ -76,67 +77,55 @@ class NotesManager {
     // No need to update it here anymore
 
          if (app.filterMode === 'all_notes') {
-       await this.renderGroupedNotes(filteredNotes);
+       await this.renderGroupedNotes(filteredNotes, notesList);
      } else {
-             for (const note of filteredNotes) {
-         const el = await this.createNoteElement(note);
+       // Check premium status once for all notes
+       const isPremium = await window.notesStorage?.checkPremiumAccess?.() || false;
+       
+       for (const note of filteredNotes) {
+         const el = await this.createNoteElement(note, isPremium);
          notesList.appendChild(el);
        }
     }
   }
 
   // Render notes grouped by domain for 'All Notes' view
-  async renderGroupedNotes(notes) {
-    const notesList = document.getElementById('notesList');
+  async renderGroupedNotes(notes, container) {
+    if (!notes || !Array.isArray(notes) || notes.length === 0) {
+      container.innerHTML = '<div class="empty-state">No notes found</div>';
+      return;
+    }
+
+    // Check premium status once for all notes
+    const isPremium = await window.notesStorage?.checkPremiumAccess?.() || false;
+    
     const grouped = this.groupNotesByDomain(notes);
     const sortedDomains = Object.keys(grouped).sort();
+    
+    container.innerHTML = '';
+    container.classList.add('notes-fade-in');
 
-    notesList.innerHTML = '';
-    notesList.classList.add('notes-fade-in');
-
-    // Load saved open domains IMMEDIATELY to prevent visual shift
+    // Load saved open domains to prevent visual shift
     let openSet = new Set();
     try {
-             // Use synchronous storage access for immediate restoration
-       chrome.storage.local.get(['allNotesOpenDomains'], async ({ allNotesOpenDomains }) => {
-         openSet = new Set(Array.isArray(allNotesOpenDomains) ? allNotesOpenDomains : []);
-         // Continue with rendering after getting cached state
-         await this.renderDomainGroups(notesList, grouped, sortedDomains, openSet);
-       });
-     } catch (_) {
-       // Fallback: render without persistence
-       await this.renderDomainGroups(notesList, grouped, sortedDomains, openSet);
-     }
-  }
-
-  // NEW: Separate method to render domain groups with cached open state
-  async renderDomainGroups(notesList, grouped, sortedDomains, openSet) {
-    const { app } = this; // Get app reference from this instance
-    
-    // Debounced saver to avoid thrashing
-    const saveOpenDomains = Utils.debounce(() => {
-      try {
-        const currentlyOpen = Array.from(notesList.querySelectorAll('details.domain-group'))
-          .filter(d => d.open)
-          .map(d => d.getAttribute('data-domain'))
-          .filter(Boolean);
-        chrome.storage.local.set({ allNotesOpenDomains: currentlyOpen });
-      } catch (_) {}
-    }, 120);
+      const { allNotesOpenDomains } = await chrome.storage.local.get(['allNotesOpenDomains']);
+      openSet = new Set(Array.isArray(allNotesOpenDomains) ? allNotesOpenDomains : []);
+    } catch (_) {
+      // Fallback: empty set
+    }
 
     for (const domain of sortedDomains) {
       const { notes: domainNotes, tags } = grouped[domain];
       const domainGroup = document.createElement('details');
       domainGroup.className = 'domain-group';
       domainGroup.setAttribute('data-domain', domain);
-      const domainIndex = sortedDomains.indexOf(domain);
       
-      // Set open state immediately based on cached value to prevent visual shift
-      domainGroup.open = app.searchQuery ? (domainIndex < 2) : openSet.has(domain);
+      // Set open state based on cached value
+      domainGroup.open = openSet.has(domain);
 
       const rightDomainTagsHtml = (tags && tags.length > 0) ? `
         <div class="domain-tags domain-tags-right">
-          ${tags.map(tag => `<span class=\"note-tag\">${tag}</span>`).join('')}
+          ${tags.map(tag => `<span class="note-tag">${tag}</span>`).join('')}
         </div>
       ` : '';
 
@@ -154,7 +143,12 @@ class NotesManager {
               </svg>
             </button>
             <button class="icon-btn sm glass delete-domain-btn" data-domain="${domain}" title="Delete all notes for this domain">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-trash-2"><polyline points="3,6 5,6 21,6"></polyline><path d="m19,6v14a2,2,0,0,1-2,2H7a2,2 0,0,1 -2,-2V6m3,0V4a2,2 0,0,1 2,-2h4a2,2 0,0,1 2,2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3,6 5,6 21,6"></polyline>
+                <path d="m19,6v14a2,2,0,0,1-2,2H7a2,2 0,0,1 -2,-2V6m3,0V4a2,2 0,0,1 2,-2h4a2,2 0,0,1 2,2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+              </svg>
             </button>
           </div>
           ${rightDomainTagsHtml}
@@ -170,33 +164,40 @@ class NotesManager {
       deleteDomainBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         e.preventDefault();
-        this.handleTwoTapDelete(deleteDomainBtn, () => app.deleteNotesByDomain(domain, true));
+        this.handleTwoTapDelete(deleteDomainBtn, () => this.app.deleteNotesByDomain(domain, true));
       });
 
       if (openDomainBtn) {
         openDomainBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           e.preventDefault();
-          app.openDomainHomepage(domain);
+          this.app.openDomainHomepage(domain);
         });
       }
 
-      // Persist open/close on toggle
+      // Persist open/close state
       domainGroup.addEventListener('toggle', () => {
-        saveOpenDomains();
+        this.saveOpenDomains(container);
       });
 
-      // Process notes sequentially to avoid async issues
+      // Process notes sequentially
       for (const n of domainNotes) {
-        const noteEl = await this.createNoteElement(n);
+        const noteEl = await this.createNoteElement(n, isPremium);
         noteEl.classList.add('note-item-stagger');
         domainNotesList.appendChild(noteEl);
       }
-      notesList.appendChild(domainGroup);
+      
+      container.appendChild(domainGroup);
     }
   }
 
   groupNotesByDomain(notes) {
+    // Safety check: ensure notes is an array
+    if (!notes || !Array.isArray(notes)) {
+      console.warn('NotesManager.groupNotesByDomain: notes is not an array');
+      return {};
+    }
+    
     const grouped = notes.reduce((acc, note) => {
       const domain = note.domain || 'No Domain';
       if (!acc[domain]) acc[domain] = { notes: [], tagCounts: {} };
@@ -216,7 +217,7 @@ class NotesManager {
     return grouped;
   }
 
-  async createNoteElement(note) {
+  async createNoteElement(note, isPremium = false) {
     const { app } = this;
     const el = document.createElement('div');
     el.className = 'note-item';
@@ -225,20 +226,20 @@ class NotesManager {
     const pageIndicator = (app.filterMode !== 'page' && app.isCurrentPageNote(note)) ?
       '<span class="page-indicator" data-tooltip="Current page note">•</span>' : '';
 
-    // Check version history availability first
-    const hasVersionHistory = await window.notesStorage?.isVersionHistoryAvailable();
+    // Use passed premium status instead of checking again
+    const hasVersionHistory = isPremium;
     
-    // Debug logging for version history
-    console.log('Creating note element:', {
-      noteId: note.id,
-      notesStorage: !!window.notesStorage,
-      hasIsVersionHistoryAvailable: !!window.notesStorage?.isVersionHistoryAvailable,
-      hasCheckPremiumAccess: !!window.notesStorage?.checkPremiumAccess,
-      isVersionHistoryAvailableResult: hasVersionHistory,
-      premiumStatus: window.premiumStatus,
-      supabaseClient: !!window.supabaseClient,
-      isAuthenticated: window.supabaseClient?.isAuthenticated?.()
-    });
+    // Only log debug info in development mode
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      console.log('Creating note element:', {
+        noteId: note.id,
+        notesStorage: !!window.notesStorage,
+        hasCheckPremiumAccess: !!window.notesStorage?.checkPremiumAccess,
+        isVersionHistoryAvailableResult: hasVersionHistory,
+        premiumStatus: isPremium,
+        supabaseClient: !!window.supabaseClient
+      });
+    }
 
     el.innerHTML = `
       <div class="note-content">
@@ -478,6 +479,50 @@ class NotesManager {
     } catch (e) {
       return (content || '').substring(0, 100);
     }
+  }
+
+  // Helper method to show empty state
+  showEmptyState(notesList, title = 'No notes found', message = 'Try a different filter or create a new note.') {
+    let emptyState = document.getElementById('emptyState');
+    if (!emptyState) {
+      emptyState = document.createElement('div');
+      emptyState.id = 'emptyState';
+      emptyState.className = 'empty-state';
+      emptyState.innerHTML = `
+        <div class="empty-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14,2 14,8 20,8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10,9 9,9 8,9"></polyline>
+          </svg>
+        </div>
+        <h4>${title}</h4>
+        <p>${message}</p>
+      `;
+    } else {
+      // Update existing empty state
+      const titleEl = emptyState.querySelector('h4');
+      const messageEl = emptyState.querySelector('p');
+      if (titleEl) titleEl.textContent = title;
+      if (messageEl) messageEl.textContent = message;
+    }
+    
+    notesList.innerHTML = '';
+    notesList.appendChild(emptyState);
+    emptyState.style.display = 'flex';
+  }
+
+  // Save open domains state
+  saveOpenDomains(container) {
+    try {
+      const currentlyOpen = Array.from(container.querySelectorAll('details.domain-group'))
+        .filter(d => d.open)
+        .map(d => d.getAttribute('data-domain'))
+        .filter(Boolean);
+      chrome.storage.local.set({ allNotesOpenDomains: currentlyOpen });
+    } catch (_) {}
   }
 }
 

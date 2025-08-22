@@ -536,10 +536,27 @@ class SupabaseClient {
       
       // Encrypt notes before uploading
       for (const note of notes) {
+        console.log('API: Original note before encryption:', {
+          id: note.id,
+          title: note.title,
+          operation: note.operation,
+          hasContent: !!note.content,
+          hasEncrypted: !!note.title_encrypted
+        });
+        
         const encryptedNote = await window.noteEncryption.encryptNoteForCloud(
           note, 
           await this.getUserEncryptionKey()
         );
+        
+        console.log('API: Encrypted note for sync:', {
+          id: encryptedNote.id,
+          operation: encryptedNote.operation,
+          hasTitleEncrypted: !!encryptedNote.title_encrypted,
+          hasContentEncrypted: !!encryptedNote.content_encrypted,
+          hasContentHash: !!encryptedNote.content_hash
+        });
+        
         encryptedNotes.push(encryptedNote);
       }
 
@@ -573,6 +590,7 @@ class SupabaseClient {
       }
 
       const data = await response.json();
+      console.log('Sync response data:', data);
       return data;
     } catch (error) {
       console.error('Sync error:', error);
@@ -587,6 +605,8 @@ class SupabaseClient {
     }
 
     try {
+      console.log('API: Fetching notes from cloud, lastSyncTime:', lastSyncTime);
+      
       // Use Edge Function for fetching
       const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-notes`, {
         method: 'POST',
@@ -613,26 +633,76 @@ class SupabaseClient {
         throw new Error(errorData.error || `Fetch failed with status ${response.status}`);
       }
 
-      const { notes: encryptedNotes } = await response.json();
+      const responseData = await response.json();
+      console.log('API: Raw response from Edge Function:', responseData);
+      
+      const { notes: encryptedNotes } = responseData;
+      
+      if (!encryptedNotes || !Array.isArray(encryptedNotes)) {
+        console.warn('API: No notes returned from Edge Function or invalid format:', encryptedNotes);
+        return [];
+      }
+      
+      console.log(`API: Received ${encryptedNotes.length} notes from cloud`);
+      
       const decryptedNotes = [];
 
       // Decrypt notes after downloading
       const userKey = await this.getUserEncryptionKey();
+      console.log('API: User encryption key available:', !!userKey);
+      
       for (const encryptedNote of encryptedNotes) {
         try {
-          const decryptedNote = await window.noteEncryption.decryptNoteFromCloud(
-            encryptedNote, 
-            userKey
-          );
+          console.log('API: Processing note from cloud:', {
+            id: encryptedNote.id,
+            hasTitleEncrypted: !!encryptedNote.title_encrypted,
+            hasContentEncrypted: !!encryptedNote.content_encrypted,
+            hasTitle: !!encryptedNote.title,
+            hasContent: !!encryptedNote.content
+          });
+          
+          let decryptedNote;
+          
+          // Check if note is encrypted or plain text
+          if (encryptedNote.title_encrypted && encryptedNote.content_encrypted && userKey) {
+            // Note is encrypted, decrypt it
+            decryptedNote = await window.noteEncryption.decryptNoteFromCloud(
+              encryptedNote, 
+              userKey
+            );
+            console.log('API: Successfully decrypted note:', encryptedNote.id);
+          } else if (encryptedNote.title && encryptedNote.content) {
+            // Note is plain text, use as-is
+            decryptedNote = {
+              ...encryptedNote,
+              title: encryptedNote.title,
+              content: encryptedNote.content
+            };
+            console.log('API: Using plain text note as-is:', encryptedNote.id);
+          } else {
+            console.warn('API: Note has neither encrypted nor plain text fields:', encryptedNote.id);
+            continue;
+          }
+          
           decryptedNotes.push(decryptedNote);
         } catch (error) {
-          console.error('Failed to decrypt note:', encryptedNote.id, error);
+          console.error('API: Failed to process note:', encryptedNote.id, error);
+          // Try to use the note as-is if decryption fails
+          if (encryptedNote.title && encryptedNote.content) {
+            console.log('API: Using note as-is after decryption failure:', encryptedNote.id);
+            decryptedNotes.push({
+              ...encryptedNote,
+              title: encryptedNote.title,
+              content: encryptedNote.content
+            });
+          }
         }
       }
 
+      console.log(`API: Successfully processed ${decryptedNotes.length} notes from cloud`);
       return decryptedNotes;
     } catch (error) {
-      console.error('Fetch error:', error);
+      console.error('API: Fetch error:', error);
       throw error;
     }
   }
@@ -796,14 +866,17 @@ class SupabaseClient {
     }
   }
 
-  // Resolve sync conflicts using Edge Function
-  async resolveConflict(noteId, resolution, noteData = null) {
+  // Resolve conflicts in cloud
+  async resolveConflict(noteId, resolution, localNote = null) {
     if (!this.isAuthenticated()) {
       throw new Error('User not authenticated');
     }
 
     try {
-      const response = await fetch(`${this.supabaseUrl}/functions/v1/resolve-conflict`, {
+      console.log(`API: Resolving conflict for note ${noteId} with resolution: ${resolution}`);
+      
+      // Use Edge Function for conflict resolution
+      const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-notes`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -811,22 +884,75 @@ class SupabaseClient {
           'apikey': this.supabaseAnonKey
         },
         body: JSON.stringify({
-          noteId,
-          resolution,
-          noteData
+          operation: 'resolve_conflict',
+          noteId: noteId,
+          resolution: resolution,
+          localNote: localNote
         })
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Conflict resolution failed');
+        const errorText = await response.text();
+        console.error('Conflict resolution error response:', errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { error: errorText || 'Conflict resolution failed' };
+        }
+        throw new Error(errorData.error || `Conflict resolution failed with status ${response.status}`);
       }
 
       const data = await response.json();
-      return data;
+      console.log('Conflict resolution response:', data);
+      return { success: true, data };
     } catch (error) {
       console.error('Conflict resolution error:', error);
-      throw error;
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Sync version history to cloud
+  async syncVersions(noteId, versions) {
+    if (!this.isAuthenticated()) {
+      throw new Error('User not authenticated');
+    }
+
+    try {
+      console.log(`API: Syncing ${versions.length} versions for note ${noteId}`);
+      
+      // Use Edge Function for version sync
+      const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-notes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.accessToken}`,
+          'apikey': this.supabaseAnonKey
+        },
+        body: JSON.stringify({
+          operation: 'sync_versions',
+          notes: versions  // Edge Function expects 'notes' parameter, not 'versions'
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Version sync error response:', errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { error: errorText || 'Version sync failed' };
+        }
+        throw new Error(errorData.error || `Version sync failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Version sync response:', data);
+      return { success: true, data };
+    } catch (error) {
+      console.error('Version sync error:', error);
+      return { success: false, error: error.message };
     }
   }
 }
