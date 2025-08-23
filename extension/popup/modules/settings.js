@@ -78,9 +78,9 @@ class SettingsManager {
         if (syncManagement) {
           try {
             const status = await window.supabaseClient?.getSubscriptionStatus?.();
-            console.log('Premium status check:', status);
+            // Remove verbose logging
             const shouldShow = status?.active && status?.tier !== 'free';
-            console.log('Should show sync management:', shouldShow);
+            // Remove verbose logging
             show(syncManagement, shouldShow);
             // Sync management display updated
             

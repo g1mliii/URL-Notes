@@ -12,7 +12,7 @@ class EditorManager {
   createNewNote(currentSite) {
     // Handle case where currentSite might be null (e.g., extension opened from management page)
     if (!currentSite) {
-      console.log('createNewNote: No valid site context, creating note with fallback values');
+      // Remove verbose logging
       currentSite = {
         domain: 'general',
         url: 'chrome://extensions',
@@ -145,7 +145,7 @@ class EditorManager {
         await window.urlNotesApp.updatePremiumUI();
       }
     } catch (error) {
-      console.log('Could not update premium UI:', error.message);
+              // Remove verbose logging
     }
 
     // Emit editor opened event
@@ -510,7 +510,7 @@ class EditorManager {
       
       const { editorState } = await chrome.storage.local.get(['editorState']);
       const state = editorState || {};
-      state.open = true; // A draft save implies the editor is open
+      // Preserve the existing open state - don't force it to true
       state.noteDraft = { ...this.currentNote };
       state.caretStart = start;
       state.caretEnd = end;

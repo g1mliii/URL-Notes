@@ -289,10 +289,13 @@ class URLNotesApp {
       // Mark popup as open for context menu detection
       if (editorState) {
         editorState.open = true;
+        // Preserve wasEditorOpen flag - don't clear it
+        // This allows unsaved drafts to be restored when popup reopens
+        // The flag will only be cleared when notes are explicitly saved/deleted
         await chrome.storage.local.set({ editorState });
-        console.log('Popup: Updated existing editorState:', editorState);
+        console.log('Popup: Updated existing editorState, preserved wasEditorOpen flag');
       } else {
-        const newEditorState = { open: true };
+        const newEditorState = { open: true, wasEditorOpen: false };
         await chrome.storage.local.set({ editorState: newEditorState });
         console.log('Popup: Created new editorState:', newEditorState);
       }
@@ -418,21 +421,33 @@ class URLNotesApp {
         }
       }
       // Priority 2: previously open editor with cached draft
-      // Only auto-open if the editor was actually open when popup closed
-      if (editorState && editorState.open && editorState.noteDraft && editorState.wasEditorOpen) {
-        console.log('Popup: Restoring previously open editor from cached state');
-        this.currentNote = { ...editorState.noteDraft };
-        if (this.currentSite) {
-          this.currentNote.domain = this.currentNote.domain || this.currentSite.domain;
-          this.currentNote.url = this.currentSite.url;
-          this.currentNote.pageTitle = this.currentSite.title;
+      // Only auto-open if there's a draft and the editor was actually open when popup closed
+      // AND the draft was created/updated very recently (within last 5 minutes)
+      if (editorState && editorState.noteDraft && editorState.wasEditorOpen) {
+        // Check if the draft is recent enough to auto-open
+        const now = Date.now();
+        const draftTime = editorState.noteDraft.updatedAt ? new Date(editorState.noteDraft.updatedAt).getTime() : 0;
+        const timeDiff = now - draftTime;
+        const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+        
+        if (timeDiff < fiveMinutes) {
+          console.log('Popup: Restoring recently active draft (within 5 minutes)');
+          this.currentNote = { ...editorState.noteDraft };
+          if (this.currentSite) {
+            this.currentNote.domain = this.currentNote.domain || this.currentSite.domain;
+            this.currentNote.url = this.currentSite.url;
+            this.currentNote.pageTitle = this.currentSite.title;
+          }
+          await this.openEditor(true);
+        } else {
+          console.log('Popup: Draft found but too old to auto-open, clearing stale draft');
+          // Draft is too old, clear it
+          await chrome.storage.local.remove('editorState');
         }
-        await this.openEditor(true);
-      } else if (editorState && editorState.open && editorState.noteDraft) {
-        console.log('Popup: Editor state found but wasEditorOpen flag not set, not auto-opening');
-        // Don't auto-open, just clear the open flag
-        editorState.open = false;
-        await chrome.storage.local.set({ editorState });
+      } else if (editorState && editorState.noteDraft) {
+        console.log('Popup: Draft found but wasEditorOpen flag not set, not auto-opening');
+        // Don't auto-open, just clear the draft since it's not meant to be restored
+        await chrome.storage.local.remove('editorState');
       }
     } catch (_) {
       // Fallback to default filter
@@ -644,7 +659,8 @@ class URLNotesApp {
         // Show success message
         Utils.showToast('Text appended to current note', 'success');
       } else {
-        // If no current note, just show a message
+        // If no current note, the draft was updated in storage by the background script
+        // When the editor opens later, it will restore the updated draft content
         Utils.showToast('Text appended to note', 'success');
       }
     } catch (error) {
@@ -2273,6 +2289,23 @@ class URLNotesApp {
     // Delete note using storage manager
     await this.storageManager.deleteNote(noteId);
     
+    // Clear draft if the deleted note is currently in the editor or draft
+    if (this.currentNote && this.currentNote.id === noteId) {
+      // If the deleted note is currently open in editor, close editor and clear draft
+      this.editorManager.closeEditor({ clearDraft: true });
+    } else {
+      // Check if there's a draft for this note and clear it
+      try {
+        const { editorState } = await chrome.storage.local.get(['editorState']);
+        if (editorState && editorState.noteDraft && editorState.noteDraft.id === noteId) {
+          await chrome.storage.local.remove('editorState');
+          console.log('Cleared draft for deleted note:', noteId);
+        }
+      } catch (error) {
+        console.warn('Error checking/clearing draft for deleted note:', error);
+      }
+    }
+    
     // Refresh notes list from storage to ensure consistency
     await this.loadNotes();
 
@@ -2366,11 +2399,10 @@ class URLNotesApp {
         caretEnd
       };
 
-      // Preserve existing editorState (including wasEditorOpen flag) when saving draft
+      // Preserve existing editorState (including wasEditorOpen flag and open state) when saving draft
       const { editorState: existingState } = await chrome.storage.local.get(['editorState']);
       const updatedState = {
         ...existingState,
-        open: true,
         noteDraft: draft
       };
       await chrome.storage.local.set({ editorState: updatedState });
@@ -2380,35 +2412,77 @@ class URLNotesApp {
     }
   }
 
+  // NEW: Clean up old drafts to prevent unwanted auto-opening
+  async cleanupOldDrafts() {
+    try {
+      const { editorState } = await chrome.storage.local.get(['editorState']);
+      if (editorState && editorState.noteDraft) {
+        const now = Date.now();
+        const draftTime = editorState.noteDraft.updatedAt ? new Date(editorState.noteDraft.updatedAt).getTime() : 0;
+        const timeDiff = now - draftTime;
+        const tenMinutes = 10 * 60 * 1000; // 10 minutes in milliseconds
+        
+        if (timeDiff > tenMinutes) {
+          console.log('Popup: Cleaning up old draft (older than 10 minutes)');
+          await chrome.storage.local.remove('editorState');
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to cleanup old drafts:', error);
+    }
+  }
+
   // Restore editor draft from storage
   async restoreEditorDraft() {
     try {
+      // First, clean up any old drafts
+      await this.cleanupOldDrafts();
+      
+      // Then check for drafts to restore
+      const { editorState } = await chrome.storage.local.get(['editorState']);
+      if (!editorState) return;
+      
       if (!this.currentNote) return;
       
-      const { editorState } = await chrome.storage.local.get(['editorState']);
       if (editorState && editorState.noteDraft && editorState.noteDraft.id === this.currentNote.id) {
         const draft = editorState.noteDraft;
         
         // Restore draft content if it's newer than the note
+        // Handle cases where timestamps might not exist or might be different
+        let shouldRestore = false;
+        
         if (draft.updatedAt && this.currentNote.updatedAt) {
           const draftTime = new Date(draft.updatedAt).getTime();
           const noteTime = new Date(this.currentNote.updatedAt).getTime();
+          shouldRestore = draftTime > noteTime;
+        } else if (draft.updatedAt && !this.currentNote.updatedAt) {
+          // If draft has timestamp but currentNote doesn't, restore the draft
+          shouldRestore = true;
+        } else if (!draft.updatedAt && this.currentNote.updatedAt) {
+          // If currentNote has timestamp but draft doesn't, don't restore
+          shouldRestore = false;
+        } else {
+          // If neither has timestamp, compare content lengths as fallback
+          const draftLength = (draft.content || '').length;
+          const noteLength = (this.currentNote.content || '').length;
+          shouldRestore = draftLength > noteLength;
+        }
+        
+        if (shouldRestore) {
+          // Draft is newer, restore it to editor fields (don't modify currentNote)
+          const titleHeader = document.getElementById('noteTitleHeader');
+          const contentInput = document.getElementById('noteContentInput');
+          const tagsInput = document.getElementById('tagsInput');
           
-          if (draftTime > noteTime) {
-            // Draft is newer, restore it to editor fields (don't modify currentNote)
-            const titleHeader = document.getElementById('noteTitleHeader');
-            const contentInput = document.getElementById('noteContentInput');
-            const tagsInput = document.getElementById('tagsInput');
-            
-            if (titleHeader) titleHeader.value = draft.title || this.currentNote.title || '';
-            if (contentInput) contentInput.innerHTML = this.buildContentHtml(draft.content || this.currentNote.content || '');
-            if (tagsInput) tagsInput.value = (draft.tags || this.currentNote.tags || []).join(', ');
-            
-            // Note: Removed verbose logging for cleaner console
-            return true; // Indicate that a draft was restored
-          } else {
-            // Note: Removed verbose logging for cleaner console
-          }
+          if (titleHeader) titleHeader.value = draft.title || this.currentNote.title || '';
+          if (contentInput) contentInput.innerHTML = this.buildContentHtml(draft.content || this.currentNote.content || '');
+          if (tagsInput) tagsInput.value = (draft.tags || this.currentNote.tags || []).join(', ');
+          
+          console.log('Restored draft content:', { 
+            draftContent: draft.content?.substring(0, 100), 
+            noteContent: this.currentNote.content?.substring(0, 100) 
+          });
+          return true; // Indicate that a draft was restored
         }
       }
       return false; // No draft was restored
@@ -2435,6 +2509,23 @@ class URLNotesApp {
 
     // Delete notes using storage manager
     await this.storageManager.deleteNotesByDomain(domain);
+    
+    // Clear draft if it belongs to the deleted domain
+    if (this.currentNote && this.currentNote.domain === domain) {
+      // If the current note belongs to the deleted domain, close editor and clear draft
+      this.editorManager.closeEditor({ clearDraft: true });
+    } else {
+      // Check if there's a draft for this domain and clear it
+      try {
+        const { editorState } = await chrome.storage.local.get(['editorState']);
+        if (editorState && editorState.noteDraft && editorState.noteDraft.domain === domain) {
+          await chrome.storage.local.remove('editorState');
+          console.log('Cleared draft for deleted domain:', domain);
+        }
+      } catch (error) {
+        console.warn('Error checking/clearing draft for deleted domain:', error);
+      }
+    }
     
     // Refresh notes list from storage to ensure consistency
     await this.loadNotes();

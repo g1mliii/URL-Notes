@@ -35,19 +35,14 @@ serve(async (req) => {
     }
 
     const userId = user.id
-    console.log(`Processing sync request for user: ${userId}`)
+    // Remove verbose logging
 
     const requestData = await req.json()
     const { operation, notes, deletions, lastSyncTime, timestamp } = requestData
 
     if (operation === 'sync') {
-      console.log(`Processing sync request for user: ${userId}`)
-      console.log('Request data:', { 
-        notesCount: notes?.length || 0, 
-        deletionsCount: deletions?.length || 0,
-        lastSyncTime,
-        timestamp 
-      })
+      // Remove verbose logging
+      // Remove verbose logging
 
       // Use the simplified sync function
       const { data, error } = await supabaseClient.rpc('sync_notes_simple', {
@@ -64,8 +59,8 @@ serve(async (req) => {
         )
       }
 
-      console.log(`Sync completed successfully for user ${userId}`)
-      console.log('Sync result:', data)
+      // Remove verbose logging
+      // Remove verbose logging
       return new Response(
         JSON.stringify(data),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

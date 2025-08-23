@@ -117,8 +117,8 @@ function setupContextMenus() {
   }
 }
 
-// Also attempt creation immediately in case onInstalled/onStartup didn't fire yet
-setupContextMenus();
+// Remove the immediate call that causes logs on startup
+// setupContextMenus();
 
 // Function to handle adding selected text to a new note
 async function addSelectionToNewNote(info, tab) {
@@ -220,11 +220,11 @@ async function addSelectionToExistingNote(info, tab) {
     
     console.log('Context menu: Raw editorState from storage:', editorState);
     
-    // If editor is open with unsaved changes, use the cached note
-    // Only append to draft if popup is actually open (wasEditorOpen = true)
-    if (editorState && editorState.open && editorState.noteDraft && editorState.wasEditorOpen) {
+    // If there's a draft note, use it (regardless of popup state)
+    // This allows appending to drafts even when popup is closed
+    if (editorState && editorState.noteDraft) {
       const cachedNote = editorState.noteDraft;
-      console.log('Context menu: Found open editor with draft:', { 
+      console.log('Context menu: Found draft in storage:', { 
         open: editorState.open, 
         wasEditorOpen: editorState.wasEditorOpen,
         hasDraft: !!editorState.noteDraft,
@@ -240,13 +240,6 @@ async function addSelectionToExistingNote(info, tab) {
       } else {
         console.log('Context menu: Domain mismatch - draft domain:', cachedNote.domain, 'vs target domain:', domain);
       }
-    } else if (editorState && editorState.noteDraft) {
-      console.log('Context menu: Found draft but popup not open:', { 
-        open: editorState.open, 
-        wasEditorOpen: editorState.wasEditorOpen,
-        hasDraft: !!editorState.noteDraft
-      });
-      // Don't use draft if popup isn't actually open
     } else {
       console.log('Context menu: No editorState or draft found:', { 
         hasEditorState: !!editorState, 

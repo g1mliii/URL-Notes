@@ -24,8 +24,7 @@ class NotesStorage {
         const missingStores = requiredStores.filter(storeName => !this.db.objectStoreNames.contains(storeName));
         
         if (missingStores.length > 0) {
-          console.log('Storage: Missing stores detected:', missingStores);
-          console.log('Storage: Backing up existing data...');
+          // Remove verbose logging
           
           // Backup existing data before deletion
           this.backupExistingData().then(backup => {
@@ -34,7 +33,7 @@ class NotesStorage {
             const deleteRequest = indexedDB.deleteDatabase(this.dbName);
             
             deleteRequest.onsuccess = () => {
-              console.log('Storage: Database deleted, recreating...');
+              // Remove verbose logging
               // Try to initialize again
               this.init().then(async () => {
                 // Restore backed up data
@@ -70,7 +69,7 @@ class NotesStorage {
       
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
-        console.log('Storage: Database upgrade needed, creating stores...');
+        // Remove verbose logging
         
         // Create notes store if it doesn't exist
         if (!db.objectStoreNames.contains('notes')) {
@@ -79,22 +78,22 @@ class NotesStorage {
           notesStore.createIndex('url', 'url', { unique: false });
           notesStore.createIndex('updatedAt', 'updatedAt', { unique: false });
           notesStore.createIndex('is_deleted', 'is_deleted', { unique: false });
-          console.log('Storage: Created notes store');
+          // Remove verbose logging
         }
         
         // Create attachments store if it doesn't exist
         if (!db.objectStoreNames.contains('attachments')) {
           const attachmentsStore = db.createObjectStore('attachments', { keyPath: 'id' });
           attachmentsStore.createIndex('noteId', 'noteId', { unique: false });
-          console.log('Storage: Created attachments store');
+          // Remove verbose logging
         }
         
         // Create versions store if it doesn't exist
         if (!db.objectStoreNames.contains('versions')) {
           const versionsStore = db.createObjectStore('versions', { keyPath: 'id' });
           versionsStore.createIndex('noteId', 'noteId', { unique: false });
-          versionsStore.createIndex('noteId_version', ['noteId', 'version'], { unique: true });
-          console.log('Storage: Created versions store');
+          versionsStore.createIndex('noteId_version', ['noteId', 'version'], { unique: false });
+          // Remove verbose logging
         }
         
         // Create search index store if it doesn't exist
@@ -102,7 +101,7 @@ class NotesStorage {
           const searchStore = db.createObjectStore('searchIndex', { keyPath: 'id' });
           searchStore.createIndex('term', 'term', { unique: false });
           searchStore.createIndex('noteId', 'noteId', { unique: false });
-          console.log('Storage: Created search index store');
+          // Remove verbose logging
         }
 
         // Create deletions store if it doesn't exist
@@ -110,7 +109,7 @@ class NotesStorage {
           const deletionsStore = db.createObjectStore('deletions', { keyPath: 'id' });
           deletionsStore.createIndex('noteId', 'noteId', { unique: false });
           deletionsStore.createIndex('synced', 'synced', { unique: false });
-          console.log('Storage: Created deletions store');
+          // Remove verbose logging
         }
       };
     });
@@ -133,13 +132,13 @@ class NotesStorage {
           note.content_hash = encryptedNote.content_hash;
         }
       }
-    } catch (error) {
-      console.log('Encryption not available, saving note unencrypted:', error.message);
-      // Clear any partial encryption data
-      delete note.title_encrypted;
-      delete note.content_encrypted;
-      delete note.content_hash;
-    }
+          } catch (error) {
+        // Remove verbose logging
+        // Clear any partial encryption data
+        delete note.title_encrypted;
+        delete note.content_encrypted;
+        delete note.content_hash;
+      }
   
     // 2. SET TIMESTAMPS AND VERSION
     const now = new Date().toISOString();
@@ -155,14 +154,7 @@ class NotesStorage {
       note.version = 1;
     }
     
-    // Debug: log note structure before saving
-    console.log('Storage: Saving note with structure:', {
-      id: note.id,
-      title: note.title,
-      updatedAt: note.updatedAt,
-      version: note.version,
-      hasContent: !!note.content
-    });
+    // Remove verbose logging
   
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(['notes', 'versions'], 'readwrite');
@@ -338,9 +330,9 @@ class NotesStorage {
           }
         });
         
-        if (cleanedCount > 0) {
-          console.log(`Storage: Cleaned up ${cleanedCount} synced soft deleted notes`);
-        }
+              if (cleanedCount > 0) {
+        // Remove verbose logging
+      }
       };
       
       request.onerror = () => {
@@ -390,9 +382,9 @@ class NotesStorage {
           }
         }
         
-        if (totalCleaned > 0) {
-          console.log(`Storage: Periodic cleanup removed ${totalCleaned} old versions total`);
-        }
+              if (totalCleaned > 0) {
+        // Remove verbose logging
+      }
       };
       
       notesRequest.onerror = () => {
@@ -517,15 +509,7 @@ class NotesStorage {
       request.onsuccess = () => {
         const notes = request.result || [];
         
-        // Debug: log retrieved notes structure
-        console.log('Storage: Retrieved notes from IndexedDB:', notes.map(n => ({
-          id: n.id,
-          title: n.title,
-          updatedAt: n.updatedAt,
-          version: n.version,
-          hasContent: !!n.content,
-          is_deleted: n.is_deleted
-        })));
+        // Remove verbose logging
         
         // Sort by updatedAt descending
         notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
@@ -563,12 +547,7 @@ class NotesStorage {
           // Explicitly exclude: url, domain, tags, version, parent_version_id, etc.
         }));
         
-        console.log('Storage: Retrieved notes for sync:', syncNotes.map(n => ({
-          id: n.id,
-          title: n.title,
-          updatedAt: n.updatedAt,
-          hasContent: !!n.content
-        })));
+        // Remove verbose logging
         
         resolve(syncNotes);
       };
@@ -712,7 +691,7 @@ class NotesStorage {
               store.delete(version.id);
             });
             
-            console.log(`Storage: Cleaned up ${toDelete.length} old versions for note ${noteId}, keeping ${toKeep.length} most recent`);
+            // Remove verbose logging
             resolve(toDelete.length);
           } else {
             resolve(0); // No cleanup needed
@@ -756,7 +735,7 @@ class NotesStorage {
               store.delete(version.id);
             });
             
-            console.log(`Storage: Maintained version history for note ${noteId}: kept ${toKeep.length}, deleted ${toDelete.length} oldest versions`);
+            // Remove verbose logging
             resolve({ kept: toKeep.length, deleted: toDelete.length });
           } else {
             resolve({ kept: versions.length, deleted: 0 }); // No cleanup needed
@@ -1006,9 +985,9 @@ class NotesStorage {
           }
         });
         
-        if (migratedCount > 0) {
-          console.log(`Storage: Migrated ${migratedCount} notes to add updatedAt field`);
-        }
+              if (migratedCount > 0) {
+        // Remove verbose logging
+      }
       };
       
       request.onerror = () => {
@@ -1041,13 +1020,13 @@ class NotesStorage {
             note.oldId = oldId;
             store.put(note);
             migratedCount++;
-            console.log(`Storage: Migrated note ID from ${oldId} to ${note.id}`);
+            // Remove verbose logging
           }
         });
         
-        if (migratedCount > 0) {
-          console.log(`Storage: Migrated ${migratedCount} notes to proper UUID format`);
-        }
+              if (migratedCount > 0) {
+        // Remove verbose logging
+      }
       };
       
       request.onerror = () => {
@@ -1122,7 +1101,7 @@ class NotesStorage {
         }
       }
       
-      console.log(`Storage: Imported ${notesImportedCount} notes`);
+      // Remove verbose logging
       return notesImportedCount;
     } catch (error) {
       console.error('Error importing notes:', error);
@@ -1190,12 +1169,12 @@ class NotesStorage {
         });
         
         if (notesToDelete.length === 0) {
-          console.log(`Storage: No active notes found for domain: ${domain}`);
+          // Remove verbose logging
           resolve(0);
           return;
         }
         
-        console.log(`Storage: Soft deleting ${notesToDelete.length} notes for domain: ${domain}`);
+        // Remove verbose logging
         
         notesToDelete.forEach(note => {
           // Soft delete: mark as deleted and set deleted timestamp
@@ -1220,7 +1199,7 @@ class NotesStorage {
         });
         
         transaction.oncomplete = () => {
-          console.log(`Storage: Soft deleted ${deletedCount} notes for domain: ${domain}`);
+          // Remove verbose logging
           
           // Emit a single event for the domain deletion instead of individual note events
           // This prevents infinite loops
@@ -1350,7 +1329,7 @@ class NotesStorage {
 
       return new Promise((resolve, reject) => {
         request.onsuccess = () => {
-          console.log(`Storage: Tracked deletion for note ${noteId}`);
+          // Remove verbose logging
           resolve(deletionRecord);
         };
         request.onerror = () => {
@@ -1378,7 +1357,7 @@ class NotesStorage {
           try {
             const deletions = request.result || [];
             const unsynced = deletions.filter(d => !d.synced);
-            console.log(`Storage: Found ${unsynced.length} unsynced deletions out of ${deletions.length} total`);
+            // Remove verbose logging
             resolve(unsynced);
           } catch (error) {
             console.error('Storage: Error processing deletions result:', error);
@@ -1429,7 +1408,7 @@ class NotesStorage {
       }
       
       transaction.oncomplete = () => {
-        console.log(`Storage: Marked ${markedCount} deletions as synced`);
+        // Remove verbose logging
       };
       
       transaction.onerror = () => {
@@ -1477,7 +1456,7 @@ class NotesStorage {
         attachmentsRequest.onerror = () => resolve([]);
       });
       
-      console.log(`Storage: Backed up ${backup.notes.length} notes, ${backup.versions.length} versions, ${backup.attachments.length} attachments`);
+      // Remove verbose logging
       return backup;
       
     } catch (error) {
@@ -1491,7 +1470,7 @@ class NotesStorage {
     if (!backup || !this.db) return;
     
     try {
-      console.log('Storage: Restoring backed up data...');
+      // Remove verbose logging
       
       // Restore notes
       if (backup.notes && backup.notes.length > 0) {
@@ -1501,7 +1480,7 @@ class NotesStorage {
         for (const note of backup.notes) {
           notesStore.put(note);
         }
-        console.log(`Storage: Restored ${backup.notes.length} notes`);
+        // Remove verbose logging
       }
       
       // Restore versions
@@ -1512,7 +1491,7 @@ class NotesStorage {
         for (const version of backup.versions) {
           versionsStore.put(version);
         }
-        console.log(`Storage: Restored ${backup.versions.length} versions`);
+        // Remove verbose logging
       }
       
       // Restore attachments
@@ -1523,10 +1502,10 @@ class NotesStorage {
         for (const attachment of backup.attachments) {
           attachmentsStore.put(attachment);
         }
-        console.log(`Storage: Restored ${backup.attachments.length} attachments`);
+        // Remove verbose logging
       }
       
-      console.log('Storage: Data restoration completed');
+      // Remove verbose logging
       
     } catch (error) {
       console.error('Storage: Error restoring data:', error);
@@ -1560,7 +1539,7 @@ class NotesStorage {
       };
       
       transaction.oncomplete = () => {
-        console.log(`Storage: Marked ${markedCount} deletions as synced by note IDs`);
+        // Remove verbose logging
       };
       
       transaction.onerror = () => {

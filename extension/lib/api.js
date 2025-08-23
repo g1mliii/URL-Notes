@@ -78,15 +78,11 @@ class SupabaseClient {
             const now = Date.now();
             const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
             
-            console.log('Profile check: profileLastChecked:', profileLastChecked, 'userTier:', userTier, 'timeDiff:', profileLastChecked ? (now - profileLastChecked) / 1000 : 'N/A', 'seconds');
-            
             // Only check profile if we haven't done so in the last hour AND don't have userTier
             if ((!profileLastChecked || (now - profileLastChecked) > oneHour) && !userTier) {
-              console.log('Profile check: Making API call to upsertProfile');
               await this.upsertProfile(this.currentUser);
               await chrome.storage.local.set({ profileLastChecked: now });
             } else if (userTier) {
-              console.log('Profile check: Using cached userTier:', userTier);
               // Use cached subscription status
               try { window.eventBus?.emit('tier:changed', { tier: userTier, active: userTier !== 'free' }); } catch (_) {}
               if (window.adManager) {
@@ -490,27 +486,17 @@ class SupabaseClient {
   // Create or update user profile
   async upsertProfile(user) {
     try {
-      console.log('upsertProfile: Starting profile check/creation for user:', user.id);
-      
       // First, check if profile exists and get current data
       let profile = null;
       try {
-        console.log('upsertProfile: Checking if profile exists');
         const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${user.id}&select=salt,subscription_tier,subscription_expires_at`, { auth: true });
         if (Array.isArray(arr) && arr[0]) profile = arr[0];
-        console.log('upsertProfile: Profile check result:', {
-          hasProfile: !!profile,
-          hasSalt: !!profile?.salt,
-          hasTier: !!profile?.subscription_tier,
-          hasExpiresAt: !!profile?.subscription_expires_at
-        });
       } catch (error) {
         console.warn('upsertProfile: Error checking profile existence:', error);
       }
 
       // Only create profile if it doesn't exist
       if (!profile) {
-        console.log('upsertProfile: Profile does not exist, creating new one');
         const baseProfile = { id: user.id, email: user.email, updated_at: new Date().toISOString() };
         await this._request(`${this.apiUrl}/profiles`, {
           method: 'POST',
@@ -518,17 +504,11 @@ class SupabaseClient {
           body: baseProfile,
           auth: true
         });
-        console.log('upsertProfile: New profile created successfully');
         
         // Fetch the newly created profile
         try {
-          console.log('upsertProfile: Fetching newly created profile');
           const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${user.id}&select=salt,subscription_tier,subscription_expires_at`, { auth: true });
           if (Array.isArray(arr) && arr[0]) profile = arr[0];
-          console.log('upsertProfile: New profile fetched:', {
-            hasProfile: !!profile,
-            hasSalt: !!profile?.salt
-          });
         } catch (error) {
           console.warn('upsertProfile: Error fetching newly created profile:', error);
         }
@@ -536,7 +516,6 @@ class SupabaseClient {
 
       // Generate salt only if missing
       if (profile && !profile.salt) {
-        console.log('upsertProfile: Profile missing salt, generating new one');
         const saltBytes = new Uint8Array(32);
         crypto.getRandomValues(saltBytes);
         const salt = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -545,7 +524,6 @@ class SupabaseClient {
           body: { salt, updated_at: new Date().toISOString() },
           auth: true
         });
-        console.log('upsertProfile: Salt generated and saved to profile');
         // Update local profile object
         profile = { ...profile, salt };
       }
@@ -555,13 +533,6 @@ class SupabaseClient {
         const isActive = profile.subscription_expires_at ?
           new Date(profile.subscription_expires_at) > new Date() : false;
         const userTier = isActive ? (profile.subscription_tier || 'premium') : 'free';
-        
-        console.log('upsertProfile: Setting userTier and caching profile data:', {
-          userTier,
-          isActive,
-          hasExpiresAt: !!profile.subscription_expires_at,
-          hasSalt: !!profile.salt
-        });
         
         await chrome.storage.local.set({ userTier });
         
@@ -577,8 +548,6 @@ class SupabaseClient {
           subscriptionLastChecked: Date.now(), 
           cachedSubscription: profileData 
         });
-        
-        console.log('upsertProfile: Profile data cached successfully');
         
         try { window.eventBus?.emit('tier:changed', { tier: userTier, active: isActive, expiresAt: profile.subscription_expires_at }); } catch (_) {}
         if (window.adManager) {
@@ -601,38 +570,15 @@ class SupabaseClient {
     }
 
     try {
-      console.log('Starting sync with token:', this.accessToken ? 'Present' : 'Missing');
-      console.log('API: Sync payload structure:', {
-        operation: syncPayload.operation,
-        notesCount: syncPayload.notes?.length || 0,
-        deletionsCount: syncPayload.deletions?.length || 0,
-        hasLastSyncTime: !!syncPayload.lastSyncTime,
-        timestamp: syncPayload.timestamp
-      });
-      
       const encryptedNotes = [];
       
       // Encrypt notes before uploading (only if notes exist)
       if (syncPayload.notes && Array.isArray(syncPayload.notes)) {
         for (const note of syncPayload.notes) {
-          console.log('API: Original note before encryption:', {
-            id: note.id,
-            title: note.title,
-            hasContent: !!note.content,
-            domain: note.domain
-          });
-          
           const encryptedNote = await window.noteEncryption.encryptNoteForCloud(
             note, 
             await this.getUserEncryptionKey()
           );
-          
-          console.log('API: Encrypted note for sync:', {
-            id: encryptedNote.id,
-            hasTitleEncrypted: !!encryptedNote.title_encrypted,
-            hasContentEncrypted: !!encryptedNote.content_encrypted,
-            hasContentHash: !!encryptedNote.content_hash
-          });
           
           encryptedNotes.push(encryptedNote);
         }
@@ -658,9 +604,6 @@ class SupabaseClient {
         body: JSON.stringify(edgeFunctionPayload)
       });
 
-      console.log('Sync response status:', response.status);
-      console.log('Sync response headers:', Object.fromEntries(response.headers.entries()));
-
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Sync error response:', errorText);
@@ -674,7 +617,6 @@ class SupabaseClient {
       }
 
       const data = await response.json();
-      console.log('Sync response data:', data);
       return data;
     } catch (error) {
       console.error('Sync error:', error);
@@ -689,8 +631,6 @@ class SupabaseClient {
     }
 
     try {
-      console.log('API: Fetching notes from cloud, lastSyncTime:', lastSyncTime);
-      
       // Use Edge Function for fetching
       const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-notes`, {
         method: 'POST',
@@ -718,33 +658,20 @@ class SupabaseClient {
       }
 
       const responseData = await response.json();
-      console.log('API: Raw response from Edge Function:', responseData);
       
       const { notes: encryptedNotes } = responseData;
       
       if (!encryptedNotes || !Array.isArray(encryptedNotes)) {
-        console.warn('API: No notes returned from Edge Function or invalid format:', encryptedNotes);
         return [];
       }
-      
-      console.log(`API: Received ${encryptedNotes.length} notes from cloud`);
       
       const decryptedNotes = [];
 
       // Decrypt notes after downloading
       const userKey = await this.getUserEncryptionKey();
-      console.log('API: User encryption key available:', !!userKey);
       
       for (const encryptedNote of encryptedNotes) {
         try {
-          console.log('API: Processing note from cloud:', {
-            id: encryptedNote.id,
-            hasTitleEncrypted: !!encryptedNote.title_encrypted,
-            hasContentEncrypted: !!encryptedNote.content_encrypted,
-            hasTitle: !!encryptedNote.title,
-            hasContent: !!encryptedNote.content
-          });
-          
           let decryptedNote;
           
           // Check if note is encrypted or plain text
@@ -754,7 +681,6 @@ class SupabaseClient {
               encryptedNote, 
               userKey
             );
-            console.log('API: Successfully decrypted note:', encryptedNote.id);
           } else if (encryptedNote.title && encryptedNote.content) {
             // Note is plain text, use as-is
             decryptedNote = {
@@ -762,18 +688,15 @@ class SupabaseClient {
               title: encryptedNote.title,
               content: encryptedNote.content
             };
-            console.log('API: Using plain text note as-is:', encryptedNote.id);
           } else {
-            console.warn('API: Note has neither encrypted nor plain text fields:', encryptedNote.id);
             continue;
           }
           
           decryptedNotes.push(decryptedNote);
         } catch (error) {
-          console.error('API: Failed to process note:', encryptedNote.id, error);
+          console.error('Failed to process note:', encryptedNote.id, error);
           // Try to use the note as-is if decryption fails
           if (encryptedNote.title && encryptedNote.content) {
-            console.log('API: Using note as-is after decryption failure:', encryptedNote.id);
             decryptedNotes.push({
               ...encryptedNote,
               title: encryptedNote.title,
@@ -783,7 +706,6 @@ class SupabaseClient {
         }
       }
 
-      console.log(`API: Successfully processed ${decryptedNotes.length} notes from cloud`);
       return decryptedNotes;
     } catch (error) {
       console.error('API: Fetch error:', error);
@@ -822,21 +744,10 @@ class SupabaseClient {
     const now = Date.now();
     const oneHour = 60 * 60 * 1000; // 1 hour cache
 
-    console.log('getUserEncryptionKey: Cache check:', {
-      hasCache: !!(cachedKeyMaterial && cachedSalt),
-      lastChecked: encryptionKeyLastChecked ? new Date(encryptionKeyLastChecked).toISOString() : 'N/A',
-      timeDiff: encryptionKeyLastChecked ? Math.round((now - encryptionKeyLastChecked) / 1000) : 'N/A',
-      isRecent: encryptionKeyLastChecked ? (now - encryptionKeyLastChecked) < oneHour : false
-    });
-
     // Use cached material if it's recent
     if (encryptionKeyLastChecked && cachedKeyMaterial && cachedSalt && (now - encryptionKeyLastChecked) < oneHour) {
-      console.log('getUserEncryptionKey: Using cached material to regenerate key');
-      const cachedKey = await window.noteEncryption.generateKey(cachedKeyMaterial, cachedSalt);
-      return cachedKey;
+      return await window.noteEncryption.generateKey(cachedKeyMaterial, cachedSalt);
     }
-
-    console.log('getUserEncryptionKey: Making API call to get salt');
 
     // Derive key from stable user material + per-user salt from profile
     const keyMaterial = `${this.currentUser.id}:${this.currentUser.email}`;
@@ -845,13 +756,8 @@ class SupabaseClient {
     // Try to get salt from cached profile data first
     try {
       const { cachedSubscription } = await chrome.storage.local.get(['cachedSubscription']);
-      console.log('getUserEncryptionKey: Checking cached subscription for salt:', {
-        hasCachedSubscription: !!cachedSubscription,
-        hasSalt: !!cachedSubscription?.salt
-      });
       if (cachedSubscription?.salt) {
         salt = cachedSubscription.salt;
-        console.log('getUserEncryptionKey: Using salt from cached subscription');
       }
     } catch (error) {
       console.warn('getUserEncryptionKey: Error checking cached subscription:', error);
@@ -859,15 +765,9 @@ class SupabaseClient {
 
     // If no cached salt, fetch from API
     if (!salt) {
-      console.log('getUserEncryptionKey: No cached salt, fetching from API');
       try {
         const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=salt`, { auth: true });
         salt = arr?.[0]?.salt || null;
-        console.log('getUserEncryptionKey: API salt response:', {
-          hasResponse: !!arr,
-          responseLength: arr?.length || 0,
-          hasSalt: !!salt
-        });
       } catch (error) {
         console.warn('getUserEncryptionKey: Error fetching salt from API:', error);
       }
@@ -941,38 +841,17 @@ class SupabaseClient {
       const now = Date.now();
       const fiveMinutes = 5 * 60 * 1000; // 5 minutes cache
 
-      console.log('getSubscriptionStatus: Cache check:', {
-        hasCache: !!cachedSubscription,
-        lastChecked: subscriptionLastChecked ? new Date(subscriptionLastChecked).toISOString() : 'N/A',
-        timeDiff: subscriptionLastChecked ? Math.round((now - subscriptionLastChecked) / 1000) : 'N/A',
-        isRecent: subscriptionLastChecked ? (now - subscriptionLastChecked) < fiveMinutes : false
-      });
-
       // Use cached data if it's recent
       if (subscriptionLastChecked && cachedSubscription && (now - subscriptionLastChecked) < fiveMinutes) {
-        console.log('getSubscriptionStatus: Using cached data:', cachedSubscription);
         return cachedSubscription;
       }
 
       // Fetch fresh data from API
-      console.log('getSubscriptionStatus: Fetching fresh data from API');
       const profiles = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=subscription_tier,subscription_expires_at,salt`, { auth: true });
       const profile = profiles?.[0];
 
-      console.log('getSubscriptionStatus: API response:', {
-        profilesCount: profiles?.length || 0,
-        hasProfile: !!profile,
-        profileData: profile ? {
-          hasTier: !!profile.subscription_tier,
-          hasExpiresAt: !!profile.subscription_expires_at,
-          hasSalt: !!profile.salt
-        } : null
-      });
-
       if (!profile) {
         const result = { tier: 'free', active: false };
-        console.log('getSubscriptionStatus: No profile found, caching free tier result');
-        // Cache the result
         await chrome.storage.local.set({ 
           subscriptionLastChecked: now, 
           cachedSubscription: result 
@@ -990,14 +869,6 @@ class SupabaseClient {
         salt: profile.salt // Include salt for encryption key reuse
       };
 
-      console.log('getSubscriptionStatus: Caching result:', {
-        tier: result.tier,
-        active: result.active,
-        hasExpiresAt: !!result.expiresAt,
-        hasSalt: !!result.salt
-      });
-
-      // Cache the result
       await chrome.storage.local.set({ 
         subscriptionLastChecked: now, 
         cachedSubscription: result 
@@ -1046,18 +917,9 @@ class SupabaseClient {
     }
 
     try {
-      console.log('getStorageUsage: Fetching storage and subscription info');
       // Get both storage_used_bytes and subscription info in ONE API call
       const profiles = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=storage_used_bytes,subscription_tier,subscription_expires_at`, { auth: true });
       const profile = profiles?.[0];
-      
-      console.log('getStorageUsage: API response:', {
-        profilesCount: profiles?.length || 0,
-        hasProfile: !!profile,
-        storageUsed: profile?.storage_used_bytes || 0,
-        hasTier: !!profile?.subscription_tier,
-        hasExpiresAt: !!profile?.subscription_expires_at
-      });
       
       if (!profile) {
         console.log('getStorageUsage: No profile found, returning 0 usage');
@@ -1078,13 +940,6 @@ class SupabaseClient {
         limit: limit
       };
 
-      console.log('getStorageUsage: Calculated result:', {
-        used: result.used,
-        limit: result.limit,
-        tier,
-        isActive
-      });
-
       return result;
     } catch (error) {
       console.error('getStorageUsage: Error getting storage usage:', error);
@@ -1099,8 +954,6 @@ class SupabaseClient {
     }
 
     try {
-      console.log(`API: Resolving conflict for note ${noteId} with resolution: ${resolution}`);
-      
       // Use Edge Function for conflict resolution
       const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-notes`, {
         method: 'POST',
@@ -1130,7 +983,6 @@ class SupabaseClient {
       }
 
       const data = await response.json();
-      console.log('Conflict resolution response:', data);
       return { success: true, data };
     } catch (error) {
       console.error('Conflict resolution error:', error);
@@ -1145,8 +997,6 @@ class SupabaseClient {
     }
 
     try {
-      console.log(`API: Syncing ${versions.length} versions for note ${noteId}`);
-      
       // Use Edge Function for version sync
       const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-notes`, {
         method: 'POST',
@@ -1174,7 +1024,6 @@ class SupabaseClient {
       }
 
       const data = await response.json();
-      console.log('Version sync response:', data);
       return { success: true, data };
     } catch (error) {
       console.error('Version sync error:', error);

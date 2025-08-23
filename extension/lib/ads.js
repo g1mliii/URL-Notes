@@ -65,7 +65,7 @@ class AdManager {
       script.src = 'https://sdk.codefuel.com/js/cf-sdk.js'; // Replace with actual CodeFuel SDK URL
       script.async = true;
       script.onload = () => {
-        console.log('CodeFuel SDK loaded');
+        // Remove verbose logging
         resolve();
       };
       script.onerror = () => {
