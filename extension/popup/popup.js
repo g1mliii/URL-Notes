@@ -286,6 +286,17 @@ class URLNotesApp {
         this.filterMode = lastFilterMode;
       }
       
+      // Mark popup as open for context menu detection
+      if (editorState) {
+        editorState.open = true;
+        await chrome.storage.local.set({ editorState });
+        console.log('Popup: Updated existing editorState:', editorState);
+      } else {
+        const newEditorState = { open: true };
+        await chrome.storage.local.set({ editorState: newEditorState });
+        console.log('Popup: Created new editorState:', newEditorState);
+      }
+      
       // Set filter without rendering first
       this.switchFilter(this.filterMode, { persist: false, render: false });
       
@@ -407,7 +418,9 @@ class URLNotesApp {
         }
       }
       // Priority 2: previously open editor with cached draft
-      if (editorState && editorState.open && editorState.noteDraft) {
+      // Only auto-open if the editor was actually open when popup closed
+      if (editorState && editorState.open && editorState.noteDraft && editorState.wasEditorOpen) {
+        console.log('Popup: Restoring previously open editor from cached state');
         this.currentNote = { ...editorState.noteDraft };
         if (this.currentSite) {
           this.currentNote.domain = this.currentNote.domain || this.currentSite.domain;
@@ -415,6 +428,11 @@ class URLNotesApp {
           this.currentNote.pageTitle = this.currentSite.title;
         }
         await this.openEditor(true);
+      } else if (editorState && editorState.open && editorState.noteDraft) {
+        console.log('Popup: Editor state found but wasEditorOpen flag not set, not auto-opening');
+        // Don't auto-open, just clear the open flag
+        editorState.open = false;
+        await chrome.storage.local.set({ editorState });
       }
     } catch (_) {
       // Fallback to default filter
@@ -620,7 +638,7 @@ class URLNotesApp {
           contentInput.innerHTML = this.buildContentHtml(note.content || '');
         }
         
-        // Update the draft in storage
+        // Update the draft in storage with the new content
         await this.saveEditorDraft();
         
         // Show success message
@@ -972,10 +990,22 @@ class URLNotesApp {
       try {
         if (this.currentNote) {
           this.saveEditorDraft();
-          this.persistEditorOpen(true);
+          // Don't change wasEditorOpen flag here - preserve it for next open
+          // Just mark popup as closed
         } else {
+          // No current note, so editor wasn't open
           this.persistEditorOpen(false);
         }
+        
+        // Mark popup as closed for context menu detection
+        chrome.storage.local.get(['editorState']).then(({ editorState }) => {
+          if (editorState) {
+            editorState.open = false;
+            // Preserve wasEditorOpen flag - don't clear it
+            chrome.storage.local.set({ editorState });
+            console.log('Popup: Set editorState.open = false on close, preserved wasEditorOpen flag');
+          }
+        });
       } catch (_) {}
     });
   }
@@ -2286,7 +2316,19 @@ class URLNotesApp {
       const { editorState } = await chrome.storage.local.get(['editorState']);
       const state = editorState || {};
       state.open = !!isOpen;
+      
+      if (isOpen) {
+        // Set wasEditorOpen flag to true when editor is opened by user
+        // This helps distinguish between popup opening and actual editor opening
+        state.wasEditorOpen = true;
+      } else {
+        // Clear wasEditorOpen flag when editor is closed by user
+        // This ensures we don't auto-open on next popup open
+        state.wasEditorOpen = false;
+      }
+      
       await chrome.storage.local.set({ editorState: state });
+      console.log('Popup: persistEditorOpen called with:', { isOpen, wasEditorOpen: state.wasEditorOpen });
     } catch (_) {}
   }
 
@@ -2324,7 +2366,14 @@ class URLNotesApp {
         caretEnd
       };
 
-      await chrome.storage.local.set({ editorState: { open: true, noteDraft: draft } });
+      // Preserve existing editorState (including wasEditorOpen flag) when saving draft
+      const { editorState: existingState } = await chrome.storage.local.get(['editorState']);
+      const updatedState = {
+        ...existingState,
+        open: true,
+        noteDraft: draft
+      };
+      await chrome.storage.local.set({ editorState: updatedState });
               // Note: Removed verbose logging for cleaner console
     } catch (error) {
       console.error('Failed to save editor draft:', error);

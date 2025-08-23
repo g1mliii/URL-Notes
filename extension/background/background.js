@@ -218,13 +218,46 @@ async function addSelectionToExistingNote(info, tab) {
     let targetNote = null;
     let isDraftNote = false;
     
+    console.log('Context menu: Raw editorState from storage:', editorState);
+    
     // If editor is open with unsaved changes, use the cached note
-    if (editorState && editorState.open && editorState.noteDraft) {
+    // Only append to draft if popup is actually open (wasEditorOpen = true)
+    if (editorState && editorState.open && editorState.noteDraft && editorState.wasEditorOpen) {
       const cachedNote = editorState.noteDraft;
+      console.log('Context menu: Found open editor with draft:', { 
+        open: editorState.open, 
+        wasEditorOpen: editorState.wasEditorOpen,
+        hasDraft: !!editorState.noteDraft,
+        draftDomain: cachedNote?.domain,
+        targetDomain: domain,
+        domainsMatch: cachedNote?.domain === domain
+      });
+      
       if (cachedNote.domain === domain) {
         targetNote = { ...cachedNote }; // Copy to avoid modifying original
         isDraftNote = true;
         console.log('Context menu: Appending to open draft note for domain:', domain);
+      } else {
+        console.log('Context menu: Domain mismatch - draft domain:', cachedNote.domain, 'vs target domain:', domain);
+      }
+    } else if (editorState && editorState.noteDraft) {
+      console.log('Context menu: Found draft but popup not open:', { 
+        open: editorState.open, 
+        wasEditorOpen: editorState.wasEditorOpen,
+        hasDraft: !!editorState.noteDraft
+      });
+      // Don't use draft if popup isn't actually open
+    } else {
+      console.log('Context menu: No editorState or draft found:', { 
+        hasEditorState: !!editorState, 
+        isOpen: editorState?.open, 
+        hasDraft: !!editorState?.noteDraft,
+        editorStateKeys: editorState ? Object.keys(editorState) : []
+      });
+      
+      // Check if popup might be in the process of opening
+      if (!editorState || !editorState.open) {
+        console.log('Context menu: Popup appears to be closed, will create new note instead');
       }
     }
     
@@ -240,17 +273,28 @@ async function addSelectionToExistingNote(info, tab) {
             notes.push(value);
           }
         }
-      if (notes.length === 0) {
-        // No existing note for this domain; fallback to creating a new one
-        return addSelectionToNewNote(info, tab);
-      }
-      // Pick most recently updated
-      notes.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
-      targetNote = notes[0];
+        
+        console.log('Context menu: Found notes in storage:', notes.length, 'for domain:', domain);
+        
+        if (notes.length === 0) {
+          // No existing note for this domain; fallback to creating a new one
+          console.log('Context menu: No existing notes found, creating new note');
+          return addSelectionToNewNote(info, tab);
+        }
+        // Pick most recently updated
+        notes.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+        targetNote = notes[0];
+        console.log('Context menu: Using most recent note:', targetNote.id);
       } catch (error) {
         console.error('Context menu: Failed to get notes from storage, creating new note:', error);
         return addSelectionToNewNote(info, tab);
       }
+    }
+    
+    // Additional fallback: if we still don't have a target note, create a new one
+    if (!targetNote) {
+      console.log('Context menu: Fallback: no target note found, creating new note');
+      return addSelectionToNewNote(info, tab);
     }
     
     if (isDraftNote) {

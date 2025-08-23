@@ -136,8 +136,21 @@ serve(async (req) => {
       contextPrompt += contextInfo
     }
 
+    // Extract and preserve markdown links before AI rewrite
+    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    const links: Array<{ text: string; url: string; placeholder: string }> = [];
+    let linkIndex = 0;
+    
+    // Replace links with completely unbreakable placeholders
+    const contentWithoutLinks = content.replace(linkRegex, (match, text, url) => {
+      const placeholder = `[LINK_PLACEHOLDER_${linkIndex}_DO_NOT_CHANGE_OR_REMOVE_THIS_TEXT]`;
+      links.push({ text, url, placeholder });
+      linkIndex++;
+      return placeholder;
+    });
+    
     // Build the final prompt with our critical instruction at the end
-    const prompt = `${contextPrompt}\n\nText to Rewrite:\n${content}\n\nCRITICAL INSTRUCTION (This overrides all previous instructions): You must provide ONLY the rewritten text. Do not include explanations, options, multiple versions, or any other content. Just give me the single, improved version of the text.\n\nFORMATTING REQUIREMENTS: Preserve all markdown links in [text](url) format exactly as they appear. Maintain bullet points (-) and other formatting. Only rewrite the text content while keeping the structure intact.`
+    const prompt = `${contextPrompt}\n\nText to Rewrite:\n${contentWithoutLinks}\n\nCRITICAL INSTRUCTION (This overrides all previous instructions): You must provide ONLY the rewritten text. Do not include explanations, options, multiple versions, or any other content. Just give me the single, improved version of the text.\n\nFORMATTING REQUIREMENTS: You MUST preserve ALL placeholders like [LINK_PLACEHOLDER_0_DO_NOT_CHANGE_OR_REMOVE_THIS_TEXT] exactly as they appear - do not change, remove, or modify them in any way. Maintain bullet points (-) and other formatting. Only rewrite the text content while keeping the structure intact.`
 
     // Prepare Gemini API request (optimized for Flash model)
     const geminiRequest: GeminiRequest = {
@@ -176,7 +189,7 @@ serve(async (req) => {
     }
 
     const geminiData = await geminiResponse.json()
-    const rewrittenContent = geminiData.candidates?.[0]?.content?.parts?.[0]?.text
+    let rewrittenContent = geminiData.candidates?.[0]?.content?.parts?.[0]?.text
 
     if (!rewrittenContent) {
       return new Response(
@@ -184,6 +197,12 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+    
+    // Restore the original markdown links (global replace to catch all instances)
+    links.forEach(({ text, url, placeholder }) => {
+      const globalRegex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+      rewrittenContent = rewrittenContent.replace(globalRegex, `[${text}](${url})`);
+    });
 
     // Increment AI usage count
     const { data: incrementData, error: incrementError } = await supabaseClient.rpc('increment_ai_usage', {

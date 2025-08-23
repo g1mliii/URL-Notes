@@ -72,20 +72,33 @@ class SupabaseClient {
         if (!isValid) {
           await this.signOut();
         } else {
-          // Propagate subscription tier on startup
+          // Check if we need to create/update profile (only if not done recently)
           try {
-            const status = await this.getSubscriptionStatus();
-            await chrome.storage.local.set({ userTier: status.active ? (status.tier || 'premium') : 'free' });
-            try { window.eventBus?.emit('tier:changed', status); } catch (_) {}
-            if (window.adManager) {
-              if (status.active && (status.tier || 'premium') !== 'free') {
-                window.adManager.hideAdContainer?.();
-              } else {
-                window.adManager.refreshAd?.();
+            const { profileLastChecked, userTier } = await chrome.storage.local.get(['profileLastChecked', 'userTier']);
+            const now = Date.now();
+            const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
+            
+            console.log('Profile check: profileLastChecked:', profileLastChecked, 'userTier:', userTier, 'timeDiff:', profileLastChecked ? (now - profileLastChecked) / 1000 : 'N/A', 'seconds');
+            
+            // Only check profile if we haven't done so in the last hour AND don't have userTier
+            if ((!profileLastChecked || (now - profileLastChecked) > oneHour) && !userTier) {
+              console.log('Profile check: Making API call to upsertProfile');
+              await this.upsertProfile(this.currentUser);
+              await chrome.storage.local.set({ profileLastChecked: now });
+            } else if (userTier) {
+              console.log('Profile check: Using cached userTier:', userTier);
+              // Use cached subscription status
+              try { window.eventBus?.emit('tier:changed', { tier: userTier, active: userTier !== 'free' }); } catch (_) {}
+              if (window.adManager) {
+                if (userTier !== 'free') {
+                  window.adManager.hideAdContainer?.();
+                } else {
+                  window.adManager.refreshAd?.();
+                }
               }
             }
           } catch (e) {
-            console.warn('Failed to propagate userTier on init:', e);
+            console.warn('Failed to handle profile on init:', e);
           }
         }
       }
@@ -372,6 +385,8 @@ class SupabaseClient {
       this.accessToken = null;
       this.currentUser = null;
       await chrome.storage.local.remove(['supabase_session']);
+      // Clear all caches
+      await chrome.storage.local.remove(['userTier', 'profileLastChecked', 'subscriptionLastChecked', 'cachedSubscription', 'encryptionKeyLastChecked', 'cachedKeyMaterial', 'cachedSalt']);
       // Reset premium gating
       try {
         await chrome.storage.local.set({ userTier: 'free' });
@@ -475,48 +490,104 @@ class SupabaseClient {
   // Create or update user profile
   async upsertProfile(user) {
     try {
-      // Ensure profile exists and has a per-user salt
-      const baseProfile = { id: user.id, email: user.email, updated_at: new Date().toISOString() };
-      await this._request(`${this.apiUrl}/profiles`, {
-        method: 'POST',
-        headers: { 'Prefer': 'resolution=merge-duplicates' },
-        body: baseProfile,
-        auth: true
-      });
-
-      // Fetch current salt
-      let salt = null;
+      console.log('upsertProfile: Starting profile check/creation for user:', user.id);
+      
+      // First, check if profile exists and get current data
+      let profile = null;
       try {
+        console.log('upsertProfile: Checking if profile exists');
         const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${user.id}&select=salt,subscription_tier,subscription_expires_at`, { auth: true });
-        if (Array.isArray(arr) && arr[0]) salt = arr[0].salt || null;
-      } catch (_) {}
+        if (Array.isArray(arr) && arr[0]) profile = arr[0];
+        console.log('upsertProfile: Profile check result:', {
+          hasProfile: !!profile,
+          hasSalt: !!profile?.salt,
+          hasTier: !!profile?.subscription_tier,
+          hasExpiresAt: !!profile?.subscription_expires_at
+        });
+      } catch (error) {
+        console.warn('upsertProfile: Error checking profile existence:', error);
+      }
 
-      // If no salt, generate and patch
-      if (!salt) {
+      // Only create profile if it doesn't exist
+      if (!profile) {
+        console.log('upsertProfile: Profile does not exist, creating new one');
+        const baseProfile = { id: user.id, email: user.email, updated_at: new Date().toISOString() };
+        await this._request(`${this.apiUrl}/profiles`, {
+          method: 'POST',
+          headers: { 'Prefer': 'resolution=merge-duplicates' },
+          body: baseProfile,
+          auth: true
+        });
+        console.log('upsertProfile: New profile created successfully');
+        
+        // Fetch the newly created profile
+        try {
+          console.log('upsertProfile: Fetching newly created profile');
+          const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${user.id}&select=salt,subscription_tier,subscription_expires_at`, { auth: true });
+          if (Array.isArray(arr) && arr[0]) profile = arr[0];
+          console.log('upsertProfile: New profile fetched:', {
+            hasProfile: !!profile,
+            hasSalt: !!profile?.salt
+          });
+        } catch (error) {
+          console.warn('upsertProfile: Error fetching newly created profile:', error);
+        }
+      }
+
+      // Generate salt only if missing
+      if (profile && !profile.salt) {
+        console.log('upsertProfile: Profile missing salt, generating new one');
         const saltBytes = new Uint8Array(32);
         crypto.getRandomValues(saltBytes);
-        salt = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        const salt = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
         await this._request(`${this.apiUrl}/profiles?id=eq.${user.id}`, {
           method: 'PATCH',
           body: { salt, updated_at: new Date().toISOString() },
           auth: true
         });
+        console.log('upsertProfile: Salt generated and saved to profile');
+        // Update local profile object
+        profile = { ...profile, salt };
       }
 
-      // Update userTier in local storage
-      try {
-        const status = await this.getSubscriptionStatus();
-        await chrome.storage.local.set({ userTier: status.active ? (status.tier || 'premium') : 'free' });
-        try { window.eventBus?.emit('tier:changed', status); } catch (_) {}
+      // Update userTier in local storage using the profile we already fetched
+      if (profile) {
+        const isActive = profile.subscription_expires_at ?
+          new Date(profile.subscription_expires_at) > new Date() : false;
+        const userTier = isActive ? (profile.subscription_tier || 'premium') : 'free';
+        
+        console.log('upsertProfile: Setting userTier and caching profile data:', {
+          userTier,
+          isActive,
+          hasExpiresAt: !!profile.subscription_expires_at,
+          hasSalt: !!profile.salt
+        });
+        
+        await chrome.storage.local.set({ userTier });
+        
+        // Store profile data in cache for reuse (including salt for encryption key)
+        const profileData = {
+          tier: profile.subscription_tier || 'free',
+          active: isActive,
+          expiresAt: profile.subscription_expires_at,
+          salt: profile.salt
+        };
+        
+        await chrome.storage.local.set({ 
+          subscriptionLastChecked: Date.now(), 
+          cachedSubscription: profileData 
+        });
+        
+        console.log('upsertProfile: Profile data cached successfully');
+        
+        try { window.eventBus?.emit('tier:changed', { tier: userTier, active: isActive, expiresAt: profile.subscription_expires_at }); } catch (_) {}
         if (window.adManager) {
-          if (status.active && (status.tier || 'premium') !== 'free') {
+          if (isActive && userTier !== 'free') {
             window.adManager.hideAdContainer?.();
           } else {
             window.adManager.refreshAd?.();
           }
         }
-      } catch (e) {
-        console.warn('Failed to set userTier:', e);
       }
     } catch (error) {
       console.error('Error upserting profile:', error);
@@ -739,19 +810,68 @@ class SupabaseClient {
     }
   }
 
-  // Get user's encryption key
+  // Get user's encryption key (with caching to prevent multiple API calls)
   async getUserEncryptionKey() {
     if (!this.currentUser) {
+      console.log('getUserEncryptionKey: No authenticated user');
       throw new Error('No authenticated user');
     }
+
+    // Check if we have cached key material and salt
+    const { encryptionKeyLastChecked, cachedKeyMaterial, cachedSalt } = await chrome.storage.local.get(['encryptionKeyLastChecked', 'cachedKeyMaterial', 'cachedSalt']);
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000; // 1 hour cache
+
+    console.log('getUserEncryptionKey: Cache check:', {
+      hasCache: !!(cachedKeyMaterial && cachedSalt),
+      lastChecked: encryptionKeyLastChecked ? new Date(encryptionKeyLastChecked).toISOString() : 'N/A',
+      timeDiff: encryptionKeyLastChecked ? Math.round((now - encryptionKeyLastChecked) / 1000) : 'N/A',
+      isRecent: encryptionKeyLastChecked ? (now - encryptionKeyLastChecked) < oneHour : false
+    });
+
+    // Use cached material if it's recent
+    if (encryptionKeyLastChecked && cachedKeyMaterial && cachedSalt && (now - encryptionKeyLastChecked) < oneHour) {
+      console.log('getUserEncryptionKey: Using cached material to regenerate key');
+      const cachedKey = await window.noteEncryption.generateKey(cachedKeyMaterial, cachedSalt);
+      return cachedKey;
+    }
+
+    console.log('getUserEncryptionKey: Making API call to get salt');
 
     // Derive key from stable user material + per-user salt from profile
     const keyMaterial = `${this.currentUser.id}:${this.currentUser.email}`;
     let salt = null;
+    
+    // Try to get salt from cached profile data first
     try {
-      const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=salt`, { auth: true });
-      salt = arr?.[0]?.salt || null;
-    } catch (_) {}
+      const { cachedSubscription } = await chrome.storage.local.get(['cachedSubscription']);
+      console.log('getUserEncryptionKey: Checking cached subscription for salt:', {
+        hasCachedSubscription: !!cachedSubscription,
+        hasSalt: !!cachedSubscription?.salt
+      });
+      if (cachedSubscription?.salt) {
+        salt = cachedSubscription.salt;
+        console.log('getUserEncryptionKey: Using salt from cached subscription');
+      }
+    } catch (error) {
+      console.warn('getUserEncryptionKey: Error checking cached subscription:', error);
+    }
+
+    // If no cached salt, fetch from API
+    if (!salt) {
+      console.log('getUserEncryptionKey: No cached salt, fetching from API');
+      try {
+        const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=salt`, { auth: true });
+        salt = arr?.[0]?.salt || null;
+        console.log('getUserEncryptionKey: API salt response:', {
+          hasResponse: !!arr,
+          responseLength: arr?.length || 0,
+          hasSalt: !!salt
+        });
+      } catch (error) {
+        console.warn('getUserEncryptionKey: Error fetching salt from API:', error);
+      }
+    }
 
     if (!salt) {
       // Fallback: local salt (as last resort)
@@ -767,7 +887,17 @@ class SupabaseClient {
       }
     }
 
-    return await window.noteEncryption.generateKey(keyMaterial, salt);
+    const encryptionKey = await window.noteEncryption.generateKey(keyMaterial, salt);
+    
+    // Cache the key material and salt instead of the CryptoKey object
+    // CryptoKey objects cannot be serialized to JSON
+    await chrome.storage.local.set({ 
+      encryptionKeyLastChecked: now, 
+      cachedKeyMaterial: keyMaterial,
+      cachedSalt: salt
+    });
+
+    return encryptionKey;
   }
 
   // Check if user is authenticated
@@ -798,28 +928,82 @@ class SupabaseClient {
     }
   }
 
-  // Check subscription status
+  // Check subscription status (with caching to prevent multiple API calls)
   async getSubscriptionStatus() {
     if (!this.isAuthenticated()) {
+      console.log('getSubscriptionStatus: User not authenticated, returning free tier');
       return { tier: 'free', active: false };
     }
 
     try {
-      const profiles = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=subscription_tier,subscription_expires_at`, { auth: true });
+      // Check if we have cached subscription status
+      const { subscriptionLastChecked, cachedSubscription } = await chrome.storage.local.get(['subscriptionLastChecked', 'cachedSubscription']);
+      const now = Date.now();
+      const fiveMinutes = 5 * 60 * 1000; // 5 minutes cache
+
+      console.log('getSubscriptionStatus: Cache check:', {
+        hasCache: !!cachedSubscription,
+        lastChecked: subscriptionLastChecked ? new Date(subscriptionLastChecked).toISOString() : 'N/A',
+        timeDiff: subscriptionLastChecked ? Math.round((now - subscriptionLastChecked) / 1000) : 'N/A',
+        isRecent: subscriptionLastChecked ? (now - subscriptionLastChecked) < fiveMinutes : false
+      });
+
+      // Use cached data if it's recent
+      if (subscriptionLastChecked && cachedSubscription && (now - subscriptionLastChecked) < fiveMinutes) {
+        console.log('getSubscriptionStatus: Using cached data:', cachedSubscription);
+        return cachedSubscription;
+      }
+
+      // Fetch fresh data from API
+      console.log('getSubscriptionStatus: Fetching fresh data from API');
+      const profiles = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=subscription_tier,subscription_expires_at,salt`, { auth: true });
       const profile = profiles?.[0];
 
+      console.log('getSubscriptionStatus: API response:', {
+        profilesCount: profiles?.length || 0,
+        hasProfile: !!profile,
+        profileData: profile ? {
+          hasTier: !!profile.subscription_tier,
+          hasExpiresAt: !!profile.subscription_expires_at,
+          hasSalt: !!profile.salt
+        } : null
+      });
+
       if (!profile) {
-        return { tier: 'free', active: false };
+        const result = { tier: 'free', active: false };
+        console.log('getSubscriptionStatus: No profile found, caching free tier result');
+        // Cache the result
+        await chrome.storage.local.set({ 
+          subscriptionLastChecked: now, 
+          cachedSubscription: result 
+        });
+        return result;
       }
 
       const isActive = profile.subscription_expires_at ?
         new Date(profile.subscription_expires_at) > new Date() : false;
 
-      return {
+      const result = {
         tier: profile.subscription_tier || 'free',
         active: isActive,
-        expiresAt: profile.subscription_expires_at
+        expiresAt: profile.subscription_expires_at,
+        salt: profile.salt // Include salt for encryption key reuse
       };
+
+      console.log('getSubscriptionStatus: Caching result:', {
+        tier: result.tier,
+        active: result.active,
+        hasExpiresAt: !!result.expiresAt,
+        hasSalt: !!result.salt
+      });
+
+      // Cache the result
+      await chrome.storage.local.set({ 
+        subscriptionLastChecked: now, 
+        cachedSubscription: result 
+      });
+
+      return result;
     } catch (error) {
       console.error('Error checking subscription:', error);
       return { tier: 'free', active: false };
@@ -857,24 +1041,53 @@ class SupabaseClient {
   // Get storage usage
   async getStorageUsage() {
     if (!this.isAuthenticated()) {
+      console.log('getStorageUsage: User not authenticated, returning 0 usage');
       return { used: 0, limit: 0 };
     }
 
     try {
-      const profiles = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=storage_used_bytes`, { auth: true });
+      console.log('getStorageUsage: Fetching storage and subscription info');
+      // Get both storage_used_bytes and subscription info in ONE API call
+      const profiles = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=storage_used_bytes,subscription_tier,subscription_expires_at`, { auth: true });
       const profile = profiles?.[0];
-      const subscription = await this.getSubscriptionStatus();
       
-      const limit = subscription.tier === 'premium' ? 
+      console.log('getStorageUsage: API response:', {
+        profilesCount: profiles?.length || 0,
+        hasProfile: !!profile,
+        storageUsed: profile?.storage_used_bytes || 0,
+        hasTier: !!profile?.subscription_tier,
+        hasExpiresAt: !!profile?.subscription_expires_at
+      });
+      
+      if (!profile) {
+        console.log('getStorageUsage: No profile found, returning 0 usage');
+        return { used: 0, limit: 0 };
+      }
+
+      // Calculate limit locally instead of calling getSubscriptionStatus()
+      const isActive = profile.subscription_expires_at ?
+        new Date(profile.subscription_expires_at) > new Date() : false;
+      const tier = isActive ? (profile.subscription_tier || 'premium') : 'free';
+      
+      const limit = tier === 'premium' ? 
         1024 * 1024 * 1024 : // 1GB for premium
         100 * 1024 * 1024;   // 100MB for free
 
-      return {
+      const result = {
         used: profile?.storage_used_bytes || 0,
         limit: limit
       };
+
+      console.log('getStorageUsage: Calculated result:', {
+        used: result.used,
+        limit: result.limit,
+        tier,
+        isActive
+      });
+
+      return result;
     } catch (error) {
-      console.error('Error getting storage usage:', error);
+      console.error('getStorageUsage: Error getting storage usage:', error);
       return { used: 0, limit: 0 };
     }
   }
