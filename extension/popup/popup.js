@@ -432,13 +432,13 @@ class URLNotesApp {
         
         if (timeDiff < fiveMinutes) {
           console.log('Popup: Restoring recently active draft (within 5 minutes)');
-          this.currentNote = { ...editorState.noteDraft };
-          if (this.currentSite) {
-            this.currentNote.domain = this.currentNote.domain || this.currentSite.domain;
-            this.currentNote.url = this.currentSite.url;
-            this.currentNote.pageTitle = this.currentSite.title;
-          }
-          await this.openEditor(true);
+        this.currentNote = { ...editorState.noteDraft };
+        if (this.currentSite) {
+          this.currentNote.domain = this.currentNote.domain || this.currentSite.domain;
+          this.currentNote.url = this.currentSite.url;
+          this.currentNote.pageTitle = this.currentSite.title;
+        }
+        await this.openEditor(true);
         } else {
           console.log('Popup: Draft found but too old to auto-open, clearing stale draft');
           // Draft is too old, clear it
@@ -1350,9 +1350,20 @@ class URLNotesApp {
     // Add open button event listener (only present in non-page views)
     const openBtn = noteDiv.querySelector('.open-page-btn');
     if (openBtn) {
+      // Debug: Log note data when setting up the button
+      console.log('Popup: Setting up open button for note:', {
+        id: note.id,
+        hasUrl: !!note.url,
+        url: note.url,
+        hasDomain: !!note.domain,
+        domain: note.domain,
+        title: note.title
+      });
+      
       openBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const displayText = note.title || note.pageTitle || '';
+        console.log('Popup: Opening note URL:', note.url, 'for note:', note.id);
         this.openLinkAndHighlight(note.url, displayText);
       });
     }
@@ -2469,20 +2480,20 @@ class URLNotesApp {
         }
         
         if (shouldRestore) {
-          // Draft is newer, restore it to editor fields (don't modify currentNote)
-          const titleHeader = document.getElementById('noteTitleHeader');
-          const contentInput = document.getElementById('noteContentInput');
-          const tagsInput = document.getElementById('tagsInput');
-          
-          if (titleHeader) titleHeader.value = draft.title || this.currentNote.title || '';
-          if (contentInput) contentInput.innerHTML = this.buildContentHtml(draft.content || this.currentNote.content || '');
-          if (tagsInput) tagsInput.value = (draft.tags || this.currentNote.tags || []).join(', ');
-          
+            // Draft is newer, restore it to editor fields (don't modify currentNote)
+            const titleHeader = document.getElementById('noteTitleHeader');
+            const contentInput = document.getElementById('noteContentInput');
+            const tagsInput = document.getElementById('tagsInput');
+            
+            if (titleHeader) titleHeader.value = draft.title || this.currentNote.title || '';
+            if (contentInput) contentInput.innerHTML = this.buildContentHtml(draft.content || this.currentNote.content || '');
+            if (tagsInput) tagsInput.value = (draft.tags || this.currentNote.tags || []).join(', ');
+            
           console.log('Restored draft content:', { 
             draftContent: draft.content?.substring(0, 100), 
             noteContent: this.currentNote.content?.substring(0, 100) 
           });
-          return true; // Indicate that a draft was restored
+            return true; // Indicate that a draft was restored
         }
       }
       return false; // No draft was restored

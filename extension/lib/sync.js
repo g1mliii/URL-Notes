@@ -181,16 +181,18 @@ class SyncEngine {
       
       // Note: Removed verbose logging for cleaner console
       
-      // Prepare sync payload - only essential fields, no version history data
+      // Prepare sync payload - include essential fields including url and domain
       const syncPayload = {
         operation: 'sync',
         notes: notesToSync.map(note => ({
           id: note.id,
           title: note.title,
           content: note.content,
+          url: note.url,
+          domain: note.domain,
           createdAt: note.createdAt,
           updatedAt: note.updatedAt
-          // Explicitly exclude: url, domain, tags, version, parent_version_id, etc.
+          // Explicitly exclude: tags, version, parent_version_id, etc.
         })),
         deletions: localDeletions,
         lastSyncTime: this.lastSyncTime,
@@ -206,11 +208,26 @@ class SyncEngine {
         // Get any missing notes from server (local priority - only add missing notes)
         const missingNotes = result.missingNotes || [];
         if (missingNotes.length > 0) {
-          // Note: Removed verbose logging for cleaner console
+          console.log('Sync: Processing missing notes from server:', missingNotes.length);
           for (const serverNote of missingNotes) {
+            // Debug: Log the server note structure
+            console.log('Sync: Server note structure:', {
+              id: serverNote.id,
+              hasUrl: !!serverNote.url,
+              hasDomain: !!serverNote.domain,
+              url: serverNote.url,
+              domain: serverNote.domain,
+              title: serverNote.title,
+              hasContent: !!serverNote.content
+            });
+            
             // Only add if note doesn't exist locally
             const localNote = localNotes.find(n => n.id === serverNote.id);
             if (!localNote) {
+              // Ensure URL and domain are present before saving
+              if (!serverNote.url || !serverNote.domain) {
+                console.warn('Sync: Server note missing URL or domain:', serverNote.id);
+              }
               await window.notesStorage.saveNote(serverNote);
             }
           }

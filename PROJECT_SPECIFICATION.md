@@ -468,21 +468,51 @@ Status: Phase 1 goals achieved for the local-first extension MVP with polished p
    - Send email with reset link; for dev, allow reset via Supabase-hosted link; for prod, point to web app route.
    - Handle post-reset sign-in UX in the extension (status message, prompt to log in).
 
-### Phase 3: Web Application (Outline)
-1. **Week 1-2**: Core web app
-   - Next.js setup with authentication
-   - Dashboard and notes management
-   - Responsive design
+### Phase 3: Web Application (Updated Implementation Plan)
+1. **Week 1-2**: Core web app foundation
+   - Next.js 14 setup with App Router and TypeScript
+   - Supabase authentication integration (reuse existing auth from extension)
+   - Responsive dashboard layout with domain/URL organization
+   - Notes management interface (create, edit, delete, search)
+   - Real-time sync status and conflict resolution UI
 
-2. **Week 3-4**: Advanced features
-   - Advanced search interface
-   - Export functionality
-   - Settings and preferences
+2. **Week 3-4**: Advanced features and parity
+   - Cross-domain search and filtering (premium feature)
+   - Advanced export formats (Markdown, HTML, PDF)
+   - Bulk operations (delete, tag management, domain organization)
+   - Settings and preferences sync with extension
+   - File attachment management (premium feature)
 
-3. **Week 5**: Premium features
-   - Subscription management
-   - Advanced organization tools
-   - Analytics dashboard
+3. **Week 5**: Premium features and polish
+   - Subscription management dashboard
+   - Advanced organization tools (nested tags, smart folders)
+   - Analytics and usage statistics
+   - Mobile-responsive design optimization
+   - Performance optimization and testing
+
+#### Phase 3 – Technical Implementation Details
+- **Framework**: Next.js 14 with App Router, TypeScript, Tailwind CSS
+- **Authentication**: Reuse Supabase auth from extension; implement session management
+- **Database**: Direct Supabase client integration; reuse existing schema and RLS policies
+- **Encryption**: Client-side encryption using same key derivation as extension
+- **Sync**: Real-time sync status, conflict resolution UI, offline queue management
+- **Performance**: Server-side rendering, incremental static regeneration, optimized bundle size
+- **Mobile**: Progressive Web App (PWA) capabilities, responsive design, touch-friendly interface
+
+#### Phase 3 – Feature Parity Requirements
+- **Core functionality**: Full CRUD operations, search, filtering, tagging
+- **Organization**: Domain/URL grouping, bulk operations, advanced sorting
+- **Premium features**: Cross-domain search, unlimited version history, advanced export
+- **Sync status**: Real-time sync indicators, conflict resolution, offline handling
+- **Settings**: Theme preferences, font settings, export/import tools
+
+#### Phase 3 – Current Status & Dependencies
+- **Extension foundation**: ✅ Complete (Phase 1 finished)
+- **Backend infrastructure**: ✅ Complete (Supabase setup, auth, sync functions)
+- **AI features**: ✅ Complete (Gemini integration, user context, markdown link preservation)
+- **Performance optimizations**: ✅ Complete (API call reduction, caching, encryption key handling)
+- **Context menu integration**: ✅ Complete (draft management, editor state persistence)
+- **Ready for web app**: All backend APIs and extension features are production-ready
 
 ### Phase 4: Launch & Monetization (Outline)
 1. **Week 1**: CodeFuel integration

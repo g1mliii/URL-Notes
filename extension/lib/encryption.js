@@ -109,6 +109,7 @@ class NoteEncryption {
       title_encrypted: encryptedTitle,
       content_encrypted: encryptedContent,
       content_hash: contentHash,
+      // Keep url and domain as plaintext for proper sync
       // Remove plaintext content
       title: null,
       content: null

@@ -118,27 +118,87 @@ class NotesStorage {
   async saveNote(note) {
     if (!this.db) await this.init();
   
+    // Debug: Log note structure when saving
+    console.log('Storage: Saving note:', {
+      id: note.id,
+      hasUrl: !!note.url,
+      hasDomain: !!note.domain,
+      url: note.url,
+      domain: note.domain,
+      title: note.title,
+      hasContent: !!note.content,
+      isServerNote: !!(note.title_encrypted && note.content_encrypted)
+    });
+  
     // 1. ENCRYPTION (only for premium users)
     let userKey = null;
     try {
-      // Only attempt encryption if user has premium access
-      if (await this.checkPremiumAccess()) {
-        userKey = await window.supabaseClient?.getUserEncryptionKey();
-        if (userKey && window.noteEncryption) {
-          const encryptedNote = await window.noteEncryption.encryptNoteForCloud(note, userKey);
-          // Update the note with encrypted fields
-          note.title_encrypted = encryptedNote.title_encrypted;
-          note.content_encrypted = encryptedNote.content_encrypted;
-          note.content_hash = encryptedNote.content_hash;
+      // Check if this is a note from the server (has encrypted content)
+      if (note.title_encrypted && note.content_encrypted) {
+        // This is a server note - decrypt it first
+        if (await this.checkPremiumAccess()) {
+          userKey = await window.supabaseClient?.getUserEncryptionKey();
+          if (userKey && window.noteEncryption) {
+            try {
+              const decryptedNote = await window.noteEncryption.decryptNoteFromCloud(note, userKey);
+              // Update the note with decrypted content
+              note.title = decryptedNote.title;
+              note.content = decryptedNote.content;
+              // Keep the encrypted fields for future sync
+              note.title_encrypted = decryptedNote.title_encrypted;
+              note.content_encrypted = decryptedNote.content_encrypted;
+              note.content_hash = decryptedNote.content_hash;
+            } catch (decryptError) {
+              console.warn('Failed to decrypt server note, using fallback content:', decryptError);
+              // Fallback: provide readable content for notes that can't be decrypted
+              note.title = note.title || 'Note from Server (Encrypted)';
+              note.content = note.content || 'This note was synced from the server but could not be decrypted. The URL and domain information should still be visible.';
+              // Clear encrypted fields to prevent future decryption attempts
+              delete note.title_encrypted;
+              delete note.content_encrypted;
+              delete note.content_hash;
+            }
+          } else {
+            // No premium access - provide fallback content
+            note.title = note.title || 'Note from Server (Premium Required)';
+            note.content = note.content || 'This note requires premium access to decrypt. The URL and domain information should still be visible.';
+            // Clear encrypted fields
+            delete note.title_encrypted;
+            delete note.content_encrypted;
+            delete note.content_hash;
+          }
+        } else {
+          // No premium access - provide fallback content
+          note.title = note.title || 'Note from Server (Premium Required)';
+          note.content = note.content || 'This note requires premium access to decrypt. The URL and domain information should still be visible.';
+          // Clear encrypted fields
+          delete note.title_encrypted;
+          delete note.content_encrypted;
+          delete note.content_hash;
+        }
+      } else {
+        // This is a local note - encrypt it for cloud storage
+        if (await this.checkPremiumAccess()) {
+          userKey = await window.supabaseClient?.getUserEncryptionKey();
+          if (userKey && window.noteEncryption) {
+            const encryptedNote = await window.noteEncryption.encryptNoteForCloud(note, userKey);
+            // Update the note with encrypted fields
+            note.title_encrypted = encryptedNote.title_encrypted;
+            note.content_encrypted = encryptedNote.content_encrypted;
+            note.content_hash = encryptedNote.content_hash;
+          }
         }
       }
-          } catch (error) {
-        // Remove verbose logging
-        // Clear any partial encryption data
-        delete note.title_encrypted;
-        delete note.content_encrypted;
-        delete note.content_hash;
-      }
+    } catch (error) {
+      console.warn('Encryption/decryption error in saveNote:', error);
+      // Provide fallback content for any notes that fail encryption/decryption
+      note.title = note.title || 'Note (Error)';
+      note.content = note.content || 'This note encountered an error during processing. The URL and domain information should still be visible.';
+      // Clear any partial encryption data
+      delete note.title_encrypted;
+      delete note.content_encrypted;
+      delete note.content_hash;
+    }
   
     // 2. SET TIMESTAMPS AND VERSION
     const now = new Date().toISOString();
@@ -537,14 +597,16 @@ class NotesStorage {
         // Sort by updatedAt descending
         activeNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
         
-        // Only include essential fields for sync (no version history data)
+        // Include essential fields for sync including url and domain
         const syncNotes = activeNotes.map(note => ({
           id: note.id,
           title: note.title,
           content: note.content,
+          url: note.url,
+          domain: note.domain,
           createdAt: note.createdAt,
           updatedAt: note.updatedAt
-          // Explicitly exclude: url, domain, tags, version, parent_version_id, etc.
+          // Explicitly exclude: tags, version, parent_version_id, etc.
         }));
         
         // Remove verbose logging
@@ -569,6 +631,19 @@ class NotesStorage {
         
         // Filter out deleted notes for display
         const activeNotes = notes.filter(note => !note.is_deleted);
+        
+        // Debug: Log note structure when loading for display
+        activeNotes.forEach(note => {
+          console.log('Storage: Note loaded for display:', {
+            id: note.id,
+            hasUrl: !!note.url,
+            url: note.url,
+            hasDomain: !!note.domain,
+            domain: note.domain,
+            title: note.title,
+            hasContent: !!note.content
+          });
+        });
         
         // Sort by updatedAt descending
         activeNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
