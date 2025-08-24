@@ -1,254 +1,163 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { NoteWithContent } from '@/lib/types'
-import { useAppStore } from '@/lib/store'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
-import { 
-  Save, 
-  Tag, 
-  Star, 
-  Trash2, 
-  ExternalLink,
-  MoreVertical,
-  Clock,
-  Calendar
-} from 'lucide-react'
-import { formatDate } from '@/lib/utils'
+import { useState } from 'react'
 
-interface NoteEditorProps {
-  note: NoteWithContent
+interface Note {
+  id: number
+  title: string
+  content: string
+  domain?: string | null
+  url?: string | null
+  tags?: string[]
+  created_at: string
+  updated_at: string
 }
 
-export function NoteEditor({ note }: NoteEditorProps) {
-  const [title, setTitle] = useState(note.title || '')
-  const [content, setContent] = useState(note.content)
-  const [tags, setTags] = useState(note.tags.join(', '))
-  const [isEditing, setIsEditing] = useState(false)
-  const [hasChanges, setHasChanges] = useState(false)
-  
-  const { saveNote } = useAppStore()
+interface NoteEditorProps {
+  selectedNote: Note | null
+  onClose: () => void
+  onSave: (note: Note) => void
+}
 
-  useEffect(() => {
-    setTitle(note.title || '')
-    setContent(note.content)
-    setTags(note.tags.join(', '))
-    setHasChanges(false)
-  }, [note])
+export default function NoteEditor({ selectedNote, onClose, onSave }: NoteEditorProps) {
+  const [title, setTitle] = useState(selectedNote?.title || '')
+  const [content, setContent] = useState(selectedNote?.content || '')
+  const [tags, setTags] = useState<string[]>(selectedNote?.tags || [])
 
-  const handleTitleChange = (value: string) => {
-    setTitle(value)
-    setHasChanges(true)
-  }
-
-  const handleContentChange = (value: string) => {
-    setContent(value)
-    setHasChanges(true)
-  }
-
-  const handleTagsChange = (value: string) => {
-    setTags(value)
-    setHasChanges(true)
-  }
-
-  const handleSave = async () => {
-    try {
-      const tagsArray = tags.split(',').map(tag => tag.trim()).filter(Boolean)
-      await saveNote(note.id, {
+  const handleSave = () => {
+    if (selectedNote) {
+      onSave({
+        ...selectedNote,
         title,
         content,
-        tags: tagsArray
+        tags,
+        updated_at: new Date().toISOString()
       })
-      setHasChanges(false)
-    } catch (error) {
-      console.error('Failed to save note:', error)
     }
   }
 
-  const handleDelete = () => {
-    // TODO: Implement delete functionality
-    if (confirm('Are you sure you want to delete this note?')) {
-      console.log('Deleting note:', note.id)
-    }
-  }
-
-  const togglePin = () => {
-    // TODO: Implement pin functionality
-    console.log('Toggling pin for note:', note.id)
-  }
-
-  const openUrl = () => {
-    if (note.url) {
-      window.open(note.url, '_blank')
-    }
+  if (!selectedNote) {
+    return (
+      <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)', backdropFilter: 'blur(8px)' }}>
+        <div className="text-center opacity-30">
+          <div className="w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(55, 65, 81, 0.1)' }}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 className="text-sm font-medium mb-1" style={{ color: 'rgba(255, 255, 255, 0.4)' }}>Select a note to edit</h3>
+          <p className="text-xs" style={{ color: 'rgba(156, 163, 175, 0.3)' }}>Click on any note from the list</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="h-full flex flex-col bg-[rgba(28,28,30,0.66)] backdrop-blur-[24px] rounded-lg border border-[rgba(255,255,255,0.14)] shadow-[0_2px_7px_rgba(0,0,0,0.06)]">
+    <div className="flex-1 flex flex-col" style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)', backdropFilter: 'blur(8px)' }}>
       {/* Editor Header */}
-      <div className="flex items-center justify-between p-4 border-b border-[rgba(255,255,255,0.14)] bg-gradient-to-r from-[rgba(255,255,255,0.10)] to-[rgba(255,255,255,0.04)]">
-        <div className="flex items-center space-x-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={togglePin}
-            className={cn(
-              "p-2 text-[rgba(255,255,255,0.86)] hover:bg-[rgba(255,255,255,0.14)]",
-              note.is_pinned && "text-yellow-400"
-            )}
-          >
-            <Star size={16} />
-          </Button>
-          
-          {note.url && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={openUrl}
-              className="p-2 text-[rgba(255,255,255,0.86)] hover:bg-[rgba(255,255,255,0.14)]"
-            >
-              <ExternalLink size={16} />
-            </Button>
-          )}
-        </div>
-
-        <div className="flex items-center space-x-2">
-          {hasChanges && (
-            <span className="text-xs text-orange-400">
-              Unsaved changes
+      <div className="border-b" style={{ 
+        borderColor: 'rgba(75, 85, 99, 0.3)', 
+        backgroundColor: 'rgba(0, 0, 0, 0.2)',
+        padding: '128px !important'
+      }}>
+        <div className="flex items-center justify-between" style={{ 
+          marginBottom: '80px !important'
+        }}>
+          <div className="flex items-center" style={{ 
+            gap: '64px !important'
+          }}>
+            <span style={{ 
+              backgroundColor: 'rgba(59, 130, 246, 0.2)', 
+              border: '1px solid rgba(59, 130, 246, 0.4)', 
+              color: 'rgb(147, 197, 253)',
+              fontSize: '60px !important',
+              padding: '64px 32px !important',
+              borderRadius: '50px',
+              display: 'inline-block'
+            }}>
+              {selectedNote.domain}
             </span>
-          )}
-          
-          <Button
+            <span style={{ 
+              color: 'rgb(156, 163, 175)', 
+              fontSize: '36px !important',
+              padding: '16px',
+              borderRadius: '8px'
+            }}>
+              {new Date(selectedNote.updated_at).toLocaleDateString()}
+            </span>
+          </div>
+          <button
             onClick={handleSave}
-            disabled={!hasChanges}
-            size="sm"
-            className="bg-[rgba(0,122,255,1)] hover:bg-[rgba(0,122,255,0.8)] text-white"
+            style={{ 
+              backgroundColor: 'rgb(59, 130, 246)', 
+              color: 'white',
+              border: '1px solid rgba(59, 130, 246, 0.5)',
+              padding: '32px 80px !important',
+              fontSize: '30px !important',
+              borderRadius: '50px',
+              fontWeight: '500'
+            }}
           >
-            <Save size={16} className="mr-2" />
-            Save
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsEditing(!isEditing)}
-            className="text-[rgba(255,255,255,0.86)] hover:bg-[rgba(255,255,255,0.14)]"
-          >
-            <MoreVertical size={16} />
-          </Button>
+            Save Changes
+          </button>
         </div>
-      </div>
-
-      {/* Note Info */}
-      <div className="p-4 border-b border-[rgba(255,255,255,0.14)] bg-gradient-to-r from-[rgba(255,255,255,0.08)] to-[rgba(255,255,255,0.04)]">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div className="flex items-center space-x-2">
-            <Calendar size={14} className="text-[rgba(255,255,255,0.55)]" />
-            <span className="text-[rgba(255,255,255,0.86)]">
-              Created: {formatDate(note.created_at)}
+        
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Note title..."
+          style={{ 
+            width: '100%',
+            color: 'white', 
+            backgroundColor: 'transparent',
+            fontSize: '96px !important',
+            fontWeight: '600',
+            border: 'none',
+            outline: 'none',
+            marginBottom: '64px !important',
+            padding: '16px'
+          }}
+        />
+        
+        <div className="flex flex-wrap" style={{ 
+          gap: '32px !important'
+        }}>
+          {tags.map((tag, index) => (
+            <span key={index} style={{
+              backgroundColor: 'rgba(59, 130, 246, 0.2)',
+              border: '1px solid rgba(59, 130, 246, 0.4)',
+              color: 'rgb(147, 197, 253)',
+              fontSize: '30px !important',
+              padding: '20px 40px !important',
+              borderRadius: '50px',
+              display: 'inline-block'
+            }}>
+              {tag}
             </span>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Clock size={14} className="text-[rgba(255,255,255,0.55)]" />
-            <span className="text-[rgba(255,255,255,0.86)]">
-              Updated: {formatDate(note.updated_at)}
-            </span>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Tag size={14} className="text-[rgba(255,255,255,0.55)]" />
-            <span className="text-[rgba(255,255,255,0.86)]">
-              Domain: {note.domain}
-            </span>
-          </div>
-          
-          {note.url && (
-            <div className="flex items-center space-x-2">
-              <ExternalLink size={14} className="text-[rgba(255,255,255,0.55)]" />
-              <span className="text-[rgba(255,255,255,0.86)] truncate">
-                URL: {note.url}
-              </span>
-            </div>
-          )}
+          ))}
         </div>
       </div>
 
       {/* Editor Content */}
-      <div className="flex-1 p-4 space-y-4">
-        {/* Title Input */}
-        <div>
-          <label className="block text-sm font-medium text-[rgba(255,255,255,0.86)] mb-2">
-            Title
-          </label>
-          <Input
-            value={title}
-            onChange={(e) => handleTitleChange(e.target.value)}
-            placeholder="Note title (optional)"
-            className="text-lg font-medium bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.14)] text-[rgba(255,255,255,0.86)] placeholder-[rgba(255,255,255,0.56)] focus:border-[rgba(0,122,255,1)] focus:ring-[rgba(0,122,255,0.2)]"
-          />
-        </div>
-
-        {/* Tags Input */}
-        <div>
-          <label className="block text-sm font-medium text-[rgba(255,255,255,0.86)] mb-2">
-            Tags
-          </label>
-          <div className="relative">
-            <Tag size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[rgba(255,255,255,0.55)]" />
-            <Input
-              value={tags}
-              onChange={(e) => handleTagsChange(e.target.value)}
-              placeholder="Enter tags separated by commas"
-              className="pl-10 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.14)] text-[rgba(255,255,255,0.86)] placeholder-[rgba(255,255,255,0.56)] focus:border-[rgba(0,122,255,1)] focus:ring-[rgba(0,122,255,0.2)]"
-            />
-          </div>
-        </div>
-
-        {/* Content Editor */}
-        <div className="flex-1">
-          <label className="block text-sm font-medium text-[rgba(255,255,255,0.86)] mb-2">
-            Content
-          </label>
-          <textarea
-            value={content}
-            onChange={(e) => handleContentChange(e.target.value)}
-            placeholder="Start writing your note..."
-            className="w-full h-64 p-3 border border-[rgba(255,255,255,0.14)] rounded-md resize-none bg-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.86)] placeholder-[rgba(255,255,255,0.56)] focus:border-[rgba(0,122,255,1)] focus:ring-[rgba(0,122,255,0.2)]"
-            style={{ fontFamily: 'monospace' }}
-          />
-        </div>
+      <div className="flex-1 p-6">
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Start writing your note..."
+          className="w-full h-full bg-transparent border-none outline-none resize-none text-lg leading-relaxed"
+          style={{ color: 'white' }}
+        />
       </div>
 
       {/* Editor Footer */}
-      <div className="p-4 border-t border-[rgba(255,255,255,0.14)] bg-gradient-to-r from-[rgba(255,255,255,0.08)] to-[rgba(255,255,255,0.04)]">
+      <div className="p-10 border-t" style={{ borderColor: 'rgba(75, 85, 99, 0.3)' }}>
         <div className="flex items-center justify-between">
-          <div className="text-xs text-[rgba(255,255,255,0.55)]">
-            Version {note.version} • {content.length} characters
+          <div className="text-lg" style={{ color: 'rgb(156, 163, 175)' }}>
+            Last updated: {new Date(selectedNote.updated_at).toLocaleString()}
           </div>
-          
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditing(!isEditing)}
-              className="border-[rgba(255,255,255,0.14)] text-[rgba(255,255,255,0.86)] hover:bg-[rgba(255,255,255,0.14)]"
-            >
-              Cancel
-            </Button>
-            
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              <Trash2 size={16} className="mr-2" />
-              Delete
-            </Button>
+          <div className="text-lg" style={{ color: 'rgb(156, 163, 175)' }}>
+            {content.length} characters
           </div>
         </div>
       </div>

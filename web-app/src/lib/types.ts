@@ -14,6 +14,8 @@ export interface Note {
   title_encrypted: any // JSONB encrypted title
   content_encrypted: any // JSONB encrypted content
   content_hash: string
+  url?: string | null
+  domain?: string | null
   is_deleted: boolean
   created_at: string
   updated_at: string

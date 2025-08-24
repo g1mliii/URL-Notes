@@ -26,7 +26,7 @@ export class SyncService {
     }
   }
 
-  // Get user's encryption key (with caching)
+  // Get user's encryption key (with caching) - EXACTLY matches extension
   private async getUserEncryptionKey(): Promise<CryptoKey> {
     if (!supabaseClient.getCurrentUser()) {
       throw new Error('No authenticated user')
@@ -47,11 +47,11 @@ export class SyncService {
       }
     }
 
-    // Generate new key from user data
+    // Generate new key from user data - EXACTLY matches extension
     const user = supabaseClient.getCurrentUser()
-    const keyMaterial = `${user.id}:${user.email}`
+    const keyMaterial = `${user.id}:${user.email}` // EXACTLY matches extension
     
-    // Get salt from profile
+    // Get salt from profile - EXACTLY matches extension
     const profilesResponse = await fetch(`${supabaseClient.apiUrl}/profiles?id=eq.${user.id}&select=salt`, {
       headers: supabaseClient.getHeaders()
     })
@@ -63,7 +63,7 @@ export class SyncService {
     }
     
     if (!salt) {
-      // Generate new salt if none exists
+      // Generate new salt if none exists - EXACTLY matches extension
       salt = noteEncryption.generateSalt()
       await fetch(`${supabaseClient.apiUrl}/profiles?id=eq.${user.id}`, {
         method: 'PATCH',
@@ -72,7 +72,7 @@ export class SyncService {
       })
     }
 
-    // Cache the key material
+    // Cache the key material - EXACTLY matches extension
     const cacheData = {
       keyMaterial,
       salt,
@@ -97,6 +97,8 @@ export class SyncService {
       title_encrypted: encryptedTitle,
       content_encrypted: encryptedContent,
       content_hash: contentHash,
+      url: note.url,
+      domain: note.domain,
       is_deleted: note.is_deleted || false,
       created_at: note.created_at,
       updated_at: note.updated_at,
@@ -107,24 +109,85 @@ export class SyncService {
   }
 
   // Decrypt note from sync
-  private async decryptNoteFromSync(encryptedNote: Note): Promise<NoteWithContent> {
-    const userKey = await this.getUserEncryptionKey()
-    
-    const decryptedTitle = await noteEncryption.decryptNote(encryptedNote.title_encrypted, userKey)
-    const decryptedContent = await noteEncryption.decryptNote(encryptedNote.content_encrypted, userKey)
+  private async decryptNoteFromSync(encryptedNote: Note & { title?: string }): Promise<NoteWithContent> {
+    try {
+      console.log('🔍 Attempting to decrypt note:', {
+        id: encryptedNote.id,
+        titleEncrypted: encryptedNote.title_encrypted,
+        contentEncrypted: encryptedNote.content_encrypted,
+        hasTitle: !!encryptedNote.title_encrypted,
+        hasContent: !!encryptedNote.content_encrypted
+      })
 
-    return {
-      ...encryptedNote,
-      title: decryptedTitle,
-      content: decryptedContent,
-      // Add UI-specific fields with defaults
-      domain: 'unknown',
-      url: null,
-      is_url_specific: false,
-      tags: [],
-      color: null,
-      is_pinned: false,
-      version: 1
+      const userKey = await this.getUserEncryptionKey()
+      console.log('🔑 Got user encryption key:', !!userKey)
+      
+      let decryptedTitle: string, decryptedContent: string
+
+      // Try to decrypt title with enhanced fallback
+      try {
+        console.log('🔐 Decrypting title...')
+        decryptedTitle = await noteEncryption.decryptNoteWithFallback(encryptedNote.title_encrypted, userKey)
+        console.log('✅ Title decrypted successfully')
+      } catch (error) {
+        console.warn('⚠️ Failed to decrypt title, using fallback:', error)
+        decryptedTitle = 'Note from Extension (Title Encrypted)'
+      }
+
+      // Try to decrypt content with enhanced fallback
+      try {
+        console.log('🔐 Decrypting content...')
+        decryptedContent = await noteEncryption.decryptNoteWithFallback(encryptedNote.content_encrypted, userKey)
+        console.log('✅ Content decrypted successfully')
+      } catch (error) {
+        console.warn('⚠️ Failed to decrypt content, using fallback:', error)
+        decryptedContent = 'This note was created in the browser extension and could not be decrypted in the web app. The URL and domain information should still be visible.'
+      }
+
+      return {
+        ...encryptedNote,
+        title: decryptedTitle,
+        content: decryptedContent,
+        // Use actual URL and domain from server, fallback to defaults if missing
+        domain: (encryptedNote as any).domain || 'unknown',
+        url: (encryptedNote as any).url || null,
+        is_url_specific: !!(encryptedNote as any).url,
+        tags: [],
+        color: null,
+        is_pinned: false,
+        version: 1
+      }
+    } catch (decryptError) {
+      console.warn('⚠️ Failed to decrypt server note, using fallback content:', decryptError)
+      
+      // Enhanced fallback: provide more helpful content based on what we know
+      const fallbackTitle = encryptedNote.title || 'Note from Extension (Encrypted)'
+      const fallbackContent = `This note was synced from the browser extension but could not be decrypted in the web app. 
+
+Note ID: ${encryptedNote.id}
+Domain: ${(encryptedNote as any).domain || 'unknown'}
+URL: ${(encryptedNote as any).url || 'not available'}
+
+The note content is encrypted and requires the same encryption key that was used in the extension. If you're seeing this message, it means the encryption keys between your extension and web app don't match.
+
+Debug Info:
+- Title encrypted format: ${noteEncryption.debugEncryptionData(encryptedNote.title_encrypted)}
+- Content encrypted format: ${noteEncryption.debugEncryptionData(encryptedNote.content_encrypted)}
+- Note structure: ${JSON.stringify(encryptedNote, null, 2).substring(0, 500)}...`
+      
+      return {
+        ...encryptedNote,
+        title: fallbackTitle,
+        content: fallbackContent,
+        // Use actual URL and domain from server, fallback to defaults if missing
+        domain: (encryptedNote as any).domain || 'unknown',
+        url: (encryptedNote as any).url || null,
+        is_url_specific: !!(encryptedNote as any).url,
+        tags: [],
+        color: null,
+        is_pinned: false,
+        version: 1
+      }
     }
   }
 
@@ -172,6 +235,19 @@ export class SyncService {
       }
 
       const result = await response.json()
+      
+      // Process missing notes from server (notes that exist on server but not in client data)
+      if (result.missingNotes && Array.isArray(result.missingNotes)) {
+        console.log('Sync: Processing missing notes from server:', result.missingNotes.length)
+        
+        // Decrypt and return missing notes for the caller to handle
+        const missingNotes = await Promise.all(
+          result.missingNotes.map((note: Note) => this.decryptNoteFromSync(note))
+        )
+        
+        // Add missing notes to the result
+        result.missingNotes = missingNotes
+      }
       
       // Update sync time
       this.saveLastSyncTime(new Date().toISOString())

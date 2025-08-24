@@ -98,7 +98,18 @@ export class NotesService {
 
     // Try to sync to server
     try {
-      await syncService.syncNotes([newNote])
+      const result = await syncService.syncNotes([newNote])
+      
+      // Handle any missing notes from server
+      if (result.missingNotes && Array.isArray(result.missingNotes)) {
+        for (const serverNote of result.missingNotes) {
+          const localNote = this.notes.find(n => n.id === serverNote.id)
+          if (!localNote) {
+            this.notes.push(serverNote)
+          }
+        }
+      }
+      
       newNote.sync_pending = false
       newNote.last_synced_at = new Date().toISOString()
       this.saveToLocalStorage()
@@ -130,7 +141,18 @@ export class NotesService {
 
     // Try to sync to server
     try {
-      await syncService.syncNotes([updatedNote])
+      const result = await syncService.syncNotes([updatedNote])
+      
+      // Handle any missing notes from server
+      if (result.missingNotes && Array.isArray(result.missingNotes)) {
+        for (const serverNote of result.missingNotes) {
+          const localNote = this.notes.find(n => n.id === serverNote.id)
+          if (!localNote) {
+            this.notes.push(serverNote)
+          }
+        }
+      }
+      
       updatedNote.sync_pending = false
       updatedNote.last_synced_at = new Date().toISOString()
       this.notes[noteIndex] = updatedNote
@@ -165,7 +187,18 @@ export class NotesService {
 
     // Try to sync deletion to server
     try {
-      await syncService.syncNotes([deletedNote], [id])
+      const result = await syncService.syncNotes([deletedNote], [id])
+      
+      // Handle any missing notes from server
+      if (result.missingNotes && Array.isArray(result.missingNotes)) {
+        for (const serverNote of result.missingNotes) {
+          const localNote = this.notes.find(n => n.id === serverNote.id)
+          if (!localNote) {
+            this.notes.push(serverNote)
+          }
+        }
+      }
+      
       deletedNote.sync_pending = false
       deletedNote.last_synced_at = new Date().toISOString()
       this.notes[noteIndex] = deletedNote
@@ -228,7 +261,24 @@ export class NotesService {
     if (pendingNotes.length === 0) return
 
     try {
-      await syncService.syncNotes(pendingNotes)
+      const result = await syncService.syncNotes(pendingNotes)
+      
+      // Handle missing notes from server (notes that exist on server but not in client data)
+      if (result.missingNotes && Array.isArray(result.missingNotes)) {
+        console.log('NotesService: Processing missing notes from server:', result.missingNotes.length)
+        
+        for (const serverNote of result.missingNotes) {
+          // Only add if note doesn't exist locally
+          const localNote = this.notes.find(n => n.id === serverNote.id)
+          if (!localNote) {
+            // Ensure URL and domain are present before adding
+            if (!serverNote.url || !serverNote.domain) {
+              console.warn('NotesService: Server note missing URL or domain:', serverNote.id)
+            }
+            this.notes.push(serverNote)
+          }
+        }
+      }
       
       // Update sync status for all notes
       const now = new Date().toISOString()
