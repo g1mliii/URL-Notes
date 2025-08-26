@@ -569,16 +569,48 @@ class SupabaseClient {
       throw new Error('User not authenticated');
     }
 
+    // Ensure encryption module is available
+    if (!window.noteEncryption) {
+      throw new Error('NoteEncryption module not available');
+    }
+
     try {
+      // Ensure encryption key is available
+      const encryptionKey = await this.getUserEncryptionKey();
+      if (!encryptionKey) {
+        throw new Error('Encryption key not available');
+      }
+
       const encryptedNotes = [];
       
       // Encrypt notes before uploading (only if notes exist)
       if (syncPayload.notes && Array.isArray(syncPayload.notes)) {
         for (const note of syncPayload.notes) {
+          // Skip notes without title or content
+          if (!note.content || !note.title) {
+            console.warn('Skipping note without title or content:', note.id);
+            continue;
+          }
+          
+          console.log('Encrypting note:', {
+            id: note.id,
+            titleLength: note.title?.length || 0,
+            contentLength: note.content?.length || 0,
+            hasEncryptionKey: !!encryptionKey
+          });
+          
           const encryptedNote = await window.noteEncryption.encryptNoteForCloud(
             note, 
-            await this.getUserEncryptionKey()
+            encryptionKey
           );
+          
+          console.log('Note encrypted successfully:', {
+            id: encryptedNote.id,
+            hasTitleEncrypted: !!encryptedNote.title_encrypted,
+            hasContentEncrypted: !!encryptedNote.content_encrypted,
+            titleEncryptedType: typeof encryptedNote.title_encrypted,
+            contentEncryptedType: typeof encryptedNote.content_encrypted
+          });
           
           encryptedNotes.push(encryptedNote);
         }
@@ -592,6 +624,20 @@ class SupabaseClient {
         lastSyncTime: syncPayload.lastSyncTime,
         timestamp: syncPayload.timestamp
       };
+
+      // Debug: Log edge function payload structure
+      console.log('Edge function payload structure:', {
+        operation: edgeFunctionPayload.operation,
+        noteCount: edgeFunctionPayload.notes.length,
+        encryptedNoteSample: edgeFunctionPayload.notes.length > 0 ? {
+          id: edgeFunctionPayload.notes[0].id,
+          hasTitleEncrypted: !!edgeFunctionPayload.notes[0].title_encrypted,
+          hasContentEncrypted: !!edgeFunctionPayload.notes[0].content_encrypted,
+          titleEncryptedType: typeof edgeFunctionPayload.notes[0].title_encrypted,
+          contentEncryptedType: typeof edgeFunctionPayload.notes[0].content_encrypted
+        } : null,
+        deletionCount: edgeFunctionPayload.deletions.length
+      });
 
       // Use Edge Function for sync
       const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-notes`, {

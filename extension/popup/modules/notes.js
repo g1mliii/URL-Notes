@@ -105,8 +105,9 @@ class NotesManager {
          if (app.filterMode === 'all_notes') {
        await this.renderGroupedNotes(filteredNotes, notesList);
      } else {
-       // Check premium status once for all notes
-       const isPremium = await window.notesStorage?.checkPremiumAccess?.() || false;
+       // Check premium status once for all notes using cached function
+       const premiumStatus = await getPremiumStatus();
+       const isPremium = premiumStatus.isPremium;
        
        // Use DocumentFragment for smoother rendering
        for (const note of filteredNotes) {
@@ -139,8 +140,9 @@ class NotesManager {
       this.updateCounterPosition(notesCounter);
     }
 
-    // Check premium status once for all notes
-    const isPremium = await window.notesStorage?.checkPremiumAccess?.() || false;
+    // Check premium status once for all notes using cached function
+    const premiumStatus = await getPremiumStatus();
+    const isPremium = premiumStatus.isPremium;
     
     const grouped = this.groupNotesByDomain(notes);
     const sortedDomains = Object.keys(grouped).sort();

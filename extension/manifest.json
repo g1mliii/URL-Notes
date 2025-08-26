@@ -9,7 +9,8 @@
     "tabs",
     "alarms",
     "contextMenus",
-    "identity"
+    "identity",
+    "scripting"
   ],
   "host_permissions": [
     "<all_urls>"

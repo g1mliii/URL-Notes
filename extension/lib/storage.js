@@ -1,6 +1,8 @@
 // URL Notes Extension - Local Storage Manager
 // Handles IndexedDB operations for notes and attachments
 
+
+
 class NotesStorage {
   constructor() {
     this.dbName = 'URLNotesDB';
@@ -118,25 +120,20 @@ class NotesStorage {
   async saveNote(note) {
     if (!this.db) await this.init();
   
-    // Debug: Log note structure when saving
-    console.log('Storage: Saving note:', {
-      id: note.id,
-      hasUrl: !!note.url,
-      hasDomain: !!note.domain,
-      url: note.url,
-      domain: note.domain,
-      title: note.title,
-      hasContent: !!note.content,
-      isServerNote: !!(note.title_encrypted && note.content_encrypted)
-    });
+          // Debug: Log note structure when saving
+      console.log('Storage: Saving note:', {
+        id: note.id,
+        hasUrl: !!note.url,
+        hasDomain: !!note.domain
+      });
   
     // 1. ENCRYPTION (only for premium users)
     let userKey = null;
     try {
       // Check if this is a note from the server (has encrypted content)
       if (note.title_encrypted && note.content_encrypted) {
-        // This is a server note - decrypt it first
-        if (await this.checkPremiumAccess()) {
+              // This is a server note - decrypt it first
+      if ((await getPremiumStatus()).isPremium) {
           userKey = await window.supabaseClient?.getUserEncryptionKey();
           if (userKey && window.noteEncryption) {
             try {
@@ -178,7 +175,7 @@ class NotesStorage {
         }
       } else {
         // This is a local note - encrypt it for cloud storage
-        if (await this.checkPremiumAccess()) {
+        if ((await getPremiumStatus()).isPremium) {
           userKey = await window.supabaseClient?.getUserEncryptionKey();
           if (userKey && window.noteEncryption) {
             const encryptedNote = await window.noteEncryption.encryptNoteForCloud(note, userKey);
@@ -594,20 +591,23 @@ class NotesStorage {
         // Filter out deleted notes and only get active notes
         const activeNotes = notes.filter(note => !note.is_deleted);
         
+        // Filter out notes without title or content
+        const validNotes = activeNotes.filter(note => note.title && note.content);
+        
         // Sort by updatedAt descending
-        activeNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        validNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
         
         // Include essential fields for sync including url and domain
-        const syncNotes = activeNotes.map(note => ({
-          id: note.id,
-          title: note.title,
-          content: note.content,
-          url: note.url,
-          domain: note.domain,
-          createdAt: note.createdAt,
-          updatedAt: note.updatedAt
-          // Explicitly exclude: tags, version, parent_version_id, etc.
-        }));
+        const syncNotes = validNotes.map(note => ({
+            id: note.id,
+            title: note.title,
+            content: note.content,
+            url: note.url,
+            domain: note.domain,
+            createdAt: note.createdAt,
+            updatedAt: note.updatedAt
+            // Explicitly exclude: tags, version, parent_version_id, etc.
+          }));
         
         // Remove verbose logging
         
@@ -632,18 +632,7 @@ class NotesStorage {
         // Filter out deleted notes for display
         const activeNotes = notes.filter(note => !note.is_deleted);
         
-        // Debug: Log note structure when loading for display
-        activeNotes.forEach(note => {
-          console.log('Storage: Note loaded for display:', {
-            id: note.id,
-            hasUrl: !!note.url,
-            url: note.url,
-            hasDomain: !!note.domain,
-            domain: note.domain,
-            title: note.title,
-            hasContent: !!note.content
-          });
-        });
+
         
         // Sort by updatedAt descending
         activeNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
@@ -680,7 +669,7 @@ class NotesStorage {
   // Get version history for a note (Premium users only)
   async getVersionHistory(noteId, limit = 10) {
     // Check premium status before allowing access
-    if (!await this.checkPremiumAccess()) {
+    if (!(await getPremiumStatus()).isPremium) {
       throw new Error('Version history is a premium feature. Please upgrade to access.');
     }
 
@@ -1018,7 +1007,7 @@ class NotesStorage {
   // Check if version history is available
   async isVersionHistoryAvailable() {
     try {
-      return await this.checkPremiumAccess();
+      return (await getPremiumStatus()).isPremium;
     } catch (error) {
       console.error('Error checking version history availability:', error);
       return false;
@@ -1432,7 +1421,6 @@ class NotesStorage {
           try {
             const deletions = request.result || [];
             const unsynced = deletions.filter(d => !d.synced);
-            // Remove verbose logging
             resolve(unsynced);
           } catch (error) {
             console.error('Storage: Error processing deletions result:', error);
@@ -1623,6 +1611,44 @@ class NotesStorage {
     } catch (error) {
       console.error('Storage: Error in markDeletionsAsSyncedByNoteIds:', error);
     }
+  }
+
+  // Remove deletion record for a specific note ID
+  async removeDeletionRecord(noteId) {
+    if (!this.db) await this.init();
+    
+    return new Promise((resolve) => {
+      try {
+        const transaction = this.db.transaction(['deletions'], 'readwrite');
+        const store = transaction.objectStore('deletions');
+        
+        // Get all deletions to find the one for this note
+        const request = store.getAll();
+        
+        request.onsuccess = () => {
+          const deletions = request.result || [];
+          let removedCount = 0;
+          
+          // Remove deletion records for this note ID
+          for (const deletion of deletions) {
+            if (deletion.noteId === noteId) {
+              store.delete(deletion.id);
+              removedCount++;
+            }
+          }
+          
+          resolve(removedCount);
+        };
+        
+        request.onerror = () => {
+          console.error('Storage: Error removing deletion record:', request.error);
+          resolve(0);
+        };
+      } catch (error) {
+        console.error('Storage: Error in removeDeletionRecord:', error);
+        resolve(0);
+      }
+    });
   }
 }
 

@@ -11,11 +11,16 @@ interface AIRewriteRequest {
   style: string
   userId: string
   userContext?: string
+  generateTags?: boolean
+  existingTags?: string[]
+  feature?: 'rewrite' | 'summarize'
   context?: {
     domain?: string
     noteTitle?: string
     userIntent?: string
     writingStyle?: string
+    feature?: 'rewrite' | 'summarize'
+    noteCount?: string | number
   }
 }
 
@@ -60,10 +65,10 @@ serve(async (req) => {
       )
     }
 
-    // Check AI usage limits
+    // Check AI usage limits - always use 'overall' for consolidated tracking
     const { data: usageData, error: usageError } = await supabaseClient.rpc('check_ai_usage', {
       p_user_id: user.id,
-      p_feature_name: 'ai_rewrite'
+      p_feature_name: 'overall'
     })
 
     if (usageError || !usageData?.canUse) {
@@ -78,7 +83,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { content, style, userContext, context }: AIRewriteRequest = await req.json()
+    const { content, style, userContext, generateTags, existingTags, context }: AIRewriteRequest = await req.json()
     
     if (!content || !style) {
       return new Response(
@@ -86,6 +91,9 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    // Determine feature name for usage tracking
+    const featureName = context?.feature === 'summarize' ? 'note_summary' : 'ai_rewrite';
 
     // Get Gemini API key from environment
     const geminiApiKey = Deno.env.get('API_KEY')
@@ -198,16 +206,165 @@ serve(async (req) => {
       )
     }
     
+    // Generate tags if requested
+    let generatedTags: string[] = [];
+    if (generateTags) {
+      try {
+        const tagPrompt = `Based on the following content, title, and existing tags, generate 5-8 relevant tags that would help categorize and organize this note. 
+
+Content: ${content}
+Title: ${context?.noteTitle || 'Untitled'}
+Existing Tags: ${existingTags?.join(', ') || 'None'}
+Domain: ${context?.domain || 'general'}
+
+Generate tags that are:
+- Relevant to the content and topic
+- Specific and descriptive (avoid generic terms like "note" or "text")
+- Complementary to existing tags (don't duplicate them)
+- Suitable for organization and search
+
+Return ONLY a comma-separated list of tags, no explanations or other text. Example format: tag1, tag2, tag3, tag4, tag5`;
+
+        const tagRequest: GeminiRequest = {
+          contents: [{
+            parts: [{
+              text: tagPrompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.3,
+            topK: 10,
+            topP: 0.8,
+            maxOutputTokens: 256
+          }
+        };
+
+        const tagResponse = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(tagRequest)
+          }
+        );
+
+        if (tagResponse.ok) {
+          const tagData = await tagResponse.json();
+          const tagText = tagData.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (tagText) {
+            // Parse the comma-separated tags and clean them
+            generatedTags = tagText
+              .split(',')
+              .map(tag => tag.trim())
+              .filter(tag => tag.length > 0 && tag.length < 50) // Filter out empty or overly long tags
+              .slice(0, 8); // Limit to 8 tags max
+          }
+        }
+      } catch (tagError) {
+        console.error('Tag generation failed:', tagError);
+        // Continue without tags - don't fail the whole request
+      }
+    }
+
+    // Handle summarization if requested
+    if (context?.feature === 'summarize') {
+      try {
+        // For summarization, we need to extract links from the combined content
+        // since it may contain links from multiple notes
+        const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+        const summaryLinks: Array<{ text: string; url: string; placeholder: string }> = [];
+        let summaryLinkIndex = 0;
+        
+        // Replace links in the combined content with placeholders
+        const contentWithoutLinks = content.replace(linkRegex, (match, text, url) => {
+          const placeholder = `[LINK_PLACEHOLDER_${summaryLinkIndex}_DO_NOT_CHANGE_OR_REMOVE_THIS_TEXT]`;
+          summaryLinks.push({ text, url, placeholder });
+          summaryLinkIndex++;
+          return placeholder;
+        });
+
+        const summaryPrompt = `You are analyzing multiple notes from the same website/domain. Create a comprehensive summary that:
+
+1. Identifies the main topics and themes across all notes
+2. Highlights key insights and important information
+3. Organizes information logically by topic
+4. Provides a clear overview that someone could read to understand the main points from all notes
+
+Content to summarize:
+${contentWithoutLinks}
+
+Domain: ${context?.domain || 'Unknown'}
+
+Return ONLY the summary text, no explanations or additional content. Use clear headings and bullet points where appropriate.
+
+CRITICAL INSTRUCTION: You MUST preserve ALL placeholders like [LINK_PLACEHOLDER_0_DO_NOT_CHANGE_OR_REMOVE_THIS_TEXT] exactly as they appear - do not change, remove, or modify them in any way. These placeholders represent important links that must be preserved in the final summary.`;
+
+        const summaryRequest: GeminiRequest = {
+          contents: [{
+            parts: [{
+              text: summaryPrompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.4,
+            topK: 20,
+            topP: 0.9,
+            maxOutputTokens: 1024
+          }
+        };
+
+        const summaryResponse = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(summaryRequest)
+          }
+        );
+
+        if (summaryResponse.ok) {
+          const summaryData = await summaryResponse.json();
+          const summaryText = summaryData.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (summaryText) {
+            rewrittenContent = summaryText;
+            // Restore links for summarization content
+            if (summaryLinks.length > 0) {
+              summaryLinks.forEach(({ text, url, placeholder }) => {
+                const globalRegex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+                rewrittenContent = rewrittenContent.replace(globalRegex, `[${text}](${url})`);
+              });
+            }
+          }
+        }
+      } catch (summaryError) {
+        console.error('Summary generation failed:', summaryError);
+        // Continue with original content if summary fails
+      }
+    }
+    
     // Restore the original markdown links (global replace to catch all instances)
-    links.forEach(({ text, url, placeholder }) => {
-      const globalRegex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-      rewrittenContent = rewrittenContent.replace(globalRegex, `[${text}](${url})`);
-    });
+    if (links.length > 0) {
+      links.forEach(({ text, url, placeholder }) => {
+        const globalRegex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+        rewrittenContent = rewrittenContent.replace(globalRegex, `[${text}](${url})`);
+      });
+    }
 
     // Increment AI usage count
+    // For summarization, charge 1 use per note summarized
+    let usageIncrement = 1;
+    if (context?.feature === 'summarize' && context?.noteCount) {
+      usageIncrement = Math.max(1, parseInt(String(context.noteCount)) || 1);
+    }
+    
     const { data: incrementData, error: incrementError } = await supabaseClient.rpc('increment_ai_usage', {
       p_user_id: user.id,
-      p_feature_name: 'ai_rewrite'
+      p_feature_name: 'overall',
+      p_increment_amount: usageIncrement
     })
 
     if (incrementError) {
@@ -220,6 +377,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         rewrittenContent,
+        generatedTags,
         style,
         remainingCalls: incrementData?.remainingCalls || usageData?.remainingCalls - 1,
         monthlyLimit: usageData?.monthlyLimit

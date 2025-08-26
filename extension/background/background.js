@@ -62,12 +62,17 @@ chrome.runtime.onStartup.addListener(() => {
   setupContextMenus();
 });
 
+// Also ensure context menus exist when the service worker starts
+setupContextMenus();
+
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'addSelectionToNewNote') {
     addSelectionToNewNote(info, tab);
   } else if (info.menuItemId === 'addSelectionToExistingNote') {
     addSelectionToExistingNote(info, tab);
+  } else if (info.menuItemId === 'toggleMultiHighlightMode') {
+    toggleMultiHighlightModeFromContextMenu(tab);
   }
 });
 
@@ -88,10 +93,25 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 function setupContextMenus() {
   try {
     chrome.contextMenus.removeAll(() => {
+      // Create a parent menu for URL Notes
+      chrome.contextMenus.create({
+        id: 'urlNotesParent',
+        title: 'URL Notes',
+        contexts: ['selection', 'page']
+      }, () => {
+        if (chrome.runtime.lastError) {
+          console.warn('Parent menu create error:', chrome.runtime.lastError.message);
+        } else {
+          console.log('Parent menu created');
+        }
+      });
+      
+      // Add to new note (only when text is selected)
       chrome.contextMenus.create({
         id: 'addSelectionToNewNote',
-        title: 'URL Notes: Add to new note',
-        contexts: ['selection']
+        title: 'Add to new note',
+        contexts: ['selection'],
+        parentId: 'urlNotesParent'
       }, () => {
         if (chrome.runtime.lastError) {
           console.warn('Context menu create error:', chrome.runtime.lastError.message);
@@ -99,16 +119,44 @@ function setupContextMenus() {
           console.log('Context menu (new note) created');
         }
       });
-      // Add to existing note
+      
+      // Add to existing note (only when text is selected)
       chrome.contextMenus.create({
         id: 'addSelectionToExistingNote',
-        title: 'URL Notes: Add to existing note',
-        contexts: ['selection']
+        title: 'Add to existing note',
+        contexts: ['selection'],
+        parentId: 'urlNotesParent'
       }, () => {
         if (chrome.runtime.lastError) {
           console.warn('Existing-note menu create error:', chrome.runtime.lastError.message);
         } else {
           console.log('Context menu (existing note) created');
+        }
+      });
+      
+      // Add separator
+      chrome.contextMenus.create({
+        id: 'separator1',
+        type: 'separator',
+        contexts: ['selection', 'page'],
+        parentId: 'urlNotesParent'
+      }, () => {
+        if (chrome.runtime.lastError) {
+          console.warn('Separator create error:', chrome.runtime.lastError.message);
+        }
+      });
+      
+      // Multi-highlight mode toggle (available on both page and selection contexts)
+      chrome.contextMenus.create({
+        id: 'toggleMultiHighlightMode',
+        title: 'Toggle Multi-Highlight Mode',
+        contexts: ['selection', 'page'],
+        parentId: 'urlNotesParent'
+      }, () => {
+        if (chrome.runtime.lastError) {
+          console.warn('Multi-highlight menu create error:', chrome.runtime.lastError.message);
+        } else {
+          console.log('Context menu (multi-highlight) created');
         }
       });
     });
@@ -417,6 +465,60 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
       }
       break;
+    case 'ping':
+      console.log('Background script received ping, responding with pong');
+      sendResponse({ status: 'pong', timestamp: Date.now() });
+      break;
+    case 'addHighlightsToNote':
+      console.log('Background script received addHighlightsToNote message:', request);
+      // Handle async response properly
+      addHighlightsToNote(request.pageInfo, request.highlights, sender.tab)
+        .then(() => {
+          console.log('addHighlightsToNote completed successfully');
+          // Send success response
+          sendResponse({ success: true });
+        })
+        .catch(error => {
+          console.error('Error in addHighlightsToNote:', error);
+          sendResponse({ success: false, error: error.message });
+        });
+      return true; // Keep message channel open for async response
+    case 'updateBadge':
+      updateExtensionBadge(request.text, request.color);
+      sendResponse({ success: true });
+      break;
+    case 'auth-changed':
+      // Handle auth changes for sync timer management
+      if (request.user) {
+        // User signed in, start timer
+        console.log('🕐 Background: User signed in, starting sync timer...');
+        startSyncTimer();
+      } else {
+        // User signed out, stop timer
+        console.log('🕐 Background: User signed out, stopping sync timer...');
+        stopSyncTimer();
+      }
+      sendResponse({ success: true });
+      break;
+    case 'restart-sync-timer':
+      // Restart timer for next sync cycle
+      console.log('🕐 Background: Received restart-sync-timer message, restarting timer...');
+      lastSyncTime = Date.now(); // Mark that we just synced
+      startSyncTimer();
+      sendResponse({ success: true });
+      break;
+    case 'popup-opened':
+      // Popup opened, check if sync is overdue
+      const now = Date.now();
+      const timeSinceLastSync = now - lastSyncTime;
+      if (timeSinceLastSync >= syncInterval) {
+        console.log('🕐 Background: Popup opened, sync overdue by', Math.round(timeSinceLastSync / 1000), 'seconds, triggering sync...');
+        sendResponse({ shouldSync: true, timeSinceLastSync });
+      } else {
+        console.log('🕐 Background: Popup opened, sync not due yet,', Math.round((syncInterval - timeSinceLastSync) / 1000), 'seconds remaining');
+        sendResponse({ shouldSync: false, timeRemaining: syncInterval - timeSinceLastSync });
+      }
+      break;
     default:
       console.log('Unknown action:', request.action);
   }
@@ -501,3 +603,449 @@ async function updateUninstallUrl() {
     console.warn('Failed to set uninstall URL:', e);
   }
 }
+
+// Function to handle adding multiple highlights to a note
+async function addHighlightsToNote(pageInfo, highlights, tab) {
+  console.log('addHighlightsToNote called with:', { pageInfo, highlights, tab });
+  
+  if (!highlights || highlights.length === 0) {
+    console.warn('No highlights provided');
+    return;
+  }
+
+  const { domain, url, title } = pageInfo;
+  
+  // Validate that we have a proper URL and domain
+  if (!url || !url.startsWith('http')) {
+    console.error('Invalid pageUrl:', url);
+    return;
+  }
+  
+  if (!domain || domain === 'localhost') {
+    console.error('Invalid domain:', domain);
+    return;
+  }
+  
+  console.log('Adding', highlights.length, 'highlights to note for domain:', domain);
+
+  // Create note content with all highlights - using same logic as single-selection context menu
+  let noteContent = '';
+  highlights.forEach((highlight, index) => {
+    // Use the full text without shortening, just like the existing context menu feature
+    const displayText = highlight.text.replace(/\s+/g, ' ').trim();
+    
+    // Create a clickable link for each highlight using the full text
+    const fragmentUrl = `${url}#:~:text=${encodeURIComponent(displayText)}`;
+    noteContent += `${index + 1}. [${displayText}](${fragmentUrl})\n\n`;
+  });
+
+  // Try to append to existing note first (like the single-selection feature does)
+  try {
+    // Check for cached editor state first (like AI rewrite system)
+    const { editorState } = await chrome.storage.local.get(['editorState']);
+    let targetNote = null;
+    let isDraftNote = false;
+    
+    console.log('Multi-highlight: Raw editorState from storage:', editorState);
+    
+    // If there's a draft note, use it (regardless of popup state)
+    if (editorState && editorState.noteDraft) {
+      const cachedNote = editorState.noteDraft;
+      console.log('Multi-highlight: Found draft in storage:', { 
+        open: editorState.open, 
+        wasEditorOpen: editorState.wasEditorOpen,
+        hasDraft: !!editorState.noteDraft,
+        draftDomain: cachedNote?.domain,
+        targetDomain: domain,
+        domainsMatch: cachedNote?.domain === domain
+      });
+      
+      if (cachedNote.domain === domain) {
+        targetNote = { ...cachedNote }; // Copy to avoid modifying original
+        isDraftNote = true;
+        console.log('Multi-highlight: Appending to open draft note for domain:', domain);
+      } else {
+        console.log('Multi-highlight: Domain mismatch - draft domain:', cachedNote.domain, 'vs target domain:', domain);
+      }
+    }
+    
+    // If no cached note, check for existing saved notes
+    if (!targetNote) {
+      try {
+        const allKeys = await chrome.storage.local.get(null);
+        const notes = [];
+        
+        for (const [key, value] of Object.entries(allKeys)) {
+          if (key.startsWith('note_') && value && value.domain === domain && !value.is_deleted) {
+            notes.push(value);
+          }
+        }
+        
+        console.log('Multi-highlight: Found notes in storage:', notes.length, 'for domain:', domain);
+        
+        if (notes.length > 0) {
+          // Pick most recently updated
+          notes.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+          targetNote = notes[0];
+          console.log('Multi-highlight: Using most recent note:', targetNote.id);
+        }
+      } catch (error) {
+        console.error('Multi-highlight: Failed to get notes from storage:', error);
+      }
+    }
+    
+    // If we have a target note, append to it
+    if (targetNote) {
+      if (isDraftNote) {
+        // For draft notes, update content and timestamp, preserve all other properties
+        const updatedDraft = {
+          ...targetNote,
+          content: (targetNote.content ? `${targetNote.content}\n\n` : '') + noteContent.trim(),
+          updatedAt: new Date().toISOString()
+        };
+        
+        // Update the draft in chrome.storage.local to preserve unsaved changes
+        editorState.noteDraft = updatedDraft;
+        await chrome.storage.local.set({ editorState });
+        console.log('Multi-highlight: Updated draft note with appended highlights, preserved original properties');
+        
+        // Send message to popup to refresh the editor content
+        chrome.runtime.sendMessage({
+          action: 'context_menu_draft_updated',
+          note: updatedDraft,
+          type: 'append_multi_highlights'
+        }).catch(() => {
+          // Popup might not be open, that's okay
+        });
+        
+        // Mark last action for draft updates
+        await chrome.storage.local.set({ 
+          lastAction: { 
+            type: 'append_multi_highlights', 
+            domain, 
+            noteId: targetNote.id, 
+            isDraft: true,
+            highlightCount: highlights.length,
+            ts: Date.now() 
+          } 
+        });
+        
+        // Open extension UI to show the appended content
+        openExtensionUi();
+        return;
+      } else {
+        // For existing saved notes, update content and timestamp
+        targetNote.content = (targetNote.content ? `${targetNote.content}\n\n` : '') + noteContent.trim();
+        targetNote.updatedAt = new Date().toISOString();
+        
+        // Update them in storage
+        const key = `note_${targetNote.id}`;
+        await chrome.storage.local.set({ [key]: targetNote });
+        console.log('Multi-highlight: Appended to existing saved note:', targetNote.id);
+        
+        // Send message to popup to refresh the notes list
+        chrome.runtime.sendMessage({
+          action: 'multi_highlight_note_updated',
+          note: targetNote,
+          type: 'append_multi_highlights'
+        }).catch(() => {
+          // Popup might not be open, that's okay
+        });
+        
+        // Mark last action and open extension to show result
+        await chrome.storage.local.set({ 
+          lastAction: { 
+            type: 'append_multi_highlights', 
+            domain, 
+            noteId: targetNote.id, 
+            isDraft: false,
+            highlightCount: highlights.length,
+            ts: Date.now() 
+          } 
+        });
+        
+        // Open extension UI to show the result for saved notes
+        openExtensionUi();
+        return;
+      }
+    }
+  } catch (error) {
+    console.error('Multi-highlight: Failed to append to existing note, will create new note instead:', error);
+  }
+
+  // If we couldn't append to existing note, create a new one
+  console.log('Multi-highlight: Creating new note for highlights');
+  
+  const newNote = {
+    id: crypto.randomUUID ? crypto.randomUUID() : `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    url: url,
+    domain: domain,
+    title: title || 'Untitled',
+    pageTitle: title || 'Untitled',
+    content: noteContent.trim(),
+    tags: ['multi-highlight', 'clipping'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    version: 1
+  };
+
+  try {
+    // Store note in chrome.storage.local
+    const key = `note_${newNote.id}`;
+    await chrome.storage.local.set({ [key]: newNote });
+    console.log('Multi-highlight note saved with key:', key);
+    
+    // Send message to popup to refresh the notes list
+    chrome.runtime.sendMessage({
+      action: 'multi_highlight_note_updated',
+      note: newNote,
+      type: 'new_from_multi_highlight'
+    }).catch(() => {
+      // Popup might not be open, that's okay
+    });
+    
+    // Mark last action so popup can prioritize showing this note
+    await chrome.storage.local.set({ 
+      lastAction: { 
+        type: 'new_from_multi_highlight', 
+        domain, 
+        noteId: newNote.id, 
+        highlightCount: highlights.length,
+        ts: Date.now() 
+      } 
+    });
+    
+    // Open the extension UI to show the result
+    openExtensionUi();
+
+  } catch (error) {
+    console.error('Failed to save multi-highlight note:', error);
+  }
+}
+
+// Function to update extension badge
+function updateExtensionBadge(text, color) {
+  try {
+    if (chrome.action && chrome.action.setBadgeText) {
+      chrome.action.setBadgeText({ text: text || '' });
+    }
+    if (chrome.action && chrome.action.setBadgeBackgroundColor && color) {
+      chrome.action.setBadgeBackgroundColor({ color: color });
+    }
+  } catch (error) {
+    console.warn('Failed to update badge:', error);
+  }
+}
+
+// Function to toggle multi-highlight mode from context menu
+async function toggleMultiHighlightModeFromContextMenu(tab) {
+  if (!tab || !tab.url || !tab.url.startsWith('http')) {
+    console.error('Invalid tab for multi-highlight toggle');
+    return;
+  }
+
+  try {
+    // First check if content script is ready by sending a ping message
+    let contentScriptReady = false;
+    try {
+      await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
+      contentScriptReady = true;
+      console.log('Content script is ready for context menu toggle');
+    } catch (error) {
+      console.warn('Content script not ready, attempting to inject:', error);
+      contentScriptReady = false;
+    }
+    
+    // If content script is not ready, try to inject it
+    if (!contentScriptReady) {
+      try {
+        console.log('Attempting to inject content script for context menu...');
+        
+        if (!chrome.scripting) {
+          throw new Error('Scripting API not available');
+        }
+        
+        // Try to inject the content script
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['content/content.js']
+        });
+        
+        console.log('Content script injection successful for context menu, waiting for initialization...');
+        
+        // Wait for the script to initialize and try multiple ping attempts
+        let pingSuccess = false;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            await new Promise(resolve => setTimeout(resolve, 300 * attempt)); // Progressive delay
+            await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
+            console.log(`Context menu: Content script ping successful on attempt ${attempt}`);
+            pingSuccess = true;
+            break;
+          } catch (pingError) {
+            console.log(`Context menu: Ping attempt ${attempt} failed:`, pingError);
+            if (attempt === 3) {
+              throw new Error('Content script not responding after injection');
+            }
+          }
+        }
+        
+        if (!pingSuccess) {
+          throw new Error('Content script not responding after injection');
+        }
+        
+        console.log('Content script injected and ready for context menu');
+        contentScriptReady = true;
+        
+      } catch (injectError) {
+        console.error('Failed to inject content script for context menu:', injectError);
+        // Show error notification in the tab
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+              position: fixed;
+              top: 20px;
+              left: 50%;
+              transform: translateX(-50%);
+              background: #ef4444;
+              color: white;
+              padding: 12px 20px;
+              border-radius: 8px;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+              z-index: 10000;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              font-size: 14px;
+              font-weight: 500;
+            `;
+            notification.textContent = 'Failed to load multi-highlight feature. Please refresh the page and try again.';
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+              if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+              }
+            }, 5000);
+          }
+        });
+        return;
+      }
+    }
+    
+    // Now send the toggle message to the content script
+    const response = await chrome.tabs.sendMessage(tab.id, { action: 'toggleMultiHighlight' });
+    
+    if (response && response.enabled) {
+      // Show notification in the tab
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          // Create a simple notification
+          const notification = document.createElement('div');
+          notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #10b981;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 10000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+          `;
+          notification.textContent = 'Multi-highlight mode enabled! Select text to highlight.';
+          document.body.appendChild(notification);
+          
+          // Remove after 3 seconds
+          setTimeout(() => {
+            if (notification.parentNode) {
+              notification.parentNode.removeChild(notification);
+            }
+          }, 3000);
+        }
+      });
+    } else {
+      // Show disabled notification
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          const notification = document.createElement('div');
+          notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #6b7280;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 10000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+          `;
+          notification.textContent = 'Multi-highlight mode disabled.';
+          document.body.appendChild(notification);
+          
+          setTimeout(() => {
+            if (notification.parentNode) {
+              notification.parentNode.removeChild(notification);
+            }
+          }, 3000);
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Failed to toggle multi-highlight mode from context menu:', error);
+  }
+}
+
+// Add minimal sync timer logic to background
+let syncTimer = null;
+let syncInterval = 5 * 60 * 1000; // 5 minutes
+let lastSyncTime = 0; // Track when we last synced
+
+function startSyncTimer() {
+  if (syncTimer) {
+    clearTimeout(syncTimer);
+  }
+  
+  console.log('🕐 Background: Starting sync timer for 5 minutes...');
+  
+  // Set a one-time timeout instead of interval
+  syncTimer = setTimeout(() => {
+    console.log('🕐 Background: Timer fired! Sending sync-timer-triggered message...');
+    
+    // Send message to popup to trigger sync
+    chrome.runtime.sendMessage({ action: 'sync-timer-triggered' }).catch(() => {
+      // Popup might be closed, that's okay
+      console.log('🕐 Background: Popup closed, sync message not delivered');
+      // Mark that we need to sync when popup opens
+      lastSyncTime = Date.now() - syncInterval;
+    });
+    
+    // Clear the timer after it fires
+    syncTimer = null;
+    console.log('🕐 Background: Timer cleared, waiting for restart message...');
+  }, syncInterval);
+}
+
+function stopSyncTimer() {
+  if (syncTimer) {
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    console.log('🕐 Background: Timer stopped');
+  }
+}
+
+// Start timer when extension loads
+console.log('🕐 Background: Extension loaded, starting initial sync timer...');
+startSyncTimer();
+
+

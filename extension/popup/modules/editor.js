@@ -132,7 +132,8 @@ class EditorManager {
 
     // Toggle premium-only controls (AI button) based on premium access
     try {
-      const isPremium = await window.notesStorage?.checkPremiumAccess?.() || false;
+      const premiumStatus = await getPremiumStatus();
+      const isPremium = premiumStatus.isPremium;
       if (aiRewriteBtn) aiRewriteBtn.style.display = isPremium ? 'flex' : 'none';
     } catch (_) {
       // Hide AI button if premium check fails
@@ -458,6 +459,82 @@ class EditorManager {
       }
     }
   }
+
+  // Simple list functionality
+  createList() {
+    const contentInput = document.getElementById('noteContentInput');
+    if (!contentInput) return;
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    
+    // Always create a new line for the list button
+    const brElement = document.createElement('br');
+    range.insertNode(brElement);
+    range.setStartAfter(brElement);
+    
+    // Insert bullet point
+    const bulletText = document.createTextNode('• ');
+    range.insertNode(bulletText);
+    
+    // Move cursor after bullet
+    range.setStartAfter(bulletText);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    
+    contentInput.focus();
+  }
+
+  // Handle Enter key for list creation
+  handleEditorKeyDown(e) {
+    if (e.key === 'Enter') {
+      const contentInput = document.getElementById('noteContentInput');
+      if (!contentInput) return;
+
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
+
+      const range = selection.getRangeAt(0);
+      const currentNode = range.startContainer;
+      
+      // Check if we're on a line that contains a bullet (anywhere on the line)
+      if (currentNode.nodeType === Node.TEXT_NODE) {
+        const textBeforeCursor = currentNode.textContent.substring(0, range.startOffset);
+        const lines = textBeforeCursor.split('\n');
+        const currentLine = lines[lines.length - 1];
+        
+        // Check if the current line contains a bullet anywhere, not just at the start
+        if (currentLine.includes('•')) {
+          e.preventDefault();
+          
+          // Create new line first
+          const brElement = document.createElement('br');
+          range.insertNode(brElement);
+          range.setStartAfter(brElement);
+          
+          // Insert bullet point on the new line
+          const bulletText = document.createTextNode('• ');
+          range.insertNode(bulletText);
+          
+          // Move cursor after bullet
+          range.setStartAfter(bulletText);
+          range.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(range);
+          
+          contentInput.focus();
+          return; // Exit early to prevent default behavior
+        }
+      }
+      
+      // If not in list mode, let default Enter behavior happen
+    }
+  }
+
+
 
   // Update note preview while typing
   updateNotePreview() {

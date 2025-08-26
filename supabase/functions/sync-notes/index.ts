@@ -40,9 +40,34 @@ serve(async (req) => {
     const requestData = await req.json()
     const { operation, notes, deletions, lastSyncTime, timestamp } = requestData
 
+    // Debug: Log received data structure
+    console.log('Edge function received:', {
+      operation,
+      notesCount: notes?.length || 0,
+      deletionsCount: deletions?.length || 0
+    });
+
     if (operation === 'sync') {
       // Remove verbose logging
       // Remove verbose logging
+
+      // Validate notes have required encrypted fields
+      if (notes && Array.isArray(notes)) {
+        for (const note of notes) {
+          if (!note.title_encrypted || !note.content_encrypted) {
+            console.error('Note missing required encrypted fields:', {
+              id: note.id,
+              hasTitleEncrypted: !!note.title_encrypted,
+              hasContentEncrypted: !!note.content_encrypted,
+              noteKeys: Object.keys(note)
+            });
+            return new Response(
+              JSON.stringify({ error: 'Missing content or style parameter' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+      }
 
       // Use the simplified sync function
       const { data, error } = await supabaseClient.rpc('sync_notes_simple', {
@@ -59,10 +84,22 @@ serve(async (req) => {
         )
       }
 
-      // Remove verbose logging
-      // Remove verbose logging
+      // Debug: Log what the RPC function returned
+      console.log('RPC sync_notes_simple returned:', {
+        missingNotesCount: data?.missingNotes?.length || 0,
+        processedDeletionsCount: data?.processedDeletions?.length || 0
+      });
+
+      // Ensure the response has the expected structure
+      const responseData = {
+        success: true,
+        missingNotes: data?.missingNotes || [],
+        processedDeletions: data?.processedDeletions || [],
+        ...data // Include any other fields from the RPC response
+      };
+
       return new Response(
-        JSON.stringify(data),
+        JSON.stringify(responseData),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

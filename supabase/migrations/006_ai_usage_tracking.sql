@@ -37,14 +37,14 @@ BEGIN
   
   -- Set limits based on tier
   IF user_tier = 'premium' THEN
-    -- Premium users get 100 calls per month
+    -- Premium users get 500 calls per month
     INSERT INTO public.ai_usage (user_id, feature_name, monthly_limit)
-    VALUES (p_user_id, p_feature_name, 100)
+    VALUES (p_user_id, p_feature_name, 500)
     ON CONFLICT (user_id, feature_name) 
     DO UPDATE SET 
-      monthly_limit = 100,
+      monthly_limit = 500,
       updated_at = NOW()
-    WHERE public.ai_usage.monthly_limit != 100;
+    WHERE public.ai_usage.monthly_limit != 500;
   ELSE
     -- Free users get 5 calls per month
     INSERT INTO public.ai_usage (user_id, feature_name, monthly_limit)

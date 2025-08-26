@@ -100,11 +100,12 @@ class NoteEncryption {
 
   // Encrypt note for cloud storage
   async encryptNoteForCloud(note, userKey) {
+    
     const encryptedContent = await this.encryptNote(note.content, userKey);
     const encryptedTitle = await this.encryptNote(note.title, userKey);
     const contentHash = await this.generateContentHash(note.content + note.title);
 
-    return {
+    const result = {
       ...note,
       title_encrypted: encryptedTitle,
       content_encrypted: encryptedContent,
@@ -114,6 +115,10 @@ class NoteEncryption {
       title: null,
       content: null
     };
+    
+
+    
+    return result;
   }
 
   // Decrypt note from cloud storage

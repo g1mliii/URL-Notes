@@ -11,6 +11,7 @@ class URLNotesApp {
     this.isJotMode = false;
     this.premiumStatus = null;
     this.autosaveInterval = null;
+    this.generatedTags = []; // Store AI-generated tags
     this.dialog = new CustomDialog();
     this.themeManager = new ThemeManager();
     // Use IndexedDB storage instead of Chrome storage for sync compatibility
@@ -224,34 +225,81 @@ class URLNotesApp {
     try {
       if (window.supabaseClient && typeof window.supabaseClient.init === 'function') {
         await window.supabaseClient.init();
-        // Refresh premium status after Supabase client is initialized
-        this.premiumStatus = await getPremiumStatus();
-        await this.updatePremiumUI();
+        // Note: Premium status already loaded above, no need to refresh
       }
     } catch (e) {
       console.warn('Supabase init failed:', e);
     }
     
-    // Initialize sync engine if available
+    // Initialize sync engine for timer-based sync
     try {
       if (window.syncEngine && typeof window.syncEngine.init === 'function') {
         await window.syncEngine.init();
       }
-    } catch (e) {
-      console.warn('Sync engine init failed:', e);
+    } catch (error) {
+      console.warn('Failed to initialize sync engine:', error);
     }
+    
+    // Listen for background sync timer messages
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.action === 'sync-timer-triggered') {
+        console.log('🕐 Popup: Received sync-timer-triggered message from background');
+        
+        // Background timer fired, trigger sync
+        if (window.syncEngine && window.syncEngine.canSync()) {
+          console.log('🕐 Popup: Can sync, triggering manualSync()...');
+          
+          window.syncEngine.manualSync().then(() => {
+            console.log('🕐 Popup: Sync completed successfully, sending restart-sync-timer message...');
+            // After sync completes, restart the background timer for next cycle
+            chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => {});
+          }).catch(() => {
+            console.log('🕐 Popup: Sync failed, sending restart-sync-timer message...');
+            // Even if sync fails, restart timer for next cycle
+            chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => {});
+          });
+        } else {
+          console.log('🕐 Popup: Cannot sync, sending restart-sync-timer message...');
+          // Can't sync, restart timer anyway for next cycle
+          chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => {});
+        }
+      }
+    });
+
+    // Check for overdue sync when popup opens
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'popup-opened' });
+      if (response && response.shouldSync) {
+        console.log('🕐 Popup: Sync overdue by', Math.round(response.timeSinceLastSync / 1000), 'seconds, triggering sync now...');
+        
+        if (window.syncEngine && window.syncEngine.canSync()) {
+          console.log('🕐 Popup: Can sync, triggering manualSync() for overdue sync...');
+          
+          window.syncEngine.manualSync().then(() => {
+            console.log('🕐 Popup: Overdue sync completed, sending restart-sync-timer message...');
+            chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => {});
+          }).catch(() => {
+            console.log('🕐 Popup: Overdue sync failed, sending restart-sync-timer message...');
+            chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => {});
+          });
+        } else {
+          console.log('🕐 Popup: Cannot sync, sending restart-sync-timer message...');
+          chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => {});
+        }
+      } else if (response) {
+        console.log('🕐 Popup: Sync not due yet,', Math.round(response.timeRemaining / 1000), 'seconds remaining');
+      }
+    } catch (error) {
+      console.log('🕐 Popup: Could not check sync status:', error);
+    }
+    
     // Listen for global auth/tier changes
     try {
       window.eventBus?.on('auth:changed', (payload) => this.handleAuthChanged(payload));
       window.eventBus?.on('tier:changed', (status) => this.handleTierChanged(status));
     } catch (_) {}
     
-    // Listen for sync events
-    try {
-      window.eventBus?.on('notes:synced', (payload) => this.handleNotesSynced(payload));
-      window.eventBus?.on('sync:error', (payload) => this.handleSyncError(payload));
-      window.eventBus?.on('sync:success', (payload) => this.handleSyncSuccess(payload));
-    } catch (_) {}
+    // Note: Sync event listeners removed - sync only happens on timer or manual button press
     
     // Listen for context menu messages from background script
     try {
@@ -260,6 +308,9 @@ class URLNotesApp {
           this.handleContextMenuNote(message.note);
         } else if (message.action === 'context_menu_draft_updated') {
           this.handleContextMenuDraftUpdate(message.note);
+        } else if (message.action === 'multi_highlight_note_updated') {
+          // Handle multi-highlight note updates
+          this.handleMultiHighlightNoteUpdate(message.note, message.type);
         }
       });
     } catch (_) {}
@@ -269,6 +320,9 @@ class URLNotesApp {
     
     // Load notes first, before any rendering
     this.allNotes = await this.loadNotes();
+    
+    // Check current multi-highlight state
+    await this.checkMultiHighlightState();
     
     await this.settingsManager.loadFontSetting();
     // Initialize settings UI once (font controls, preview, etc.)
@@ -293,11 +347,9 @@ class URLNotesApp {
         // This allows unsaved drafts to be restored when popup reopens
         // The flag will only be cleared when notes are explicitly saved/deleted
         await chrome.storage.local.set({ editorState });
-        console.log('Popup: Updated existing editorState, preserved wasEditorOpen flag');
       } else {
         const newEditorState = { open: true, wasEditorOpen: false };
         await chrome.storage.local.set({ editorState: newEditorState });
-        console.log('Popup: Created new editorState:', newEditorState);
       }
       
       // Set filter without rendering first
@@ -373,6 +425,103 @@ class URLNotesApp {
           return;
         }
       }
+      
+      // Priority 0.6: multi-highlight created note - open it in editor
+      if (lastAction && lastAction.type === 'new_from_multi_highlight') {
+        // Find the note that was created by multi-highlight
+        let createdNote = this.allNotes.find(n => n.id === lastAction.noteId);
+        
+        // If not found in IndexedDB, check chrome.storage.local
+        if (!createdNote) {
+          try {
+            const allData = await chrome.storage.local.get(null);
+            for (const [key, value] of Object.entries(allData)) {
+              if (key.startsWith('note_') && value && value.id === lastAction.noteId) {
+                createdNote = value;
+                console.log('Found multi-highlight note in chrome.storage.local:', createdNote);
+                break;
+              }
+            }
+          } catch (error) {
+            console.error('Failed to check chrome.storage.local for multi-highlight note:', error);
+          }
+        }
+        
+        if (createdNote) {
+          // Move note from chrome.storage.local to IndexedDB if needed
+          if (createdNote.domain && createdNote.content) {
+            try {
+              await window.notesStorage.saveNote(createdNote);
+              console.log('Moved multi-highlight note to IndexedDB:', createdNote.id);
+              
+              // Remove from chrome.storage.local
+              const key = `note_${createdNote.id}`;
+              await chrome.storage.local.remove(key);
+              
+              // Reload notes to include the new one
+              this.allNotes = await this.loadNotes();
+            } catch (error) {
+              console.error('Failed to move multi-highlight note to IndexedDB:', error);
+            }
+          }
+          
+          // Open the created note in editor
+          this.currentNote = { ...createdNote };
+          await this.openEditor(true);
+          chrome.storage.local.remove('lastAction');
+          Utils.showToast(`Multi-highlight note created with ${lastAction.highlightCount} highlights`, 'success');
+          return;
+        }
+      }
+      
+      // Priority 0.7: multi-highlight appended to existing note - refresh and show
+      if (lastAction && lastAction.type === 'append_multi_highlights') {
+        // Find the note that was updated by multi-highlight
+        let updatedNote = this.allNotes.find(n => n.id === lastAction.noteId);
+        
+        // If not found in IndexedDB, check chrome.storage.local
+        if (!updatedNote) {
+          try {
+            const allData = await chrome.storage.local.get(null);
+            for (const [key, value] of Object.entries(allData)) {
+              if (key.startsWith('note_') && value && value.id === lastAction.noteId) {
+                updatedNote = value;
+                console.log('Found updated multi-highlight note in chrome.storage.local:', updatedNote);
+                break;
+              }
+            }
+          } catch (error) {
+            console.error('Failed to check chrome.storage.local for updated multi-highlight note:', error);
+          }
+        }
+        
+        if (updatedNote) {
+          // Move note from chrome.storage.local to IndexedDB if needed
+          if (updatedNote.domain && updatedNote.content) {
+            try {
+              await window.notesStorage.saveNote(updatedNote);
+              console.log('Moved updated multi-highlight note to IndexedDB:', updatedNote.id);
+              
+              // Remove from chrome.storage.local
+              const key = `note_${updatedNote.id}`;
+              await chrome.storage.local.remove(key);
+              
+              // Reload notes to include the updated one
+              this.allNotes = await this.loadNotes();
+            } catch (error) {
+              console.error('Failed to move updated multi-highlight note to IndexedDB:', error);
+            }
+          }
+          
+          // Open the updated note in editor
+          this.currentNote = { ...updatedNote };
+          await this.openEditor(true);
+          chrome.storage.local.remove('lastAction');
+          Utils.showToast(`Added ${lastAction.highlightCount} highlights to note`, 'success');
+          return;
+        }
+      }
+      
       // Priority 1: incoming context menu action
       if (lastAction && lastAction.domain) {
         // Check if this is a draft note update
@@ -431,21 +580,16 @@ class URLNotesApp {
         const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
         
         if (timeDiff < fiveMinutes) {
-          console.log('Popup: Restoring recently active draft (within 5 minutes)');
         this.currentNote = { ...editorState.noteDraft };
-        if (this.currentSite) {
-          this.currentNote.domain = this.currentNote.domain || this.currentSite.domain;
-          this.currentNote.url = this.currentSite.url;
-          this.currentNote.pageTitle = this.currentSite.title;
-        }
+        // CRITICAL FIX: Don't reassign domain/URL/pageTitle from currentSite
+        // This was causing existing notes to change their domain when edited from different sites
+        // The draft should preserve the original note's domain and URL
         await this.openEditor(true);
         } else {
-          console.log('Popup: Draft found but too old to auto-open, clearing stale draft');
           // Draft is too old, clear it
           await chrome.storage.local.remove('editorState');
         }
       } else if (editorState && editorState.noteDraft) {
-        console.log('Popup: Draft found but wasEditorOpen flag not set, not auto-opening');
         // Don't auto-open, just clear the draft since it's not meant to be restored
         await chrome.storage.local.remove('editorState');
       }
@@ -596,31 +740,7 @@ class URLNotesApp {
     } catch (_) {}
   }
 
-  // Handle notes synced event
-  handleNotesSynced(payload) {
-    try {
-      if (payload.source === 'cloud') {
-        // Refresh notes list when cloud notes are pulled
-        this.loadNotes();
-      }
-      // Show sync status in UI
-      this.updateSyncStatus(payload);
-    } catch (_) {}
-  }
-
-  // Handle sync error
-  handleSyncError(payload) {
-    try {
-      Utils.showToast(payload.message, 'error');
-    } catch (_) {}
-  }
-
-  // Handle sync success
-  handleSyncSuccess(payload) {
-    try {
-      Utils.showToast(payload.message, 'success');
-    } catch (_) {}
-  }
+  // Note: Sync event handlers removed - sync only happens on timer or manual button press
   
   // Handle context menu notes from background script
   async handleContextMenuNote(note) {
@@ -669,22 +789,211 @@ class URLNotesApp {
     }
   }
 
-  // Update sync status in UI
-  updateSyncStatus(payload) {
+  // Handle multi-highlight note updates from background script
+  async handleMultiHighlightNoteUpdate(note, type) {
     try {
-      const syncStatusEl = document.getElementById('syncStatus');
-      if (syncStatusEl) {
-        const timestamp = new Date(payload.timestamp).toLocaleTimeString();
-        syncStatusEl.textContent = `Last sync: ${timestamp}`;
-        syncStatusEl.style.display = 'block';
-        
-        // Hide after 5 seconds
-        setTimeout(() => {
-          syncStatusEl.style.display = 'none';
-        }, 5000);
+      // Save the note using the proper storage system
+      await window.notesStorage.saveNote(note);
+      
+      // Refresh the notes list
+      this.allNotes = await this.loadNotes();
+      this.render();
+      
+      // Show appropriate success message based on type
+      if (type === 'append_multi_highlights') {
+        Utils.showToast('Highlights added to existing note', 'success');
+      } else if (type === 'new_from_multi_highlight') {
+        Utils.showToast('New note created with highlights', 'success');
+      } else {
+        Utils.showToast('Note updated with highlights', 'success');
       }
-    } catch (_) {}
+      
+      // If we have a current note open and it's the same one, update it
+      if (this.currentNote && this.currentNote.id === note.id) {
+        this.currentNote = { ...note };
+        
+        // Update the editor content to show the new content
+        const contentInput = document.getElementById('noteContentInput');
+        if (contentInput) {
+          contentInput.innerHTML = this.buildContentHtml(note.content || '');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to handle multi-highlight note update:', error);
+      Utils.showToast('Failed to update note with highlights', 'error');
+    }
   }
+
+  // Toggle multi-highlight mode on the current webpage
+  async toggleMultiHighlightMode() {
+    if (!this.currentSite || !this.currentSite.url) {
+      console.warn('No current site to toggle multi-highlight mode');
+      return;
+    }
+
+    try {
+      // Get current tab to send message
+      const tab = await this.getCurrentTab();
+      if (!tab) {
+        console.warn('No active tab found');
+        return;
+      }
+
+      // First check if content script is ready by sending a ping message
+      try {
+        await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
+        console.log('Content script is ready');
+      } catch (error) {
+        console.warn('Content script not ready, attempting to inject:', error);
+        // Try to inject the content script if it's not loaded
+        try {
+          console.log('Attempting to inject content script...');
+          
+          // Check if we have permission to inject
+          if (!chrome.scripting) {
+            throw new Error('Scripting API not available');
+          }
+          
+          // Try to inject the content script
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['content/content.js']
+          });
+          
+          console.log('Content script injection successful, waiting for initialization...');
+          
+          // Wait longer for the script to initialize and try multiple ping attempts
+          let pingSuccess = false;
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+              await new Promise(resolve => setTimeout(resolve, 300 * attempt)); // Progressive delay
+              await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
+              console.log(`Content script ping successful on attempt ${attempt}`);
+              pingSuccess = true;
+              break;
+            } catch (pingError) {
+              console.log(`Ping attempt ${attempt} failed:`, pingError);
+              if (attempt === 3) {
+                throw new Error('Content script not responding after multiple attempts');
+              }
+            }
+          }
+          
+          if (!pingSuccess) {
+            throw new Error('Content script not responding after injection');
+          }
+          
+          console.log('Content script injected and ready');
+          
+        } catch (injectError) {
+          console.error('Failed to inject content script:', injectError);
+          
+          // Provide more specific error messages
+          if (injectError.message.includes('Cannot access')) {
+            Utils.showToast('Cannot access this page. Try refreshing or check if it\'s a special page (like chrome:// URLs).', 'error');
+          } else if (injectError.message.includes('Scripting API not available')) {
+            Utils.showToast('Extension permissions issue. Please check extension permissions.', 'error');
+          } else {
+            Utils.showToast('Failed to load multi-highlight feature. Please refresh the page and try again.', 'error');
+          }
+          return;
+        }
+      }
+
+      // Now send the toggle message with a timeout
+      const response = await Promise.race([
+        chrome.tabs.sendMessage(tab.id, { action: 'toggleMultiHighlight' }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Message timeout')), 5000)
+        )
+      ]);
+      
+      if (response && response.enabled) {
+        // Update button state to show active
+        const btn = document.getElementById('multiHighlightBtn');
+        if (btn) {
+          btn.classList.add('active');
+          btn.title = 'Multi-Highlight Mode Active (Click to Exit)';
+        }
+        
+        // Show notification
+        Utils.showToast('Multi-highlight mode enabled! Select text to highlight.', 'success');
+        
+        // Close popup to let user interact with the webpage
+        setTimeout(() => {
+          window.close();
+        }, 1500);
+      } else {
+        // Update button state to show inactive
+        const btn = document.getElementById('multiHighlightBtn');
+        if (btn) {
+          btn.classList.remove('active');
+          btn.title = 'Toggle Multi-Highlight Mode';
+        }
+        
+        Utils.showToast('Multi-highlight mode disabled.', 'info');
+      }
+    } catch (error) {
+      console.error('Failed to toggle multi-highlight mode:', error);
+      
+      if (error.message === 'Message timeout') {
+        Utils.showToast('Multi-highlight feature is not responding. Please refresh the page and try again.', 'error');
+      } else if (error.message.includes('Could not establish connection')) {
+        Utils.showToast('Multi-highlight feature not available on this page. Please refresh and try again.', 'error');
+      } else {
+        Utils.showToast('Failed to toggle multi-highlight mode. Make sure you\'re on a webpage.', 'error');
+      }
+    }
+  }
+
+  // Check current multi-highlight state
+  async checkMultiHighlightState() {
+    if (!this.currentSite || !this.currentSite.url) return;
+
+    try {
+      const tab = await this.getCurrentTab();
+      if (!tab) return;
+
+      // First check if content script is ready
+      try {
+        await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
+      } catch (error) {
+        // Content script not ready, that's okay - just return
+        console.debug('Content script not ready for multi-highlight state check:', error);
+        return;
+      }
+
+      const response = await chrome.tabs.sendMessage(tab.id, { action: 'getMultiHighlightState' });
+      if (response) {
+        const btn = document.getElementById('multiHighlightBtn');
+        if (btn) {
+          if (response.enabled) {
+            btn.classList.add('active');
+            btn.title = `Multi-Highlight Mode Active (${response.highlightCount} highlights)`;
+          } else {
+            btn.classList.remove('active');
+            btn.title = 'Toggle Multi-Highlight Mode';
+          }
+        }
+      }
+    } catch (error) {
+      // Content script might not be ready yet, that's okay
+      console.debug('Could not check multi-highlight state:', error);
+    }
+  }
+
+  // Helper method to get current tab
+  async getCurrentTab() {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      return tab;
+    } catch (error) {
+      console.error('Failed to get current tab:', error);
+      return null;
+    }
+  }
+
+  // Note: Sync status update removed - sync only happens on timer or manual button press
 
   // Setup conflict banner event listeners
   setupConflictBannerListeners() {
@@ -817,6 +1126,8 @@ class URLNotesApp {
       this.searchQuery = '';
       this.render();
       searchClear.style.display = 'none';
+      // Clear the search query from storage so it doesn't restore on reopen
+      try { chrome.storage.local.remove('lastSearchQuery'); } catch (_) {}
     });
 
     // Add new note
@@ -882,6 +1193,9 @@ class URLNotesApp {
     // Intercept link clicks inside the editor
     contentInput.addEventListener('click', (e) => this.handleEditorLinkClick(e));
     
+    // Handle Enter key for list creation
+    contentInput.addEventListener('keydown', (e) => this.editorManager.handleEditorKeyDown(e));
+    
     // Skip textarea-specific key handling; editor is now contenteditable
     
     document.getElementById('tagsInput').addEventListener('input', () => {
@@ -891,6 +1205,11 @@ class URLNotesApp {
     // Settings button simply opens the settings panel
     document.getElementById('settingsBtn').addEventListener('click', () => {
       this.openSettings();
+    });
+
+    // Multi-highlight button toggles multi-highlight mode on the current webpage
+    document.getElementById('multiHighlightBtn').addEventListener('click', () => {
+      this.toggleMultiHighlightMode();
     });
 
     document.getElementById('exportNotesBtn').addEventListener('click', () => {
@@ -906,7 +1225,21 @@ class URLNotesApp {
     });
 
     document.getElementById('aiRewriteBtn').addEventListener('click', () => {
-      this.aiRewrite();
+      this.showAIDropdown();
+    });
+
+    // AI Summary button click handler
+    const aiSummaryBtn = document.getElementById('aiSummaryBtn');
+    if (aiSummaryBtn) {
+      aiSummaryBtn.addEventListener('click', () => {
+        this.showAISummaryModal();
+      });
+    } else {
+      console.warn('AI Summary button not found in setupEventListeners');
+    }
+
+    document.getElementById('listBtn').addEventListener('click', () => {
+      this.editorManager.createList();
     });
 
     // Developer tools removed: mock data generation/cleanup and storage stress tools
@@ -1019,7 +1352,6 @@ class URLNotesApp {
             editorState.open = false;
             // Preserve wasEditorOpen flag - don't clear it
             chrome.storage.local.set({ editorState });
-            console.log('Popup: Set editorState.open = false on close, preserved wasEditorOpen flag');
           }
         });
       } catch (_) {}
@@ -1109,6 +1441,17 @@ class URLNotesApp {
     this._isFilterTransitioning = true;
     
     this.filterMode = filter;
+    
+    // Clear search when switching filters since results may not be relevant
+    if (this.searchQuery) {
+      this.searchQuery = '';
+      const searchInput = document.getElementById('searchInput') || document.querySelector('.search-input');
+      if (searchInput) searchInput.value = '';
+      const searchClear = document.getElementById('searchClear');
+      if (searchClear) searchClear.style.display = 'none';
+      // Clear from storage
+      try { chrome.storage.local.remove('lastSearchQuery'); } catch (_) {}
+    }
     
     // Update filter UI
     document.querySelectorAll('.filter-option').forEach(btn => {
@@ -1304,7 +1647,7 @@ class URLNotesApp {
     const pageIndicator = (this.filterMode !== 'page' && this.isCurrentPageNote(note)) ?
       '<span class="page-indicator" data-tooltip="Current page note">•</span>' : '';
 
-    // Check if user has premium access for version history button
+        // Check if user has premium access for version history button
     const hasVersionHistory = this.premiumStatus?.isPremium || false;
 
     noteDiv.innerHTML = `
@@ -1350,20 +1693,9 @@ class URLNotesApp {
     // Add open button event listener (only present in non-page views)
     const openBtn = noteDiv.querySelector('.open-page-btn');
     if (openBtn) {
-      // Debug: Log note data when setting up the button
-      console.log('Popup: Setting up open button for note:', {
-        id: note.id,
-        hasUrl: !!note.url,
-        url: note.url,
-        hasDomain: !!note.domain,
-        domain: note.domain,
-        title: note.title
-      });
-      
       openBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const displayText = note.title || note.pageTitle || '';
-        console.log('Popup: Opening note URL:', note.url, 'for note:', note.id);
         this.openLinkAndHighlight(note.url, displayText);
       });
     }
@@ -1934,7 +2266,8 @@ class URLNotesApp {
     // Create a deep copy to avoid reference issues
     this.currentNote = JSON.parse(JSON.stringify(note));
     
-    // Clear ALL cached editor state to prevent caching issues
+    // CRITICAL FIX: Clear ALL cached editor state to prevent caching issues
+    // This ensures no draft from a previous note contaminates the new note
     if (this.editorState) {
       this.editorState.noteDraft = null;
       this.editorState.open = false;
@@ -1947,6 +2280,26 @@ class URLNotesApp {
       } catch (error) {
         console.warn('Failed to clear editor draft:', error);
       }
+    }
+    
+    // Additional safety: Clear any existing editor state from storage
+    // This prevents drafts from previous notes from appearing
+    try {
+      const { editorState } = await chrome.storage.local.get(['editorState']);
+      if (editorState && editorState.noteDraft) {
+        // Only clear if the draft is for a different note or different domain
+        if (editorState.noteDraft.id !== note.id || editorState.noteDraft.domain !== note.domain) {
+          console.log('Clearing editor state for different note/domain:', {
+            draftId: editorState.noteDraft.id,
+            draftDomain: editorState.noteDraft.domain,
+            noteId: note.id,
+            noteDomain: note.domain
+          });
+          await chrome.storage.local.remove('editorState');
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to check/clear editor state:', error);
     }
     
     await this.openEditor(false);
@@ -1977,39 +2330,14 @@ class URLNotesApp {
 
     // Show premium features - use robust premium checking
     try {
-      let isPremium = false;
-      
-      // First try notesStorage
-      if (window.notesStorage?.checkPremiumAccess) {
-        try {
-          isPremium = await window.notesStorage.checkPremiumAccess();
-        } catch (error) {
-          console.warn('notesStorage premium check failed in openEditor:', error);
-        }
-      }
-      
-      // Fallback to chrome storage if notesStorage failed
-      if (!isPremium) {
-        try {
-          const { userTier } = await chrome.storage.local.get(['userTier']);
-          isPremium = !!(userTier && userTier !== 'free');
-        } catch (error) {
-          console.warn('Chrome storage premium check failed in openEditor:', error);
-        }
-      }
-      
-      // Final fallback to instance variable
-      if (!isPremium && this.premiumStatus?.isPremium) {
-        isPremium = this.premiumStatus.isPremium;
-      }
+      // Use cached premium status instead of direct calls
+      const premiumStatus = await getPremiumStatus();
+      const isPremium = premiumStatus.isPremium;
       
               // Note: Removed verbose logging for cleaner console
       
-      if (isPremium) {
-        aiRewriteBtn.style.display = 'flex';
-      } else {
-        aiRewriteBtn.style.display = 'none';
-      }
+      // Temporarily show AI rewrite button for all users
+      aiRewriteBtn.style.display = 'flex';
       
       // Also update the overall premium UI to ensure consistency
       try {
@@ -2121,11 +2449,9 @@ class URLNotesApp {
       : []);
     this.currentNote.updatedAt = new Date().toISOString();
 
-    // Update URL and page title for current context
-    if (this.currentSite) {
-      this.currentNote.url = this.currentSite.url;
-      this.currentNote.pageTitle = this.currentSite.title;
-    }
+    // CRITICAL FIX: Don't update URL and page title from currentSite
+    // This was causing existing notes to change their URL/pageTitle when saved from different sites
+    // The note should preserve its original URL and pageTitle
     
     // Don't save empty notes (title, content, and tags all empty)
     const isTitleEmpty = !this.currentNote.title;
@@ -2372,7 +2698,6 @@ class URLNotesApp {
       }
       
       await chrome.storage.local.set({ editorState: state });
-      console.log('Popup: persistEditorOpen called with:', { isOpen, wasEditorOpen: state.wasEditorOpen });
     } catch (_) {}
   }
 
@@ -2403,9 +2728,11 @@ class URLNotesApp {
           : []),
         createdAt: this.currentNote.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        domain: this.currentNote.domain || (this.currentSite && this.currentSite.domain),
-        url: (this.currentSite && this.currentSite.url) || this.currentNote.url,
-        pageTitle: (this.currentSite && this.currentSite.title) || this.currentNote.pageTitle,
+        // CRITICAL FIX: Always preserve the original note's domain and URL
+        // Don't use currentSite domain/URL as it can change when editing from different sites
+        domain: this.currentNote.domain,
+        url: this.currentNote.url,
+        pageTitle: this.currentNote.pageTitle,
         caretStart,
         caretEnd
       };
@@ -2434,7 +2761,6 @@ class URLNotesApp {
         const tenMinutes = 10 * 60 * 1000; // 10 minutes in milliseconds
         
         if (timeDiff > tenMinutes) {
-          console.log('Popup: Cleaning up old draft (older than 10 minutes)');
           await chrome.storage.local.remove('editorState');
         }
       }
@@ -2455,10 +2781,22 @@ class URLNotesApp {
       
       if (!this.currentNote) return;
       
-      if (editorState && editorState.noteDraft && editorState.noteDraft.id === this.currentNote.id) {
-        const draft = editorState.noteDraft;
-        
-        // Restore draft content if it's newer than the note
+              if (editorState && editorState.noteDraft && editorState.noteDraft.id === this.currentNote.id) {
+          const draft = editorState.noteDraft;
+          
+          // CRITICAL FIX: Ensure draft belongs to the same domain as current note
+          // This prevents cross-domain draft contamination
+          if (draft.domain !== this.currentNote.domain) {
+            console.warn('Draft domain mismatch - clearing draft to prevent contamination:', {
+              draftDomain: draft.domain,
+              noteDomain: this.currentNote.domain
+            });
+            // Clear the mismatched draft
+            await this.clearEditorState();
+            return false;
+          }
+          
+          // Restore draft content if it's newer than the note
         // Handle cases where timestamps might not exist or might be different
         let shouldRestore = false;
         
@@ -2587,6 +2925,8 @@ class URLNotesApp {
       this.searchQuery = '';
       const input = document.getElementById('searchInput') || document.querySelector('.search-input');
       if (input) input.value = '';
+      // Also clear the search query from storage
+      try { chrome.storage.local.remove('lastSearchQuery'); } catch (_) {}
     }
 
     this.render();
@@ -2600,37 +2940,25 @@ class URLNotesApp {
 
   async updatePremiumUI() {
     try {
-      // Try multiple sources for premium status
-      let isPremium = false;
+      // Use cached premium status instead of direct calls
+      const premiumStatus = await getPremiumStatus();
+      const isPremium = premiumStatus.isPremium;
       
-      // First try notesStorage
-      if (window.notesStorage?.checkPremiumAccess) {
-        try {
-          isPremium = await window.notesStorage.checkPremiumAccess();
-        } catch (error) {
-          console.warn('notesStorage premium check failed:', error);
-        }
-      }
+      // Update the instance property so version history button can access it
+      this.premiumStatus = premiumStatus;
       
-      // Fallback to chrome storage if notesStorage failed
-      if (!isPremium) {
-        try {
-          const { userTier } = await chrome.storage.local.get(['userTier']);
-          isPremium = !!(userTier && userTier !== 'free');
-        } catch (error) {
-          console.warn('Chrome storage premium check failed:', error);
-        }
-      }
-      
-      // Final fallback to instance variable
-      if (!isPremium && this.premiumStatus?.isPremium) {
-        isPremium = this.premiumStatus.isPremium;
-      }
-      
-      // AI button visibility
+      // AI button visibility - temporarily show for all users
       const aiBtn = document.getElementById('aiRewriteBtn');
       if (aiBtn) {
-        aiBtn.style.display = isPremium ? 'flex' : 'none';
+        aiBtn.style.display = 'flex'; // Show for all users temporarily
+      }
+
+      // AI Summary button visibility - temporarily show for all users
+      const aiSummaryBtn = document.getElementById('aiSummaryBtn');
+      if (aiSummaryBtn) {
+        aiSummaryBtn.style.display = 'flex'; // Show for all users temporarily
+      } else {
+        console.warn('updatePremiumUI: AI Summary button not found');
       }
 
       // Ads container visibility
@@ -2651,6 +2979,13 @@ class URLNotesApp {
       // Hide premium features if check fails
       const aiBtn = document.getElementById('aiRewriteBtn');
       if (aiBtn) aiBtn.style.display = 'none';
+      
+      const aiSummaryBtn = document.getElementById('aiSummaryBtn');
+      if (aiSummaryBtn) {
+        aiSummaryBtn.style.display = 'flex'; // Show for all users temporarily
+      } else {
+        console.warn('updatePremiumUI error handler: AI Summary button not found');
+      }
       
       const ad = document.getElementById('adContainer');
       if (ad) ad.style.display = 'block';
@@ -2862,10 +3197,49 @@ class URLNotesApp {
         this.currentNote.updatedAt = new Date().toISOString();
       }
       
+      // Apply generated tags if available
+      if (this.generatedTags && this.generatedTags.length > 0) {
+        this.applyGeneratedTags();
+      }
+      
       // Success - content applied
     } else {
       console.error('Could not apply AI rewrite: missing content input or rewritten content');
     }
+  }
+
+  // Apply generated tags to the current note
+  applyGeneratedTags() {
+    if (!this.generatedTags || this.generatedTags.length === 0) return;
+    
+    // Get the tags input element
+    const tagsInput = document.getElementById('tagsInput');
+    if (!tagsInput) return;
+    
+    // Get current tags
+    const currentTags = this.currentNote.tags || [];
+    
+    // Merge generated tags with existing tags, avoiding duplicates
+    const mergedTags = [...currentTags];
+    this.generatedTags.forEach(tag => {
+      if (!mergedTags.includes(tag)) {
+        mergedTags.push(tag);
+      }
+    });
+    
+    // Update the tags input
+    tagsInput.value = mergedTags.join(', ');
+    
+    // Update the current note object
+    this.currentNote.tags = mergedTags;
+    
+    // Show notification about added tags
+    const newTagsCount = this.generatedTags.length;
+    const tagText = newTagsCount === 1 ? '1 new tag' : `${newTagsCount} new tags`;
+    Utils.showToast(`Added ${tagText} to your note`, 'success');
+    
+    // Clear generated tags after applying
+    this.generatedTags = [];
   }
 
   // Hide AI rewrite dialog
@@ -2892,7 +3266,8 @@ class URLNotesApp {
         noteTitle: this.currentNote.title || 'Untitled Note',
         userIntent: this.getUserIntentFromContent(content),
         writingStyle: this.analyzeWritingStyle(content),
-        userContext: userContext // Add user-provided context
+        userContext: userContext, // Add user-provided context
+        feature: 'rewrite' // Specify feature for usage tracking
       };
 
       // Get the current user and access token from custom client
@@ -2910,7 +3285,9 @@ class URLNotesApp {
       const requestBody = {
         content: content,
         style: style,
-        context: context
+        context: context,
+        generateTags: true,
+        existingTags: this.currentNote.tags || []
       };
       
       // Log only essential info for debugging
@@ -2948,6 +3325,12 @@ class URLNotesApp {
       if (data.remainingCalls !== undefined) {
         const remainingText = data.remainingCalls === 1 ? '1 call' : `${data.remainingCalls} calls`;
         Utils.showToast(`AI rewrite successful! ${remainingText} remaining this month.`, 'success');
+      }
+
+      // Store generated tags for later use
+      if (data.generatedTags && data.generatedTags.length > 0) {
+        this.generatedTags = data.generatedTags;
+        console.log('Generated tags:', this.generatedTags);
       }
 
       return data.rewrittenContent;
@@ -3104,6 +3487,206 @@ class URLNotesApp {
     }
   }
 
+  // Show AI Summary modal
+  async showAISummaryModal() {
+    const modal = document.getElementById('ai-summary-modal');
+    
+    if (modal) {
+      // Load usage info and populate domain dropdown
+      await this.loadSummaryUsageInfo();
+      await this.populateDomainDropdown();
+      
+      // Show modal
+      modal.classList.add('show');
+      
+      // Setup modal event listeners
+      this.setupModalEventListeners();
+    } else {
+      console.warn('AI Summary modal not found!');
+    }
+  }
+
+  // Hide AI Summary modal
+  hideAISummaryModal() {
+    const modal = document.getElementById('ai-summary-modal');
+    if (modal) {
+      modal.classList.remove('show');
+    }
+  }
+
+  // Setup modal event listeners
+  setupModalEventListeners() {
+    // Close button
+    const closeBtn = document.getElementById('aiSummaryCloseBtn');
+    if (closeBtn) {
+      closeBtn.onclick = () => this.hideAISummaryModal();
+    }
+
+    // Close on outside click
+    const modal = document.getElementById('ai-summary-modal');
+    if (modal) {
+      modal.onclick = (e) => {
+        if (e.target === modal) {
+          this.hideAISummaryModal();
+        }
+      };
+    }
+
+    // Domain selection change
+    const domainSelect = document.getElementById('summaryDomainSelect');
+    if (domainSelect) {
+      domainSelect.onchange = () => this.updateDomainInfo();
+    }
+
+    // Generate button
+    const generateBtn = document.getElementById('aiSummaryGenerateBtn');
+    if (generateBtn) {
+      generateBtn.onclick = () => this.executeAISummary();
+    }
+  }
+
+  // Load summary usage info
+  async loadSummaryUsageInfo() {
+    try {
+      // Check if user is authenticated
+      if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
+        const usageCount = document.getElementById('summaryUsageCount');
+        if (usageCount) {
+          usageCount.textContent = '0';
+        }
+        return;
+      }
+
+      const user = window.supabaseClient.getCurrentUser();
+      if (!user) {
+        const usageCount = document.getElementById('summaryUsageCount');
+        if (usageCount) {
+          usageCount.textContent = '0';
+        }
+        return;
+      }
+
+      // Get current usage from Supabase using the shared function
+      const usageData = await this.getCurrentAIUsage();
+      
+      if (!usageData) {
+        console.warn('Failed to get summary usage');
+        const usageCount = document.getElementById('summaryUsageCount');
+        if (usageCount) {
+          usageCount.textContent = '0';
+        }
+        return;
+      }
+
+
+
+      // Update UI with remaining calls
+      const usageCount = document.getElementById('summaryUsageCount');
+      if (usageCount) {
+        usageCount.textContent = usageData.remainingCalls || 0;
+      }
+      
+      // Also update the usage limit display
+      const usageLimit = document.getElementById('summaryUsageLimit');
+      if (usageLimit) {
+        usageLimit.textContent = usageData.monthlyLimit || 500;
+      }
+    } catch (error) {
+      console.error('Failed to load summary usage info:', error);
+      const usageCount = document.getElementById('summaryUsageCount');
+      if (usageCount) {
+        usageCount.textContent = '0';
+      }
+    }
+  }
+
+  // Populate domain dropdown with available domains
+  async populateDomainDropdown() {
+    try {
+      // Use filtered notes (excluding deleted notes) instead of all notes
+      let filteredNotes;
+      if (this.storageManager === window.notesStorage && typeof this.storageManager.getAllNotesForDisplay === 'function') {
+        // Use IndexedDB storage - get notes for display (excludes deleted notes)
+        filteredNotes = await this.storageManager.getAllNotesForDisplay();
+      } else {
+        // Fallback to Chrome storage - use the same filtering logic as loadNotes()
+        const allData = await chrome.storage.local.get(null);
+        let allNotes = [];
+        for (const key in allData) {
+          // Filter out settings or non-array data
+          if (key !== 'themeMode' && Array.isArray(allData[key])) {
+            allNotes = allNotes.concat(allData[key]);
+          }
+        }
+        // Sort by most recently updated
+        allNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        filteredNotes = allNotes;
+      }
+      
+      const domains = [...new Set(filteredNotes.map(note => note.domain).filter(Boolean))];
+      
+      const domainSelect = document.getElementById('summaryDomainSelect');
+      
+      if (domainSelect) {
+        // Clear existing options
+        domainSelect.innerHTML = '<option value="">Select a domain...</option>';
+        
+        // Add domain options
+        domains.forEach(domain => {
+          const noteCount = filteredNotes.filter(note => note.domain === domain).length;
+          const option = document.createElement('option');
+          option.value = domain;
+          option.textContent = `${domain} (${noteCount} notes)`;
+          domainSelect.appendChild(option);
+        });
+      }
+    } catch (error) {
+      console.error('Failed to populate domain dropdown:', error);
+    }
+  }
+
+  // Update domain info when selection changes
+  async updateDomainInfo() {
+    const domainSelect = document.getElementById('summaryDomainSelect');
+    const domainInfo = document.getElementById('summaryDomainInfo');
+    const generateBtn = document.getElementById('aiSummaryGenerateBtn');
+    
+    if (domainSelect && domainInfo && generateBtn) {
+      const selectedDomain = domainSelect.value;
+      
+      if (selectedDomain) {
+        // Use filtered notes (excluding deleted notes) for consistency
+        let filteredNotes;
+        if (this.storageManager === window.notesStorage && typeof this.storageManager.getAllNotesForDisplay === 'function') {
+          // Use IndexedDB storage - get notes for display (excludes deleted notes)
+          filteredNotes = await this.storageManager.getAllNotesForDisplay();
+        } else {
+          // Fallback to Chrome storage - use the same filtering logic as loadNotes()
+          const allData = await chrome.storage.local.get(null);
+          let allNotes = [];
+          for (const key in allData) {
+            // Filter out settings or non-array data
+            if (key !== 'themeMode' && Array.isArray(allData[key])) {
+              allNotes = allNotes.concat(allData[key]);
+            }
+          }
+          // Sort by most recently updated
+          allNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+          filteredNotes = allNotes;
+        }
+        
+        const noteCount = filteredNotes.filter(note => note.domain === selectedDomain).length;
+        
+        document.getElementById('summaryNoteCount').textContent = noteCount;
+        domainInfo.style.display = 'block';
+        generateBtn.disabled = false;
+      } else {
+        domainInfo.style.display = 'none';
+        generateBtn.disabled = true;
+      }
+    }
+  }
+
   // Setup dropdown event listeners
   setupDropdownEventListeners() {
     // Style selection
@@ -3142,6 +3725,8 @@ class URLNotesApp {
     if (executeBtn) {
       executeBtn.onclick = () => this.executeAIRewrite();
     }
+
+
   }
 
   // Execute AI rewrite from dropdown
@@ -3209,6 +3794,185 @@ class URLNotesApp {
     }
   }
 
+  // Execute AI summary from modal
+  async executeAISummary() {
+    // Check if user is authenticated (same pattern as AI rewrite)
+    if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
+      Utils.showToast('Please create an account to use AI Summary. Free users get 5 summaries/month!', 'info');
+      return;
+    }
+
+    const user = window.supabaseClient.getCurrentUser();
+    if (!user) {
+      Utils.showToast('Please create an account to use AI Summary. Free users get 5 summaries/month!', 'info');
+      return;
+    }
+
+    const domainSelect = document.getElementById('summaryDomainSelect');
+    if (!domainSelect || !domainSelect.value) {
+      Utils.showToast('Please select a domain to summarize.', 'warning');
+      return;
+    }
+
+    const selectedDomain = domainSelect.value;
+    
+    // Get all notes for the selected domain from local storage
+    const domainNotes = await this.getNotesForDomain(selectedDomain);
+    
+    if (!domainNotes || domainNotes.length === 0) {
+      Utils.showToast('No notes found for the selected domain.', 'warning');
+      return;
+    }
+
+    // Hide modal
+    this.hideAISummaryModal();
+
+    // Show loading state
+    Utils.showToast('AI is generating a summary...', 'info');
+
+    try {
+      // Combine all note content for summarization
+      const combinedContent = domainNotes.map(note => 
+        `Title: ${note.title || 'Untitled'}\nContent: ${note.content || ''}\nTags: ${(note.tags || []).join(', ')}\n---`
+      ).join('\n');
+      
+      // Call AI summary API
+      const summaryContent = await this.callAISummaryAPI(combinedContent, selectedDomain, domainNotes.length);
+      
+      if (summaryContent === null) {
+        return; // API call failed
+      }
+      
+      // Create a new summary note
+      await this.createSummaryNote(summaryContent, selectedDomain, domainNotes.length);
+      
+      // Show success message
+      Utils.showToast(`Summary note created for ${selectedDomain}!`, 'success');
+      
+    } catch (error) {
+      console.error('AI summary failed:', error);
+      Utils.showToast('AI summary failed. Please try again.', 'error');
+    }
+  }
+
+  // Get notes for a specific domain from local storage
+  async getNotesForDomain(domain) {
+    try {
+      // Use filtered notes (excluding deleted notes) for consistency
+      let filteredNotes;
+      if (this.storageManager === window.notesStorage && typeof this.storageManager.getAllNotesForDisplay === 'function') {
+        // Use IndexedDB storage - get notes for display (excludes deleted notes)
+        filteredNotes = await this.storageManager.getAllNotesForDisplay();
+      } else {
+        // Fallback to Chrome storage - use the same filtering logic as loadNotes()
+        const allData = await chrome.storage.local.get(null);
+        let allNotes = [];
+        for (const key in allData) {
+          // Filter out settings or non-array data
+          if (key !== 'themeMode' && Array.isArray(allData[key])) {
+            allNotes = allNotes.concat(allData[key]);
+          }
+        }
+        // Sort by most recently updated
+        allNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        filteredNotes = allNotes;
+      }
+      
+      return filteredNotes.filter(note => note.domain === domain);
+    } catch (error) {
+      console.error('Failed to get notes for domain:', error);
+      return [];
+    }
+  }
+
+  // Call AI summary API
+  async callAISummaryAPI(content, domain, noteCount) {
+    try {
+      const apiUrl = `${window.supabaseClient.supabaseUrl}/functions/v1/hyper-api`;
+
+      const requestBody = {
+        content: content,
+        style: 'concise', // Use concise style for summaries
+        generateTags: true,
+        existingTags: [],
+        context: {
+          domain: domain,
+          feature: 'summarize',
+          noteCount: noteCount
+        }
+      };
+
+      // Get access token safely - use same pattern as AI rewrite
+      let accessToken = '';
+      if (window.supabaseClient && window.supabaseClient.isAuthenticated()) {
+        const user = window.supabaseClient.getCurrentUser();
+        if (user) {
+          // Use accessToken directly like AI rewrite function
+          accessToken = window.supabaseClient.accessToken || '';
+        }
+      }
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+          'apikey': window.supabaseClient.supabaseAnonKey
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (response.status === 401) {
+          Utils.showToast('Please sign in to use AI features.', 'warning');
+          return null;
+        } else if (response.status === 429) {
+          Utils.showToast(`Monthly AI usage limit exceeded. ${errorData.remainingCalls || 0} calls remaining.`, 'warning');
+          return null;
+        }
+      }
+
+      const data = await response.json();
+      return data.rewrittenContent;
+    } catch (error) {
+      console.error('AI summary API call failed:', error);
+      throw error;
+    }
+  }
+
+  // Create a new summary note
+  async createSummaryNote(summaryContent, domain, noteCount) {
+    try {
+      const summaryNote = {
+        id: Utils.generateId(),
+        title: `Summary of ${domain} Notes - ${noteCount} notes analyzed`,
+        content: summaryContent,
+        url: `https://${domain}`,
+        domain: domain,
+        tags: ['summary', 'ai-generated', domain],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isEncrypted: false
+      };
+
+      // Save the summary note
+      await this.storageManager.saveNote(summaryNote);
+      
+      // Refresh the notes list
+      await this.loadNotes();
+      
+      // Switch to the new note
+      this.openNote(summaryNote);
+      
+    } catch (error) {
+      console.error('Failed to create summary note:', error);
+      throw error;
+    }
+  }
+
+
+
   // Display context information
   async displayContextInfo() {
     if (!this.currentNote) return;
@@ -3247,26 +4011,9 @@ class URLNotesApp {
   // Load and display usage info
   async loadUsageInfo() {
     try {
-      // Use the existing premium check method from notesStorage
-      let isPremium = false;
-      
-      if (window.notesStorage?.checkPremiumAccess) {
-        try {
-          isPremium = await window.notesStorage.checkPremiumAccess();
-        } catch (error) {
-          console.warn('notesStorage premium check failed:', error);
-        }
-      }
-      
-      // Fallback to chrome storage if notesStorage failed
-      if (!isPremium) {
-        try {
-          const { userTier } = await chrome.storage.local.get(['userTier']);
-          isPremium = !!(userTier && userTier !== 'free');
-        } catch (error) {
-          console.warn('Chrome storage premium check failed:', error);
-        }
-      }
+      // Use the global cached premium status function instead of direct calls
+      const premiumStatus = await getPremiumStatus();
+      const isPremium = premiumStatus.isPremium;
       
       // Update dropdown usage badge based on actual usage data
       const remainingCalls = document.getElementById('remainingCalls');
@@ -3279,7 +4026,7 @@ class URLNotesApp {
         } else {
           // Fallback to premium status if backend call fails
           if (isPremium) {
-            remainingCalls.textContent = '100/month';
+            remainingCalls.textContent = '500/month';
           } else {
             remainingCalls.textContent = '5/month';
           }
@@ -3299,8 +4046,24 @@ class URLNotesApp {
   }
 
   // Get current AI usage from Supabase
-  async getCurrentAIUsage() {
+  async getCurrentAIUsage(featureName = 'overall') {
     try {
+      // Check cache first
+      const cacheKey = 'cachedAIUsage';
+      const result = await chrome.storage.local.get([cacheKey]);
+      
+      if (result[cacheKey]) {
+        const { data, timestamp } = result[cacheKey];
+        const now = Date.now();
+        const cacheAge = now - timestamp;
+        const cacheExpiry = 60 * 60 * 1000; // 1 hour cache
+        
+        // Return cached data if it's still valid
+        if (cacheAge < cacheExpiry) {
+          return data;
+        }
+      }
+
       if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
         return null;
       }
@@ -3308,15 +4071,30 @@ class URLNotesApp {
       const user = window.supabaseClient.getCurrentUser();
       if (!user) return null;
 
+      // Check if token needs refresh before making RPC call
+      try {
+        await window.supabaseClient.refreshSession();
+      } catch (refreshError) {
+        console.warn('Token refresh failed, continuing with current token:', refreshError);
+      }
+
       const { data: usageData, error } = await window.supabaseClient.rpc('check_ai_usage', {
         p_user_id: user.id,
-        p_feature_name: 'ai_rewrite'
+        p_feature_name: 'overall'
       });
 
       if (error) {
         console.warn('Failed to get AI usage:', error);
         return null;
       }
+
+      // Cache the result with timestamp
+      await chrome.storage.local.set({
+        [cacheKey]: {
+          data: usageData,
+          timestamp: Date.now()
+        }
+      });
 
       return usageData;
     } catch (error) {
@@ -3328,13 +4106,9 @@ class URLNotesApp {
   // Check premium status
   async checkPremiumStatus() {
     try {
-      if (window.notesStorage?.checkPremiumAccess) {
-        return await window.notesStorage.checkPremiumAccess();
-      }
-      
-      // Fallback to chrome storage
-      const { userTier } = await chrome.storage.local.get(['userTier']);
-      return !!(userTier && userTier !== 'free');
+      // Use the global cached premium status function instead of direct calls
+      const premiumStatus = await getPremiumStatus();
+      return premiumStatus.isPremium;
     } catch (error) {
       console.warn('Error checking premium status:', error);
       return false;
@@ -3350,7 +4124,7 @@ class URLNotesApp {
       upgradeMsg.className = 'upgrade-message';
       upgradeMsg.innerHTML = `
         <span class="upgrade-text">Upgrade to Premium</span>
-        <span class="upgrade-subtitle">Get 100 rewrites/month</span>
+        <span class="upgrade-subtitle">Get 500 rewrites/month</span>
       `;
       
       // Replace the usage badge content
@@ -3592,16 +4366,62 @@ class URLNotesApp {
 // Get premium status from storage or default to false
 async function getPremiumStatus() {
   try {
-    // First try to get from notesStorage if available
-    if (window.notesStorage?.checkPremiumAccess) {
-      const isPremium = await window.notesStorage.checkPremiumAccess();
-      return { isPremium };
+    // Use cached premium status to avoid unnecessary sync calls
+    const { cachedPremiumStatus } = await chrome.storage.local.get(['cachedPremiumStatus']);
+    
+    // If we have a recent cached value (less than 1 hour old), use it
+    if (cachedPremiumStatus && cachedPremiumStatus.timestamp && cachedPremiumStatus.status && typeof cachedPremiumStatus.status.isPremium === 'boolean') {
+      const age = Date.now() - cachedPremiumStatus.timestamp;
+      if (age < 3600000) { // 1 hour in milliseconds
+        return cachedPremiumStatus.status;
+      }
     }
     
-    // Fallback to chrome storage
-    const { userTier } = await chrome.storage.local.get(['userTier']);
-    const isPremium = !!(userTier && userTier !== 'free');
-    return { isPremium };
+    // Clear corrupted cache if it exists
+    if (cachedPremiumStatus && (!cachedPremiumStatus.status || typeof cachedPremiumStatus.status.isPremium !== 'boolean')) {
+      await clearPremiumStatusCache();
+    }
+    
+    // Otherwise get fresh status and cache it
+    let isPremium = false;
+    
+    // Check chrome storage directly to avoid calling notesStorage.checkPremiumAccess
+    try {
+      const { userTier } = await chrome.storage.local.get(['userTier']);
+      
+      // Check if userTier exists and has the expected structure
+      if (userTier) {
+        if (typeof userTier === 'string') {
+          // Handle string format like "premium"
+          isPremium = userTier === 'premium';
+        } else if (typeof userTier === 'object' && userTier !== null) {
+          // Handle object format like { active: true, tier: 'premium' }
+          const isActive = userTier.active === true;
+          const isNotFree = userTier.tier && userTier.tier !== 'free';
+          
+          isPremium = isActive && isNotFree;
+        } else {
+          isPremium = false;
+        }
+      } else {
+        isPremium = false;
+      }
+    } catch (error) {
+      console.warn('Chrome storage premium check failed:', error);
+      isPremium = false;
+    }
+    
+    const status = { isPremium };
+    
+    // Cache the result with timestamp
+    await chrome.storage.local.set({
+      cachedPremiumStatus: {
+        status,
+        timestamp: Date.now()
+      }
+    });
+    
+    return status;
   } catch (error) {
     console.warn('Failed to get premium status:', error);
     // Default to non-premium on error
@@ -3609,7 +4429,29 @@ async function getPremiumStatus() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+// Clear corrupted premium status cache
+async function clearPremiumStatusCache() {
+  try {
+    await chrome.storage.local.remove(['cachedPremiumStatus']);
+  } catch (error) {
+    console.warn('Failed to clear premium status cache:', error);
+  }
+}
+
+// Clear AI usage cache
+async function clearAIUsageCache() {
+  try {
+    await chrome.storage.local.remove(['cachedAIUsage']);
+  } catch (error) {
+    console.warn('Failed to clear AI usage cache:', error);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // Only clear corrupted caches, not all caches
+  // This prevents unnecessary RPC calls on every popup open
+  await clearPremiumStatusCache();
+  
   // Expose the app globally so modules (e.g., editor.js) can read premiumStatus
   window.urlNotesApp = new URLNotesApp();
   

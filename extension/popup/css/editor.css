@@ -68,7 +68,7 @@
   padding: 8px 10px; /* tighter header to save vertical space */
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
-  overflow: hidden;
+  overflow: visible; /* allow buttons to be fully visible */
 }
 
 /* Make editor action icons consistent in size */
@@ -112,6 +112,7 @@
 
 #noteTitleHeader {
   flex: 1;
+  min-width: 0; /* allow title to shrink */
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
@@ -140,7 +141,8 @@ html[data-compact="1"] .editor-header {
 html[data-compact="1"] .editor-header .icon-btn svg,
 html[data-compact="1"] .save-btn svg,
 html[data-compact="1"] .delete-btn svg,
-html[data-compact="1"] .ai-rewrite-btn svg {
+html[data-compact="1"] .ai-rewrite-btn svg,
+html[data-compact="1"] .list-btn svg {
   width: 14px;
   height: 14px;
   stroke-width: 2.1;
@@ -152,6 +154,8 @@ html[data-compact="1"] .save-btn span {
 
 html[data-compact="1"] .save-btn {
   padding: 6px 8px;
+  min-width: 28px;
+  border-radius: 50%;
 }
 
 .back-btn:hover {
@@ -168,18 +172,21 @@ html[data-compact="1"] .save-btn {
   align-items: center;
   gap: 6px;
   flex-shrink: 0; /* prevent pushing title off-screen */
+  min-width: 0; /* allow flex items to shrink below their content size */
+  overflow: visible; /* ensure buttons aren't cut off */
+  flex-wrap: nowrap; /* prevent buttons from wrapping */
 }
 
 .save-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
+  min-width: 28px;
   height: 28px;
-  padding: 0;
-  gap: 0;
+  padding: 0 8px;
+  gap: 4px;
   border: 1px solid var(--border-color);
-  border-radius: 50%;
+  border-radius: 14px;
   background: var(--bg-primary);
   color: var(--text-primary);
   font-size: 12px;
@@ -188,9 +195,8 @@ html[data-compact="1"] .save-btn {
   transition: all 0.2s ease;
   position: relative;
   isolation: isolate;
-  aspect-ratio: 1 / 1;
   flex: 0 0 auto;
-  line-height: 0;
+  line-height: 1;
   box-sizing: border-box;
 }
 
@@ -210,10 +216,19 @@ html[data-compact="1"] .save-btn {
   transform: scale(1.08); /* slightly larger to match visual weight */
 }
 
+/* Ensure save button text is visible */
+.save-btn span {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 /* Strong focus-visible rings for editor action buttons on dark surfaces */
 .save-btn:focus-visible,
 .delete-btn:focus-visible,
-.ai-rewrite-btn:focus-visible {
+.ai-rewrite-btn:focus-visible,
+.list-btn:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px rgba(255,255,255,0.9), 0 0 0 5px rgba(0,122,255,0.55);
 }
@@ -275,6 +290,66 @@ html[data-compact="1"] .save-btn {
 }
 
 .ai-rewrite-btn:active {
+  transform: translateY(0);
+}
+
+.ai-summary-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  position: relative;
+  isolation: isolate;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
+  line-height: 0;
+  box-sizing: border-box;
+}
+
+.ai-summary-btn:hover {
+  background: var(--bg-primary);
+  transform: translateY(-1px);
+}
+
+.ai-summary-btn:active {
+  transform: translateY(0);
+}
+
+.list-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  position: relative;
+  isolation: isolate;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
+  line-height: 0;
+  box-sizing: border-box;
+}
+
+.list-btn:hover {
+  background: var(--bg-primary);
+  transform: translateY(-1px);
+}
+
+.list-btn:active {
   transform: translateY(0);
 }
 
@@ -385,8 +460,14 @@ gap: 8px;
   isolation: isolate;
 }
 
-/* Hide label to keep save circular */
-.save-btn span { display: none; }
+/* Save button text styling */
+.save-btn span { 
+  display: inline; 
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
 
 /* Shimmering glass outline around editor controls & fields */
 .back-btn::after,

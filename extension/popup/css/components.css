@@ -668,6 +668,52 @@ html, body {
   z-index: 1; /* sit above the band */
 }
 
+.notes-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.domain-selection {
+  margin: 16px 0;
+}
+
+.domain-selection h5 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.domain-dropdown-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.domain-select {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.domain-select:focus {
+  border-color: var(--accent-color);
+}
+
+.domain-info {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
 /* All Notes only: hide per-note actions inside domain dropdown list */
 html[data-view="all_notes"] details.domain-group > .domain-notes-list .note-item .note-sidebar,
 html[data-view="all_notes"] details.domain-group > .domain-notes-list .note-item .note-actions {
@@ -2345,7 +2391,7 @@ html[data-view="site"] .note-item:hover::after {
 }
 
 .ai-dropdown-menu {
-  position: fixed;
+  position: absolute;
   width: 240px;
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
@@ -2357,14 +2403,202 @@ html[data-view="site"] .note-item:hover::after {
   visibility: hidden;
   transform: translateY(-8px);
   transition: all 0.2s ease;
-  z-index: 999999;
+  z-index: 99999999;
   margin-top: 8px;
+  pointer-events: auto;
 }
 
 .ai-dropdown-menu.show {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateY(0) !important;
+}
+
+/* AI Summary Modal Styles */
+.ai-summary-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 999999999;
+}
+
+.ai-summary-modal.show {
+  display: flex;
+}
+
+.ai-summary-content {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  width: 90%;
+  max-width: 400px;
+  max-height: 80%;
+  overflow: hidden;
+}
+
+.ai-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.ai-summary-header h3 {
+  margin: 0;
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.ai-summary-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.ai-summary-close:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ai-summary-body {
+  padding: 20px;
+}
+
+.ai-summary-info {
+  margin-bottom: 20px;
+}
+
+.ai-summary-info p {
+  margin: 0 0 12px 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.usage-info {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.usage-text {
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.domain-selection {
+  margin-bottom: 16px;
+}
+
+.domain-selection label {
+  display: block;
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.summary-domain-select {
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: white;
+  font-size: 0.9rem;
+  backdrop-filter: blur(10px);
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.summary-domain-select:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.summary-domain-select option {
+  background: var(--glass-bg);
+  color: white;
+  padding: 8px 12px;
+}
+
+/* Ensure dropdown arrow is visible */
+.summary-domain-select::-ms-expand {
+  display: none;
+}
+
+/* Custom dropdown arrow */
+.summary-domain-select {
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+.domain-info {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.domain-info p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.85rem;
+}
+
+.ai-summary-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.ai-summary-generate {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-summary-generate:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.ai-summary-generate:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .dropdown-header {
@@ -2515,3 +2749,35 @@ html[data-view="site"] .note-item:hover::after {
   background: rgba(255, 255, 255, 0.3);
   border-color: rgba(255, 255, 255, 0.5);
 }
+
+/* Multi-highlight button */
+.multi-highlight-btn {
+  background: var(--primary-color, #3b82f6);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+}
+
+.multi-highlight-btn:hover {
+  background: var(--primary-hover, #2563eb);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.multi-highlight-btn.active {
+  background: var(--success-color, #10b981);
+  box-shadow: 0 0 0 2px var(--success-color, #10b981);
+}
+
+.multi-highlight-btn.active:hover {
+  background: var(--success-hover, #059669);
+}
+
+/* Settings button */

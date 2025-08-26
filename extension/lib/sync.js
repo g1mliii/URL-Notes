@@ -4,27 +4,47 @@
 class SyncEngine {
   constructor() {
     this.isSyncing = false;
-    this.syncInterval = null;
-    this.syncIntervalMs = 5 * 60 * 1000; // 5 minutes
     this.lastSyncTime = null;
+    this.isOnline = navigator.onLine;
     this.lastVersionUpdateTime = Date.now();
+    this.syncIntervalActive = false; // Flag to track if sync is enabled
+    this.isInitialized = false; // Flag to prevent multiple initializations
     
     // Start event listeners (for tracking purposes only, no auto-sync)
     this.startEventListeners();
-    
-    // Start periodic sync (every 5 minutes)
-    this.startPeriodicSync();
   }
 
   // Initialize sync engine
   async init() {
-    this.setupEventListeners();
-    await this.loadLastSyncTime();
+    // Prevent multiple initializations
+    if (this.isInitialized) {
+      return;
+    }
     
-    // Check if we should start sync for authenticated premium users
-    const syncCheck = await this.canSync();
-    if (syncCheck.canSync) {
-      this.startPeriodicSync();
+    try {
+      // Wait for storage to be ready
+      if (!window.notesStorage) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        if (!window.notesStorage) {
+          console.warn('Storage still not ready after wait, skipping sync init');
+          return;
+        }
+      }
+      
+      this.setupEventListeners();
+      await this.loadLastSyncTime();
+      
+      // Check if we should start sync for authenticated premium users
+      const syncCheck = await this.canSync();
+      if (syncCheck.canSync && !this.syncIntervalActive) {
+        // Don't send auth-changed message here - it's not an actual auth change
+        // Just start periodic sync locally
+        this.startPeriodicSync();
+      }
+      
+      this.isInitialized = true;
+    } catch (error) {
+      console.error('Failed to initialize sync engine:', error);
     }
   }
 
@@ -55,8 +75,13 @@ class SyncEngine {
     // Listen for auth changes
     window.eventBus?.on('auth:changed', (payload) => {
       if (payload.user) {
-        this.performInitialSync();
+        // Notify background script to start timer
+        chrome.runtime.sendMessage({ action: 'auth-changed', user: payload.user }).catch(() => {});
+        // Don't perform initial sync automatically - just start periodic sync
+        this.startPeriodicSync();
       } else {
+        // Notify background script to stop timer
+        chrome.runtime.sendMessage({ action: 'auth-changed', user: null }).catch(() => {});
         this.clearSyncState();
       }
     });
@@ -87,13 +112,11 @@ class SyncEngine {
     try {
       // Early exit if no Supabase client
       if (!window.supabaseClient) {
-        // Note: Removed verbose logging for cleaner console
         return { authenticated: false, status: null, canSync: false };
       }
 
       // Check if auth is available before calling getUser
       if (typeof window.supabaseClient.isAuthenticated !== 'function') {
-        // Note: Removed verbose logging for cleaner console
         return { authenticated: false, status: null, canSync: false };
       }
 
@@ -105,22 +128,17 @@ class SyncEngine {
         const status = await window.supabaseClient.getSubscriptionStatus();
         const canSync = status && status.active;
         
-        // Note: Removed verbose logging for cleaner console
         return { authenticated: true, status, canSync };
       } catch (statusError) {
-        // Note: Removed verbose logging for cleaner console
         return { authenticated: true, status: null, canSync: false };
           }
         } else {
-          // Note: Removed verbose logging for cleaner console
           return { authenticated: false, status: null, canSync: false };
         }
       } catch (authError) {
-        // Note: Removed verbose logging for cleaner console
         return { authenticated: false, status: null, canSync: false };
       }
     } catch (error) {
-      // Note: Removed verbose logging for cleaner console
       return { authenticated: false, status: null, canSync: false };
     }
   }
@@ -128,7 +146,6 @@ class SyncEngine {
   // Perform initial sync when user first signs in
   async performInitialSync() {
     try {
-      // Note: Removed verbose logging for cleaner console
       await this.performSync();
       this.startPeriodicSync();
     } catch (error) {
@@ -140,13 +157,11 @@ class SyncEngine {
   // Perform sync operation
   async performSync() {
     if (this.isSyncing) {
-      console.log('Sync engine: Sync already in progress, skipping...');
       return;
     }
     
-    const syncCheck = await this.canSync();
-    if (!syncCheck.canSync) {
-      // Note: Removed verbose logging for cleaner console
+    // Ensure encryption is available
+    if (!window.noteEncryption) {
       return;
     }
 
@@ -166,7 +181,6 @@ class SyncEngine {
       
       // Get local deletions
       const localDeletions = await this.getLocalDeletions();
-      // Note: Removed verbose logging for cleaner console
       
       // Validate localDeletions is an array
       if (!Array.isArray(localDeletions)) {
@@ -174,12 +188,16 @@ class SyncEngine {
         localDeletions = []; // Fallback to empty array
       }
       
-      // Only sync notes that have changed since last sync
+            // Only sync notes that have changed since last sync
       const notesToSync = this.lastSyncTime 
         ? localNotes.filter(note => new Date(note.updatedAt) > new Date(this.lastSyncTime))
         : localNotes; // If no last sync time, sync all notes
       
-      // Note: Removed verbose logging for cleaner console
+      // Check if we have anything to sync (notes OR deletions)
+      const hasNotesToSync = notesToSync.length > 0;
+      const hasDeletionsToSync = localDeletions.length > 0;
+      
+      // Always proceed with sync to check for server notes, even if no local changes
       
       // Prepare sync payload - include essential fields including url and domain
       const syncPayload = {
@@ -199,36 +217,47 @@ class SyncEngine {
         timestamp: Date.now()
       };
 
-      // Note: Removed verbose logging for cleaner console
-
       // Send to server
+      
       const result = await window.supabaseClient.syncNotes(syncPayload);
       
       if (result.success) {
+        
         // Get any missing notes from server (local priority - only add missing notes)
         const missingNotes = result.missingNotes || [];
         if (missingNotes.length > 0) {
-          console.log('Sync: Processing missing notes from server:', missingNotes.length);
           for (const serverNote of missingNotes) {
-            // Debug: Log the server note structure
-            console.log('Sync: Server note structure:', {
-              id: serverNote.id,
-              hasUrl: !!serverNote.url,
-              hasDomain: !!serverNote.domain,
-              url: serverNote.url,
-              domain: serverNote.domain,
-              title: serverNote.title,
-              hasContent: !!serverNote.content
-            });
             
-            // Only add if note doesn't exist locally
-            const localNote = localNotes.find(n => n.id === serverNote.id);
+            // Check if note exists locally (including deleted notes)
+            const localNote = await window.notesStorage.getNote(serverNote.id);
+            
             if (!localNote) {
+              // Note doesn't exist locally - safe to add
               // Ensure URL and domain are present before saving
               if (!serverNote.url || !serverNote.domain) {
                 console.warn('Sync: Server note missing URL or domain:', serverNote.id);
               }
               await window.notesStorage.saveNote(serverNote);
+            } else if (localNote.is_deleted) {
+              // Note exists locally but is marked as deleted
+              // Check if server note is newer than deletion
+              const serverNoteTime = new Date(serverNote.updatedAt || 0);
+              const deletionTime = new Date(localNote.deleted_at || 0);
+              
+              if (serverNoteTime > deletionTime) {
+                // Server note is newer than deletion - restore it
+                // Clear deletion flags
+                serverNote.is_deleted = false;
+                serverNote.deleted_at = null;
+                await window.notesStorage.saveNote(serverNote);
+                
+                // Remove the deletion record since we're restoring the note
+                await window.notesStorage.removeDeletionRecord(serverNote.id);
+              } else {
+                // Server note is older than deletion - keep it deleted locally
+              }
+            } else {
+              // Note exists locally and is not deleted - skip (local priority)
             }
           }
         }
@@ -269,35 +298,18 @@ class SyncEngine {
     }
   }
 
-  // Start periodic sync
+  // Start periodic sync (now handled by background script)
   startPeriodicSync() {
-    if (this.syncInterval) {
-      clearInterval(this.syncInterval);
-    }
-    
-    // Sync every 5 minutes (300,000 milliseconds)
-    this.syncInterval = setInterval(async () => {
-      // Note: Removed verbose logging for cleaner console
-      
-      // Check if we can sync before proceeding
-      const syncCheck = await this.canSync();
-      if (syncCheck.canSync) {
-        // Note: Removed verbose logging for cleaner console
-        await this.performSync();
-      } else {
-        // Note: Removed verbose logging for cleaner console
-      }
-    }, this.syncIntervalMs);
-    
-    // Note: Removed verbose logging for cleaner console
+    // Timer logic moved to background script for persistence
+    // This method is kept for compatibility but doesn't start timers
+    this.syncIntervalActive = true;
   }
 
-  // Stop periodic sync
+  // Stop periodic sync (now handled by background script)
   stopPeriodicSync() {
-    if (this.syncInterval) {
-      clearInterval(this.syncInterval);
-      this.syncInterval = null;
-    }
+    // Timer logic moved to background script for persistence
+    // This method is kept for compatibility but doesn't stop timers
+    this.syncIntervalActive = false;
   }
 
   // Clear sync state on sign out
@@ -321,12 +333,17 @@ class SyncEngine {
     }
     
     try {
-      // Note: Removed verbose logging for cleaner console
       await this.performSync();
       this.showSyncSuccess('Manual sync completed successfully');
     } catch (error) {
       this.showSyncError('Manual sync failed');
     }
+  }
+
+  // Reset sync intervals (for debugging)
+  resetSyncIntervals() {
+    this.stopPeriodicSync();
+    this.syncIntervalActive = false;
   }
 
   // Get local deletions that need to be synced
@@ -341,7 +358,6 @@ class SyncEngine {
         deletedAt: deletion.deletedAt
       }));
       
-      // Note: Removed verbose logging for cleaner console
       return formattedDeletions;
     } catch (error) {
       console.warn('Failed to get local deletions:', error);
@@ -411,6 +427,22 @@ class SyncEngine {
       window.eventBus.off('notes:deleted', this.handleNoteDeletion.bind(this));
       window.eventBus.off('notes:domain_deleted', this.handleDomainDeletion.bind(this));
     }
+  }
+
+  // Get current sync status for debugging
+  getSyncStatus() {
+    return {
+      isSyncing: this.isSyncing,
+      syncIntervalActive: this.syncIntervalActive,
+      lastSyncTime: this.lastSyncTime,
+      isOnline: this.isOnline
+    };
+  }
+
+  // Debug method to log sync status
+  logSyncStatus() {
+    const status = this.getSyncStatus();
+    // Status logging removed for cleaner console
   }
 }
 
