@@ -272,18 +272,24 @@ class URLNotesApp {
       if (response && response.shouldSync) {
         console.log('🕐 Popup: Sync overdue by', Math.round(response.timeSinceLastSync / 1000), 'seconds, triggering sync now...');
         
-        if (window.syncEngine && window.syncEngine.canSync()) {
-          console.log('🕐 Popup: Can sync, triggering manualSync() for overdue sync...');
-          
-          window.syncEngine.manualSync().then(() => {
-            console.log('🕐 Popup: Overdue sync completed, sending restart-sync-timer message...');
+        if (window.syncEngine) {
+          const canSyncResult = await window.syncEngine.canSync();
+          if (canSyncResult && canSyncResult.canSync) {
+            console.log('🕐 Popup: Can sync, triggering manualSync() for overdue sync...');
+            
+            window.syncEngine.manualSync().then(() => {
+              console.log('🕐 Popup: Overdue sync completed, sending restart-sync-timer message...');
+              chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => {});
+            }).catch(() => {
+              console.log('🕐 Popup: Overdue sync failed, sending restart-sync-timer message...');
+              chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => {});
+            });
+          } else {
+            console.log('🕐 Popup: Cannot sync (not authenticated or no premium), sending restart-sync-timer message...');
             chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => {});
-          }).catch(() => {
-            console.log('🕐 Popup: Overdue sync failed, sending restart-sync-timer message...');
-            chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => {});
-          });
+          }
         } else {
-          console.log('🕐 Popup: Cannot sync, sending restart-sync-timer message...');
+          console.log('🕐 Popup: No sync engine, sending restart-sync-timer message...');
           chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => {});
         }
       } else if (response) {
@@ -340,12 +346,18 @@ class URLNotesApp {
         this.filterMode = lastFilterMode;
       }
       
+      // CRITICAL FIX: Clear any existing drafts when popup opens to prevent contamination
+      // This ensures no drafts from previous sessions appear on new notes
+      if (editorState && editorState.noteDraft) {
+        console.log('🧹 Popup opening - clearing existing draft to prevent contamination');
+        editorState.noteDraft = null;
+      }
+      
       // Mark popup as open for context menu detection
       if (editorState) {
         editorState.open = true;
-        // Preserve wasEditorOpen flag - don't clear it
-        // This allows unsaved drafts to be restored when popup reopens
-        // The flag will only be cleared when notes are explicitly saved/deleted
+        // Don't preserve wasEditorOpen flag - clear everything to prevent contamination
+        editorState.wasEditorOpen = false;
         await chrome.storage.local.set({ editorState });
       } else {
         const newEditorState = { open: true, wasEditorOpen: false };
@@ -2772,71 +2784,16 @@ class URLNotesApp {
   // Restore editor draft from storage
   async restoreEditorDraft() {
     try {
-      // First, clean up any old drafts
-      await this.cleanupOldDrafts();
+      // CRITICAL FIX: Never restore drafts - always start fresh
+      // This prevents cross-domain draft contamination and ensures clean editing
+      console.log('Draft restoration disabled - always starting with clean note content');
       
-      // Then check for drafts to restore
-      const { editorState } = await chrome.storage.local.get(['editorState']);
-      if (!editorState) return;
+      // Clear any existing drafts to prevent contamination
+      await this.clearEditorState();
       
-      if (!this.currentNote) return;
-      
-              if (editorState && editorState.noteDraft && editorState.noteDraft.id === this.currentNote.id) {
-          const draft = editorState.noteDraft;
-          
-          // CRITICAL FIX: Ensure draft belongs to the same domain as current note
-          // This prevents cross-domain draft contamination
-          if (draft.domain !== this.currentNote.domain) {
-            console.warn('Draft domain mismatch - clearing draft to prevent contamination:', {
-              draftDomain: draft.domain,
-              noteDomain: this.currentNote.domain
-            });
-            // Clear the mismatched draft
-            await this.clearEditorState();
-            return false;
-          }
-          
-          // Restore draft content if it's newer than the note
-        // Handle cases where timestamps might not exist or might be different
-        let shouldRestore = false;
-        
-        if (draft.updatedAt && this.currentNote.updatedAt) {
-          const draftTime = new Date(draft.updatedAt).getTime();
-          const noteTime = new Date(this.currentNote.updatedAt).getTime();
-          shouldRestore = draftTime > noteTime;
-        } else if (draft.updatedAt && !this.currentNote.updatedAt) {
-          // If draft has timestamp but currentNote doesn't, restore the draft
-          shouldRestore = true;
-        } else if (!draft.updatedAt && this.currentNote.updatedAt) {
-          // If currentNote has timestamp but draft doesn't, don't restore
-          shouldRestore = false;
-        } else {
-          // If neither has timestamp, compare content lengths as fallback
-          const draftLength = (draft.content || '').length;
-          const noteLength = (this.currentNote.content || '').length;
-          shouldRestore = draftLength > noteLength;
-        }
-        
-        if (shouldRestore) {
-            // Draft is newer, restore it to editor fields (don't modify currentNote)
-            const titleHeader = document.getElementById('noteTitleHeader');
-            const contentInput = document.getElementById('noteContentInput');
-            const tagsInput = document.getElementById('tagsInput');
-            
-            if (titleHeader) titleHeader.value = draft.title || this.currentNote.title || '';
-            if (contentInput) contentInput.innerHTML = this.buildContentHtml(draft.content || this.currentNote.content || '');
-            if (tagsInput) tagsInput.value = (draft.tags || this.currentNote.tags || []).join(', ');
-            
-          console.log('Restored draft content:', { 
-            draftContent: draft.content?.substring(0, 100), 
-            noteContent: this.currentNote.content?.substring(0, 100) 
-          });
-            return true; // Indicate that a draft was restored
-        }
-      }
-      return false; // No draft was restored
+      return false; // Never restore drafts
     } catch (error) {
-      console.error('Failed to restore editor draft:', error);
+      console.error('Error in restoreEditorDraft:', error);
       return false;
     }
   }

@@ -490,8 +490,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'auth-changed':
       // Handle auth changes for sync timer management
       if (request.user) {
-        // User signed in, start timer
+        // User signed in, start timer and initialize lastSyncTime
         console.log('🕐 Background: User signed in, starting sync timer...');
+        lastSyncTime = Date.now();
+        saveLastSyncTime(); // Save the current time as last sync
         startSyncTimer();
       } else {
         // User signed out, stop timer
@@ -504,13 +506,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       // Restart timer for next sync cycle
       console.log('🕐 Background: Received restart-sync-timer message, restarting timer...');
       lastSyncTime = Date.now(); // Mark that we just synced
+      saveLastSyncTime(); // Save the updated time
       startSyncTimer();
       sendResponse({ success: true });
+      break;
+    case 'reset-sync-timer':
+      // Reset timer due to corrupted data
+      console.log('🕐 Background: Received reset-sync-timer message...');
+      resetSyncTimer().then(() => {
+        sendResponse({ success: true });
+      }).catch(error => {
+        console.error('🕐 Background: Error in reset-sync-timer:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+      return true; // Keep message channel open for async response
+      break;
+    case 'force-reset-sync-timer':
+      // Force reset timer due to corrupted data
+      console.log('🕐 Background: Received force-reset-sync-timer message...');
+      forceResetSyncTimer().then(() => {
+        sendResponse({ success: true });
+      }).catch(error => {
+        console.error('🕐 Background: Error in force-reset-sync-timer:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+      return true; // Keep message channel open for async response
       break;
     case 'popup-opened':
       // Popup opened, check if sync is overdue
       const now = Date.now();
       const timeSinceLastSync = now - lastSyncTime;
+      console.log('🕐 Background: popup-opened handler - lastSyncTime:', lastSyncTime, '(', new Date(lastSyncTime), '), timeSinceLastSync:', timeSinceLastSync, 'ms');
+      
       if (timeSinceLastSync >= syncInterval) {
         console.log('🕐 Background: Popup opened, sync overdue by', Math.round(timeSinceLastSync / 1000), 'seconds, triggering sync...');
         sendResponse({ shouldSync: true, timeSinceLastSync });
@@ -1011,12 +1038,126 @@ let syncTimer = null;
 let syncInterval = 5 * 60 * 1000; // 5 minutes
 let lastSyncTime = 0; // Track when we last synced
 
+// Load lastSyncTime from storage on startup
+async function loadLastSyncTime() {
+  console.log('🕐 Background: loadLastSyncTime function started');
+  try {
+    console.log('🕐 Background: Attempting to get lastSyncTime from chrome.storage.local...');
+    
+    // First, let's see what's actually in storage
+    const allStorage = await chrome.storage.local.get(null);
+    console.log('🕐 Background: All storage keys:', Object.keys(allStorage));
+    
+    const result = await chrome.storage.local.get(['lastSyncTime']);
+    console.log('🕐 Background: Storage result for lastSyncTime:', result);
+    
+    if (result.lastSyncTime) {
+      const storedTime = result.lastSyncTime;
+      const now = Date.now();
+      
+      console.log('🕐 Background: Validation - storedTime:', storedTime, 'now:', now, 'storedTime > now:', storedTime > now);
+      console.log('🕐 Background: Validation - storedTime date:', new Date(storedTime), 'now date:', new Date(now));
+      
+      // Validate that the stored time is reasonable
+      // Check for obviously invalid timestamps (future dates, extremely old dates, or NaN)
+      const currentYear = new Date().getFullYear();
+      const storedYear = new Date(storedTime).getFullYear();
+      
+      // Check if the stored timestamp is from a future year (like 2025 when we're in 2024)
+      if (isNaN(storedTime) || storedTime <= 0 || storedTime > now || storedYear > currentYear) {
+        console.log('🕐 Background: Stored lastSyncTime is invalid (future year, NaN, or too old), resetting to current time');
+        console.log('🕐 Background: Current year:', currentYear, 'Stored year:', storedYear);
+        lastSyncTime = now;
+        await chrome.storage.local.set({ lastSyncTime: lastSyncTime });
+      } else if (storedTime < (now - (24 * 60 * 60 * 1000))) { // More than 24 hours ago
+        console.log('🕐 Background: Stored lastSyncTime is too old (>24 hours), resetting to current time');
+        lastSyncTime = now;
+        await chrome.storage.local.set({ lastSyncTime: lastSyncTime });
+      } else {
+        lastSyncTime = storedTime;
+        console.log('🕐 Background: Loaded valid lastSyncTime from storage:', lastSyncTime, '(', new Date(lastSyncTime), ')');
+      }
+    } else {
+      // Initialize to current time if no stored value
+      console.log('🕐 Background: No stored lastSyncTime found, initializing to current time...');
+      lastSyncTime = Date.now();
+      await chrome.storage.local.set({ lastSyncTime: lastSyncTime });
+      console.log('🕐 Background: Initialized lastSyncTime to current time:', lastSyncTime, '(', new Date(lastSyncTime), ')');
+    }
+  } catch (error) {
+    console.error('🕐 Background: Error loading lastSyncTime:', error);
+    // Fallback to current time
+    console.log('🕐 Background: Using fallback time...');
+    lastSyncTime = Date.now();
+    await saveLastSyncTime(); // Save the fallback time
+  }
+  console.log('🕐 Background: loadLastSyncTime function completed, final lastSyncTime:', lastSyncTime, '(', new Date(lastSyncTime), ')');
+}
+
+// Save lastSyncTime to storage
+async function saveLastSyncTime() {
+  try {
+    console.log('🕐 Background: Saving lastSyncTime to storage:', lastSyncTime, '(', new Date(lastSyncTime), ')');
+    await chrome.storage.local.set({ lastSyncTime: lastSyncTime });
+    console.log('🕐 Background: Successfully saved lastSyncTime to storage');
+    
+    // Verify the save worked
+    const verify = await chrome.storage.local.get(['lastSyncTime']);
+    console.log('🕐 Background: Verification - retrieved from storage:', verify.lastSyncTime, '(', new Date(verify.lastSyncTime), ')');
+  } catch (error) {
+    console.error('🕐 Background: Error saving lastSyncTime:', error);
+  }
+}
+
+// Clear corrupted lastSyncTime and reset timer
+async function resetSyncTimer() {
+  console.log('🕐 Background: Resetting sync timer due to corrupted data...');
+  try {
+    // Remove the corrupted lastSyncTime from storage
+    await chrome.storage.local.remove(['lastSyncTime']);
+    console.log('🕐 Background: Removed corrupted lastSyncTime from storage');
+    
+    // Reset to current time
+    lastSyncTime = Date.now();
+    await saveLastSyncTime();
+    
+    // Restart timer
+    startSyncTimer();
+  } catch (error) {
+    console.error('🕐 Background: Error resetting sync timer:', error);
+  }
+}
+
+// Force clear corrupted storage and reset
+async function forceResetSyncTimer() {
+  console.log('🕐 Background: Force resetting sync timer...');
+  try {
+    // Get all storage and log what we find
+    const allStorage = await chrome.storage.local.get(null);
+    console.log('🕐 Background: Current storage before force reset:', Object.keys(allStorage));
+    
+    // Remove the corrupted lastSyncTime from storage
+    await chrome.storage.local.remove(['lastSyncTime']);
+    console.log('🕐 Background: Force removed lastSyncTime from storage');
+    
+    // Reset to current time
+    lastSyncTime = Date.now();
+    await saveLastSyncTime();
+    
+    // Restart timer
+    startSyncTimer();
+  } catch (error) {
+    console.error('🕐 Background: Error in force reset:', error);
+  }
+}
+
 function startSyncTimer() {
   if (syncTimer) {
     clearTimeout(syncTimer);
   }
   
   console.log('🕐 Background: Starting sync timer for 5 minutes...');
+  console.log('🕐 Background: startSyncTimer called with lastSyncTime:', lastSyncTime, '(', new Date(lastSyncTime), ')');
   
   // Set a one-time timeout instead of interval
   syncTimer = setTimeout(() => {
@@ -1027,7 +1168,8 @@ function startSyncTimer() {
       // Popup might be closed, that's okay
       console.log('🕐 Background: Popup closed, sync message not delivered');
       // Mark that we need to sync when popup opens
-      lastSyncTime = Date.now() - syncInterval;
+      // Don't set lastSyncTime here - let the popup handle it when it opens
+      // This prevents the invalid future timestamp issue
     });
     
     // Clear the timer after it fires
@@ -1042,10 +1184,38 @@ function stopSyncTimer() {
     syncTimer = null;
     console.log('🕐 Background: Timer stopped');
   }
+  // Reset lastSyncTime when stopping timer (e.g., user signs out)
+  lastSyncTime = 0;
+  saveLastSyncTime();
 }
 
 // Start timer when extension loads
 console.log('🕐 Background: Extension loaded, starting initial sync timer...');
-startSyncTimer();
+console.log('🕐 Background: About to load lastSyncTime from storage...');
+
+// Add a small delay to ensure storage is ready
+setTimeout(() => {
+  loadLastSyncTime().then(() => {
+    console.log('🕐 Background: loadLastSyncTime completed, lastSyncTime is now:', lastSyncTime, '(', new Date(lastSyncTime), ')');
+    
+    // Force reset if the timestamp is still corrupted after validation
+    const currentYear = new Date().getFullYear();
+    const storedYear = new Date(lastSyncTime).getFullYear();
+    
+    if (lastSyncTime > Date.now() || storedYear > currentYear) {
+      console.log('🕐 Background: Timestamp still corrupted after validation (future date or future year), forcing reset...');
+      console.log('🕐 Background: Current year:', currentYear, 'Stored year:', storedYear);
+      forceResetSyncTimer().then(() => {
+        console.log('🕐 Background: Force reset completed, timer should now work correctly');
+      });
+    } else {
+      startSyncTimer();
+    }
+  }).catch(error => {
+    console.error('🕐 Background: Error in loadLastSyncTime:', error);
+    // Fallback: start timer anyway
+    startSyncTimer();
+  });
+}, 100);
 
 
