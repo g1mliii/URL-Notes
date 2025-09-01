@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Contenteditable placeholder styling */
+[contenteditable][data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  color: rgba(156, 163, 175, 0.5);
+  pointer-events: none;
+}
+
 /* Reset all margins, padding, and borders */
 * {
   margin: 0;

@@ -611,3 +611,219 @@ gap: 8px;
   background: none;
   padding: 0;
 }
+
+/* Formatting Toolbar Styles - Liquid Glass Design */
+.formatting-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--bg-secondary) 30%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.format-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  background: color-mix(in srgb, var(--bg-primary) 20%, transparent);
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 30%, transparent);
+  backdrop-filter: saturate(160%) blur(6px);
+  -webkit-backdrop-filter: saturate(160%) blur(6px);
+}
+
+.format-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bg-primary) 25%, rgba(0, 0, 0, 0.4));
+  backdrop-filter: saturate(160%) blur(8px);
+  -webkit-backdrop-filter: saturate(160%) blur(8px);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 var(--shadow-light);
+}
+
+.format-btn:hover {
+  background: color-mix(in srgb, var(--bg-primary) 40%, rgba(0, 0, 0, 0.3));
+  color: white;
+  transform: translateY(-1px) scale(1.05);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 var(--shadow-light);
+  border-color: color-mix(in srgb, var(--border-color) 70%, transparent);
+}
+
+.format-btn:active {
+  transform: translateY(0) scale(1.02);
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.format-btn.active {
+  background: color-mix(in srgb, var(--accent-primary) 80%, rgba(0, 0, 0, 0.2));
+  color: white;
+  border-color: var(--accent-primary);
+  box-shadow:
+    0 2px 8px color-mix(in srgb, var(--accent-primary) 40%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 20%, transparent);
+}
+
+.format-btn svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+/* Color picker specific styles */
+.color-picker-container {
+  position: relative;
+}
+
+.color-btn {
+  position: relative;
+}
+
+.color-indicator {
+  width: 14px;
+  height: 2px;
+  border-radius: 2px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.color-wheel-popup {
+  position: fixed;
+  top: auto;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  background: color-mix(in srgb, var(--bg-secondary) 90%, rgba(0, 0, 0, 0.1));
+  backdrop-filter: saturate(160%) blur(12px);
+  -webkit-backdrop-filter: saturate(160%) blur(12px);
+  border: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 var(--shadow-light);
+  z-index: 9999999999;
+  min-width: 180px;
+  animation: popup-fade-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes popup-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.color-preset-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  justify-content: center;
+}
+
+.color-preset-row:last-of-type {
+  margin-bottom: 16px;
+}
+
+.color-preset {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid color-mix(in srgb, var(--border-color) 40%, transparent);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.color-preset:hover {
+  border-color: var(--accent-primary);
+  transform: scale(1.15);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.15),
+    0 0 0 2px color-mix(in srgb, var(--accent-primary) 30%, transparent);
+}
+
+.color-preset[data-color="#ffffff"] {
+  border-color: var(--text-tertiary);
+}
+
+.custom-color-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--border-color) 30%, transparent);
+  justify-content: center;
+}
+
+.custom-color-section label {
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+#customColorInput {
+  width: 28px;
+  height: 28px;
+  border: 2px solid color-mix(in srgb, var(--border-color) 40%, transparent);
+  border-radius: 50%;
+  cursor: pointer;
+  background: transparent;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+#customColorInput:hover {
+  border-color: var(--accent-primary);
+  transform: scale(1.1);
+}
+
+#customColorInput::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+
+#customColorInput::-webkit-color-swatch-wrapper {
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+}
+
+#customColorInput::-moz-color-swatch {
+  border: none;
+  border-radius: 50%;
+}

@@ -1783,6 +1783,8 @@ textarea:focus-visible {
   color: var(--text-primary);
 }
 
+
+
 /* Loading states */
 .loading {
   opacity: 0.6;

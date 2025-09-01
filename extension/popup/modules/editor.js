@@ -197,26 +197,60 @@ class EditorManager {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 
-      const lines = (content || '').split(/\r?\n/);
+      let text = content || '';
+      
+      // Convert formatting markers to HTML (process in order to avoid conflicts)
+      // Bold: **text** -> <b>text</b>
+      text = text.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+      
+      // Underline: __text__ -> <u>text</u>
+      text = text.replace(/__([^_]+)__/g, '<u>$1</u>');
+      
+      // Strikethrough: ~~text~~ -> <s>text</s>
+      text = text.replace(/~~([^~]+)~~/g, '<s>$1</s>');
+      
+      // Color: {color:#ff0000}text{/color} -> <span style="color:#ff0000">text</span>
+      text = text.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, '<span style="color:$1">$2</span>');
+      
+      const lines = text.split(/\r?\n/);
       const mdLink = /\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g;
       const htmlLines = lines.map(line => {
         let out = '';
         let lastIndex = 0;
         let match;
         while ((match = mdLink.exec(line)) !== null) {
-          out += escapeHtml(line.slice(lastIndex, match.index));
+          // Don't escape the part that might contain our HTML tags
+          const beforeLink = line.slice(lastIndex, match.index);
+          out += this.escapeHtmlExceptTags(beforeLink);
           const text = escapeHtml(match[1]);
           const href = match[2];
           out += `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
           lastIndex = mdLink.lastIndex;
         }
-        out += escapeHtml(line.slice(lastIndex));
+        const afterLink = line.slice(lastIndex);
+        out += this.escapeHtmlExceptTags(afterLink);
         return out;
       });
       return htmlLines.join('<br>');
     } catch (e) {
       return (content || '').replace(/\n/g, '<br>');
     }
+  }
+  
+  // Helper method to escape HTML but preserve our formatting tags
+  escapeHtmlExceptTags(text) {
+    // First escape all HTML
+    let escaped = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    
+    // Then unescape our allowed formatting tags
+    escaped = escaped
+      .replace(/&lt;(\/?(?:b|u|s|span[^&]*))&gt;/gi, '<$1>')
+      .replace(/&lt;span style=&quot;([^&]*)&quot;&gt;/gi, '<span style="$1">');
+    
+    return escaped;
   }
 
   // Convert limited HTML back to markdown-like plain text for storage
@@ -225,7 +259,7 @@ class EditorManager {
     tmp.innerHTML = html || '';
     // Remove disallowed tags by unwrapping while preserving line breaks.
     // For block elements, insert <br> boundaries to reflect visual line breaks.
-    const allowed = new Set(['A', 'BR']);
+    const allowed = new Set(['A', 'BR', 'B', 'STRONG', 'U', 'S', 'STRIKE', 'SPAN']);
     const blockTags = new Set(['DIV', 'P', 'PRE', 'LI', 'UL', 'OL', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
     const walker = document.createTreeWalker(tmp, NodeFilter.SHOW_ELEMENT, null);
     const toRemove = [];
@@ -255,6 +289,43 @@ class EditorManager {
       }
     }
     toRemove.forEach(n => n.remove());
+
+    // Convert formatting tags to markdown-style markers
+    // Bold tags
+    tmp.querySelectorAll('b, strong').forEach(el => {
+      const text = el.textContent;
+      const md = document.createTextNode(`**${text}**`);
+      el.replaceWith(md);
+    });
+
+    // Underline tags
+    tmp.querySelectorAll('u').forEach(el => {
+      const text = el.textContent;
+      const md = document.createTextNode(`__${text}__`);
+      el.replaceWith(md);
+    });
+
+    // Strikethrough tags  
+    tmp.querySelectorAll('s, strike').forEach(el => {
+      const text = el.textContent;
+      const md = document.createTextNode(`~~${text}~~`);
+      el.replaceWith(md);
+    });
+
+    // Color spans
+    tmp.querySelectorAll('span[style*="color"]').forEach(el => {
+      const text = el.textContent;
+      const style = el.getAttribute('style');
+      const colorMatch = style.match(/color:\s*([^;]+)/);
+      if (colorMatch) {
+        const color = colorMatch[1].trim();
+        const md = document.createTextNode(`{color:${color}}${text}{/color}`);
+        el.replaceWith(md);
+      } else {
+        // If no color found, just unwrap
+        el.replaceWith(document.createTextNode(text));
+      }
+    });
 
     // Replace anchors with [text](href)
     tmp.querySelectorAll('a[href]').forEach(a => {
@@ -720,6 +791,177 @@ class EditorManager {
       
     } catch (error) {
       console.error('Error saving note:', error);
+    }
+  }
+
+  // Initialize formatting toolbar event listeners
+  initializeFormattingControls() {
+    // Bold button
+    const boldBtn = document.getElementById('boldBtn');
+    if (boldBtn) {
+      boldBtn.addEventListener('click', () => this.toggleFormat('bold'));
+    }
+
+    // Underline button  
+    const underlineBtn = document.getElementById('underlineBtn');
+    if (underlineBtn) {
+      underlineBtn.addEventListener('click', () => this.toggleFormat('underline'));
+    }
+
+    // Strikethrough button
+    const strikethroughBtn = document.getElementById('strikethroughBtn');
+    if (strikethroughBtn) {
+      strikethroughBtn.addEventListener('click', () => this.toggleFormat('strikeThrough'));
+    }
+
+    // List button (handled by main popup.js but we ensure it exists)
+    const listBtn = document.getElementById('listBtn');
+    if (listBtn && !listBtn.onclick) {
+      // Backup handler in case main popup.js hasn't set it up yet
+      listBtn.addEventListener('click', () => this.createList());
+    }
+
+    // Color button
+    const colorBtn = document.getElementById('colorBtn');
+    let colorWheelPopup = document.getElementById('colorWheelPopup');
+    if (colorBtn && colorWheelPopup) {
+      colorBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isVisible = colorWheelPopup.style.display !== 'none';
+        
+        if (isVisible) {
+          colorWheelPopup.style.display = 'none';
+        } else {
+          // Move popup to body to escape editor stacking context
+          if (colorWheelPopup.parentNode !== document.body) {
+            document.body.appendChild(colorWheelPopup);
+          }
+          
+          // Position the popup relative to the button
+          const buttonRect = colorBtn.getBoundingClientRect();
+          const popupWidth = 180;
+          const popupHeight = 200;
+          
+          // Calculate position (below and to the right of button, but keep on screen)
+          let left = buttonRect.left;
+          let top = buttonRect.bottom + 5;
+          
+          // Adjust if popup would go off screen
+          if (left + popupWidth > window.innerWidth) {
+            left = buttonRect.right - popupWidth;
+          }
+          if (top + popupHeight > window.innerHeight) {
+            top = buttonRect.top - popupHeight - 5;
+          }
+          
+          // Ensure minimum distance from edges
+          left = Math.max(10, left);
+          top = Math.max(10, top);
+          
+          colorWheelPopup.style.left = `${left}px`;
+          colorWheelPopup.style.top = `${top}px`;
+          colorWheelPopup.style.display = 'block';
+        }
+      });
+
+      // Color presets
+      colorWheelPopup.addEventListener('click', (e) => {
+        const preset = e.target.closest('.color-preset');
+        if (preset) {
+          const color = preset.dataset.color;
+          this.applyColor(color);
+          colorWheelPopup.style.display = 'none';
+        }
+      });
+
+      // Custom color picker
+      const customColorInput = document.getElementById('customColorInput');
+      if (customColorInput) {
+        customColorInput.addEventListener('change', (e) => {
+          this.applyColor(e.target.value);
+          colorWheelPopup.style.display = 'none';
+        });
+      }
+    }
+
+    // Close color picker when clicking outside
+    document.addEventListener('click', (e) => {
+      if (colorWheelPopup && !e.target.closest('.color-picker-container')) {
+        colorWheelPopup.style.display = 'none';
+      }
+    });
+    
+    // Close color picker when editor is closed
+    window.addEventListener('beforeunload', () => {
+      if (colorWheelPopup) {
+        colorWheelPopup.style.display = 'none';
+      }
+    });
+
+    // Update button states on selection change
+    const contentInput = document.getElementById('noteContentInput');
+    if (contentInput) {
+      contentInput.addEventListener('selectionchange', () => this.updateFormatButtonStates());
+      contentInput.addEventListener('keyup', () => this.updateFormatButtonStates());
+      contentInput.addEventListener('mouseup', () => this.updateFormatButtonStates());
+    }
+  }
+
+  // Toggle formatting (bold, underline, strikethrough)
+  toggleFormat(command) {
+    const contentInput = document.getElementById('noteContentInput');
+    if (!contentInput) return;
+
+    contentInput.focus();
+    
+    try {
+      document.execCommand(command, false, null);
+      this.updateFormatButtonStates();
+    } catch (error) {
+      console.error(`Error applying ${command}:`, error);
+    }
+  }
+
+  // Apply color to selected text
+  applyColor(color) {
+    const contentInput = document.getElementById('noteContentInput');
+    if (!contentInput) return;
+
+    contentInput.focus();
+    
+    try {
+      document.execCommand('foreColor', false, color);
+      
+      // Update color indicator
+      const colorIndicator = document.getElementById('colorIndicator');
+      if (colorIndicator) {
+        colorIndicator.style.backgroundColor = color;
+      }
+      
+      this.updateFormatButtonStates();
+    } catch (error) {
+      console.error('Error applying color:', error);
+    }
+  }
+
+  // Update button active states based on current selection
+  updateFormatButtonStates() {
+    try {
+      const boldBtn = document.getElementById('boldBtn');
+      const underlineBtn = document.getElementById('underlineBtn');  
+      const strikethroughBtn = document.getElementById('strikethroughBtn');
+      
+      if (boldBtn) {
+        boldBtn.classList.toggle('active', document.queryCommandState('bold'));
+      }
+      if (underlineBtn) {
+        underlineBtn.classList.toggle('active', document.queryCommandState('underline'));
+      }
+      if (strikethroughBtn) {
+        strikethroughBtn.classList.toggle('active', document.queryCommandState('strikeThrough'));
+      }
+    } catch (error) {
+      // Some browsers may not support queryCommandState for all commands
     }
   }
 }

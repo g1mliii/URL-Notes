@@ -1257,6 +1257,9 @@ class URLNotesApp {
       this.editorManager.createList();
     });
 
+    // Initialize formatting controls (bold, underline, strikethrough, color)
+    this.editorManager.initializeFormattingControls();
+
     // Developer tools removed: mock data generation/cleanup and storage stress tools
 
     // Font selector
