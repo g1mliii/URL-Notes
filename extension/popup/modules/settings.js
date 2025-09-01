@@ -571,19 +571,28 @@ class SettingsManager {
     try {
       const exportData = await this.storageManager.exportNotes();
       
+      // Get selected format
+      const formatSelect = document.getElementById('exportFormatSelect');
+      const selectedFormat = formatSelect ? formatSelect.value : 'json';
+      
+      // Use ExportFormats class to convert data
+      const exportFormats = new ExportFormats();
+      const exportResult = exportFormats.exportToFormat(exportData, selectedFormat);
+      
       // Create and download file
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const blob = new Blob([exportResult.content], { type: exportResult.mimeType });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `url-notes-export-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = exportResult.filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      // Show success message
-      this.showNotification('Notes exported successfully!', 'success');
+      // Show success message with format info
+      const formatInfo = exportFormats.getSupportedFormats()[selectedFormat];
+      this.showNotification(`Notes exported as ${formatInfo.name} successfully!`, 'success');
     } catch (error) {
       console.error('Error exporting notes:', error);
       this.showNotification('Failed to export notes', 'error');

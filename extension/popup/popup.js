@@ -1194,6 +1194,10 @@ class URLNotesApp {
       this.deleteCurrentNote();
     });
 
+    document.getElementById('exportNoteBtn').addEventListener('click', () => {
+      this.exportCurrentNote();
+    });
+
     // Editor inputs
     document.getElementById('noteTitleHeader').addEventListener('input', () => {
       this.saveDraftDebounced();
@@ -1227,9 +1231,7 @@ class URLNotesApp {
       this.toggleMultiHighlightMode();
     });
 
-    document.getElementById('exportNotesBtn').addEventListener('click', () => {
-      this.exportNotes();
-    });
+
 
     document.getElementById('importNotesBtn').addEventListener('click', () => {
       document.getElementById('importNotesInput').click();
@@ -2632,6 +2634,42 @@ class URLNotesApp {
     this.editorManager.closeEditor({ clearDraft: true });
     await this.postDeleteRefresh();
   }
+
+  // Export current note (from editor) - defaults to TXT format
+  async exportCurrentNote() {
+    if (!this.currentNote) {
+      Utils.showToast('No note to export', 'info');
+      return;
+    }
+
+    try {
+      // Create a single note export data structure
+      const singleNoteData = {
+        [this.currentNote.domain]: [this.currentNote]
+      };
+
+             // Use TXT format for single note export
+       const exportFormats = new ExportFormats();
+       const exportResult = exportFormats.exportToFormat(singleNoteData, 'txt', true);
+      
+      // Create and download file
+      const blob = new Blob([exportResult.content], { type: exportResult.mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = exportResult.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      // Show success message
+      Utils.showToast('Note exported as Plain Text', 'success');
+    } catch (error) {
+      console.error('Error exporting note:', error);
+      Utils.showToast('Failed to export note', 'error');
+    }
+  }
   
   // Delete note from list (with confirmation)
   async deleteNoteFromList(noteId, skipConfirm = false) {
@@ -3444,10 +3482,36 @@ class URLNotesApp {
       await this.loadUsageInfo();
       await this.displayContextInfo();
       
-      // Position dropdown relative to trigger button
+      // Position dropdown relative to trigger button with better boundary checking
       const triggerRect = trigger.getBoundingClientRect();
-      dropdown.style.top = (triggerRect.bottom + 8) + 'px';
-      dropdown.style.right = (window.innerWidth - triggerRect.right) + 'px';
+      const dropdownWidth = 240; // Width from CSS
+      const dropdownHeight = 300; // Approximate height
+      const margin = 8;
+      
+      // Calculate position
+      let left = triggerRect.left;
+      let top = triggerRect.bottom + margin;
+      
+      // Check if dropdown would go off the right edge
+      if (left + dropdownWidth > window.innerWidth) {
+        left = window.innerWidth - dropdownWidth - margin;
+      }
+      
+      // Check if dropdown would go off the left edge
+      if (left < margin) {
+        left = margin;
+      }
+      
+      // Check if dropdown would go off the bottom edge
+      if (top + dropdownHeight > window.innerHeight) {
+        top = triggerRect.top - dropdownHeight - margin;
+      }
+      
+      // Apply positioning
+      dropdown.style.position = 'fixed';
+      dropdown.style.left = left + 'px';
+      dropdown.style.top = top + 'px';
+      dropdown.style.right = 'auto'; // Reset right positioning
       
       // Show dropdown
       dropdown.classList.add('show');
@@ -4181,21 +4245,33 @@ class URLNotesApp {
       // Fallback to storage manager export if settings module isn't wired
       try {
         const exportData = await this.storageManager.exportNotes();
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        
+        // Get selected format (default to JSON if not available)
+        const formatSelect = document.getElementById('exportFormatSelect');
+        const selectedFormat = formatSelect ? formatSelect.value : 'json';
+        
+        // Use ExportFormats class to convert data
+        const exportFormats = new ExportFormats();
+        const exportResult = exportFormats.exportToFormat(exportData, selectedFormat);
+        
+        const blob = new Blob([exportResult.content], { type: exportResult.mimeType });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `url-notes-export-${new Date().toISOString().split('T')[0]}.json`;
+        a.download = exportResult.filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        Utils.showToast('Notes exported', 'success');
+        
+        // Show success message with format info
+        const formatInfo = exportFormats.getSupportedFormats()[selectedFormat];
+        Utils.showToast(`Notes exported as ${formatInfo.name}`, 'success');
       } catch (e) {
-                  Utils.showToast('Failed to export notes', 'error');
+        Utils.showToast('Failed to export notes', 'error');
       }
     } else {
-              Utils.showToast('Export not available', 'info');
+      Utils.showToast('Export not available', 'info');
     }
   }
 

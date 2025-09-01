@@ -246,6 +246,14 @@
             </div>
           </div>
 
+          <button class="icon-btn export-btn" id="exportNoteBtn" title="Export Note">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </button>
+
           <button class="icon-btn delete-btn" id="deleteNoteBtn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="3 6 5 6 21 6"></polyline>
@@ -456,29 +464,36 @@
         <div class="settings-section">
           <h4>Data Management</h4>
           <div class="settings-actions">
-            <button class="settings-btn-full" id="exportNotesBtn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-              </svg>
-              <span>Export All Notes</span>
-            </button>
-            <button class="settings-btn-full" id="importNotesBtn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-              <span>Import Notes</span>
-            </button>
-          </div>
-          <input type="file" id="importNotesInput" accept=".json" style="display: none;">
-          
-          <!-- Sync Management (Premium only) -->
-          <div class="sync-management" id="syncManagement" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
-            <h5 style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.8;">Cloud Sync</h5>
-            <div class="settings-actions">
+            <div class="export-controls">
+              <select id="exportFormatSelect" class="settings-select" style="margin-bottom: 8px;">
+                <option value="json">JSON Backup</option>
+                <option value="markdown">Markdown</option>
+                <option value="obsidian">Obsidian</option>
+                <option value="txt">Plain Text</option>
+                <option value="notion">Notion</option>
+                <option value="docx">Google Docs</option>
+              </select>
+              <button class="settings-btn-full" id="exportNotesBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <span>Export All Notes</span>
+              </button>
+            </div>
+            <div class="import-controls">
+              <button class="settings-btn-full" id="importNotesBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span>Import Notes</span>
+              </button>
+            </div>
+            <!-- Cloud Sync (Premium only) -->
+            <div class="sync-controls" id="syncManagement" style="display: none;">
               <button class="settings-btn-full" id="manualSyncBtn">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
@@ -488,16 +503,8 @@
               </button>
               <div class="sync-status-text" id="syncStatusText" style="font-size: 12px; opacity: 0.7; margin-top: 8px; text-align: center;"></div>
             </div>
-            
-            <!-- Storage Usage -->
-            <div class="storage-usage" id="storageUsage" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
-              <h6 style="margin: 0 0 6px 0; font-size: 13px; opacity: 0.8;">Storage Usage</h6>
-              <div class="storage-bar" style="width: 100%; height: 4px; background: var(--border-color); border-radius: 2px; overflow: hidden;">
-                <div class="storage-progress" id="storageProgress" style="height: 4px; background: var(--accent-color); border-radius: 2px; transition: width 0.3s ease; width: 0%;"></div>
-              </div>
-              <div class="storage-text" id="storageText" style="font-size: 11px; opacity: 0.7; margin-top: 4px; text-align: center;"></div>
-            </div>
           </div>
+          <input type="file" id="importNotesInput" accept=".json" style="display: none;">
         </div>
         <div class="settings-section">
           <h4>Keyboard Shortcuts</h4>
@@ -591,6 +598,7 @@
   <script src="modules/theming.js"></script>
   <script src="modules/storage.js"></script>
   <script src="modules/utils.js"></script>
+  <script src="modules/export-formats.js"></script>
   <script src="modules/editor.js"></script>
   <script src="modules/settings.js"></script>
   <script src="modules/notes.js"></script>

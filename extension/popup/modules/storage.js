@@ -136,16 +136,24 @@ class StorageManager {
     return domain;
   }
 
-  // Export all notes to JSON format
+  // Export all notes to JSON format (only visible notes, excluding deleted/filtered notes)
   async exportNotes() {
     try {
-      const allData = await this._lsGet(null);
+      // Use the filtered notes from memory (same as what's displayed in UI)
+      // This ensures we only export notes that are currently visible to the user
+      const filteredNotes = this.allNotes || [];
+      
+      // Group notes by domain (same structure as before)
       const notesData = {};
-      for (const key in allData) {
-        if (key !== 'themeMode' && key !== 'editorFont' && key !== 'editorFontSize' && key !== 'accentCache' && key !== 'editorState' && key !== 'lastFilterMode' && key !== 'lastAction' && key !== 'allNotesOpenDomains' && key !== 'userTier' && key !== 'supabase_session') {
-          notesData[key] = allData[key];
+      for (const note of filteredNotes) {
+        if (!note.domain) continue; // Skip notes without domain
+        
+        if (!notesData[note.domain]) {
+          notesData[note.domain] = [];
         }
+        notesData[note.domain].push(note);
       }
+      
       return notesData;
     } catch (error) {
       console.error('Error exporting notes:', error);

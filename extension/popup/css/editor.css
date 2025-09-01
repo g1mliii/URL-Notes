@@ -46,6 +46,14 @@
     rgba(255,255,255,0.12) 220deg,
     rgba(255,255,255,0.55) 360deg);
 }
+.export-btn::after { background:
+  conic-gradient(from 290deg at 50% 50%,
+    rgba(255,255,255,0.55) 0deg,
+    rgba(255,255,255,0.10) 70deg,
+    rgba(0,0,0,0.18) 140deg,
+    rgba(255,255,255,0.12) 220deg,
+    rgba(255,255,255,0.55) 360deg);
+}
 .save-btn::after { background:
   conic-gradient(from 320deg at 50% 50%,
     rgba(255,255,255,0.55) 0deg,
@@ -75,7 +83,8 @@
 .editor-header .icon-btn svg,
 .save-btn svg,
 .delete-btn svg,
-.ai-rewrite-btn svg {
+.ai-rewrite-btn svg,
+.export-btn svg {
   width: 18px;
   height: 18px;
   stroke-width: 2.2; /* bump stroke so save matches visual weight */
@@ -228,6 +237,7 @@ html[data-compact="1"] .save-btn {
 .save-btn:focus-visible,
 .delete-btn:focus-visible,
 .ai-rewrite-btn:focus-visible,
+.export-btn:focus-visible,
 .list-btn:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px rgba(255,255,255,0.9), 0 0 0 5px rgba(0,122,255,0.55);
@@ -270,7 +280,7 @@ html[data-compact="1"] .save-btn {
   border-radius: 50%;
   background: var(--bg-primary); /* stronger contrast */
   border: 1px solid var(--border-color);
-  color: var(--text-primary);
+  color: var(--accent-primary);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -285,11 +295,42 @@ html[data-compact="1"] .save-btn {
 }
 
 .ai-rewrite-btn:hover {
-  background: var(--bg-primary);
+  background: color-mix(in srgb, var(--accent-primary) 10%, transparent);
   transform: translateY(-1px);
 }
 
 .ai-rewrite-btn:active {
+  transform: translateY(0);
+}
+
+.export-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: var(--bg-primary); /* stronger contrast */
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  position: relative;
+  isolation: isolate;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
+  line-height: 0;
+  box-sizing: border-box;
+}
+
+.export-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.export-btn:active {
   transform: translateY(0);
 }
 
