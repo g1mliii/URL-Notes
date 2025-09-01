@@ -204,12 +204,25 @@
             return;
           }
           
-          // Check if the range crosses problematic element boundaries
-          // Only allow ranges that are within the same text node or simple element
-          if (range.startContainer.nodeType !== Node.TEXT_NODE || 
-              range.endContainer.nodeType !== Node.TEXT_NODE ||
-              range.startContainer.parentNode !== range.endContainer.parentNode) {
-            console.warn('Range crosses element boundaries, skipping complex selection');
+          // Allow cross-element selections but skip problematic elements
+          // Only skip if selection includes script, style, or other non-content elements
+          const rangeContainer = range.commonAncestorContainer;
+          const skipTags = ['SCRIPT', 'STYLE', 'NOSCRIPT', 'IFRAME', 'OBJECT', 'EMBED'];
+          
+          // Check if the range contains any problematic elements
+          if (rangeContainer.nodeType === Node.ELEMENT_NODE) {
+            const hasProblematicElements = skipTags.some(tag => 
+              rangeContainer.tagName === tag || rangeContainer.querySelector(tag)
+            );
+            if (hasProblematicElements) {
+              console.warn('Range contains non-content elements, skipping selection');
+              return;
+            }
+          }
+          
+          // Additional safety check: ensure we have meaningful text content
+          if (selectedText.length < 2) {
+            console.warn('Selected text too short, skipping');
             return;
           }
           

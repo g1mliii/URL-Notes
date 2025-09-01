@@ -312,8 +312,7 @@ class URLNotesApp {
       chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === 'context_menu_note_saved') {
           this.handleContextMenuNote(message.note);
-        } else if (message.action === 'context_menu_draft_updated') {
-          this.handleContextMenuDraftUpdate(message.note);
+        // Note: context_menu_draft_updated now handled via lastAction mechanism for better timing
         } else if (message.action === 'multi_highlight_note_updated') {
           // Handle multi-highlight note updates
           this.handleMultiHighlightNoteUpdate(message.note, message.type);
@@ -346,18 +345,12 @@ class URLNotesApp {
         this.filterMode = lastFilterMode;
       }
       
-      // CRITICAL FIX: Clear any existing drafts when popup opens to prevent contamination
-      // This ensures no drafts from previous sessions appear on new notes
-      if (editorState && editorState.noteDraft) {
-        console.log('🧹 Popup opening - clearing existing draft to prevent contamination');
-        editorState.noteDraft = null;
-      }
+      // Note: Draft clearing moved to restoration logic to allow proper auto-restore
       
       // Mark popup as open for context menu detection
       if (editorState) {
         editorState.open = true;
-        // Don't preserve wasEditorOpen flag - clear everything to prevent contamination
-        editorState.wasEditorOpen = false;
+        // Preserve wasEditorOpen flag for auto-restore logic
         await chrome.storage.local.set({ editorState });
       } else {
         const newEditorState = { open: true, wasEditorOpen: false };
@@ -382,7 +375,7 @@ class URLNotesApp {
       if (lastAction && lastAction.type === 'new_note') {
         if (this.currentSite) {
           // Create new note and open editor
-          this.createNewNote();
+          await this.createNewNote();
           chrome.storage.local.remove('lastAction');
           return;
         } else {
@@ -486,6 +479,24 @@ class URLNotesApp {
         }
       }
       
+      // Priority 0.6.5: context menu appended to draft note - open editor with updated draft
+      if (lastAction && lastAction.type === 'append_selection' && lastAction.isDraft) {
+        console.log('🎯 Context menu appended to draft, opening updated draft in editor');
+        
+        // Get the updated draft from storage
+        const { editorState } = await chrome.storage.local.get(['editorState']);
+        if (editorState && editorState.noteDraft && editorState.noteDraft.id === lastAction.noteId) {
+          // Set the updated draft as current note and open editor
+          this.currentNote = { ...editorState.noteDraft };
+          await this.openEditor(true);
+          console.log('✅ Opened editor with context menu updated draft');
+        }
+        
+        // Remove action so it doesn't re-trigger
+        chrome.storage.local.remove('lastAction');
+        return;
+      }
+      
       // Priority 0.7: multi-highlight appended to existing note - refresh and show
       if (lastAction && lastAction.type === 'append_multi_highlights') {
         // Find the note that was updated by multi-highlight
@@ -583,27 +594,46 @@ class URLNotesApp {
       }
       // Priority 2: previously open editor with cached draft
       // Only auto-open if there's a draft and the editor was actually open when popup closed
-      // AND the draft was created/updated very recently (within last 5 minutes)
+      console.log('🔍 Checking for draft restoration:', {
+        hasEditorState: !!editorState,
+        hasNoteDraft: !!(editorState && editorState.noteDraft),
+        wasEditorOpen: !!(editorState && editorState.wasEditorOpen),
+        draftId: editorState?.noteDraft?.id,
+        draftTitle: editorState?.noteDraft?.title
+      });
+      
       if (editorState && editorState.noteDraft && editorState.wasEditorOpen) {
-        // Check if the draft is recent enough to auto-open
+        // Check if the draft is recent enough to auto-open (10 minutes to be more forgiving)
         const now = Date.now();
         const draftTime = editorState.noteDraft.updatedAt ? new Date(editorState.noteDraft.updatedAt).getTime() : 0;
         const timeDiff = now - draftTime;
-        const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+        const tenMinutes = 10 * 60 * 1000; // 10 minutes in milliseconds
         
-        if (timeDiff < fiveMinutes) {
-        this.currentNote = { ...editorState.noteDraft };
-        // CRITICAL FIX: Don't reassign domain/URL/pageTitle from currentSite
-        // This was causing existing notes to change their domain when edited from different sites
-        // The draft should preserve the original note's domain and URL
-        await this.openEditor(true);
+        console.log('⏰ Draft timing check:', {
+          draftTime: new Date(draftTime).toLocaleString(),
+          timeDiff: Math.round(timeDiff / 1000) + 's',
+          isRecent: timeDiff < tenMinutes
+        });
+        
+        if (timeDiff < tenMinutes) {
+          console.log('✅ Attempting to restore recent draft');
+          // Use improved restoration logic that handles both auto-restore and contamination prevention
+          this.currentNote = null; // Clear so restoreEditorDraft knows this is auto-restore context
+          const wasRestored = await this.restoreEditorDraft();
+          if (wasRestored) {
+            console.log('🎉 Draft restored, opening editor');
+            await this.openEditor(true);
+          } else {
+            console.log('❌ Draft restoration failed');
+          }
         } else {
-          // Draft is too old, clear it
+          console.log('⏰ Draft is too old, clearing it');
           await chrome.storage.local.remove('editorState');
         }
       } else if (editorState && editorState.noteDraft) {
-        // Don't auto-open, just clear the draft since it's not meant to be restored
-        await chrome.storage.local.remove('editorState');
+        console.log('⚠️ Draft found but wasEditorOpen is false, not restoring');
+      } else {
+        console.log('ℹ️ No draft to restore');
       }
     } catch (_) {
       // Fallback to default filter
@@ -772,34 +802,7 @@ class URLNotesApp {
     }
   }
   
-  // Handle context menu draft updates from background script
-  async handleContextMenuDraftUpdate(note) {
-    try {
-      // Update the current note if it's the same one
-      if (this.currentNote && this.currentNote.id === note.id) {
-        this.currentNote = { ...note };
-        
-        // Update the editor content to show the appended text
-        const contentInput = document.getElementById('noteContentInput');
-        if (contentInput) {
-          contentInput.innerHTML = this.buildContentHtml(note.content || '');
-        }
-        
-        // Update the draft in storage with the new content
-        await this.saveEditorDraft();
-        
-        // Show success message
-        Utils.showToast('Text appended to current note', 'success');
-      } else {
-        // If no current note, the draft was updated in storage by the background script
-        // When the editor opens later, it will restore the updated draft content
-        Utils.showToast('Text appended to note', 'success');
-      }
-    } catch (error) {
-      console.error('Failed to handle context menu draft update:', error);
-      Utils.showToast('Failed to update draft note', 'error');
-    }
-  }
+  // Note: Draft updates from context menu now handled via lastAction mechanism in init()
 
   // Handle multi-highlight note updates from background script
   async handleMultiHighlightNoteUpdate(note, type) {
@@ -1143,9 +1146,9 @@ class URLNotesApp {
     });
 
     // Add new note
-    document.getElementById('addNoteBtn').addEventListener('click', () => {
+    document.getElementById('addNoteBtn').addEventListener('click', async () => {
       // Use the main createNewNote method which has better error handling
-      this.createNewNote();
+      await this.createNewNote();
     });
     
 
@@ -1160,15 +1163,15 @@ class URLNotesApp {
     document.getElementById('backBtn').addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      // Close editor immediately (no draft clearing) for instant UI response
+      // Back button: Save note and clear draft (same as save button)
       const notesContainer = document.querySelector('.notes-container');
-      this.editorManager.closeEditor({ clearDraft: false });
+      this.editorManager.closeEditor({ clearDraft: true });
       // Animate notes list entrance
       if (notesContainer) {
         notesContainer.classList.add('panel-fade-in');
         setTimeout(() => notesContainer.classList.remove('panel-fade-in'), 220);
       }
-      // Use same save path as Save button but non-blocking and without clearing draft/closing again
+      // Save the note
       saveStandard();
     });
     
@@ -1177,7 +1180,7 @@ class URLNotesApp {
       e.stopPropagation();
       // Same functionality as back button: save and close editor
       const notesContainer = document.querySelector('.notes-container');
-      this.editorManager.closeEditor({ clearDraft: false });
+      this.editorManager.closeEditor({ clearDraft: true });
       // Animate notes list entrance
       if (notesContainer) {
         notesContainer.classList.add('panel-fade-in');
@@ -2212,15 +2215,13 @@ class URLNotesApp {
   }
 
   // Create a new note (hybrid - always save both domain and URL)
-  createNewNote() {
+  async createNewNote() {
     this.isJotMode = false;
     
-    // Aggressively clear ALL cached state to prevent any caching issues
+    // Clear current note and any existing drafts to prevent contamination
     this.currentNote = null;
-    if (this.editorState) {
-      this.editorState.noteDraft = null;
-      this.editorState.open = false;
-    }
+    // Clear any existing drafts but preserve editor open state
+    await this.clearEditorState();
     
     // Clear any stored drafts
     if (window.notesStorage && window.notesStorage.clearEditorDraft) {
@@ -2329,11 +2330,13 @@ class URLNotesApp {
     // First, try to restore from cached draft
     const draftWasRestored = await this.restoreEditorDraft();
     
-    // Populate editor with note data (either from note or restored draft)
-    // Note: restoreEditorDraft() already populated the fields if a draft was restored
-    if (!titleHeader.value) titleHeader.value = this.currentNote.title || '';
-    if (!contentInput.innerHTML) contentInput.innerHTML = this.buildContentHtml(this.currentNote.content || '');
-    if (!tagsInput.value) tagsInput.value = (this.currentNote.tags || []).join(', ');
+    // Populate editor with note data (only skip if we restored a draft for this exact note)
+    if (!draftWasRestored) {
+      // Always populate when no draft was restored (clears any stale form data)
+      titleHeader.value = this.currentNote.title || '';
+      contentInput.innerHTML = this.buildContentHtml(this.currentNote.content || '');
+      tagsInput.value = (this.currentNote.tags || []).join(', ');
+    }
     // Do not show created date inside the editor UI to avoid mid-editor clutter
     if (dateSpan) {
       dateSpan.textContent = '';
@@ -2784,14 +2787,59 @@ class URLNotesApp {
   // Restore editor draft from storage
   async restoreEditorDraft() {
     try {
-      // CRITICAL FIX: Never restore drafts - always start fresh
-      // This prevents cross-domain draft contamination and ensures clean editing
-      console.log('Draft restoration disabled - always starting with clean note content');
+      const { editorState } = await chrome.storage.local.get(['editorState']);
       
-      // Clear any existing drafts to prevent contamination
-      await this.clearEditorState();
+      if (!editorState || !editorState.noteDraft) {
+        return false;
+      }
       
-      return false; // Never restore drafts
+      const draft = editorState.noteDraft;
+      
+      // Context 1: Auto-restore when no current note (popup just opened)
+      if (!this.currentNote) {
+        console.log('Auto-restoring draft on popup open:', draft.id);
+        
+        // Set the draft as current note
+        this.currentNote = { ...draft };
+        
+        // Populate form fields with draft content
+        const titleHeader = document.getElementById('noteTitleHeader');
+        const contentInput = document.getElementById('noteContentInput');
+        const tagsInput = document.getElementById('tagsInput');
+        
+        if (titleHeader) titleHeader.value = draft.title || '';
+        if (contentInput) contentInput.innerHTML = this.buildContentHtml(draft.content || '');
+        if (tagsInput) tagsInput.value = (draft.tags || []).join(', ');
+        
+        return true; // Draft was restored
+      }
+      
+      // Context 2: Note switching - only restore if it's for the same note
+      if (draft.id === this.currentNote.id) {
+        console.log('Restoring draft for same note:', draft.id);
+        
+        // Update currentNote with draft content
+        this.currentNote = { ...draft };
+        
+        // Populate form fields with draft content
+        const titleHeader = document.getElementById('noteTitleHeader');
+        const contentInput = document.getElementById('noteContentInput');
+        const tagsInput = document.getElementById('tagsInput');
+        
+        if (titleHeader) titleHeader.value = draft.title || '';
+        if (contentInput) contentInput.innerHTML = this.buildContentHtml(draft.content || '');
+        if (tagsInput) tagsInput.value = (draft.tags || []).join(', ');
+        
+        return true; // Draft was restored
+      } else {
+        // Clear draft if it's from a different note to prevent contamination
+        console.log('Clearing draft from different note:', {
+          draftId: draft.id,
+          currentNoteId: this.currentNote.id
+        });
+        await this.clearEditorState();
+        return false; // No draft restored
+      }
     } catch (error) {
       console.error('Error in restoreEditorDraft:', error);
       return false;

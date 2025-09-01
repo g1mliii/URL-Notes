@@ -352,14 +352,7 @@ async function addSelectionToExistingNote(info, tab) {
       await chrome.storage.local.set({ editorState });
       console.log('Context menu: Updated draft note with appended content, preserved original properties');
       
-      // Send message to popup to refresh the editor content
-      chrome.runtime.sendMessage({
-        action: 'context_menu_draft_updated',
-        note: updatedDraft,
-        type: 'append_to_draft'
-      }).catch(() => {
-        // Popup might not be open, that's okay
-      });
+      // Note: Draft update notification now handled via lastAction mechanism for better timing
       
       // Mark last action for draft updates
       await chrome.storage.local.set({ 
@@ -736,14 +729,7 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
         await chrome.storage.local.set({ editorState });
         console.log('Multi-highlight: Updated draft note with appended highlights, preserved original properties');
         
-        // Send message to popup to refresh the editor content
-        chrome.runtime.sendMessage({
-          action: 'context_menu_draft_updated',
-          note: updatedDraft,
-          type: 'append_multi_highlights'
-        }).catch(() => {
-          // Popup might not be open, that's okay
-        });
+        // Note: Draft update notification now handled via lastAction mechanism for better timing
         
         // Mark last action for draft updates
         await chrome.storage.local.set({ 

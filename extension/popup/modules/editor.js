@@ -563,6 +563,11 @@ class EditorManager {
       const { editorState } = await chrome.storage.local.get(['editorState']);
       const state = editorState || {};
       state.open = isOpen;
+      // Track if editor was ever open for auto-restore on next popup open
+      if (isOpen) {
+        state.wasEditorOpen = true;
+      }
+      // Don't clear wasEditorOpen when closing - leave it for auto-restore
       await chrome.storage.local.set({ editorState: state });
     } catch (_) { }
   }
@@ -570,7 +575,10 @@ class EditorManager {
   // Save the current editor draft (title/content/tags) into storage
   async saveEditorDraft() {
     try {
-      if (!this.currentNote) return;
+      if (!this.currentNote) {
+        console.log('💾 Cannot save draft: no current note');
+        return;
+      }
       const titleHeader = document.getElementById('noteTitleHeader');
       const contentInput = document.getElementById('noteContentInput');
       const tagsInput = document.getElementById('tagsInput');
@@ -581,6 +589,7 @@ class EditorManager {
       this.currentNote.tags = (tagsInput && tagsInput.value
         ? tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
         : []);
+      this.currentNote.updatedAt = new Date().toISOString(); // Ensure updatedAt is set
 
       // Get caret position
       const { start, end } = contentInput ? this.getSelectionOffsets(contentInput) : { start: 0, end: 0 };
@@ -592,8 +601,18 @@ class EditorManager {
       state.caretStart = start;
       state.caretEnd = end;
       
+      console.log('💾 Saving draft:', {
+        id: this.currentNote.id,
+        title: this.currentNote.title,
+        contentLength: this.currentNote.content.length,
+        updatedAt: this.currentNote.updatedAt,
+        wasEditorOpen: state.wasEditorOpen
+      });
+      
       await chrome.storage.local.set({ editorState: state });
-    } catch (_) { }
+    } catch (error) { 
+      console.error('❌ Failed to save draft:', error);
+    }
   }
 
   // Clear editor state entirely
