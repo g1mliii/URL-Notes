@@ -360,6 +360,9 @@ class SupabaseClient {
       }
     });
 
+    // Clear premium status cache to force refresh
+    await chrome.storage.local.remove(['cachedPremiumStatus']);
+
     // Create or update user profile
     await this.upsertProfile(authData.user);
     try { window.eventBus?.emit('auth:changed', { user: this.currentUser }); } catch (_) {}
@@ -535,6 +538,9 @@ class SupabaseClient {
         const userTier = isActive ? (profile.subscription_tier || 'premium') : 'free';
         
         await chrome.storage.local.set({ userTier });
+        
+        // Clear premium status cache to force UI refresh
+        await chrome.storage.local.remove(['cachedPremiumStatus']);
         
         // Store profile data in cache for reuse (including salt for encryption key)
         const profileData = {

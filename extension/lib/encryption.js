@@ -103,17 +103,27 @@ class NoteEncryption {
     
     const encryptedContent = await this.encryptNote(note.content, userKey);
     const encryptedTitle = await this.encryptNote(note.title, userKey);
-    const contentHash = await this.generateContentHash(note.content + note.title);
+    
+    // Encrypt tags if they exist
+    let encryptedTags = null;
+    if (note.tags && Array.isArray(note.tags) && note.tags.length > 0) {
+      const tagsJson = JSON.stringify(note.tags);
+      encryptedTags = await this.encryptNote(tagsJson, userKey);
+    }
+    
+    const contentHash = await this.generateContentHash(note.content + note.title + (note.tags ? JSON.stringify(note.tags) : ''));
 
     const result = {
       ...note,
       title_encrypted: encryptedTitle,
       content_encrypted: encryptedContent,
+      tags_encrypted: encryptedTags,
       content_hash: contentHash,
       // Keep url and domain as plaintext for proper sync
       // Remove plaintext content
       title: null,
-      content: null
+      content: null,
+      tags: null
     };
     
 
@@ -125,20 +135,34 @@ class NoteEncryption {
   async decryptNoteFromCloud(encryptedNote, userKey) {
     const decryptedContent = await this.decryptNote(encryptedNote.content_encrypted, userKey);
     const decryptedTitle = await this.decryptNote(encryptedNote.title_encrypted, userKey);
+    
+    // Decrypt tags if they exist
+    let decryptedTags = [];
+    if (encryptedNote.tags_encrypted) {
+      try {
+        const tagsJson = await this.decryptNote(encryptedNote.tags_encrypted, userKey);
+        decryptedTags = JSON.parse(tagsJson);
+      } catch (error) {
+        console.warn('Failed to decrypt tags:', error);
+        decryptedTags = [];
+      }
+    }
 
     return {
       ...encryptedNote,
       title: decryptedTitle,
       content: decryptedContent,
+      tags: decryptedTags,
       // Remove encrypted fields
       title_encrypted: undefined,
-      content_encrypted: undefined
+      content_encrypted: undefined,
+      tags_encrypted: undefined
     };
   }
 
   // Verify content integrity
   async verifyContentIntegrity(note) {
-    const expectedHash = await this.generateContentHash(note.content + note.title);
+    const expectedHash = await this.generateContentHash(note.content + note.title + (note.tags ? JSON.stringify(note.tags) : ''));
     return expectedHash === note.content_hash;
   }
 }

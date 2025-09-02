@@ -199,7 +199,7 @@ class SyncEngine {
       
       // Always proceed with sync to check for server notes, even if no local changes
       
-      // Prepare sync payload - include essential fields including url and domain
+      // Prepare sync payload - include essential fields including url, domain, and tags
       const syncPayload = {
         operation: 'sync',
         notes: notesToSync.map(note => ({
@@ -208,9 +208,10 @@ class SyncEngine {
           content: note.content,
           url: note.url,
           domain: note.domain,
+          tags: note.tags || [],
           createdAt: note.createdAt,
           updatedAt: note.updatedAt
-          // Explicitly exclude: tags, version, parent_version_id, etc.
+          // Explicitly exclude: version, parent_version_id, etc.
         })),
         deletions: localDeletions,
         lastSyncTime: this.lastSyncTime,

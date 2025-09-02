@@ -133,7 +133,11 @@ class NotesStorage {
       // Check if this is a note from the server (has encrypted content)
       if (note.title_encrypted && note.content_encrypted) {
               // This is a server note - decrypt it first
-      if ((await getPremiumStatus()).isPremium) {
+      // Clear premium status cache to get fresh status
+      await chrome.storage.local.remove(['cachedPremiumStatus']);
+      const premiumStatus = await getPremiumStatus();
+      
+      if (premiumStatus.isPremium) {
           userKey = await window.supabaseClient?.getUserEncryptionKey();
           if (userKey && window.noteEncryption) {
             try {
@@ -141,36 +145,44 @@ class NotesStorage {
               // Update the note with decrypted content
               note.title = decryptedNote.title;
               note.content = decryptedNote.content;
+              note.tags = decryptedNote.tags || [];
               // Keep the encrypted fields for future sync
               note.title_encrypted = decryptedNote.title_encrypted;
               note.content_encrypted = decryptedNote.content_encrypted;
+              note.tags_encrypted = decryptedNote.tags_encrypted;
               note.content_hash = decryptedNote.content_hash;
             } catch (decryptError) {
               console.warn('Failed to decrypt server note, using fallback content:', decryptError);
               // Fallback: provide readable content for notes that can't be decrypted
               note.title = note.title || 'Note from Server (Encrypted)';
               note.content = note.content || 'This note was synced from the server but could not be decrypted. The URL and domain information should still be visible.';
+              note.tags = [];
               // Clear encrypted fields to prevent future decryption attempts
               delete note.title_encrypted;
               delete note.content_encrypted;
+              delete note.tags_encrypted;
               delete note.content_hash;
             }
           } else {
             // No premium access - provide fallback content
             note.title = note.title || 'Note from Server (Premium Required)';
             note.content = note.content || 'This note requires premium access to decrypt. The URL and domain information should still be visible.';
+            note.tags = [];
             // Clear encrypted fields
             delete note.title_encrypted;
             delete note.content_encrypted;
+            delete note.tags_encrypted;
             delete note.content_hash;
           }
         } else {
           // No premium access - provide fallback content
           note.title = note.title || 'Note from Server (Premium Required)';
           note.content = note.content || 'This note requires premium access to decrypt. The URL and domain information should still be visible.';
+          note.tags = [];
           // Clear encrypted fields
           delete note.title_encrypted;
           delete note.content_encrypted;
+          delete note.tags_encrypted;
           delete note.content_hash;
         }
       } else {
@@ -182,6 +194,7 @@ class NotesStorage {
             // Update the note with encrypted fields
             note.title_encrypted = encryptedNote.title_encrypted;
             note.content_encrypted = encryptedNote.content_encrypted;
+            note.tags_encrypted = encryptedNote.tags_encrypted;
             note.content_hash = encryptedNote.content_hash;
           }
         }
@@ -597,16 +610,17 @@ class NotesStorage {
         // Sort by updatedAt descending
         validNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
         
-        // Include essential fields for sync including url and domain
+        // Include essential fields for sync including url, domain, and tags
         const syncNotes = validNotes.map(note => ({
             id: note.id,
             title: note.title,
             content: note.content,
             url: note.url,
             domain: note.domain,
+            tags: note.tags || [],
             createdAt: note.createdAt,
             updatedAt: note.updatedAt
-            // Explicitly exclude: tags, version, parent_version_id, etc.
+            // Explicitly exclude: version, parent_version_id, etc.
           }));
         
         // Remove verbose logging

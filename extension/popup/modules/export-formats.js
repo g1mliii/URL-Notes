@@ -21,6 +21,7 @@ class ExportFormats {
     delete cleanNote.title_encrypted;
     delete cleanNote.content_encrypted;
     delete cleanNote.tags_encrypted;
+    delete cleanNote.content_hash;
     
     // Ensure we have plain text versions
     if (!cleanNote.title && cleanNote.title_encrypted) {
@@ -30,6 +31,11 @@ class ExportFormats {
       cleanNote.content = 'Encrypted Content';
     }
     if (!cleanNote.tags && cleanNote.tags_encrypted) {
+      cleanNote.tags = [];
+    }
+    
+    // Ensure tags is always an array
+    if (!Array.isArray(cleanNote.tags)) {
       cleanNote.tags = [];
     }
     
