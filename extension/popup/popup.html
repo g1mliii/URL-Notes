@@ -335,6 +335,32 @@
               <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path>
             </svg>
           </button>
+          <div class="citation-container">
+            <button class="format-btn citation-btn" id="citationBtn" title="Add Citation">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M4 15V9a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v6a4 4 0 0 1-4 4H8l-4-4z"></path>
+                <path d="M8 9v6"></path>
+                <path d="M16 9v6"></path>
+              </svg>
+              <div class="dropdown-indicator">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6,9 12,15 18,9"></polyline>
+                </svg>
+              </div>
+            </button>
+            <div class="citation-dropdown" id="citationDropdown" style="display: none;">
+              <div class="citation-header">
+                <h5>Generate Citation</h5>
+              </div>
+              <div class="citation-formats">
+                <button class="citation-format-btn" data-format="apa">APA Style</button>
+                <button class="citation-format-btn" data-format="mla">MLA Style</button>
+                <button class="citation-format-btn" data-format="chicago">Chicago Style</button>
+                <button class="citation-format-btn" data-format="harvard">Harvard Style</button>
+                <button class="citation-format-btn" data-format="ieee">IEEE Style</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       

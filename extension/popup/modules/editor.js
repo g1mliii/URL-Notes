@@ -212,6 +212,9 @@ class EditorManager {
       // Color: {color:#ff0000}text{/color} -> <span style="color:#ff0000">text</span>
       text = text.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, '<span style="color:$1">$2</span>');
       
+      // Citation: {citation}text{/citation} -> <span style="font-style: italic; color: var(--text-secondary)">text</span>
+      text = text.replace(/\{citation\}([^{]*)\{\/citation\}/g, '<span style="font-style: italic; color: var(--text-secondary)">$1</span>');
+      
       const lines = text.split(/\r?\n/);
       const mdLink = /\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g;
       const htmlLines = lines.map(line => {
@@ -312,7 +315,22 @@ class EditorManager {
       el.replaceWith(md);
     });
 
-    // Color spans
+    // Citation spans (preserve with special formatting) - process BEFORE color spans
+    tmp.querySelectorAll('span[style*="font-style: italic"][style*="color"]').forEach(el => {
+      const text = el.textContent;
+      // Check if this looks like a citation (italic + secondary color)
+      const style = el.getAttribute('style');
+      if (style.includes('font-style: italic') && style.includes('var(--text-secondary)')) {
+        // Mark as citation with special syntax
+        const md = document.createTextNode(`{citation}${text}{/citation}`);
+        el.replaceWith(md);
+      } else {
+        // Just unwrap if not a citation
+        el.replaceWith(document.createTextNode(text));
+      }
+    });
+    
+    // Color spans (process AFTER citation spans to avoid conflicts)
     tmp.querySelectorAll('span[style*="color"]').forEach(el => {
       const text = el.textContent;
       const style = el.getAttribute('style');
@@ -794,6 +812,360 @@ class EditorManager {
     }
   }
 
+  // Generate citation in specified format
+  generateCitation(format) {
+    // Try to get current note from multiple sources
+    let note = this.currentNote;
+    
+    // If no current note in editor, try to get it from the main popup instance
+    if (!note && window.urlNotesApp && window.urlNotesApp.currentNote) {
+      note = window.urlNotesApp.currentNote;
+    }
+    
+    // If still no note, try to get it from the current site context
+    if (!note && window.urlNotesApp && window.urlNotesApp.currentSite) {
+      const currentSite = window.urlNotesApp.currentSite;
+      note = {
+        title: 'Untitled Note',
+        url: currentSite.url || '',
+        pageTitle: currentSite.title || 'Unknown Page',
+        domain: currentSite.domain || 'Unknown Domain',
+        createdAt: new Date().toISOString()
+      };
+    }
+    
+    // Last resort: try to get site info from DOM elements
+    if (!note) {
+      const domainEl = document.getElementById('siteDomain');
+      const urlEl = document.getElementById('siteUrl');
+      if (domainEl && urlEl) {
+        const domain = domainEl.textContent || 'Unknown Domain';
+        const url = urlEl.textContent || '';
+        note = {
+          title: 'Untitled Note',
+          url: url,
+          pageTitle: document.title || 'Unknown Page',
+          domain: domain,
+          createdAt: new Date().toISOString()
+        };
+      }
+    }
+    
+    if (!note) {
+      console.warn('No current note or site context available for citation generation');
+      return '';
+    }
+    
+    console.log('Generating citation for note:', note);
+    
+    // Get note properties with fallbacks
+    const title = note.title || 'Untitled Note';
+    const url = note.url || '';
+    const pageTitle = note.pageTitle || note.title || 'Unknown Page';
+    const domain = note.domain || 'Unknown Domain';
+    
+    // Handle date creation with fallbacks
+    let createdAt;
+    try {
+      createdAt = note.createdAt ? new Date(note.createdAt) : new Date();
+      if (isNaN(createdAt.getTime())) {
+        createdAt = new Date();
+      }
+    } catch (error) {
+      console.warn('Invalid date, using current date:', error);
+      createdAt = new Date();
+    }
+    
+    const year = createdAt.getFullYear();
+    const month = createdAt.getMonth();
+    const day = createdAt.getDate();
+    
+    // Format date components
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthName = monthNames[month];
+    
+    // Generate citation based on format
+    let citation = '';
+    switch (format) {
+      case 'apa':
+        // APA 7th Edition format
+        citation = `${pageTitle ? `${pageTitle}. ` : ''}(${year}, ${monthName} ${day}). ${title}. Retrieved from ${url}`;
+        break;
+      
+      case 'mla':
+        // MLA 9th Edition format  
+        citation = `"${pageTitle}." ${domain}, ${day} ${monthName} ${year}, ${url}.`;
+        break;
+      
+      case 'chicago':
+        // Chicago Manual of Style format
+        citation = `"${pageTitle}." ${domain}. Accessed ${monthName} ${day}, ${year}. ${url}.`;
+        break;
+      
+      case 'harvard':
+        // Harvard referencing format
+        citation = `${pageTitle} (${year}) ${domain}, viewed ${day} ${monthName} ${year}, <${url}>.`;
+        break;
+      
+      case 'ieee':
+        // IEEE format
+        citation = `"${pageTitle}," ${domain}, ${monthName} ${day}, ${year}. [Online]. Available: ${url}`;
+        break;
+      
+      default:
+        citation = `${pageTitle} - ${url} (accessed ${monthName} ${day}, ${year})`;
+    }
+    
+    console.log(`Generated ${format} citation:`, citation);
+    return citation;
+  }
+  
+  // Handle citation button click
+  toggleCitationDropdown() {
+    const dropdown = document.getElementById('citationDropdown');
+    if (!dropdown) return;
+    
+    const isVisible = dropdown.style.display !== 'none' && dropdown.classList.contains('show');
+    
+    if (isVisible) {
+      this.hideCitationDropdown();
+    } else {
+      this.showCitationDropdown();
+    }
+  }
+  
+  // Show citation dropdown
+  showCitationDropdown() {
+    const dropdown = document.getElementById('citationDropdown');
+    const citationBtn = document.getElementById('citationBtn');
+    if (!dropdown || !citationBtn) return;
+    
+    // Hide other dropdowns first
+    const colorWheelPopup = document.getElementById('colorWheelPopup');
+    if (colorWheelPopup) colorWheelPopup.style.display = 'none';
+    
+    // Move popup to body to escape editor stacking context (same as color picker)
+    if (dropdown.parentNode !== document.body) {
+      document.body.appendChild(dropdown);
+    }
+    
+    // Position the popup relative to the button (same logic as color picker)
+    const buttonRect = citationBtn.getBoundingClientRect();
+    const popupWidth = 180;
+    const popupHeight = 200;
+    
+    // Calculate position (below and to the right of button, but keep on screen)
+    let left = buttonRect.left;
+    let top = buttonRect.bottom + 5;
+    
+    // Adjust if popup would go off screen
+    if (left + popupWidth > window.innerWidth) {
+      left = buttonRect.right - popupWidth;
+    }
+    if (top + popupHeight > window.innerHeight) {
+      top = buttonRect.top - popupHeight - 5;
+    }
+    
+    // Ensure minimum distance from edges
+    left = Math.max(10, left);
+    top = Math.max(10, top);
+    
+    dropdown.style.left = `${left}px`;
+    dropdown.style.top = `${top}px`;
+    dropdown.style.display = 'block';
+    dropdown.classList.add('show');
+    
+    // Add overlay to close when clicking outside
+    const overlay = document.createElement('div');
+    overlay.className = 'citation-dropdown-overlay';
+    overlay.onclick = () => this.hideCitationDropdown();
+    document.body.appendChild(overlay);
+  }
+  
+  // Hide citation dropdown
+  hideCitationDropdown() {
+    const dropdown = document.getElementById('citationDropdown');
+    if (dropdown) {
+      dropdown.style.display = 'none';
+      dropdown.classList.remove('show');
+      
+      // Move dropdown back to its original container if it was moved to body
+      const originalContainer = document.querySelector('.citation-container');
+      if (originalContainer && dropdown.parentNode === document.body) {
+        originalContainer.appendChild(dropdown);
+      }
+    }
+    
+    // Remove overlay
+    const overlay = document.querySelector('.citation-dropdown-overlay');
+    if (overlay) {
+      overlay.remove();
+    }
+  }
+  
+  // Handle citation format selection
+  async handleCitationFormat(format) {
+    try {
+      console.log('Handling citation format:', format);
+      
+      // Try to get current note from multiple sources
+      let note = this.currentNote;
+      if (!note && window.urlNotesApp && window.urlNotesApp.currentNote) {
+        note = window.urlNotesApp.currentNote;
+      }
+      if (!note && window.urlNotesApp && window.urlNotesApp.currentSite) {
+        note = window.urlNotesApp.currentSite;
+      }
+      
+      console.log('Current note state:', note);
+      console.log('Main app currentNote:', window.urlNotesApp?.currentNote);
+      console.log('Main app currentSite:', window.urlNotesApp?.currentSite);
+      
+      const citation = this.generateCitation(format);
+      console.log('Generated citation:', citation);
+      
+      if (!citation) {
+        console.error('Citation generation failed - empty result');
+        this.showToast('Unable to generate citation - no note data available', 'error');
+        return;
+      }
+      
+      // Insert citation into editor
+      this.insertCitationIntoEditor(citation);
+      
+      // Copy to clipboard
+      await this.copyCitationToClipboard(citation);
+      
+      // Hide dropdown
+      this.hideCitationDropdown();
+      
+      // Show success toast
+      const formatNames = {
+        'apa': 'APA',
+        'mla': 'MLA', 
+        'chicago': 'Chicago',
+        'harvard': 'Harvard',
+        'ieee': 'IEEE'
+      };
+      
+      this.showToast(`${formatNames[format]} citation added to note and copied to clipboard`, 'success');
+      
+    } catch (error) {
+      console.error('Error handling citation:', error);
+      this.showToast('Failed to generate citation', 'error');
+    }
+  }
+  
+  // Insert citation into the editor at cursor position
+  insertCitationIntoEditor(citation) {
+    const contentInput = document.getElementById('noteContentInput');
+    if (!contentInput) return;
+    
+    contentInput.focus();
+    
+    const selection = window.getSelection();
+    if (selection.rangeCount === 0) {
+      // No selection, append to end
+      const brElement = document.createElement('br');
+      contentInput.appendChild(brElement);
+      
+      const citationElement = document.createElement('span');
+      citationElement.textContent = citation;
+      citationElement.style.fontStyle = 'italic';
+      citationElement.style.color = 'var(--text-secondary)';
+      contentInput.appendChild(citationElement);
+      
+      // Move cursor after citation
+      const range = document.createRange();
+      range.setStartAfter(citationElement);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } else {
+      // Insert at current cursor position
+      const range = selection.getRangeAt(0);
+      
+      // Create citation element
+      const citationElement = document.createElement('span');
+      citationElement.textContent = citation;
+      citationElement.style.fontStyle = 'italic';
+      citationElement.style.color = 'var(--text-secondary)';
+      
+      // Insert citation at current position
+      range.insertNode(citationElement);
+      
+      // Add line break after citation
+      const brElement = document.createElement('br');
+      range.setStartAfter(citationElement);
+      range.insertNode(brElement);
+      
+      // Move cursor after the line break
+      range.setStartAfter(brElement);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+    
+    // Update character count and trigger save draft
+    this.updateCharCount();
+    this.saveDraftDebounced();
+  }
+  
+  // Copy citation to clipboard
+  async copyCitationToClipboard(citation) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(citation);
+      } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = citation;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+      // Don't throw error as citation was still inserted
+    }
+  }
+  
+  // Show toast notification (utility function)
+  showToast(message, type = 'info') {
+    try {
+      // Try to use existing toast functionality
+      if (window.urlNotesApp && window.urlNotesApp.showToast) {
+        window.urlNotesApp.showToast(message, type);
+        return;
+      }
+      
+      // Fallback toast implementation
+      let toast = document.getElementById('toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast';
+        toast.className = 'toast';
+        document.body.appendChild(toast);
+      }
+      
+      toast.textContent = message;
+      toast.className = `toast ${type} show`;
+      
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error showing toast:', error);
+    }
+  }
+
   // Initialize formatting toolbar event listeners
   initializeFormattingControls() {
     // Bold button
@@ -889,6 +1261,11 @@ class EditorManager {
       if (colorWheelPopup && !e.target.closest('.color-picker-container')) {
         colorWheelPopup.style.display = 'none';
       }
+      
+      // Close citation dropdown when clicking outside
+      if (citationDropdown && !e.target.closest('.citation-container')) {
+        this.hideCitationDropdown();
+      }
     });
     
     // Close color picker when editor is closed
@@ -896,7 +1273,35 @@ class EditorManager {
       if (colorWheelPopup) {
         colorWheelPopup.style.display = 'none';
       }
+      
+      // Close citation dropdown when editor is closed
+      if (citationDropdown) {
+        this.hideCitationDropdown();
+      }
     });
+
+    // Citation button and dropdown
+    const citationBtn = document.getElementById('citationBtn');
+    const citationDropdown = document.getElementById('citationDropdown');
+    
+    if (citationBtn) {
+      citationBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleCitationDropdown();
+      });
+    }
+    
+    if (citationDropdown) {
+      // Handle citation format button clicks
+      citationDropdown.addEventListener('click', (e) => {
+        const formatBtn = e.target.closest('.citation-format-btn');
+        if (formatBtn) {
+          e.stopPropagation();
+          const format = formatBtn.dataset.format;
+          this.handleCitationFormat(format);
+        }
+      });
+    }
 
     // Update button states on selection change
     const contentInput = document.getElementById('noteContentInput');

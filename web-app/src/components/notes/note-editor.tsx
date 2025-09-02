@@ -25,6 +25,7 @@ export default function NoteEditor({ selectedNote, onClose, onSave }: NoteEditor
   const [tags, setTags] = useState<string[]>(selectedNote?.tags || [])
   const [currentColor, setCurrentColor] = useState('#000000')
   const [showColorPicker, setShowColorPicker] = useState(false)
+  const [showCitationDropdown, setShowCitationDropdown] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
   // Load content into contenteditable when note changes
@@ -33,6 +34,21 @@ export default function NoteEditor({ selectedNote, onClose, onSave }: NoteEditor
       contentRef.current.innerHTML = buildContentHtml(selectedNote.content || '')
     }
   }, [selectedNote])
+
+  // Close citation dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('[data-citation-container]')) {
+        setShowCitationDropdown(false)
+      }
+    }
+
+    if (showCitationDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showCitationDropdown])
 
   // Convert markdown-style formatting to HTML
   const buildContentHtml = (content: string): string => {
@@ -116,6 +132,112 @@ export default function NoteEditor({ selectedNote, onClose, onSave }: NoteEditor
       })
     }
   }
+
+  // Citation generation functions
+  const generateCitation = (format: string): string => {
+    if (!selectedNote) return '';
+    
+    const noteTitle = title || 'Untitled Note';
+    const url = selectedNote.url || '';
+    const pageTitle = selectedNote.url || ''; // Assuming url contains page title info
+    const domain = selectedNote.domain || '';
+    const createdAt = new Date(selectedNote.created_at);
+    const year = createdAt.getFullYear();
+    const day = createdAt.getDate();
+    
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthName = monthNames[createdAt.getMonth()];
+    
+    switch (format) {
+      case 'apa':
+        return `${pageTitle ? `${pageTitle}. ` : ''}(${year}, ${monthName} ${day}). ${noteTitle}. Retrieved from ${url}`;
+      
+      case 'mla':
+        return `"${pageTitle || noteTitle}." ${domain}, ${day} ${monthName} ${year}, ${url}.`;
+      
+      case 'chicago':
+        return `"${pageTitle || noteTitle}." ${domain}. Accessed ${monthName} ${day}, ${year}. ${url}.`;
+      
+      case 'harvard':
+        return `${pageTitle || noteTitle} (${year}) ${domain}, viewed ${day} ${monthName} ${year}, <${url}>.`;
+      
+      case 'ieee':
+        return `"${pageTitle || noteTitle}," ${domain}, ${monthName} ${day}, ${year}. [Online]. Available: ${url}`;
+      
+      default:
+        return `${pageTitle || noteTitle} - ${url} (accessed ${monthName} ${day}, ${year})`;
+    }
+  };
+
+  const insertCitationIntoEditor = (citation: string) => {
+    if (!contentRef.current) return;
+    
+    contentRef.current.focus();
+    
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      
+      // Add line break before citation
+      const brElement = document.createElement('br');
+      range.insertNode(brElement);
+      range.setStartAfter(brElement);
+      
+      // Create citation element with styling
+      const citationElement = document.createElement('span');
+      citationElement.textContent = citation;
+      citationElement.style.fontStyle = 'italic';
+      citationElement.style.color = '#9CA3AF'; // text-secondary equivalent
+      range.insertNode(citationElement);
+      
+      // Move cursor after citation
+      range.setStartAfter(citationElement);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } else {
+      // Append to end if no selection
+      const brElement = document.createElement('br');
+      const citationElement = document.createElement('span');
+      citationElement.textContent = citation;
+      citationElement.style.fontStyle = 'italic';
+      citationElement.style.color = '#9CA3AF';
+      
+      contentRef.current.appendChild(brElement);
+      contentRef.current.appendChild(citationElement);
+    }
+    
+    // Update content state
+    handleContentChange();
+  };
+
+  const copyCitationToClipboard = async (citation: string) => {
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(citation);
+      }
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+    }
+  };
+
+  const handleCitationFormat = async (format: string) => {
+    const citation = generateCitation(format);
+    if (!citation) return;
+    
+    // Insert citation into editor
+    insertCitationIntoEditor(citation);
+    
+    // Copy to clipboard
+    await copyCitationToClipboard(citation);
+    
+    // Close dropdown
+    setShowCitationDropdown(false);
+    
+    // Could add a toast notification here if needed
+    console.log(`${format.toUpperCase()} citation added and copied to clipboard`);
+  };
 
   if (!selectedNote) {
     return (
@@ -323,6 +445,118 @@ export default function NoteEditor({ selectedNote, onClose, onSave }: NoteEditor
               <line x1="4" y1="12" x2="20" y2="12"></line>
             </svg>
           </button>
+        </div>
+        
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '4px' }} data-citation-container>
+          {/* Citation Button */}
+          <button
+            onClick={() => setShowCitationDropdown(!showCitationDropdown)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '32px',
+              height: '32px',
+              border: 'none',
+              borderRadius: '6px',
+              backgroundColor: 'transparent',
+              color: 'rgba(156, 163, 175, 0.7)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              position: 'relative'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(75, 85, 99, 0.4)'
+              e.currentTarget.style.color = 'white'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent'
+              e.currentTarget.style.color = 'rgba(156, 163, 175, 0.7)'
+            }}
+            title="Add Citation"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M4 15V9a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v6a4 4 0 0 1-4 4H8l-4-4z"></path>
+              <path d="M8 9v6"></path>
+              <path d="M16 9v6"></path>
+            </svg>
+            <div style={{
+              position: 'absolute',
+              bottom: '-2px',
+              right: '-2px',
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(75, 85, 99, 0.8)',
+              border: '1px solid rgba(156, 163, 175, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="6,9 12,15 18,9"></polyline>
+              </svg>
+            </div>
+          </button>
+          
+          {/* Citation Dropdown */}
+          {showCitationDropdown && (
+            <div style={{
+              position: 'absolute',
+              top: '40px',
+              right: '0',
+              backgroundColor: 'rgba(31, 41, 55, 0.95)',
+              border: '1px solid rgba(75, 85, 99, 0.3)',
+              borderRadius: '12px',
+              padding: '8px',
+              zIndex: 1000,
+              minWidth: '180px',
+              backdropFilter: 'blur(20px)'
+            }}>
+              <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(75, 85, 99, 0.3)', marginBottom: '8px' }}>
+                <h5 style={{ margin: 0, color: 'white', fontSize: '14px', fontWeight: 600 }}>Generate Citation</h5>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {[
+                  { format: 'apa', label: 'APA Style' },
+                  { format: 'mla', label: 'MLA Style' },
+                  { format: 'chicago', label: 'Chicago Style' },
+                  { format: 'harvard', label: 'Harvard Style' },
+                  { format: 'ieee', label: 'IEEE Style' }
+                ].map(({ format, label }) => (
+                  <button
+                    key={format}
+                    onClick={() => handleCitationFormat(format)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      backgroundColor: 'rgba(75, 85, 99, 0.2)',
+                      border: '1px solid rgba(75, 85, 99, 0.3)',
+                      borderRadius: '8px',
+                      color: 'white',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      textAlign: 'center'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(75, 85, 99, 0.4)'
+                      e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)'
+                      e.currentTarget.style.transform = 'translateY(-1px)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(75, 85, 99, 0.2)'
+                      e.currentTarget.style.borderColor = 'rgba(75, 85, 99, 0.3)'
+                      e.currentTarget.style.transform = 'translateY(0)'
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         
         <div style={{ position: 'relative' }}>
