@@ -1,70 +1,41 @@
-# GitHub Pages Deployment for Anchored Web Application
+# Cross-Repository GitHub Pages Deployment for Anchored Web Application
 name: Deploy to GitHub Pages
 
 on:
   push:
     branches: [ main ]
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+# Sets permissions for cross-repository deployment
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-# Allow only one concurrent deployment
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
 
 jobs:
-  # Build job
-  build:
+  # Build and deploy job
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout source repository
         uses: actions/checkout@v4
-        
-      - name: Enable GitHub Pages via API
-        run: |
-          # First, try to create/enable Pages with GitHub Actions source
-          curl -X POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            https://api.github.com/repos/${{ github.repository }}/pages \
-            -d '{
-              "source": {
-                "branch": "main",
-                "path": "/"
-              },
-              "build_type": "workflow"
-            }' || echo "Pages may already be enabled, continuing..."
-          
-          # Wait a moment for the API to process
-          sleep 5
-        
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
         
       - name: Build web application
         run: |
           # Create build directory
-          mkdir -p _site
+          mkdir -p dist
           
           # Copy web application files to build directory
-          cp -r web-app/* _site/
+          cp -r web-app/* dist/
           
           # Ensure HTTPS is enforced in production
           echo "Configuring for HTTPS deployment..."
           
           # Create .nojekyll file to prevent Jekyll processing
-          touch _site/.nojekyll
+          touch dist/.nojekyll
           
           # Ensure CNAME file is present for custom domain
-          echo "anchored.site" > _site/CNAME
+          echo "anchored.site" > dist/CNAME
           
           # Create robots.txt for SEO
-          cat > _site/robots.txt << EOF
+          cat > dist/robots.txt << EOF
           User-agent: *
           Allow: /
           
@@ -72,7 +43,7 @@ jobs:
           EOF
           
           # Create basic sitemap.xml
-          cat > _site/sitemap.xml << EOF
+          cat > dist/sitemap.xml << EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
             <url>
@@ -96,19 +67,13 @@ jobs:
           </urlset>
           EOF
           
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy to GitHub Pages Repository
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          path: _site
-
-  # Deployment job
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          # Use a personal access token for cross-repository deployment
+          personal_token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          # Deploy to the Anchored repository
+          external_repository: g1mliii/Anchored
+          publish_dir: ./dist
+          cname: anchored.site
+          publish_branch: main
