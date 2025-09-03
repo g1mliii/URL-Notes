@@ -4,20 +4,12 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
-
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
 
 jobs:
   # Build and deploy job
@@ -30,22 +22,22 @@ jobs:
       - name: Build web application
         run: |
           # Create build directory
-          mkdir -p _site
+          mkdir -p dist
           
           # Copy web application files to build directory
-          cp -r web-app/* _site/
+          cp -r web-app/* dist/
           
           # Ensure HTTPS is enforced in production
           echo "Configuring for HTTPS deployment..."
           
           # Create .nojekyll file to prevent Jekyll processing
-          touch _site/.nojekyll
+          touch dist/.nojekyll
           
           # Ensure CNAME file is present for custom domain
-          echo "anchored.site" > _site/CNAME
+          echo "anchored.site" > dist/CNAME
           
           # Create robots.txt for SEO
-          cat > _site/robots.txt << EOF
+          cat > dist/robots.txt << EOF
           User-agent: *
           Allow: /
           
@@ -53,7 +45,7 @@ jobs:
           EOF
           
           # Create basic sitemap.xml
-          cat > _site/sitemap.xml << EOF
+          cat > dist/sitemap.xml << EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
             <url>
@@ -77,16 +69,9 @@ jobs:
           </urlset>
           EOF
           
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-        with:
-          enablement: true
-          
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-
       - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          cname: anchored.site
