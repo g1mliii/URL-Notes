@@ -4,6 +4,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 # Sets permissions for cross-repository deployment
 permissions:
@@ -66,6 +67,13 @@ jobs:
             </url>
           </urlset>
           EOF
+          
+          # List files to verify build
+          echo "Build contents:"
+          ls -la dist/
+          echo ""
+          echo "Verifying critical files:"
+          ls -la dist/config.js dist/health.json dist/js/monitoring.js || echo "Some files missing"
           
       - name: Deploy to GitHub Pages Repository
         uses: peaceiris/actions-gh-pages@v3

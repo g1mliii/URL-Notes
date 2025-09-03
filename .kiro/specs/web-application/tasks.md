@@ -98,7 +98,8 @@
     - Ensure HTTPS is enabled through GitHub Pages
     - _Requirements: Security and performance requirements_
 
-  - [-] 5.2 Deploy and monitor application
+  - [ ] 5.2 Deploy and monitor application
+
 
 
 
