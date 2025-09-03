@@ -1,202 +1,93 @@
-# URL Notes Web Application
+# Anchored Web Application
 
-A modern web application for managing website notes with cloud sync, built with Next.js 14, TypeScript, and Tailwind CSS.
+A companion web platform for the Anchored browser extension, providing premium users with comprehensive account management, note synchronization, and advanced note management capabilities.
 
-## Features
+## Brand Identity
 
-- 🔐 **Authentication**: Secure user authentication with Supabase Auth
-- 📝 **Notes Management**: Create, edit, and organize notes by domain/URL
-- 🔍 **Advanced Search**: Search across all notes with filtering and sorting
-- 🏷️ **Tag System**: Organize notes with customizable tags
-- ☁️ **Cloud Sync**: Premium feature for cross-device synchronization
-- 🌙 **Dark Mode**: Beautiful light and dark themes
-- 📱 **Responsive Design**: Optimized for desktop and mobile devices
-- 🔒 **End-to-End Encryption**: Client-side encryption for note privacy
-
-## Tech Stack
-
-- **Framework**: Next.js 14 with App Router
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **State Management**: Zustand
-- **Authentication**: Supabase Auth
-- **Database**: Supabase (PostgreSQL)
-- **UI Components**: Custom component library with Lucide icons
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+ 
-- npm or yarn
-- Supabase project (for authentication and database)
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd web-app
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
-   ```bash
-   cp env.example .env.local
-   ```
-   
-   Edit `.env.local` and add your Supabase credentials:
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url_here
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
-   NEXT_PUBLIC_APP_URL=http://localhost:3000
-   ```
-
-4. **Run the development server**
-   ```bash
-   npm run dev
-   ```
-
-5. **Open your browser**
-   Navigate to [http://localhost:3000](http://localhost:3000)
+**Anchored** represents the concept of anchoring your ideas and notes to specific web locations. The application features a dark blue ocean anchor theme with glassmorphism design elements, creating a cohesive nautical-inspired brand experience.
 
 ## Project Structure
 
 ```
-src/
-├── app/                    # Next.js App Router pages
-│   ├── dashboard/         # Dashboard page (protected)
-│   ├── layout.tsx         # Root layout with auth provider
-│   └── page.tsx           # Home page with auth form
-├── components/            # Reusable UI components
-│   ├── auth/             # Authentication components
-│   ├── dashboard/        # Dashboard layout components
-│   ├── notes/            # Notes-related components
-│   └── ui/               # Base UI components
-├── contexts/              # React contexts
-│   └── auth-context.tsx  # Authentication context
-├── lib/                   # Utility libraries
-│   ├── encryption.ts     # Client-side encryption
-│   ├── store.ts          # Zustand state store
-│   ├── supabase.ts       # Supabase client
-│   ├── types.ts          # TypeScript type definitions
-│   └── utils.ts          # Utility functions
+web-app/
+├── index.html              # Landing/login page
+├── dashboard.html          # Main notes dashboard
+├── account.html           # Account management
+├── css/
+│   ├── main.css           # Core styles with glassmorphism design tokens
+│   ├── components.css     # Reusable UI components
+│   └── responsive.css     # Mobile-first responsive breakpoints
+├── js/
+│   ├── app.js            # Main application orchestrator
+│   ├── auth.js           # Authentication management (task 3)
+│   ├── dashboard.js      # Notes dashboard functionality (task 4)
+│   ├── account.js        # Account management (task 5)
+│   └── lib/              # Shared libraries (adapted from extension)
+│       └── placeholder.js # Placeholder for future libraries
+└── README.md             # This file
 ```
 
-## Key Components
+## Features
 
-### Authentication
-- **AuthForm**: Sign in/sign up form with validation
-- **AuthProvider**: Context provider for authentication state
-- **Protected Routes**: Automatic redirection for unauthenticated users
+- **Ocean-Themed Glassmorphism**: Modern glass-like surfaces with ocean-blue backdrop blur effects
+- **Responsive Layout**: Mobile-first design with breakpoints for tablet and desktop
+- **Authentication System**: User registration, login, and password reset (to be implemented)
+- **Notes Dashboard**: View, search, and manage synced notes (to be implemented)
+- **Subscription Management**: $2.50/month premium tier with Stripe integration (to be implemented)
+- **Export/Import**: Note data portability with multiple formats (to be implemented)
 
-### Dashboard
-- **DashboardLayout**: Main layout with sidebar and header
-- **Sidebar**: Navigation and quick actions
-- **Header**: Search bar and user menu
+## Pricing
 
-### Notes
-- **NotesView**: Main notes interface
-- **NotesList**: Scrollable list of notes
-- **NoteEditor**: Rich text editor for notes
+- **Free Tier**: Browser extension with local storage
+- **Premium Tier**: $2.50/month for cloud sync, web access, and advanced features
 
-## State Management
+## Design Tokens
 
-The application uses Zustand for state management with the following stores:
+The application uses CSS custom properties for consistent ocean-themed styling:
 
-- **User State**: Authentication status and user data
-- **Notes State**: Notes data, filtering, and selection
-- **UI State**: Theme, sidebar state, and preferences
-- **Sync State**: Cloud synchronization status
+### Ocean Anchor Theme
+- **Primary Colors**: Deep ocean blues (#1B4F72, #2E86AB) representing depth and stability
+- **Secondary Colors**: Lighter ocean tones (#A8DADC, #457B9D) for accents and highlights
+- **Background**: Ocean gradient from light aqua to deep navy
+- **Typography**: Apple system font stack with ocean-blue text colors
+- **Glassmorphism**: Translucent panels with ocean-blue tinted backgrounds
+- **Shadows**: Layered shadows with ocean-inspired color overlays
+- **Future Branding**: Anchor logo integration planned for navigation and loading states
 
-## Authentication Flow
+### Responsive Design
+- **Mobile-First**: Base styles for 320px+ with progressive enhancement
+- **Breakpoints**: Tablet (768px+) and Desktop (1024px+) optimizations
+- **Touch-Friendly**: 44px minimum touch targets for mobile interactions
+- **Accessibility**: WCAG compliant contrast ratios with ocean color palette
 
-1. **Sign Up**: Users create accounts with email/password
-2. **Email Verification**: Supabase sends confirmation emails
-3. **Sign In**: Users authenticate with credentials
-4. **Session Management**: Automatic session persistence
-5. **Protected Routes**: Dashboard access requires authentication
+## Development Status
 
-## Database Schema
+This is the initial project structure created in Task 1. Subsequent tasks will implement:
 
-The application integrates with Supabase using the following tables:
+- Task 2: Core libraries adapted from extension
+- Task 3: Authentication system with Supabase
+- Task 4: Notes dashboard functionality
+- Task 5: Subscription management
+- Task 6: Export functionality
+- Task 7: Import functionality
+- Task 8: Mobile optimization
+- Task 9: Encryption migration
+- Task 10: Edge functions
+- Task 11: Testing
+- Task 12: Deployment
 
-- **profiles**: User metadata and subscription info
-- **notes**: Encrypted note content and metadata
-- **note_versions**: Version history for notes
+## Browser Support
 
-## Encryption
+- Chrome 90+
+- Firefox 88+
+- Safari 14+
+- Edge 90+
 
-- **Client-side Encryption**: AES-256 encryption using Web Crypto API
-- **Key Derivation**: PBKDF2 for secure key generation
-- **Zero-knowledge**: Server never sees unencrypted content
+## Accessibility
 
-## Development
-
-### Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-
-### Code Style
-
-- **TypeScript**: Strict type checking enabled
-- **ESLint**: Code quality and consistency
-- **Prettier**: Automatic code formatting
-- **Tailwind**: Utility-first CSS approach
-
-## Deployment
-
-### Vercel (Recommended)
-
-1. Connect your GitHub repository to Vercel
-2. Set environment variables in Vercel dashboard
-3. Deploy automatically on push to main branch
-
-### Other Platforms
-
-- **Netlify**: Similar to Vercel deployment
-- **Railway**: Full-stack deployment platform
-- **Self-hosted**: Docker container deployment
-
-## Environment Variables
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | Yes |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key | Yes |
-| `NEXT_PUBLIC_APP_URL` | Application URL for redirects | Yes |
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License.
-
-## Support
-
-For support and questions:
-- Create an issue in the repository
-- Check the documentation
-- Contact the development team
-
-## Roadmap
-
-- [ ] Advanced note organization (folders, collections)
-- [ ] Collaborative notes and sharing
-- [ ] Mobile app (React Native)
-- [ ] API for third-party integrations
-- [ ] Advanced export formats (PDF, Word)
-- [ ] Offline support with service workers
+- Semantic HTML structure
+- ARIA labels and roles
+- Keyboard navigation support
+- Focus management
+- Color contrast compliance
+- Reduced motion support

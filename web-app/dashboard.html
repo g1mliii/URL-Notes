@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Anchored</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Navigation Header -->
+        <header class="nav-header">
+            <div class="nav-content">
+                <div class="logo">
+                    <h1>Anchored</h1>
+                </div>
+                <nav class="nav-links">
+                    <a href="account.html" class="nav-link">Account</a>
+                    <button id="logoutBtn" class="nav-link btn-secondary">Logout</button>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Dashboard Content -->
+        <main class="dashboard-main">
+            <div class="dashboard-content">
+                <!-- Main Header with Search and Filters -->
+                <div class="content-header">
+                    <div class="header-top">
+                        <div class="header-left">
+                            <h2>Your Notes</h2>
+                            <div class="selection-info hidden" id="selectionInfo">
+                                <span id="selectedCount">0</span> selected
+                            </div>
+                        </div>
+                        <div class="header-right">
+                            <button id="exportBtn" class="btn-secondary btn-icon">Export</button>
+                            <button id="importBtn" class="btn-secondary btn-icon">Import</button>
+                            <button id="newNoteBtn" class="btn-primary">New Note</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Search and Filters Bar -->
+                    <div class="filters-bar">
+                        <div class="search-section">
+                            <input type="text" id="mainSearchInput" placeholder="Search notes..." class="search-input">
+                        </div>
+                        <div class="filters-section">
+                            <select id="domainFilter" class="filter-select">
+                                <option value="">All Domains</option>
+                            </select>
+                            <select id="dateFilter" class="filter-select">
+                                <option value="">All Time</option>
+                                <option value="today">Today</option>
+                                <option value="week">This Week</option>
+                                <option value="month">This Month</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Selection Actions Bar -->
+                <div class="selection-actions hidden" id="selectionActions">
+                    <div class="selection-controls">
+                        <button id="selectAllBtn" class="btn-secondary btn-small">Select All</button>
+                        <button id="deselectAllBtn" class="btn-secondary btn-small">Deselect All</button>
+                    </div>
+                    <div class="bulk-actions">
+                        <button id="bulkDeleteBtn" class="btn-danger btn-small">Delete Selected</button>
+                        <button id="bulkExportBtn" class="btn-secondary btn-small">Export Selected</button>
+                    </div>
+                </div>
+
+                <!-- Notes Grid -->
+                <div class="notes-grid" id="notesGrid">
+                    <!-- Notes will be dynamically loaded here -->
+                </div>
+
+                <!-- Empty State -->
+                <div class="empty-state hidden" id="emptyState">
+                    <h3>No notes found</h3>
+                    <p>Start taking notes with the browser extension or create your first note here.</p>
+                    <button class="btn-primary">Get Browser Extension</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Note Side Panel -->
+        <div class="note-panel hidden" id="notePanel">
+            <div class="note-panel-header">
+                <button class="panel-close" id="closePanel">&times;</button>
+                <div class="panel-actions">
+                    <button type="button" id="editNoteBtn" class="btn-secondary btn-small">Edit</button>
+                    <button type="button" id="deleteNotePanelBtn" class="btn-danger btn-small">Delete</button>
+                </div>
+            </div>
+            
+            <div class="note-panel-content">
+                <!-- View Mode -->
+                <div class="note-view" id="noteView">
+                    <div class="note-header">
+                        <h3 id="noteViewTitle">Note Title</h3>
+                        <div class="note-meta">
+                            <span id="noteViewDate" class="note-date"></span>
+                            <span id="noteViewDomain" class="note-domain"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="note-content-display" id="noteContentDisplay">
+                        <!-- Formatted note content will be displayed here -->
+                    </div>
+                    
+                    <div class="note-url-display" id="noteUrlDisplay">
+                        <!-- URL will be displayed here if present -->
+                    </div>
+                    
+                    <div class="note-tags-display" id="noteTagsDisplay">
+                        <!-- Tags will be displayed here -->
+                    </div>
+                </div>
+                
+                <!-- Edit Mode -->
+                <div class="note-edit hidden" id="noteEdit">
+                    <form id="noteForm">
+                        <div class="input-group">
+                            <input type="text" id="noteTitle" placeholder="Note title...">
+                        </div>
+                        <div class="input-group">
+                            <input type="url" id="noteUrl" placeholder="URL (optional)">
+                        </div>
+                        <div class="input-group">
+                            <div class="note-content-input" id="noteContentInput" contenteditable="true" placeholder="Write your note here..."></div>
+                        </div>
+                        <div class="input-group">
+                            <input type="text" id="noteTags" placeholder="Tags (comma separated)">
+                        </div>
+                        <div class="edit-actions">
+                            <button type="button" id="cancelEditBtn" class="btn-secondary">Cancel</button>
+                            <button type="submit" class="btn-primary">Save Note</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Modal -->
+        <div class="modal hidden" id="exportModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Export Notes</h3>
+                    <button class="modal-close" id="closeExportModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Export interface will be implemented in later tasks -->
+                    <p>Export functionality will be implemented in task 6.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="js/lib/encryption.js"></script>
+    <script src="js/lib/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
