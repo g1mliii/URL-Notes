@@ -1,0 +1,279 @@
+/* CSS Custom Properties - Anchored Ocean Theme with Glassmorphism */
+:root {
+  /* Backdrop blur for glassmorphism effect */
+  --backdrop-blur: 20px;
+  
+  /* Ocean Theme Color Palette
+   * Primary: Deep ocean blues for stability and depth
+   * Secondary: Lighter ocean tones for accents
+   * Future: Anchor logo integration planned
+   */
+  
+  /* Light theme colors (Ocean theme) */
+  --bg-primary: rgba(248, 252, 253, 0.78);
+  --bg-secondary: rgba(240, 248, 250, 0.86);
+  --bg-tertiary: rgba(232, 244, 247, 0.92);
+  --bg-overlay: rgba(27, 79, 114, 0.45);
+  --text-primary: rgba(27, 79, 114, 0.86);
+  --text-secondary: rgba(27, 79, 114, 0.62);
+  --text-strong: rgba(27, 79, 114, 0.92);
+  --text-muted: rgba(27, 79, 114, 0.48);
+  --text-tertiary: rgba(27, 79, 114, 0.38);
+  --text-invert: rgba(255, 255, 255, 0.98);
+  --accent-primary: #1B4F72;
+  --accent-secondary: #2E86AB;
+  --border-color: rgba(27, 79, 114, 0.12);
+  --shadow-light: rgba(168, 218, 220, 0.5);
+  --shadow-dark: rgba(27, 79, 114, 0.12);
+  --gradient-bg: linear-gradient(135deg, rgba(168, 218, 220, 0.24), rgba(69, 123, 157, 0.18));
+  
+  /* Status colors (Ocean theme) */
+  --success-color: #2E8B57;
+  --warning-color: #FF8C00;
+  --error-color: #DC143C;
+  --info-color: #1B4F72;
+}
+
+/* Dark mode colors (Deep Ocean theme) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: rgba(15, 35, 50, 0.72);
+    --bg-secondary: rgba(20, 45, 65, 0.78);
+    --bg-tertiary: rgba(25, 55, 80, 0.84);
+    --bg-overlay: rgba(10, 25, 40, 0.6);
+    --text-primary: rgba(168, 218, 220, 0.92);
+    --text-secondary: rgba(168, 218, 220, 0.72);
+    --text-strong: rgba(168, 218, 220, 0.98);
+    --text-muted: rgba(168, 218, 220, 0.60);
+    --text-tertiary: rgba(168, 218, 220, 0.38);
+    --text-invert: rgba(15, 35, 50, 0.92);
+    --accent-primary: #2E86AB;
+    --accent-secondary: #A8DADC;
+    --border-color: rgba(168, 218, 220, 0.1);
+    --shadow-light: rgba(168, 218, 220, 0.1);
+    --shadow-dark: rgba(10, 25, 40, 0.3);
+    --gradient-bg: linear-gradient(135deg, rgba(27, 79, 114, 0.14), rgba(15, 35, 50, 0.1));
+  }
+}
+
+/* Forced theme overrides */
+:root[data-theme="light"] {
+  --bg-primary: rgba(255, 255, 255, 0.78);
+  --bg-secondary: rgba(255, 255, 255, 0.86);
+  --bg-tertiary: rgba(255, 255, 255, 0.92);
+  --bg-overlay: rgba(0, 0, 0, 0.45);
+  --text-primary: rgba(0, 0, 0, 0.86);
+  --text-secondary: rgba(0, 0, 0, 0.62);
+  --text-strong: rgba(0, 0, 0, 0.92);
+  --text-muted: rgba(0, 0, 0, 0.48);
+  --text-tertiary: rgba(0, 0, 0, 0.38);
+  --text-invert: rgba(255, 255, 255, 0.98);
+  --accent-primary: #007AFF;
+  --accent-secondary: #5AC8FA;
+  --border-color: rgba(0, 0, 0, 0.12);
+  --shadow-light: rgba(255, 255, 255, 0.5);
+  --shadow-dark: rgba(0, 0, 0, 0.12);
+  --gradient-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.18));
+}
+
+:root[data-theme="dark"] {
+  --bg-primary: rgba(28, 28, 30, 0.92);
+  --bg-secondary: rgba(44, 44, 46, 0.86);
+  --bg-tertiary: rgba(58, 58, 60, 0.7);
+  --bg-overlay: rgba(28, 28, 30, 0.96);
+  --text-primary: rgba(255, 255, 255, 0.84);
+  --text-secondary: rgba(255, 255, 255, 0.58);
+  --text-tertiary: rgba(255, 255, 255, 0.38);
+  --text-invert: rgba(0, 0, 0, 0.92);
+  --accent-primary: #0A84FF;
+  --accent-secondary: #64D2FF;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --shadow-light: rgba(255, 255, 255, 0.1);
+  --shadow-dark: rgba(0, 0, 0, 0.3);
+  --gradient-bg: linear-gradient(135deg, rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0.1));
+}
+
+/* Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  color: var(--text-primary);
+  background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Global scrollbar styles to prevent conflicts */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Dark mode background gradient (Deep Ocean) */
+@media (prefers-color-scheme: dark) {
+  body {
+    background: linear-gradient(135deg, #0F2332 0%, #1B4F72 50%, #0A1A2A 100%);
+  }
+}
+
+/* App Container with Glassmorphism */
+.app-container {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Nebulous liquid-glass background overlay */
+.app-container::before {
+  content: '';
+  position: fixed;
+  inset: -20%;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    linear-gradient(180deg, rgba(27, 79, 114, 0.10), rgba(15, 35, 50, 0.14)),
+    radial-gradient(140px 200px at 18% 12%, rgba(46, 134, 171, 0.18), transparent 60%),
+    radial-gradient(180px 140px at 85% 20%, rgba(168, 218, 220, 0.12), transparent 60%),
+    radial-gradient(220px 180px at 28% 82%, rgba(69, 123, 157, 0.12), transparent 60%),
+    radial-gradient(200px 220px at 92% 88%, rgba(29, 53, 87, 0.12), transparent 60%);
+  filter: blur(34px) saturate(125%);
+  opacity: 1;
+  animation: nebulous-flow 40s ease-in-out infinite;
+}
+
+@media (prefers-color-scheme: dark) {
+  .app-container::before {
+    background:
+      linear-gradient(180deg, rgba(15, 35, 50, 0.14), rgba(10, 25, 40, 0.16)),
+      radial-gradient(140px 200px at 16% 10%, rgba(46, 134, 171, 0.22), transparent 60%),
+      radial-gradient(160px 140px at 80% 18%, rgba(168, 218, 220, 0.16), transparent 60%),
+      radial-gradient(220px 160px at 26% 78%, rgba(69, 123, 157, 0.16), transparent 60%),
+      radial-gradient(200px 200px at 86% 86%, rgba(29, 53, 87, 0.18), transparent 60%);
+    filter: blur(36px) saturate(125%);
+    opacity: 0.9;
+  }
+}
+
+@keyframes nebulous-flow {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(-2%, 1%) rotate(1deg); }
+  50% { transform: translate(1%, -1%) rotate(-0.5deg); }
+  75% { transform: translate(-1%, 2%) rotate(0.5deg); }
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-strong);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+h1 { font-size: 2.5rem; }
+h2 { font-size: 2rem; }
+h3 { font-size: 1.5rem; }
+h4 { font-size: 1.25rem; }
+h5 { font-size: 1.125rem; }
+h6 { font-size: 1rem; }
+
+p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Utility Classes */
+.hidden { display: none !important; }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Container Layouts */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.container-sm {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* Flexbox Utilities */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.gap-2 { gap: 0.5rem; }
+.gap-4 { gap: 1rem; }
+.gap-6 { gap: 1.5rem; }
+
+/* Grid Utilities */
+.grid { display: grid; }
+.grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+.grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* Spacing */
+.p-4 { padding: 1rem; }
+.p-6 { padding: 1.5rem; }
+.p-8 { padding: 2rem; }
+.m-4 { margin: 1rem; }
+.m-6 { margin: 1.5rem; }
+.m-8 { margin: 2rem; }
+.mt-4 { margin-top: 1rem; }
+.mb-4 { margin-bottom: 1rem; }
+.ml-4 { margin-left: 1rem; }
+.mr-4 { margin-right: 1rem; }
+
+/* Text Utilities */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+
+/* Color Utilities */
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted { color: var(--text-muted); }
+.text-strong { color: var(--text-strong); }
+.text-success { color: var(--success-color); }
+.text-warning { color: var(--warning-color); }
+.text-error { color: var(--error-color); }
+.text-info { color: var(--info-color); }
