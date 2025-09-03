@@ -108,12 +108,17 @@
     
     **Completion Summary:**
     - Production deployment live at https://anchored.site
-    - Cross-repository deployment workflow configured (URL-Notes → Anchored)
+    - Core application pages accessible and functional (HTML, CSS, JS)
     - Client-side monitoring and error tracking implemented
     - Security headers configured via HTML meta tags
     - Backup and disaster recovery plan documented
-    - All production pages accessible and functional
     - HTTPS enforced with valid SSL certificate
+    
+    **Known Issue:**
+    - Cross-repository deployment (URL-Notes → Anchored) has partial functionality
+    - Some newer files (config.js, health.json) not deploying due to token/permission issue
+    - Core application works, but some advanced features may be limited
+    - Alternative direct deployment workflow created as backup solution
     - _Requirements: All requirements in production environment_
 
 - [ ] 6. Implement subscription management system
