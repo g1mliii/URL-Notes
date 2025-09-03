@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Deployment Test - Updated at 2025-01-21 -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <title>Anchored - Take Notes on Any Website</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Navigation Header -->
+        <header class="nav-header">
+            <div class="nav-content">
+                <div class="logo">
+                    <h1>Anchored</h1>
+                </div>
+                <nav class="nav-links">
+                    <a href="#features" class="nav-link">Features</a>
+                    <a href="#pricing" class="nav-link">Pricing</a>
+                    <a href="dashboard.html" class="nav-link btn-secondary">Dashboard</a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Hero Section -->
+        <main class="hero-section">
+            <div class="hero-content">
+                <h2 class="hero-title">Anchor Your Ideas to the Web</h2>
+                <p class="hero-subtitle">Capture and organize notes on any website with secure, encrypted cloud sync</p>
+
+                <!-- Auth Forms Container -->
+                <div class="auth-container">
+                    <!-- Login Form -->
+                    <div class="auth-form" id="loginForm">
+                        <h3>Sign In</h3>
+                        <form id="signInForm">
+                            <div class="input-group">
+                                <input type="email" id="loginEmail" placeholder="Email" required>
+                            </div>
+                            <div class="input-group">
+                                <input type="password" id="loginPassword" placeholder="Password" required>
+                            </div>
+                            <button type="submit" class="btn-primary">Sign In</button>
+                        </form>
+                        <div class="auth-links">
+                            <a href="#" id="showRegister">Create Account</a>
+                            <a href="#" id="showForgotPassword">Forgot Password?</a>
+                        </div>
+                    </div>
+
+                    <!-- Register Form -->
+                    <div class="auth-form hidden" id="registerForm">
+                        <h3>Create Account</h3>
+                        <form id="signUpForm">
+                            <div class="input-group">
+                                <input type="email" id="registerEmail" placeholder="Email" required>
+                            </div>
+                            <div class="input-group">
+                                <input type="password" id="registerPassword" placeholder="Password" required>
+                            </div>
+                            <div class="input-group">
+                                <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+                            </div>
+                            <button type="submit" class="btn-primary">Create Account</button>
+                        </form>
+                        <div class="auth-links">
+                            <a href="#" id="showLogin">Already have an account?</a>
+                        </div>
+                    </div>
+
+                    <!-- Forgot Password Form -->
+                    <div class="auth-form hidden" id="forgotPasswordForm">
+                        <h3>Reset Password</h3>
+                        <form id="resetPasswordForm">
+                            <div class="input-group">
+                                <input type="email" id="resetEmail" placeholder="Email" required>
+                            </div>
+                            <button type="submit" class="btn-primary">Send Reset Link</button>
+                        </form>
+                        <div class="auth-links">
+                            <a href="#" id="backToLogin">Back to Sign In</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Features Section -->
+        <section id="features" class="features-section">
+            <div class="features-content">
+                <h2>Features</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3>Smart Organization</h3>
+                        <p>Organize notes by website domain with advanced search across all your notes</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>AI-Powered Writing</h3>
+                        <p>Rewrite notes in different styles and generate summaries with built-in AI tools</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Secure & Synced</h3>
+                        <p>Zero-knowledge encryption with cloud sync and version history for $2.50/month</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pricing Section -->
+        <section id="pricing" class="features-section">
+            <div class="features-content">
+                <h2>Simple Pricing</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3>Free</h3>
+                        <p><strong>$0/month</strong></p>
+                        <ul style="text-align: left; margin-top: 1rem;">
+                            <li>Browser extension access</li>
+                            <li>Local note storage</li>
+                            <li>Domain & page organization</li>
+                            <li>Multi-highlight mode</li>
+                            <li>Context menu quick add</li>
+                            <li>Rich text formatting</li>
+                            <li>Tags and search</li>
+                            <li>Keyboard shortcuts</li>
+                            <li>Theme customization</li>
+                            <li>Font size adjustment</li>
+                            <li>Basic export (TXT format)</li>
+                            <li>AI features (5 uses/month)</li>
+                            <li>Last 5 versions per note</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card" style="border: 2px solid var(--accent-primary);">
+                        <h3>Premium</h3>
+                        <p><strong>$2.50/month</strong></p>
+                        <ul style="text-align: left; margin-top: 1rem;">
+                            <li>Everything in Free</li>
+                            <li>Cloud synchronization</li>
+                            <li>Web application access</li>
+                            <li>Advanced search (All Notes)</li>
+                            <li>Version history for all notes</li>
+                            <li>AI Rewrite (500 uses/month)</li>
+                            <li>AI Summary (500 uses/month)</li>
+                            <li>All export formats</li>
+                            <li>Import functionality</li>
+                            <li>Ad-free experience</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Enterprise</h3>
+                        <p><strong>Coming Soon</strong></p>
+                        <ul style="text-align: left; margin-top: 1rem;">
+                            <li>Team collaboration</li>
+                            <li>Admin dashboard</li>
+                            <li>SSO integration</li>
+                            <li>Priority support</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="js/lib/encryption.js"></script>
+    <script src="js/lib/api.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+
+</html>
