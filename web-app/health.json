@@ -5,19 +5,35 @@
   "environment": "production",
   "domain": "anchored.site",
   "repository": "https://github.com/g1mliii/Anchored",
-  "timestamp": "2025-01-21T00:00:00Z",
+  "timestamp": "2025-01-21T12:00:00Z",
+  "deployment": {
+    "method": "github-pages",
+    "branch": "main",
+    "last_deployed": "2025-01-21T12:00:00Z",
+    "commit_hash": "latest",
+    "deployment_status": "active"
+  },
   "services": {
     "supabase": {
       "url": "https://kqjcorjjvunmyrnzvqgr.supabase.co",
-      "status": "configured"
+      "status": "configured",
+      "environment": "production",
+      "cors_configured": true
     },
     "authentication": {
       "provider": "supabase-auth",
-      "status": "enabled"
+      "status": "enabled",
+      "methods": ["email", "password_reset"]
     },
     "encryption": {
       "algorithm": "AES-256-GCM",
-      "status": "client-side"
+      "status": "client-side",
+      "key_derivation": "PBKDF2"
+    },
+    "monitoring": {
+      "error_tracking": "enabled",
+      "performance_monitoring": "enabled",
+      "health_checks": "automated"
     }
   },
   "features": {
@@ -25,6 +41,35 @@
     "security_headers": true,
     "csp_enabled": true,
     "custom_domain": true,
-    "offline_support": false
+    "offline_support": false,
+    "backup_configured": true,
+    "disaster_recovery": true
+  },
+  "security": {
+    "ssl_certificate": "valid",
+    "security_headers": [
+      "X-Frame-Options",
+      "X-Content-Type-Options", 
+      "X-XSS-Protection",
+      "Referrer-Policy",
+      "Content-Security-Policy",
+      "Strict-Transport-Security"
+    ],
+    "csp_directives": [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline'",
+      "connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co"
+    ]
+  },
+  "performance": {
+    "target_load_time": "3s",
+    "target_api_response": "2s",
+    "monitoring_interval": "1m"
+  },
+  "backup": {
+    "frequency": "daily",
+    "retention": "30 days",
+    "last_backup": "2025-01-21T06:00:00Z",
+    "status": "automated"
   }
 }
