@@ -4,43 +4,72 @@
 
 /* Small Mobile (up to 480px) */
 @media (max-width: 480px) {
+
+  /* Fix mobile background rendering issues */
+  body {
+    background-attachment: scroll !important;
+    -webkit-overflow-scrolling: touch;
+    /* Simplify background for mobile */
+    background: #457B9D !important;
+  }
+
+  .app-container {
+    /* Simplify container for mobile - remove complex effects */
+    background: rgba(248, 252, 253, 0.95) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Disable complex background overlay on mobile */
+  .app-container::before {
+    display: none !important;
+  }
+
   .hero-title {
     font-size: 2rem;
   }
-  
+
   .hero-subtitle {
     font-size: 1rem;
   }
-  
+
+  .hero-section {
+    padding: 2rem 0 1rem 0;
+  }
+
+  .features-section {
+    padding: 1rem 0 3rem 0;
+  }
+
   .nav-content {
     padding: 0 0.5rem;
   }
-  
+
   .nav-links {
     gap: 1rem;
   }
-  
+
   .auth-form {
     padding: 1.5rem;
     margin: 0 0.5rem;
   }
-  
+
   .modal-content {
     margin: 0.5rem;
     border-radius: 16px;
   }
-  
+
   .modal-header,
   .modal-body {
     padding-left: 1rem;
     padding-right: 1rem;
   }
-  
+
   .features-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   .feature-card {
     padding: 1.5rem;
   }
@@ -48,15 +77,37 @@
 
 /* Tablet Portrait (481px - 767px) */
 @media (min-width: 481px) and (max-width: 767px) {
+
+  /* Also simplify for tablet portrait to prevent issues */
+  body {
+    background-attachment: scroll !important;
+  }
+
+  .app-container::before {
+    display: none !important;
+  }
+
+  .app-container {
+    background: rgba(248, 252, 253, 0.95) !important;
+  }
+
   .hero-title {
     font-size: 2.5rem;
   }
-  
+
+  .hero-section {
+    padding: 2.5rem 0 1.5rem 0;
+  }
+
+  .features-section {
+    padding: 1.5rem 0 4rem 0;
+  }
+
   .features-grid {
     grid-template-columns: 1fr;
     gap: 1.5rem;
   }
-  
+
   .nav-links {
     gap: 1.25rem;
   }
@@ -65,37 +116,37 @@
 /* Tablet Landscape (768px - 1023px) */
 @media (min-width: 768px) {
   .hero-section {
-    padding: 6rem 0;
+    padding: 4rem 0 2rem 0;
   }
-  
+
   .features-section {
-    padding: 6rem 0;
+    padding: 2rem 0 4rem 0;
   }
-  
+
   .features-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 2rem;
   }
-  
+
   .nav-content {
     padding: 0 2rem;
   }
-  
+
   /* Dashboard Layout for Tablets */
   .dashboard-main {
     padding: 0;
   }
-  
+
   .notes-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
   }
-  
+
   /* Account page layout */
   .account-main {
     padding: 2rem;
   }
-  
+
   .account-container {
     max-width: 800px;
     margin: 0 auto;
@@ -107,44 +158,52 @@
   .hero-title {
     font-size: 3.5rem;
   }
-  
+
   .hero-subtitle {
     font-size: 1.375rem;
   }
-  
+
+  .hero-section {
+    padding: 5rem 0 3rem 0;
+  }
+
+  .features-section {
+    padding: 3rem 0 5rem 0;
+  }
+
   .features-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: 2.5rem;
   }
-  
+
   .nav-content {
     padding: 0 3rem;
   }
-  
+
   /* Enhanced Dashboard Layout for Desktop */
   .dashboard-main {
     padding: 0;
   }
-  
+
   .notes-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: 1.5rem;
   }
-  
+
   /* Account page enhancements */
   .account-main {
     padding: 3rem;
   }
-  
+
   .account-container {
     max-width: 900px;
   }
-  
+
   /* Larger modals on desktop */
   .modal-content {
     max-width: 600px;
   }
-  
+
   /* Enhanced button hover effects */
   .btn-primary:hover,
   .btn-secondary:hover {
@@ -157,24 +216,24 @@
   .container {
     max-width: 1400px;
   }
-  
+
   .hero-section {
-    padding: 8rem 0;
+    padding: 6rem 0 4rem 0;
   }
-  
+
   .features-section {
-    padding: 8rem 0;
+    padding: 4rem 0 6rem 0;
   }
-  
+
   .dashboard-main {
     padding: 0;
   }
-  
+
   .notes-grid {
     grid-template-columns: repeat(4, 1fr);
     gap: 2rem;
   }
-  
+
   .account-main {
     padding: 4rem;
   }
@@ -187,7 +246,7 @@
   .dashboard-main {
     padding: 0;
   }
-  
+
   .content-header {
     padding: 1rem;
   }
@@ -251,13 +310,13 @@
   .bulk-actions button {
     flex: 1;
   }
-  
+
   .notes-grid {
     padding: 1rem;
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   .note-card {
     height: auto;
     min-height: 160px;
@@ -267,7 +326,7 @@
     top: 0.5rem;
     right: 0.5rem;
   }
-  
+
   /* Note panel on mobile - full screen */
   .note-panel {
     width: 100vw;
@@ -276,11 +335,11 @@
     border-left: none;
     border-top: 1px solid var(--border-color);
   }
-  
+
   .note-panel-content {
     padding: 1rem;
   }
-  
+
   /* Notifications on mobile */
   .notification {
     top: 10px;
@@ -288,7 +347,7 @@
     left: 10px;
     transform: translateY(-100%);
   }
-  
+
   .notification.show {
     transform: translateY(0);
   }
@@ -299,7 +358,7 @@
   .notes-grid {
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   }
-  
+
   .content-header {
     padding: 1.5rem;
   }
@@ -319,7 +378,7 @@
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1.5rem;
   }
-  
+
   .content-header {
     padding: 2rem 3rem;
   }
@@ -332,33 +391,33 @@
   .account-main {
     padding: 1rem;
   }
-  
+
   .account-section {
     margin-bottom: 1.5rem;
   }
-  
+
   .subscription-actions {
     flex-direction: column;
     gap: 0.75rem;
   }
-  
+
   .subscription-actions button {
     width: 100%;
   }
-  
+
   .data-actions {
     flex-direction: column;
     gap: 0.75rem;
   }
-  
+
   .data-actions button {
     width: 100%;
   }
-  
+
   .premium-features ul {
     padding-left: 1rem;
   }
-  
+
   .premium-features li {
     margin-bottom: 0.5rem;
   }
@@ -366,6 +425,7 @@
 
 /* Touch-Friendly Interactions */
 @media (hover: none) and (pointer: coarse) {
+
   /* Increase touch targets for mobile */
   .btn-primary,
   .btn-secondary,
@@ -373,23 +433,23 @@
     min-height: 44px;
     padding: 0.875rem 1.5rem;
   }
-  
+
   .nav-link {
     padding: 0.75rem 0;
   }
-  
+
   .modal-close {
     min-width: 44px;
     min-height: 44px;
   }
-  
+
   .input-group input,
   .input-group textarea,
   .input-group select {
     min-height: 44px;
     padding: 0.875rem 1rem;
   }
-  
+
   /* Remove hover effects on touch devices */
   .card:hover,
   .feature-card:hover,
@@ -397,7 +457,7 @@
   .btn-secondary:hover {
     transform: none;
   }
-  
+
   /* Enhanced focus states for accessibility */
   .btn-primary:focus,
   .btn-secondary:focus,
@@ -408,7 +468,9 @@
 }
 
 /* High DPI Displays */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+@media (-webkit-min-device-pixel-ratio: 2),
+(min-resolution: 192dpi) {
+
   /* Enhance glassmorphism effects on high DPI displays */
   .app-container,
   .card,
@@ -426,7 +488,7 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  
+
   .app-container::before {
     animation: none;
   }
@@ -434,6 +496,7 @@
 
 /* Print Styles */
 @media print {
+
   .nav-header,
   .modal,
   .btn-primary,
@@ -441,15 +504,106 @@
   .btn-danger {
     display: none !important;
   }
-  
+
   .app-container {
     background: white !important;
     box-shadow: none !important;
   }
-  
+
   .card,
   .auth-form {
     border: 1px solid #ccc !important;
     box-shadow: none !important;
+  }
+}
+
+/* iOS Safari specific fixes */
+@supports (-webkit-touch-callout: none) {
+
+  /* iOS Safari - completely disable complex effects */
+  body {
+    background: #457B9D !important;
+    background-attachment: scroll !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .app-container {
+    background: rgba(248, 252, 253, 0.98) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Completely remove the problematic overlay on iOS */
+  .app-container::before {
+    display: none !important;
+  }
+
+  /* Simplify all glassmorphism on iOS */
+  .auth-form,
+  .feature-card,
+  .nav-header,
+  .card,
+  .modal-content {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+  }
+}
+
+/* Additional mobile performance optimizations */
+@media (max-width: 767px) {
+
+  /* Simplify all glassmorphism effects on mobile */
+  .auth-form,
+  .feature-card,
+  .nav-header {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(248, 252, 253, 0.98) !important;
+    border: 1px solid rgba(27, 79, 114, 0.2) !important;
+  }
+
+  /* Ensure solid backgrounds on mobile */
+  .hero-section,
+  .features-section {
+    background: transparent;
+  }
+}
+
+/ * Dark mode mobile fixes */ @media (max-width: 767px) and (prefers-color-scheme: dark) {
+  body {
+    background: #0F2332 !important;
+  }
+
+  .app-container {
+    background: rgba(15, 35, 50, 0.95) !important;
+  }
+
+  .auth-form,
+  .feature-card,
+  .nav-header {
+    background: rgba(20, 45, 65, 0.95) !important;
+    border: 1px solid rgba(168, 218, 220, 0.2) !important;
+  }
+}
+
+/* iOS Safari dark mode */
+@supports (-webkit-touch-callout: none) {
+  @media (prefers-color-scheme: dark) {
+    body {
+      background: #0F2332 !important;
+    }
+
+    .app-container {
+      background: rgba(15, 35, 50, 0.98) !important;
+    }
+
+    .auth-form,
+    .feature-card,
+    .nav-header,
+    .card,
+    .modal-content {
+      background: rgba(20, 45, 65, 0.95) !important;
+    }
   }
 }

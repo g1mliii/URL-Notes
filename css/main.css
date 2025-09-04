@@ -105,6 +105,7 @@ body {
   font-size: 16px;
   color: var(--text-primary);
   background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
+  background-attachment: fixed;
   line-height: 1.5;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -135,6 +136,7 @@ body {
 @media (prefers-color-scheme: dark) {
   body {
     background: linear-gradient(135deg, #0F2332 0%, #1B4F72 50%, #0A1A2A 100%);
+    background-attachment: fixed;
   }
 }
 
@@ -146,6 +148,9 @@ body {
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
   position: relative;
   overflow-x: hidden;
+  /* Prevent white flashes on mobile */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 /* Nebulous liquid-glass background overlay */

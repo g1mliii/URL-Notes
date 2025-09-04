@@ -281,7 +281,7 @@
 
 /* Hero Section */
 .hero-section {
-  padding: 4rem 0;
+  padding: 3rem 0 2rem 0;
   text-align: center;
   position: relative;
   z-index: 1;
@@ -352,7 +352,7 @@
 
 /* Features Section */
 .features-section {
-  padding: 4rem 0;
+  padding: 2rem 0 4rem 0;
   position: relative;
   z-index: 1;
 }
