@@ -110,15 +110,14 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  min-height: 100vh;
-  overflow-x: hidden;
-  overflow-y: auto;
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* Global scrollbar styles to prevent conflicts */
 html {
-  overflow-x: hidden;
-  overflow-y: auto;
+  height: 100%;
+  overflow: hidden;
 }
 
 ::-webkit-scrollbar {
@@ -138,10 +137,22 @@ html {
   background: var(--text-muted);
 }
 
-/* Prevent double scrollbars in Chrome */
-body::-webkit-scrollbar {
-  width: 0px;
+/* App container scrollbar styles */
+.app-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.app-container::-webkit-scrollbar-track {
   background: transparent;
+}
+
+.app-container::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.app-container::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 /* Dark mode background gradient (Deep Ocean) */
@@ -154,11 +165,13 @@ body::-webkit-scrollbar {
 
 /* App Container with Glassmorphism */
 .app-container {
-  min-height: 100vh;
+  height: 100vh;
   background: var(--bg-primary);
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
   position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
   /* Prevent white flashes on mobile */
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
