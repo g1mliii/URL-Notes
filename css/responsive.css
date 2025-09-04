@@ -19,8 +19,8 @@
   }
 
   .app-container {
-    /* Simplify container for mobile - remove complex effects */
-    background: rgba(248, 252, 253, 1) !important;
+    /* Simplify container for mobile - remove complex effects but keep some transparency */
+    background: rgba(248, 252, 253, 0.85) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     /* Force hardware acceleration to prevent rendering issues */
