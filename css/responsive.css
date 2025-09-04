@@ -20,7 +20,7 @@
 
   .app-container {
     /* Reduce opacity to show blue background while maintaining readability */
-    background: rgba(248, 252, 253, 0.75) !important;
+    background: rgba(248, 252, 253, 0.6) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     /* Force hardware acceleration to prevent rendering issues */
@@ -28,6 +28,8 @@
     transform: translate3d(0, 0, 0);
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
+    /* Override CSS variables */
+    --bg-primary: rgba(248, 252, 253, 0.6) !important;
   }
 
   /* Disable complex background overlay on mobile */
@@ -104,7 +106,9 @@
   }
 
   .app-container {
-    background: rgba(248, 252, 253, 0.85) !important;
+    background: rgba(248, 252, 253, 0.7) !important;
+    /* Override CSS variables */
+    --bg-primary: rgba(248, 252, 253, 0.7) !important;
   }
 
   .hero-title {
@@ -586,20 +590,26 @@
 /* Additional mobile performance optimizations */
 @media (max-width: 767px) {
 
+  /* Ensure app container shows background gradient */
+  .app-container {
+    background: rgba(248, 252, 253, 0.65) !important;
+    --bg-primary: rgba(248, 252, 253, 0.65) !important;
+  }
+
   /* Simplify all glassmorphism effects on mobile */
   .auth-form,
   .feature-card,
   .nav-header {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    background: rgba(248, 252, 253, 0.98) !important;
+    background: rgba(248, 252, 253, 0.95) !important;
     border: 1px solid rgba(27, 79, 114, 0.2) !important;
   }
 
-  /* Ensure solid backgrounds on mobile */
+  /* Ensure sections are transparent on mobile */
   .hero-section,
   .features-section {
-    background: transparent;
+    background: transparent !important;
   }
 }
 
