@@ -30,6 +30,26 @@
     backface-visibility: hidden;
     /* Override CSS variables */
     --bg-primary: rgba(248, 252, 253, 0.6) !important;
+    --bg-secondary: rgba(240, 248, 250, 0.65) !important;
+  }
+
+  /* Fix dashboard elements on small mobile */
+  .content-header {
+    background: rgba(240, 248, 250, 0.75) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .content-header::before {
+    display: none !important;
+  }
+
+  .search-input {
+    background: rgba(248, 252, 253, 0.85) !important;
+  }
+
+  .note-card {
+    background: rgba(240, 248, 250, 0.85) !important;
   }
 
   /* Disable complex background overlay on mobile */
@@ -602,6 +622,26 @@
   .app-container {
     background: rgba(248, 252, 253, 0.65) !important;
     --bg-primary: rgba(248, 252, 253, 0.65) !important;
+    --bg-secondary: rgba(240, 248, 250, 0.7) !important;
+  }
+
+  /* Fix dashboard elements on mobile */
+  .content-header {
+    background: rgba(240, 248, 250, 0.8) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .content-header::before {
+    display: none !important;
+  }
+
+  .search-input {
+    background: rgba(248, 252, 253, 0.9) !important;
+  }
+
+  .note-card {
+    background: rgba(240, 248, 250, 0.9) !important;
   }
 
   /* Simplify all glassmorphism effects on mobile */
@@ -638,6 +678,21 @@
 
   .app-container {
     background: rgba(15, 35, 50, 0.8) !important;
+    --bg-primary: rgba(15, 35, 50, 0.8) !important;
+    --bg-secondary: rgba(20, 45, 65, 0.8) !important;
+  }
+
+  /* Fix dashboard elements in dark mode */
+  .content-header {
+    background: rgba(20, 45, 65, 0.85) !important;
+  }
+
+  .search-input {
+    background: rgba(25, 55, 80, 0.9) !important;
+  }
+
+  .note-card {
+    background: rgba(20, 45, 65, 0.9) !important;
   }
 
   .auth-form,
@@ -658,6 +713,21 @@
 
     .app-container {
       background: rgba(15, 35, 50, 0.85) !important;
+      --bg-primary: rgba(15, 35, 50, 0.85) !important;
+      --bg-secondary: rgba(20, 45, 65, 0.85) !important;
+    }
+
+    /* Fix dashboard elements in iOS Safari dark mode */
+    .content-header {
+      background: rgba(20, 45, 65, 0.9) !important;
+    }
+
+    .search-input {
+      background: rgba(25, 55, 80, 0.95) !important;
+    }
+
+    .note-card {
+      background: rgba(20, 45, 65, 0.95) !important;
     }
 
     .auth-form,
