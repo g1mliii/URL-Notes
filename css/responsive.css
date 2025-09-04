@@ -132,12 +132,12 @@
     box-shadow: none !important;
   }
 
-  /* Fix input field backgrounds on small mobile - match search-input */
+  /* Fix input field backgrounds on small mobile - darker blue theme */
   .input-group input,
   .input-group textarea,
   .input-group select {
-    background: rgba(248, 252, 253, 0.85) !important;
-    border: 1px solid rgba(27, 79, 114, 0.3) !important;
+    background: rgba(27, 79, 114, 0.15) !important;
+    border: 1px solid rgba(27, 79, 114, 0.4) !important;
     color: var(--text-primary) !important;
   }
 
@@ -742,12 +742,12 @@
     box-shadow: none !important;
   }
 
-  /* Fix input field backgrounds on mobile - match search-input */
+  /* Fix input field backgrounds on mobile - darker blue theme */
   .input-group input,
   .input-group textarea,
   .input-group select {
-    background: rgba(248, 252, 253, 0.9) !important;
-    border: 1px solid rgba(27, 79, 114, 0.3) !important;
+    background: rgba(27, 79, 114, 0.2) !important;
+    border: 1px solid rgba(27, 79, 114, 0.4) !important;
     color: var(--text-primary) !important;
   }
 
