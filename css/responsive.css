@@ -8,6 +8,8 @@
   /* Fix mobile background rendering issues */
   html {
     -webkit-overflow-scrolling: touch;
+    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%) !important;
+    min-height: 100vh;
   }
 
   body {
@@ -16,6 +18,7 @@
     /* Keep the gradient but simplify it for mobile performance */
     background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%) !important;
     background-attachment: scroll !important;
+    min-height: 100vh;
   }
 
   .app-container {
@@ -588,12 +591,15 @@
   /* iOS Safari - completely disable complex effects */
   html {
     -webkit-overflow-scrolling: touch;
+    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%) !important;
+    min-height: 100vh;
   }
 
   body {
     background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%) !important;
     background-attachment: scroll !important;
     -webkit-overflow-scrolling: touch;
+    min-height: 100vh;
     /* Keep gradient but ensure it's performant on iOS */
   }
 
@@ -684,8 +690,8 @@
   .nav-header {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    background: rgba(248, 252, 253, 0.95) !important;
-    border: 1px solid rgba(27, 79, 114, 0.2) !important;
+    background: rgba(248, 252, 253, 0.75) !important;
+    border: 1px solid rgba(27, 79, 114, 0.3) !important;
   }
 
   /* Fix input field backgrounds on mobile */
@@ -705,9 +711,15 @@
 
 /* Dark mode mobile fixes */
 @media (max-width: 767px) and (prefers-color-scheme: dark) {
+  html {
+    background: linear-gradient(135deg, #1D3557 0%, #0F2332 50%, #0A1A24 100%) !important;
+    min-height: 100vh;
+  }
+
   body {
     background: linear-gradient(135deg, #1D3557 0%, #0F2332 50%, #0A1A24 100%) !important;
     background-attachment: scroll !important;
+    min-height: 100vh;
   }
 
   .app-container {
@@ -748,17 +760,23 @@
   .auth-form,
   .feature-card,
   .nav-header {
-    background: rgba(20, 45, 65, 0.9) !important;
-    border: 1px solid rgba(168, 218, 220, 0.2) !important;
+    background: rgba(20, 45, 65, 0.75) !important;
+    border: 1px solid rgba(168, 218, 220, 0.3) !important;
   }
 }
 
 /* iOS Safari dark mode */
 @supports (-webkit-touch-callout: none) {
   @media (prefers-color-scheme: dark) {
+    html {
+      background: linear-gradient(135deg, #1D3557 0%, #0F2332 50%, #0A1A24 100%) !important;
+      min-height: 100vh;
+    }
+
     body {
       background: linear-gradient(135deg, #1D3557 0%, #0F2332 50%, #0A1A24 100%) !important;
       background-attachment: scroll !important;
+      min-height: 100vh;
     }
 
     .app-container {
