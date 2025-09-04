@@ -17,7 +17,7 @@ class ApplicationMonitor {
       errors: 0,
       performance: {}
     };
-    
+
     this.init();
   }
 
@@ -25,19 +25,19 @@ class ApplicationMonitor {
     try {
       // Load configuration
       this.config = await window.urlNotesConfig.loadConfig();
-      
+
       // Set up error tracking
       this.setupErrorTracking();
-      
+
       // Set up performance monitoring
       this.setupPerformanceMonitoring();
-      
+
       // Set up health checks
       this.setupHealthChecks();
-      
+
       // Start monitoring
       this.startMonitoring();
-      
+
       console.log('🔍 Application monitoring initialized');
     } catch (error) {
       console.error('Failed to initialize monitoring:', error);
@@ -114,16 +114,16 @@ class ApplicationMonitor {
   startMonitoring() {
     // Track page view
     this.trackPageView();
-    
+
     // Monitor user interactions
     this.monitorUserInteractions();
-    
+
     // Monitor authentication state
     this.monitorAuthState();
-    
+
     // Send initial metrics
     this.sendMetrics();
-    
+
     // Set up periodic metrics reporting
     setInterval(() => {
       this.sendMetrics();
@@ -133,14 +133,14 @@ class ApplicationMonitor {
   trackError(error) {
     this.errors.push(error);
     this.metrics.errors++;
-    
+
     console.error('Application Error:', error);
-    
+
     // Send error to monitoring service (in production)
     if (this.config?.environment === 'production') {
       this.sendErrorReport(error);
     }
-    
+
     // Store error locally for debugging
     this.storeErrorLocally(error);
   }
@@ -151,13 +151,13 @@ class ApplicationMonitor {
       timestamp: new Date().toISOString(),
       sessionId: this.sessionId
     };
-    
+
     console.log(`📊 Performance metric: ${metric}`, data);
   }
 
   trackPageView() {
     this.metrics.pageLoads++;
-    
+
     const pageView = {
       url: window.location.href,
       referrer: document.referrer,
@@ -169,7 +169,7 @@ class ApplicationMonitor {
         height: window.innerHeight
       }
     };
-    
+
     console.log('📄 Page view tracked:', pageView);
   }
 
@@ -186,12 +186,12 @@ class ApplicationMonitor {
         localStorage: this.checkLocalStorageHealth(),
         performance: this.getCurrentPerformanceMetrics()
       };
-      
+
       console.log('💚 Health check completed:', healthCheck);
-      
+
       // Store health check result
       this.storeHealthCheck(healthCheck);
-      
+
       return healthCheck;
     } catch (error) {
       console.error('Health check failed:', error);
@@ -208,10 +208,10 @@ class ApplicationMonitor {
       if (!window.supabaseClient) {
         return { status: 'not_initialized' };
       }
-      
+
       // Simple auth check
       const { data, error } = await window.supabaseClient.auth.getSession();
-      
+
       return {
         status: error ? 'error' : 'healthy',
         authenticated: !!data?.session,
@@ -229,11 +229,11 @@ class ApplicationMonitor {
     try {
       const testKey = '_health_check_test';
       const testValue = Date.now().toString();
-      
+
       localStorage.setItem(testKey, testValue);
       const retrieved = localStorage.getItem(testKey);
       localStorage.removeItem(testKey);
-      
+
       return {
         status: retrieved === testValue ? 'healthy' : 'error',
         available: true
@@ -249,15 +249,15 @@ class ApplicationMonitor {
 
   interceptFetch() {
     const originalFetch = window.fetch;
-    
+
     window.fetch = async (...args) => {
       const startTime = Date.now();
       this.metrics.apiCalls++;
-      
+
       try {
         const response = await originalFetch(...args);
         const endTime = Date.now();
-        
+
         // Track API performance
         this.trackPerformance('api_call', {
           url: args[0],
@@ -266,7 +266,7 @@ class ApplicationMonitor {
           duration: endTime - startTime,
           success: response.ok
         });
-        
+
         // Track API errors
         if (!response.ok) {
           this.trackError({
@@ -277,11 +277,11 @@ class ApplicationMonitor {
             timestamp: new Date().toISOString()
           });
         }
-        
+
         return response;
       } catch (error) {
         const endTime = Date.now();
-        
+
         this.trackError({
           type: 'network_error',
           message: error.message,
@@ -289,7 +289,7 @@ class ApplicationMonitor {
           duration: endTime - startTime,
           timestamp: new Date().toISOString()
         });
-        
+
         throw error;
       }
     };
@@ -299,7 +299,7 @@ class ApplicationMonitor {
     // Track clicks on important elements
     document.addEventListener('click', (event) => {
       const target = event.target;
-      
+
       if (target.matches('button, .btn-primary, .btn-secondary, .nav-link')) {
         console.log('🖱️ User interaction:', {
           element: target.tagName,
@@ -309,7 +309,7 @@ class ApplicationMonitor {
         });
       }
     });
-    
+
     // Track form submissions
     document.addEventListener('submit', (event) => {
       console.log('📝 Form submission:', {
@@ -321,16 +321,20 @@ class ApplicationMonitor {
 
   monitorAuthState() {
     // Monitor authentication state changes
-    if (window.supabaseClient && window.supabaseClient.auth && window.supabaseClient.auth.onAuthStateChange) {
-      window.supabaseClient.auth.onAuthStateChange((event, session) => {
-        console.log('🔐 Auth state change:', {
-          event,
-          authenticated: !!session,
-          timestamp: new Date().toISOString()
+    try {
+      if (window.supabaseClient && window.supabaseClient.auth && typeof window.supabaseClient.auth.onAuthStateChange === 'function') {
+        window.supabaseClient.auth.onAuthStateChange((event, session) => {
+          console.log('🔐 Auth state change:', {
+            event,
+            authenticated: !!session,
+            timestamp: new Date().toISOString()
+          });
         });
-      });
-    } else {
-      console.log('🔐 Supabase client not available for auth monitoring');
+      } else {
+        console.log('🔐 Supabase client not available for auth monitoring');
+      }
+    } catch (error) {
+      console.log('🔐 Auth monitoring setup failed:', error.message);
     }
   }
 
@@ -391,7 +395,7 @@ class ApplicationMonitor {
         }
       }
     });
-    
+
     observer.observe({ entryTypes: ['resource'] });
   }
 
@@ -399,12 +403,12 @@ class ApplicationMonitor {
     try {
       const errors = JSON.parse(localStorage.getItem('anchored_errors') || '[]');
       errors.push(error);
-      
+
       // Keep only last 50 errors
       if (errors.length > 50) {
         errors.splice(0, errors.length - 50);
       }
-      
+
       localStorage.setItem('anchored_errors', JSON.stringify(errors));
     } catch (e) {
       console.error('Failed to store error locally:', e);
@@ -415,12 +419,12 @@ class ApplicationMonitor {
     try {
       const checks = JSON.parse(localStorage.getItem('anchored_health_checks') || '[]');
       checks.push(healthCheck);
-      
+
       // Keep only last 10 health checks
       if (checks.length > 10) {
         checks.splice(0, checks.length - 10);
       }
-      
+
       localStorage.setItem('anchored_health_checks', JSON.stringify(checks));
     } catch (e) {
       console.error('Failed to store health check locally:', e);
@@ -441,9 +445,9 @@ class ApplicationMonitor {
       url: window.location.href,
       ...this.metrics
     };
-    
+
     console.log('📊 Metrics report:', metrics);
-    
+
     // In production, send to analytics service
     if (this.config?.environment === 'production') {
       // Example: Send to analytics endpoint
