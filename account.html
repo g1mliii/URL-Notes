@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://kqjcorjjvunmyrnzvqgr.supabase.co; style-src 'self' 'unsafe-inline'; connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co wss://kqjcorjjvunmyrnzvqgr.supabase.co; img-src 'self' data: https:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://kqjcorjjvunmyrnzvqgr.supabase.co; style-src 'self' 'unsafe-inline'; connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co wss://kqjcorjjvunmyrnzvqgr.supabase.co; img-src 'self' data: https:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
 
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta http-equiv="X-XSS-Protection" content="1; mode=block">
@@ -13,6 +15,7 @@
     <link rel="stylesheet" href="css/components.css?v=20250904p">
     <link rel="stylesheet" href="css/responsive.css?v=20250904p">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Navigation Header -->
@@ -59,7 +62,7 @@
                                 <p id="statusExpiry" class="hidden">Expires: <span id="expiryDate"></span></p>
                             </div>
                         </div>
-                        
+
                         <div class="subscription-actions">
                             <button id="upgradeBtn" class="btn-primary">Upgrade to Premium</button>
                             <button id="manageSubscriptionBtn" class="btn-secondary hidden">Manage Subscription</button>
@@ -178,4 +181,5 @@
     <script src="js/account.js?v=20250904c"></script>
     <script src="js/monitoring.js?v=20250904c"></script>
 </body>
+
 </html>
