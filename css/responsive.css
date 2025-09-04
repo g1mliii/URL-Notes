@@ -122,15 +122,19 @@
     margin: 0 0.5rem;
   }
 
-  /* Force auth-form transparency on small mobile */
+  /* Force auth-form transparency on small mobile - ultra specific */
   .auth-form,
   form.auth-form,
   .app-container .auth-form,
-  body .auth-form {
+  body .auth-form,
+  div.auth-form,
+  section.auth-form {
     background: rgba(248, 252, 253, 0.75) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     box-shadow: none !important;
+    /* Override any CSS variables */
+    --bg-secondary: rgba(248, 252, 253, 0.75) !important;
   }
 
   /* Fix input field backgrounds on small mobile */
@@ -614,6 +618,8 @@
     -webkit-overflow-scrolling: touch;
     background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
     min-height: 100vh;
+    /* Fix Safari bottom white bar */
+    min-height: -webkit-fill-available;
   }
 
   body {
@@ -621,6 +627,8 @@
     background-attachment: scroll !important;
     -webkit-overflow-scrolling: touch;
     min-height: 100vh;
+    /* Fix Safari bottom white bar */
+    min-height: -webkit-fill-available;
     /* Simplified gradient for better iOS performance */
   }
 
@@ -666,6 +674,8 @@
   html {
     background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
     min-height: 100vh;
+    /* Fix Safari bottom white bar */
+    min-height: -webkit-fill-available;
     height: 100%;
   }
 
@@ -673,6 +683,8 @@
     background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
     background-attachment: scroll !important;
     min-height: 100vh;
+    /* Fix Safari bottom white bar */
+    min-height: -webkit-fill-available;
     height: 100%;
     margin: 0;
     padding: 0;
@@ -734,11 +746,19 @@
     box-shadow: none !important;
   }
 
-  /* Specifically target auth-form to ensure transparency */
-  .auth-form {
+  /* Specifically target auth-form to ensure transparency - ultra specific */
+  .auth-form,
+  form.auth-form,
+  .app-container .auth-form,
+  body .auth-form,
+  div.auth-form,
+  section.auth-form {
     background: rgba(248, 252, 253, 0.75) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+    /* Override any CSS variables */
+    --bg-secondary: rgba(248, 252, 253, 0.75) !important;
   }
 
   /* Fix input field backgrounds on mobile */
