@@ -8,7 +8,7 @@
   /* Fix mobile background rendering issues */
   html {
     -webkit-overflow-scrolling: touch;
-    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%) !important;
+    background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
     min-height: 100vh;
     height: 100%;
   }
@@ -16,8 +16,8 @@
   body {
     background-attachment: scroll !important;
     -webkit-overflow-scrolling: touch;
-    /* Keep the gradient but simplify it for mobile performance */
-    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%) !important;
+    /* Simplified 2-color gradient for better mobile performance */
+    background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
     background-attachment: scroll !important;
     min-height: 100vh;
     height: 100%;
@@ -120,6 +120,17 @@
   .auth-form {
     padding: 1.5rem;
     margin: 0 0.5rem;
+  }
+
+  /* Force auth-form transparency on small mobile */
+  .auth-form,
+  form.auth-form,
+  .app-container .auth-form,
+  body .auth-form {
+    background: rgba(248, 252, 253, 0.75) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
   }
 
   /* Fix input field backgrounds on small mobile */
@@ -601,16 +612,16 @@
   /* iOS Safari - completely disable complex effects */
   html {
     -webkit-overflow-scrolling: touch;
-    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%) !important;
+    background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
     min-height: 100vh;
   }
 
   body {
-    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%) !important;
+    background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
     background-attachment: scroll !important;
     -webkit-overflow-scrolling: touch;
     min-height: 100vh;
-    /* Keep gradient but ensure it's performant on iOS */
+    /* Simplified gradient for better iOS performance */
   }
 
   .app-container {
@@ -653,13 +664,13 @@
 
   /* Fix mobile background coverage */
   html {
-    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%) !important;
+    background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
     min-height: 100vh;
     height: 100%;
   }
 
   body {
-    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%) !important;
+    background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
     background-attachment: scroll !important;
     min-height: 100vh;
     height: 100%;
@@ -748,12 +759,12 @@
 /* Dark mode mobile fixes */
 @media (max-width: 767px) and (prefers-color-scheme: dark) {
   html {
-    background: linear-gradient(135deg, #1D3557 0%, #0F2332 50%, #0A1A24 100%) !important;
+    background: linear-gradient(135deg, #1D3557 0%, #0A1A24 100%) !important;
     min-height: 100vh;
   }
 
   body {
-    background: linear-gradient(135deg, #1D3557 0%, #0F2332 50%, #0A1A24 100%) !important;
+    background: linear-gradient(135deg, #1D3557 0%, #0A1A24 100%) !important;
     background-attachment: scroll !important;
     min-height: 100vh;
   }
@@ -815,12 +826,12 @@
 @supports (-webkit-touch-callout: none) {
   @media (prefers-color-scheme: dark) {
     html {
-      background: linear-gradient(135deg, #1D3557 0%, #0F2332 50%, #0A1A24 100%) !important;
+      background: linear-gradient(135deg, #1D3557 0%, #0A1A24 100%) !important;
       min-height: 100vh;
     }
 
     body {
-      background: linear-gradient(135deg, #1D3557 0%, #0F2332 50%, #0A1A24 100%) !important;
+      background: linear-gradient(135deg, #1D3557 0%, #0A1A24 100%) !important;
       background-attachment: scroll !important;
       min-height: 100vh;
     }
