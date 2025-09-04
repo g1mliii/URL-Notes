@@ -112,9 +112,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* Global scrollbar styles to prevent conflicts */
+html {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -132,6 +138,12 @@ body {
   background: var(--text-muted);
 }
 
+/* Prevent double scrollbars in Chrome */
+body::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
 /* Dark mode background gradient (Deep Ocean) */
 @media (prefers-color-scheme: dark) {
   body {
@@ -147,7 +159,6 @@ body {
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
   position: relative;
-  overflow-x: hidden;
   /* Prevent white flashes on mobile */
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
