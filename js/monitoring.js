@@ -321,7 +321,7 @@ class ApplicationMonitor {
 
   monitorAuthState() {
     // Monitor authentication state changes
-    if (window.supabaseClient) {
+    if (window.supabaseClient && window.supabaseClient.auth && window.supabaseClient.auth.onAuthStateChange) {
       window.supabaseClient.auth.onAuthStateChange((event, session) => {
         console.log('🔐 Auth state change:', {
           event,
@@ -329,6 +329,8 @@ class ApplicationMonitor {
           timestamp: new Date().toISOString()
         });
       });
+    } else {
+      console.log('🔐 Supabase client not available for auth monitoring');
     }
   }
 

@@ -6,23 +6,39 @@
 @media (max-width: 480px) {
 
   /* Fix mobile background rendering issues */
+  html {
+    -webkit-overflow-scrolling: touch;
+  }
+
   body {
     background-attachment: scroll !important;
     -webkit-overflow-scrolling: touch;
-    /* Simplify background for mobile */
+    /* Simplify background for mobile - solid color to prevent white flashes */
     background: #457B9D !important;
+    background-image: none !important;
   }
 
   .app-container {
     /* Simplify container for mobile - remove complex effects */
-    background: rgba(248, 252, 253, 0.95) !important;
+    background: rgba(248, 252, 253, 1) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+    /* Force hardware acceleration to prevent rendering issues */
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
   }
 
   /* Disable complex background overlay on mobile */
   .app-container::before {
     display: none !important;
+  }
+
+  /* Force all sections to have solid backgrounds */
+  .hero-section,
+  .features-section {
+    background: rgba(248, 252, 253, 1) !important;
   }
 
   .hero-title {
@@ -521,16 +537,27 @@
 @supports (-webkit-touch-callout: none) {
 
   /* iOS Safari - completely disable complex effects */
+  html {
+    -webkit-overflow-scrolling: touch;
+  }
+
   body {
     background: #457B9D !important;
     background-attachment: scroll !important;
     -webkit-overflow-scrolling: touch;
+    /* Force solid background to prevent white flashes */
+    background-image: none !important;
   }
 
   .app-container {
-    background: rgba(248, 252, 253, 0.98) !important;
+    background: rgba(248, 252, 253, 1) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+    /* Force hardware acceleration */
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
   }
 
   /* Completely remove the problematic overlay on iOS */
@@ -546,7 +573,15 @@
   .modal-content {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    background: rgba(255, 255, 255, 0.95) !important;
+    background: rgba(255, 255, 255, 1) !important;
+    /* Ensure solid backgrounds */
+    opacity: 1 !important;
+  }
+
+  /* Force all sections to have solid backgrounds */
+  .hero-section,
+  .features-section {
+    background: rgba(248, 252, 253, 1) !important;
   }
 }
 
