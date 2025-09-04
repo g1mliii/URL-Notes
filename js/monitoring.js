@@ -35,8 +35,10 @@ class ApplicationMonitor {
       // Set up health checks
       this.setupHealthChecks();
 
-      // Start monitoring
-      this.startMonitoring();
+      // Delay monitoring start to allow Supabase to initialize
+      setTimeout(() => {
+        this.startMonitoring();
+      }, 2000);
 
       console.log('🔍 Application monitoring initialized');
     } catch (error) {
@@ -321,20 +323,31 @@ class ApplicationMonitor {
 
   monitorAuthState() {
     // Monitor authentication state changes
-    try {
-      if (window.supabaseClient && window.supabaseClient.auth && typeof window.supabaseClient.auth.onAuthStateChange === 'function') {
-        window.supabaseClient.auth.onAuthStateChange((event, session) => {
-          console.log('🔐 Auth state change:', {
-            event,
-            authenticated: !!session,
-            timestamp: new Date().toISOString()
+    const setupAuthMonitoring = () => {
+      try {
+        if (window.supabaseClient && window.supabaseClient.auth && typeof window.supabaseClient.auth.onAuthStateChange === 'function') {
+          window.supabaseClient.auth.onAuthStateChange((event, session) => {
+            console.log('🔐 Auth state change:', {
+              event,
+              authenticated: !!session,
+              timestamp: new Date().toISOString()
+            });
           });
-        });
-      } else {
-        console.log('🔐 Supabase client not available for auth monitoring');
+          console.log('🔐 Auth monitoring setup successful');
+        } else {
+          console.log('🔐 Supabase client not available for auth monitoring');
+        }
+      } catch (error) {
+        console.log('🔐 Auth monitoring setup failed:', error.message);
       }
-    } catch (error) {
-      console.log('🔐 Auth monitoring setup failed:', error.message);
+    };
+
+    // Try immediately
+    setupAuthMonitoring();
+    
+    // If failed, try again after a delay
+    if (!window.supabaseClient) {
+      setTimeout(setupAuthMonitoring, 3000);
     }
   }
 
