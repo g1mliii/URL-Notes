@@ -1416,4 +1416,112 @@ Dashboard Specific Styles - Google Drive-like Layout */
   color: var(--success-color);
   font-size: 0.75rem;
   margin-top: 0.25rem;
+}/* Foote
+r Styles */
+.site-footer {
+  background: rgba(27, 79, 114, 0.1);
+  border-top: 1px solid var(--border-color);
+  padding: 2rem 0;
+  margin-top: auto;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.footer-links {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.footer-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.875rem;
+  transition: color 0.2s ease;
+}
+
+.footer-link:hover {
+  color: var(--accent-primary);
+}
+
+.footer-text {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.footer-text p {
+  margin: 0;
+}
+
+/* Privacy and Terms Page Styles */
+.privacy-main,
+.terms-main {
+  padding: 2rem 0;
+  min-height: calc(100vh - 200px);
+}
+
+.privacy-container,
+.terms-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.privacy-container h1,
+.terms-container h1 {
+  color: var(--text-strong);
+  margin-bottom: 0.5rem;
+  font-size: 2.5rem;
+}
+
+.last-updated {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin-bottom: 2rem;
+}
+
+.privacy-section,
+.terms-section {
+  margin-bottom: 2rem;
+  background: var(--bg-secondary);
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.privacy-section h2,
+.terms-section h2 {
+  color: var(--text-strong);
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+}
+
+.privacy-section p,
+.terms-section p {
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.privacy-section ul,
+.terms-section ul {
+  color: var(--text-primary);
+  line-height: 1.6;
+  padding-left: 1.5rem;
+}
+
+.privacy-section li,
+.terms-section li {
+  margin-bottom: 0.5rem;
+}
+
+.privacy-section strong,
+.terms-section strong {
+  color: var(--text-strong);
 }
