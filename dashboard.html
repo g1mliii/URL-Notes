@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://kqjcorjjvunmyrnzvqgr.supabase.co; style-src 'self' 'unsafe-inline'; connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co wss://kqjcorjjvunmyrnzvqgr.supabase.co; img-src 'self' data: https:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://kqjcorjjvunmyrnzvqgr.supabase.co; style-src 'self' 'unsafe-inline'; connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co wss://kqjcorjjvunmyrnzvqgr.supabase.co; img-src 'self' data: https:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
 
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta http-equiv="X-XSS-Protection" content="1; mode=block">
@@ -13,6 +15,7 @@
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/responsive.css">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Navigation Header -->
@@ -46,7 +49,7 @@
                             <button id="newNoteBtn" class="btn-primary">New Note</button>
                         </div>
                     </div>
-                    
+
                     <!-- Search and Filters Bar -->
                     <div class="filters-bar">
                         <div class="search-section">
@@ -101,7 +104,7 @@
                     <button type="button" id="deleteNotePanelBtn" class="btn-danger btn-small">Delete</button>
                 </div>
             </div>
-            
+
             <div class="note-panel-content">
                 <!-- View Mode -->
                 <div class="note-view" id="noteView">
@@ -112,20 +115,20 @@
                             <span id="noteViewDomain" class="note-domain"></span>
                         </div>
                     </div>
-                    
+
                     <div class="note-content-display" id="noteContentDisplay">
                         <!-- Formatted note content will be displayed here -->
                     </div>
-                    
+
                     <div class="note-url-display" id="noteUrlDisplay">
                         <!-- URL will be displayed here if present -->
                     </div>
-                    
+
                     <div class="note-tags-display" id="noteTagsDisplay">
                         <!-- Tags will be displayed here -->
                     </div>
                 </div>
-                
+
                 <!-- Edit Mode -->
                 <div class="note-edit hidden" id="noteEdit">
                     <form id="noteForm">
@@ -136,7 +139,8 @@
                             <input type="url" id="noteUrl" placeholder="URL (optional)">
                         </div>
                         <div class="input-group">
-                            <div class="note-content-input" id="noteContentInput" contenteditable="true" placeholder="Write your note here..."></div>
+                            <div class="note-content-input" id="noteContentInput" contenteditable="true"
+                                placeholder="Write your note here..."></div>
                         </div>
                         <div class="input-group">
                             <input type="text" id="noteTags" placeholder="Tags (comma separated)">
@@ -173,4 +177,5 @@
     <script src="js/dashboard.js?v=20250904"></script>
     <script src="js/monitoring.js?v=20250904"></script>
 </body>
+
 </html>
