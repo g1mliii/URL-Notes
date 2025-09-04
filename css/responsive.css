@@ -570,7 +570,8 @@
   }
 }
 
-/ * Dark mode mobile fixes */ @media (max-width: 767px) and (prefers-color-scheme: dark) {
+/* Dark mode mobile fixes */
+@media (max-width: 767px) and (prefers-color-scheme: dark) {
   body {
     background: #0F2332 !important;
   }
