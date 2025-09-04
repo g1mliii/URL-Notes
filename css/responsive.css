@@ -10,6 +10,7 @@
     -webkit-overflow-scrolling: touch;
     background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%) !important;
     min-height: 100vh;
+    height: 100%;
   }
 
   body {
@@ -19,6 +20,15 @@
     background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%) !important;
     background-attachment: scroll !important;
     min-height: 100vh;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Ensure no white gaps around the app container */
+  .app-container {
+    min-height: 100vh;
+    margin: 0;
   }
 
   .app-container {
@@ -641,11 +651,29 @@
 /* Additional mobile performance optimizations */
 @media (max-width: 767px) {
 
+  /* Fix mobile background coverage */
+  html {
+    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%) !important;
+    min-height: 100vh;
+    height: 100%;
+  }
+
+  body {
+    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%) !important;
+    background-attachment: scroll !important;
+    min-height: 100vh;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
   /* Ensure app container shows background gradient */
   .app-container {
     background: rgba(248, 252, 253, 0.65) !important;
     --bg-primary: rgba(248, 252, 253, 0.65) !important;
     --bg-secondary: rgba(240, 248, 250, 0.7) !important;
+    min-height: 100vh;
+    margin: 0;
   }
 
   /* Fix dashboard elements on mobile */
@@ -692,6 +720,14 @@
     -webkit-backdrop-filter: none !important;
     background: rgba(248, 252, 253, 0.75) !important;
     border: 1px solid rgba(27, 79, 114, 0.3) !important;
+    box-shadow: none !important;
+  }
+
+  /* Specifically target auth-form to ensure transparency */
+  .auth-form {
+    background: rgba(248, 252, 253, 0.75) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   /* Fix input field backgrounds on mobile */
@@ -762,6 +798,16 @@
   .nav-header {
     background: rgba(20, 45, 65, 0.75) !important;
     border: 1px solid rgba(168, 218, 220, 0.3) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Specifically target auth-form in dark mode */
+  .auth-form {
+    background: rgba(20, 45, 65, 0.75) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 }
 
