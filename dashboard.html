@@ -1,22 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://kqjcorjjvunmyrnzvqgr.supabase.co; style-src 'self' 'unsafe-inline'; connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co wss://kqjcorjjvunmyrnzvqgr.supabase.co; img-src 'self' data: https:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
-
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
-    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
-    <title>Dashboard - Anchored</title>
-    <link rel="stylesheet" href="css/main.css?v=20250904t">
-    <link rel="stylesheet" href="css/components.css?v=20250904t">
-    <link rel="stylesheet" href="css/responsive.css?v=20250904t">
-</head>
-
-<body>
+---
+layout: default
+title: "Dashboard"
+permalink: /dashboard/
+scripts:
+  - config.js
+  - js/lib/encryption.js
+  - js/lib/api.js
+  - js/lib/storage.js
+  - js/dashboard.js
+  - js/monitoring.js
+---
     <div class="app-container">
         <!-- Navigation Header -->
         <header class="nav-header">
@@ -25,7 +18,7 @@
                     <h1>Anchored</h1>
                 </div>
                 <nav class="nav-links">
-                    <a href="account.html" class="nav-link">Account</a>
+                    <a href="/account" class="nav-link">Account</a>
                     <button id="logoutBtn" class="nav-link btn-secondary">Logout</button>
                 </nav>
             </div>
@@ -172,8 +165,8 @@
             <div class="container">
                 <div class="footer-content">
                     <div class="footer-links">
-                        <a href="privacy.html" class="footer-link">Privacy Policy</a>
-                        <a href="terms.html" class="footer-link">Terms of Service</a>
+                        <a href="/privacy" class="footer-link">Privacy Policy</a>
+                        <a href="/terms" class="footer-link">Terms of Service</a>
                         <a href="mailto:info@anchored.site" class="footer-link">Contact</a>
                     </div>
                     <div class="footer-text">
@@ -184,13 +177,3 @@
         </footer>
     </div>
 
-    <script src="config.js?v=20250904c"></script>
-    <script src="js/lib/encryption.js?v=20250904c"></script>
-    <script src="js/lib/api.js?v=20250904c"></script>
-    <script src="js/auth.js?v=20250904c"></script>
-    <script src="js/app.js?v=20250904c"></script>
-    <script src="js/dashboard.js?v=20250904c"></script>
-    <script src="js/monitoring.js?v=20250904c"></script>
-</body>
-
-</html>

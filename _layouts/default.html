@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://kqjcorjjvunmyrnzvqgr.supabase.co; style-src 'self' 'unsafe-inline'; connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co wss://kqjcorjjvunmyrnzvqgr.supabase.co; img-src 'self' data: https:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    
+    <title>{% if page.title %}{{ page.title }} - {{ site.title }}{% else %}{{ site.title }}{% endif %}</title>
+    
+    <link rel="stylesheet" href="{{ '/css/main.css' | relative_url }}?v=20250904t">
+    <link rel="stylesheet" href="{{ '/css/components.css' | relative_url }}?v=20250904t">
+    <link rel="stylesheet" href="{{ '/css/responsive.css' | relative_url }}?v=20250904t">
+</head>
+<body>
+    {{ content }}
+    
+    {% if page.scripts %}
+        {% for script in page.scripts %}
+            <script src="{{ script | relative_url }}?v=20250904c"></script>
+        {% endfor %}
+    {% endif %}
+</body>
+</html>

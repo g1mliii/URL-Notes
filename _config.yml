@@ -1,0 +1,49 @@
+# Jekyll configuration for GitHub Pages
+# Enable clean URLs (remove .html extensions)
+
+# Site settings
+title: "Anchored - Take Notes on Any Website"
+description: "Capture and organize notes on any website with secure, encrypted cloud sync"
+url: "https://anchored.site"
+baseurl: ""
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+permalink: pretty
+
+# Enable clean URLs
+plugins:
+  - jekyll-sitemap
+  - jekyll-feed
+
+# Exclude files from processing
+exclude:
+  - README.md
+  - node_modules/
+  - package.json
+  - package-lock.json
+  - .git/
+  - .gitignore
+  - extension/
+  - supabase/
+  - guide files/
+  - .kiro/
+
+# Include files that start with underscore
+include:
+  - _pages
+
+# Collections (optional, for better organization)
+collections:
+  pages:
+    output: true
+    permalink: /:name/
+
+# Default layouts
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "default"
