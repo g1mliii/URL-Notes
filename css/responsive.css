@@ -34,6 +34,10 @@
   }
 
   /* Fix dashboard elements on small mobile */
+  .dashboard-content {
+    background: transparent !important;
+  }
+
   .content-header {
     background: rgba(240, 248, 250, 0.75) !important;
     backdrop-filter: none !important;
@@ -44,12 +48,25 @@
     display: none !important;
   }
 
+  .filters-bar {
+    background: rgba(240, 248, 250, 0.65) !important;
+  }
+
+  .notes-grid {
+    background: transparent !important;
+  }
+
   .search-input {
     background: rgba(248, 252, 253, 0.85) !important;
   }
 
   .note-card {
     background: rgba(240, 248, 250, 0.85) !important;
+  }
+
+  /* Fix input group containers */
+  .input-group {
+    background: transparent !important;
   }
 
   /* Disable complex background overlay on mobile */
@@ -626,6 +643,10 @@
   }
 
   /* Fix dashboard elements on mobile */
+  .dashboard-content {
+    background: transparent !important;
+  }
+
   .content-header {
     background: rgba(240, 248, 250, 0.8) !important;
     backdrop-filter: none !important;
@@ -636,12 +657,25 @@
     display: none !important;
   }
 
+  .filters-bar {
+    background: rgba(240, 248, 250, 0.7) !important;
+  }
+
+  .notes-grid {
+    background: transparent !important;
+  }
+
   .search-input {
     background: rgba(248, 252, 253, 0.9) !important;
   }
 
   .note-card {
     background: rgba(240, 248, 250, 0.9) !important;
+  }
+
+  /* Fix input group containers */
+  .input-group {
+    background: transparent !important;
   }
 
   /* Simplify all glassmorphism effects on mobile */
@@ -683,8 +717,20 @@
   }
 
   /* Fix dashboard elements in dark mode */
+  .dashboard-content {
+    background: transparent !important;
+  }
+
   .content-header {
     background: rgba(20, 45, 65, 0.85) !important;
+  }
+
+  .filters-bar {
+    background: rgba(20, 45, 65, 0.8) !important;
+  }
+
+  .notes-grid {
+    background: transparent !important;
   }
 
   .search-input {
@@ -693,6 +739,10 @@
 
   .note-card {
     background: rgba(20, 45, 65, 0.9) !important;
+  }
+
+  .input-group {
+    background: transparent !important;
   }
 
   .auth-form,
@@ -718,8 +768,20 @@
     }
 
     /* Fix dashboard elements in iOS Safari dark mode */
+    .dashboard-content {
+      background: transparent !important;
+    }
+
     .content-header {
       background: rgba(20, 45, 65, 0.9) !important;
+    }
+
+    .filters-bar {
+      background: rgba(20, 45, 65, 0.85) !important;
+    }
+
+    .notes-grid {
+      background: transparent !important;
     }
 
     .search-input {
@@ -728,6 +790,10 @@
 
     .note-card {
       background: rgba(20, 45, 65, 0.95) !important;
+    }
+
+    .input-group {
+      background: transparent !important;
     }
 
     .auth-form,
