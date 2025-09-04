@@ -166,12 +166,15 @@ html {
 /* App Container with Glassmorphism */
 .app-container {
   height: 100vh;
+  min-height: 100vh;
   background: var(--bg-primary);
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
   position: relative;
   overflow-y: auto;
   overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
   /* Prevent white flashes on mobile */
   -webkit-transform: translateZ(0);
   transform: translateZ(0);

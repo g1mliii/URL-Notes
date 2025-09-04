@@ -28,9 +28,12 @@
   /* Ensure no white gaps around the app container */
   .app-container {
     height: 100vh;
+    min-height: 100vh;
     overflow-y: auto;
     overflow-x: hidden;
     margin: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   .app-container {
@@ -696,9 +699,12 @@
     --bg-primary: rgba(248, 252, 253, 0.65) !important;
     --bg-secondary: rgba(248, 252, 253, 0.75) !important;
     height: 100vh;
+    min-height: 100vh;
     overflow-y: auto;
     overflow-x: hidden;
     margin: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   /* Fix dashboard elements on mobile */

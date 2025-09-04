@@ -281,6 +281,7 @@
 
 /* Hero Section */
 .hero-section {
+  flex: 1;
   padding: 3rem 0 2rem 0;
   text-align: center;
   position: relative;
@@ -487,6 +488,7 @@
 /* 
 Dashboard Specific Styles - Google Drive-like Layout */
 .dashboard-main {
+  flex: 1;
   min-height: calc(100vh - 80px);
   padding: 0;
   position: relative;
@@ -1260,6 +1262,7 @@ Dashboard Specific Styles - Google Drive-like Layout */
 
 /* Account Specific Styles */
 .account-main {
+  flex: 1;
   padding: 1rem;
   position: relative;
   z-index: 1;
@@ -1462,6 +1465,7 @@ r Styles */
 /* Privacy and Terms Page Styles */
 .privacy-main,
 .terms-main {
+  flex: 1;
   padding: 2rem 0;
   min-height: calc(100vh - 200px);
 }
