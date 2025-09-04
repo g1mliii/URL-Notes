@@ -13,14 +13,14 @@
   body {
     background-attachment: scroll !important;
     -webkit-overflow-scrolling: touch;
-    /* Simplify background for mobile - solid color to prevent white flashes */
-    background: #457B9D !important;
-    background-image: none !important;
+    /* Keep the gradient but simplify it for mobile performance */
+    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%) !important;
+    background-attachment: scroll !important;
   }
 
   .app-container {
-    /* Simplify container for mobile - remove complex effects but keep some transparency */
-    background: rgba(248, 252, 253, 0.85) !important;
+    /* Reduce opacity to show blue background while maintaining readability */
+    background: rgba(248, 252, 253, 0.75) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     /* Force hardware acceleration to prevent rendering issues */
@@ -104,7 +104,7 @@
   }
 
   .app-container {
-    background: rgba(248, 252, 253, 0.95) !important;
+    background: rgba(248, 252, 253, 0.85) !important;
   }
 
   .hero-title {
@@ -542,15 +542,14 @@
   }
 
   body {
-    background: #457B9D !important;
+    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%) !important;
     background-attachment: scroll !important;
     -webkit-overflow-scrolling: touch;
-    /* Force solid background to prevent white flashes */
-    background-image: none !important;
+    /* Keep gradient but ensure it's performant on iOS */
   }
 
   .app-container {
-    background: rgba(248, 252, 253, 1) !important;
+    background: rgba(248, 252, 253, 0.8) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     /* Force hardware acceleration */
@@ -608,17 +607,18 @@
 /* Dark mode mobile fixes */
 @media (max-width: 767px) and (prefers-color-scheme: dark) {
   body {
-    background: #0F2332 !important;
+    background: linear-gradient(135deg, #1D3557 0%, #0F2332 50%, #0A1A24 100%) !important;
+    background-attachment: scroll !important;
   }
 
   .app-container {
-    background: rgba(15, 35, 50, 0.95) !important;
+    background: rgba(15, 35, 50, 0.8) !important;
   }
 
   .auth-form,
   .feature-card,
   .nav-header {
-    background: rgba(20, 45, 65, 0.95) !important;
+    background: rgba(20, 45, 65, 0.9) !important;
     border: 1px solid rgba(168, 218, 220, 0.2) !important;
   }
 }
@@ -627,11 +627,12 @@
 @supports (-webkit-touch-callout: none) {
   @media (prefers-color-scheme: dark) {
     body {
-      background: #0F2332 !important;
+      background: linear-gradient(135deg, #1D3557 0%, #0F2332 50%, #0A1A24 100%) !important;
+      background-attachment: scroll !important;
     }
 
     .app-container {
-      background: rgba(15, 35, 50, 0.98) !important;
+      background: rgba(15, 35, 50, 0.85) !important;
     }
 
     .auth-form,
@@ -639,7 +640,7 @@
     .nav-header,
     .card,
     .modal-content {
-      background: rgba(20, 45, 65, 0.95) !important;
+      background: rgba(20, 45, 65, 0.9) !important;
     }
   }
 }
