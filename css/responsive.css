@@ -35,10 +35,10 @@
     display: none !important;
   }
 
-  /* Force all sections to have solid backgrounds */
+  /* Make sections transparent to show gradient background */
   .hero-section,
   .features-section {
-    background: rgba(248, 252, 253, 1) !important;
+    background: transparent !important;
   }
 
   .hero-title {
@@ -572,15 +572,14 @@
   .modal-content {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    background: rgba(255, 255, 255, 1) !important;
-    /* Ensure solid backgrounds */
-    opacity: 1 !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    /* Reduce opacity to show some background */
   }
 
-  /* Force all sections to have solid backgrounds */
+  /* Make sections transparent to show gradient background */
   .hero-section,
   .features-section {
-    background: rgba(248, 252, 253, 1) !important;
+    background: transparent !important;
   }
 }
 
