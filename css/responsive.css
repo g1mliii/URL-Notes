@@ -72,6 +72,14 @@
     margin: 0 0.5rem;
   }
 
+  /* Fix input field backgrounds on small mobile */
+  .input-group input,
+  .input-group textarea,
+  .input-group select {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 1px solid rgba(27, 79, 114, 0.3) !important;
+  }
+
   .modal-content {
     margin: 0.5rem;
     border-radius: 16px;
@@ -604,6 +612,14 @@
     -webkit-backdrop-filter: none !important;
     background: rgba(248, 252, 253, 0.95) !important;
     border: 1px solid rgba(27, 79, 114, 0.2) !important;
+  }
+
+  /* Fix input field backgrounds on mobile */
+  .input-group input,
+  .input-group textarea,
+  .input-group select {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 1px solid rgba(27, 79, 114, 0.3) !important;
   }
 
   /* Ensure sections are transparent on mobile */
