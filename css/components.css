@@ -1437,6 +1437,8 @@ Dashboard Specific Styles - Google Drive-like Layout */
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
   position: relative;
   z-index: 10;
+  /* Add safe area padding for mobile browser UI */
+  padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
 }
 
 .footer-content {
@@ -1626,6 +1628,12 @@ Dashboard Specific Styles - Google Drive-like Layout */
     width: 100%;
     right: 0;
   }
+
+  /* Remove sticky nav on tablet/mobile to prevent browser UI conflicts */
+  .nav-header {
+    position: relative;
+    top: auto;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1673,6 +1681,12 @@ Dashboard Specific Styles - Google Drive-like Layout */
   .notes-grid {
     padding: 0.75rem;
     gap: 0.5rem;
+  }
+
+  /* Remove sticky nav on mobile to prevent browser UI conflicts */
+  .nav-header {
+    position: relative;
+    top: auto;
   }
 
   .note-card {

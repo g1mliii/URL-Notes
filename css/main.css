@@ -458,7 +458,7 @@ p {
   color: var(--info-color);
 }
 
-/* Mobile-specific fixes for white space and scrolling issues */
+/* Mobile-specific fixes for browser UI overlap and safe areas */
 @media screen and (max-width: 768px) {
 
   html,
@@ -475,10 +475,13 @@ p {
     /* Ensure full coverage on mobile */
     width: 100%;
     max-width: 100%;
-    /* Fix mobile Safari address bar height changes */
+    /* Fix mobile browser UI overlap */
     min-height: 100vh;
     min-height: 100dvh;
+    /* Dynamic viewport - respects browser UI */
     min-height: -webkit-fill-available;
+    /* Add padding for mobile browser UI safe areas */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
 
