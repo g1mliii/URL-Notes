@@ -749,7 +749,7 @@ class SupabaseClient {
   // Fallback sync method using direct database access
   async syncNotesDirectly(encryptedNotes, deletions = []) {
     console.log('Using direct database sync fallback');
-    
+
     try {
       // Process deletions first
       for (const deletion of deletions) {
@@ -764,7 +764,7 @@ class SupabaseClient {
       for (const note of encryptedNotes) {
         // Check if note exists
         const existingNotes = await this._request(`${this.apiUrl}/notes?id=eq.${note.id}&user_id=eq.${this.currentUser.id}`, { auth: true });
-        
+
         if (existingNotes && existingNotes.length > 0) {
           // Update existing note
           await this._request(`${this.apiUrl}/notes?id=eq.${note.id}&user_id=eq.${this.currentUser.id}`, {
@@ -1010,6 +1010,52 @@ class SupabaseClient {
   // Check if user is authenticated
   isAuthenticated() {
     return !!(this.accessToken && this.currentUser);
+  }
+
+  // Clean up old soft deleted notes (24+ hours old)
+  async cleanupOldDeletedNotes() {
+    if (!this.isAuthenticated()) {
+      console.log('User not authenticated, skipping cleanup');
+      return { cleaned: 0 };
+    }
+
+    try {
+      console.log('Starting cleanup of old deleted notes...');
+
+      // Get notes that are deleted and older than 24 hours
+      const cutoffTime = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
+      const cutoffISOString = cutoffTime.toISOString();
+
+      const query = `${this.apiUrl}/notes?user_id=eq.${this.currentUser.id}&is_deleted=eq.true&deleted_at=lt.${cutoffISOString}`;
+      const oldDeletedNotes = await this._request(query, { auth: true });
+
+      if (!oldDeletedNotes || oldDeletedNotes.length === 0) {
+        console.log('No old deleted notes found for cleanup');
+        return { cleaned: 0 };
+      }
+
+      console.log(`Found ${oldDeletedNotes.length} old deleted notes to permanently delete`);
+
+      // Permanently delete these notes from the database
+      let cleanedCount = 0;
+      for (const note of oldDeletedNotes) {
+        try {
+          await this._request(`${this.apiUrl}/notes?id=eq.${note.id}`, {
+            method: 'DELETE',
+            auth: true
+          });
+          cleanedCount++;
+        } catch (error) {
+          console.warn(`Failed to delete note ${note.id}:`, error);
+        }
+      }
+
+      console.log(`Successfully cleaned up ${cleanedCount} old deleted notes`);
+      return { cleaned: cleanedCount, total: oldDeletedNotes.length };
+    } catch (error) {
+      console.error('Failed to cleanup old deleted notes:', error);
+      throw error;
+    }
   }
 
   // Get current user

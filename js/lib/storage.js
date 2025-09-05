@@ -19,6 +19,7 @@ class WebStorage {
     this.initializeSyncTracking();
     this.setupEmergencySync();
     this.startPeriodicSync();
+    this.startCleanupTask();
   }
 
   // Initialize sync tracking metadata
@@ -53,6 +54,88 @@ class WebStorage {
     setInterval(() => {
       this.checkAndSync();
     }, this.batchSyncInterval);
+  }
+
+  // Start periodic cleanup of soft deleted notes
+  startCleanupTask() {
+    // Clean up soft deleted notes every hour (like extension)
+    setInterval(() => {
+      this.cleanupSyncedDeletedNotes();
+    }, 60 * 60 * 1000); // 1 hour
+    
+    // Also clean up on first run (5 seconds after initialization)
+    setTimeout(() => {
+      this.cleanupSyncedDeletedNotes();
+    }, 5000);
+  }
+
+  // Clean up soft deleted notes that have been synced to cloud
+  async cleanupSyncedDeletedNotes() {
+    if (!window.supabaseClient) {
+      console.warn('Supabase client not available for cleanup');
+      return;
+    }
+
+    try {
+      console.log('Starting cleanup of soft deleted notes...');
+      
+      // Get all notes marked for deletion that are older than 24 hours
+      const cutoffTime = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
+      const cutoffISOString = cutoffTime.toISOString();
+
+      // Use direct database access to find and delete old soft-deleted notes
+      const deletedNotes = await window.supabaseClient._request(
+        `${window.supabaseClient.apiUrl}/notes?user_id=eq.${window.supabaseClient.currentUser?.id}&is_deleted=eq.true&deleted_at=lt.${cutoffISOString}`,
+        { auth: true }
+      );
+
+      if (deletedNotes && deletedNotes.length > 0) {
+        console.log(`Found ${deletedNotes.length} old deleted notes to clean up`);
+        
+        // Permanently delete these notes from the database
+        for (const note of deletedNotes) {
+          await window.supabaseClient._request(
+            `${window.supabaseClient.apiUrl}/notes?id=eq.${note.id}`,
+            { method: 'DELETE', auth: true }
+          );
+        }
+
+        // Also remove from local cache
+        this.cleanupDeletedNotesFromCache(deletedNotes.map(n => n.id));
+        
+        console.log(`Cleaned up ${deletedNotes.length} old deleted notes`);
+      } else {
+        console.log('No old deleted notes found for cleanup');
+      }
+    } catch (error) {
+      console.warn('Failed to cleanup soft deleted notes:', error);
+    }
+  }
+
+  // Remove deleted notes from local cache
+  cleanupDeletedNotesFromCache(noteIds) {
+    try {
+      // Remove individual note caches
+      noteIds.forEach(noteId => {
+        localStorage.removeItem(this.getCacheKey(noteId));
+      });
+
+      // Update all notes cache to remove deleted notes
+      const cacheData = localStorage.getItem(this.getAllNotesKey());
+      if (cacheData) {
+        const { notes, timestamp } = JSON.parse(cacheData);
+        if (notes) {
+          const filteredNotes = notes.filter(note => !noteIds.includes(note.id));
+          const newCacheData = {
+            notes: filteredNotes,
+            timestamp: timestamp
+          };
+          localStorage.setItem(this.getAllNotesKey(), JSON.stringify(newCacheData));
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to cleanup deleted notes from cache:', error);
+    }
   }
 
   // Get cache key for a note
@@ -398,15 +481,20 @@ class WebStorage {
     }
 
     try {
-      // Use existing API method from extension
+      // Use existing API method from extension - only get non-deleted notes
       let notes = [];
-      if (window.supabaseClient.getAllNotes) {
+      if (window.supabaseClient.fetchNotes) {
+        notes = await window.supabaseClient.fetchNotes();
+      } else if (window.supabaseClient.getAllNotes) {
         notes = await window.supabaseClient.getAllNotes();
       } else if (window.supabaseClient.syncNotes) {
         // Fallback to sync method
         const syncResult = await window.supabaseClient.syncNotes([]);
         notes = syncResult.serverNotes || [];
       }
+
+      // Filter out any deleted notes (safety check)
+      notes = notes.filter(note => !note.is_deleted);
 
       // Decrypt notes if encryption is available
       const decryptedNotes = [];

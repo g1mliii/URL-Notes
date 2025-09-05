@@ -110,6 +110,12 @@ class Dashboard {
       newNoteBtn.addEventListener('click', () => this.showNoteEditor());
     }
 
+    // Cleanup button
+    const cleanupBtn = document.getElementById('cleanupBtn');
+    if (cleanupBtn) {
+      cleanupBtn.addEventListener('click', () => this.handleManualCleanup());
+    }
+
     // Export/Import buttons
     const exportBtn = document.getElementById('exportBtn');
     if (exportBtn) {
@@ -385,11 +391,65 @@ class Dashboard {
       this.populateDomainFilter();
       this.applyFilters();
 
+      // Trigger cleanup of old deleted notes (async, don't wait)
+      this.cleanupOldDeletedNotes();
+
     } catch (error) {
       console.error('Error loading notes:', error);
       this.showErrorState(error.message);
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  // Clean up old deleted notes (runs in background)
+  async cleanupOldDeletedNotes() {
+    try {
+      if (window.api && window.api.isAuthenticated()) {
+        console.log('Running background cleanup of old deleted notes...');
+        const result = await window.api.cleanupOldDeletedNotes();
+        if (result.cleaned > 0) {
+          console.log(`Background cleanup: removed ${result.cleaned} old deleted notes`);
+        }
+      }
+    } catch (error) {
+      console.warn('Background cleanup failed:', error);
+      // Don't show error to user - this is a background operation
+    }
+  }
+
+  // Handle manual cleanup button click
+  async handleManualCleanup() {
+    if (!window.api || !window.api.isAuthenticated()) {
+      this.showNotification('Please sign in to clean up deleted notes', 'warning');
+      return;
+    }
+
+    const confirmed = confirm('This will permanently delete notes that were deleted more than 24 hours ago. This action cannot be undone. Continue?');
+    if (!confirmed) return;
+
+    // Show loading state on cleanup button
+    const cleanupBtn = document.getElementById('cleanupBtn');
+    const originalText = cleanupBtn.textContent;
+    cleanupBtn.disabled = true;
+    cleanupBtn.textContent = 'Cleaning...';
+
+    try {
+      console.log('Manual cleanup initiated by user');
+      const result = await window.api.cleanupOldDeletedNotes();
+      
+      if (result.cleaned > 0) {
+        this.showNotification(`Successfully cleaned up ${result.cleaned} old deleted notes`, 'success');
+      } else {
+        this.showNotification('No old deleted notes found to clean up', 'info');
+      }
+    } catch (error) {
+      console.error('Manual cleanup failed:', error);
+      this.showNotification('Failed to clean up deleted notes. Please try again.', 'error');
+    } finally {
+      // Restore button state
+      cleanupBtn.disabled = false;
+      cleanupBtn.textContent = originalText;
     }
   }
 
@@ -1096,9 +1156,25 @@ class Dashboard {
     this.setDeleteButtonState(true);
 
     try {
-      // Delete from cloud first
+      // Use the same deletion method as extension - sync with deletions array
       if (window.api && window.api.isAuthenticated()) {
-        await window.api.deleteNote(this.currentNote.id);
+        console.log('Deleting note using sync method (like extension):', this.currentNote.id);
+        
+        // Prepare deletion payload in the same format as extension
+        const deletionPayload = {
+          operation: 'sync',
+          notes: [], // No notes to sync, just deletions
+          deletions: [{
+            id: this.currentNote.id,
+            deletedAt: new Date().toISOString()
+          }],
+          lastSyncTime: null,
+          timestamp: Date.now(),
+          _debug: 'deletion-v1-' + Date.now()
+        };
+
+        console.log('Deletion payload:', deletionPayload);
+        await window.api.syncNotes(deletionPayload);
       }
 
       // Remove from local array
