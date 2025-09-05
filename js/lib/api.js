@@ -720,48 +720,13 @@ class SupabaseClient {
     }
   }
 
-  // Fetch notes from cloud using Edge Function with fallback to direct DB access
+  // Fetch notes from cloud using direct database access (Edge Function is for sync operations only)
   async fetchNotes(lastSyncTime = null) {
     if (!this.isAuthenticated()) {
       throw new Error('User not authenticated');
     }
 
-    try {
-      // Try Edge Function first
-      console.log('Attempting Edge Function call to sync-notes');
-      const payload = {
-        operation: 'pull',
-        lastSyncTime: lastSyncTime
-      };
-      console.log('Edge Function payload:', payload);
-
-      const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-notes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.accessToken}`,
-          'apikey': this.supabaseAnonKey
-        },
-        body: JSON.stringify(payload)
-      });
-
-      console.log('Edge Function response status:', response.status);
-
-      if (response.ok) {
-        const responseData = await response.json();
-        const { notes: encryptedNotes } = responseData;
-
-        if (encryptedNotes && Array.isArray(encryptedNotes)) {
-          return await this.decryptNotes(encryptedNotes);
-        }
-      } else {
-        console.warn('Edge function failed, falling back to direct database access');
-      }
-    } catch (error) {
-      console.warn('Edge function error, falling back to direct database access:', error);
-    }
-
-    // Fallback: Direct database access
+    // Use direct database access for fetching notes (more efficient for read-only operations)
     try {
       console.log('Using direct database access for notes');
       console.log('Current user ID:', this.currentUser?.id);
@@ -875,6 +840,84 @@ class SupabaseClient {
       return true;
     } catch (error) {
       console.error('Delete error:', error);
+      throw error;
+    }
+  }
+
+  // Sync notes to cloud using Edge Function
+  async syncNotes(syncPayload) {
+    if (!this.isAuthenticated()) {
+      throw new Error('User not authenticated');
+    }
+
+    // Ensure encryption module is available
+    if (!window.noteEncryption) {
+      throw new Error('NoteEncryption module not available');
+    }
+
+    try {
+      // Ensure encryption key is available
+      const encryptionKey = await this.getUserEncryptionKey();
+      if (!encryptionKey) {
+        throw new Error('Encryption key not available');
+      }
+
+      const encryptedNotes = [];
+
+      // Encrypt notes before uploading (only if notes exist)
+      if (syncPayload.notes && Array.isArray(syncPayload.notes)) {
+        for (const note of syncPayload.notes) {
+          // Skip notes without title or content
+          if (!note.content || !note.title) {
+            console.warn('Skipping note without title or content:', note.id);
+            continue;
+          }
+
+          const encryptedNote = await window.noteEncryption.encryptNoteForCloud(
+            note,
+            encryptionKey
+          );
+
+          encryptedNotes.push(encryptedNote);
+        }
+      }
+
+      // Prepare the final payload for the Edge Function
+      const edgeFunctionPayload = {
+        operation: syncPayload.operation,
+        notes: encryptedNotes,
+        deletions: syncPayload.deletions || [],
+        lastSyncTime: syncPayload.lastSyncTime,
+        timestamp: syncPayload.timestamp
+      };
+
+      // Use Edge Function for sync
+      const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-notes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.accessToken}`,
+          'apikey': this.supabaseAnonKey
+        },
+        body: JSON.stringify(edgeFunctionPayload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Sync error response:', errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { error: errorText || 'Sync failed' };
+        }
+        throw new Error(errorData.error || `Sync failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Sync error:', error);
       throw error;
     }
   }
