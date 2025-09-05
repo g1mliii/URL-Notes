@@ -9,7 +9,7 @@ class SyncEngine {
     this.lastVersionUpdateTime = Date.now();
     this.syncIntervalActive = false; // Flag to track if sync is enabled
     this.isInitialized = false; // Flag to prevent multiple initializations
-    
+
     // Start event listeners (for tracking purposes only, no auto-sync)
     this.startEventListeners();
   }
@@ -20,7 +20,7 @@ class SyncEngine {
     if (this.isInitialized) {
       return;
     }
-    
+
     try {
       // Wait for storage to be ready
       if (!window.notesStorage) {
@@ -30,10 +30,10 @@ class SyncEngine {
           return;
         }
       }
-      
+
       this.setupEventListeners();
       await this.loadLastSyncTime();
-      
+
       // Check if we should start sync for authenticated premium users
       const syncCheck = await this.canSync();
       if (syncCheck.canSync && !this.syncIntervalActive) {
@@ -41,7 +41,7 @@ class SyncEngine {
         // Just start periodic sync locally
         this.startPeriodicSync();
       }
-      
+
       this.isInitialized = true;
     } catch (error) {
       console.error('Failed to initialize sync engine:', error);
@@ -54,7 +54,7 @@ class SyncEngine {
       this.isOnline = true;
       // No offline queue to flush - sync happens on timer or manual
     });
-    
+
     window.addEventListener('offline', () => {
       this.isOnline = false;
     });
@@ -76,12 +76,12 @@ class SyncEngine {
     window.eventBus?.on('auth:changed', (payload) => {
       if (payload.user) {
         // Notify background script to start timer
-        chrome.runtime.sendMessage({ action: 'auth-changed', user: payload.user }).catch(() => {});
+        chrome.runtime.sendMessage({ action: 'auth-changed', user: payload.user }).catch(() => { });
         // Don't perform initial sync automatically - just start periodic sync
         this.startPeriodicSync();
       } else {
         // Notify background script to stop timer
-        chrome.runtime.sendMessage({ action: 'auth-changed', user: null }).catch(() => {});
+        chrome.runtime.sendMessage({ action: 'auth-changed', user: null }).catch(() => { });
         this.clearSyncState();
       }
     });
@@ -124,13 +124,13 @@ class SyncEngine {
       try {
         if (window.supabaseClient.isAuthenticated()) {
           // User is authenticated, check subscription status
-      try {
-        const status = await window.supabaseClient.getSubscriptionStatus();
-        const canSync = status && status.active;
-        
-        return { authenticated: true, status, canSync };
-      } catch (statusError) {
-        return { authenticated: true, status: null, canSync: false };
+          try {
+            const status = await window.supabaseClient.getSubscriptionStatus();
+            const canSync = status && status.active;
+
+            return { authenticated: true, status, canSync };
+          } catch (statusError) {
+            return { authenticated: true, status: null, canSync: false };
           }
         } else {
           return { authenticated: false, status: null, canSync: false };
@@ -159,7 +159,7 @@ class SyncEngine {
     if (this.isSyncing) {
       return;
     }
-    
+
     // Ensure encryption is available
     if (!window.noteEncryption) {
       return;
@@ -172,33 +172,33 @@ class SyncEngine {
       // Get notes for sync - only latest versions of active notes
       const localNotes = await window.notesStorage.getNotesForSync();
       // Note: Removed verbose logging for cleaner console
-      
+
       // Validate localNotes is an array
       if (!Array.isArray(localNotes)) {
         console.error('Sync engine: localNotes is not an array:', typeof localNotes, localNotes);
         throw new Error('Failed to retrieve local notes - invalid format');
       }
-      
+
       // Get local deletions
       const localDeletions = await this.getLocalDeletions();
-      
+
       // Validate localDeletions is an array
       if (!Array.isArray(localDeletions)) {
         console.error('Sync engine: localDeletions is not an array:', typeof localDeletions, localDeletions);
         localDeletions = []; // Fallback to empty array
       }
-      
-            // Only sync notes that have changed since last sync
-      const notesToSync = this.lastSyncTime 
+
+      // Only sync notes that have changed since last sync
+      const notesToSync = this.lastSyncTime
         ? localNotes.filter(note => new Date(note.updatedAt) > new Date(this.lastSyncTime))
         : localNotes; // If no last sync time, sync all notes
-      
+
       // Check if we have anything to sync (notes OR deletions)
       const hasNotesToSync = notesToSync.length > 0;
       const hasDeletionsToSync = localDeletions.length > 0;
-      
+
       // Always proceed with sync to check for server notes, even if no local changes
-      
+
       // Prepare sync payload - include essential fields including url, domain, and tags
       const syncPayload = {
         operation: 'sync',
@@ -219,19 +219,19 @@ class SyncEngine {
       };
 
       // Send to server
-      
+
       const result = await window.supabaseClient.syncNotes(syncPayload);
-      
+
       if (result.success) {
-        
+
         // Get any missing notes from server (local priority - only add missing notes)
         const missingNotes = result.missingNotes || [];
         if (missingNotes.length > 0) {
           for (const serverNote of missingNotes) {
-            
+
             // Check if note exists locally (including deleted notes)
             const localNote = await window.notesStorage.getNote(serverNote.id);
-            
+
             if (!localNote) {
               // Note doesn't exist locally - safe to add
               // Ensure URL and domain are present before saving
@@ -244,14 +244,14 @@ class SyncEngine {
               // Check if server note is newer than deletion
               const serverNoteTime = new Date(serverNote.updatedAt || 0);
               const deletionTime = new Date(localNote.deleted_at || 0);
-              
+
               if (serverNoteTime > deletionTime) {
                 // Server note is newer than deletion - restore it
                 // Clear deletion flags
                 serverNote.is_deleted = false;
                 serverNote.deleted_at = null;
                 await window.notesStorage.saveNote(serverNote);
-                
+
                 // Remove the deletion record since we're restoring the note
                 await window.notesStorage.removeDeletionRecord(serverNote.id);
               } else {
@@ -267,15 +267,15 @@ class SyncEngine {
         if (localDeletions.length > 0) {
           const processedDeletions = result.processedDeletions || [];
           // Note: Removed verbose logging for cleaner console
-          
+
           if (processedDeletions.length > 0) {
             // Extract note IDs from processed deletions
             const processedNoteIds = processedDeletions.map(del => del.id);
             // Note: Removed verbose logging for cleaner console
-            
+
             // Mark deletions as synced by note ID (not deletion record ID)
             await window.notesStorage.markDeletionsAsSyncedByNoteIds(processedNoteIds);
-        } else {
+          } else {
             // Note: Removed verbose logging for cleaner console
           }
         }
@@ -284,13 +284,13 @@ class SyncEngine {
         const now = Date.now();
         await this.saveLastSyncTime(now);
         this.lastSyncTime = now;
-        
+
         // Note: Removed verbose logging for cleaner console
         this.showSyncSuccess('Sync completed successfully');
       } else {
         throw new Error(result.error || 'Sync failed');
       }
-      
+
     } catch (error) {
       console.error('Sync failed:', error);
       this.showSyncError('Sync failed. Changes will be saved locally.');
@@ -332,7 +332,7 @@ class SyncEngine {
       this.showSyncError('Premium subscription required for sync');
       return;
     }
-    
+
     try {
       await this.performSync();
       this.showSyncSuccess('Manual sync completed successfully');
@@ -352,13 +352,13 @@ class SyncEngine {
     try {
       // Get unsynced deletions from storage
       const unsyncedDeletions = await window.notesStorage.getUnsyncedDeletions();
-      
+
       // Format deletions for sync
       const formattedDeletions = unsyncedDeletions.map(deletion => ({
         id: deletion.noteId,
         deletedAt: deletion.deletedAt
       }));
-      
+
       return formattedDeletions;
     } catch (error) {
       console.warn('Failed to get local deletions:', error);
@@ -370,24 +370,24 @@ class SyncEngine {
   showSyncSuccess(message) {
     try {
       window.urlNotesApp?.showNotification?.(message, 'success');
-    } catch (_) {}
+    } catch (_) { }
   }
 
   // Show sync error message
   showSyncError(message) {
     try {
       window.urlNotesApp?.showNotification?.(message, 'error');
-    } catch (_) {}
+    } catch (_) { }
   }
 
   // Handle note update events
   handleNoteUpdate(event) {
     const { noteId, note } = event;
     // Note: Removed verbose logging for cleaner console
-    
+
     // Update last version update time (for tracking purposes only)
     this.lastVersionUpdateTime = Date.now();
-    
+
     // NO automatic sync - only local behavior
     // Sync will happen on timer or manual button press
   }
@@ -396,7 +396,7 @@ class SyncEngine {
   handleNoteDeletion(event) {
     const { noteId, note } = event;
     // Note: Removed verbose logging for cleaner console
-    
+
     // NO automatic sync - only local behavior
     // Sync will happen on timer or manual button press
   }
@@ -405,7 +405,7 @@ class SyncEngine {
   handleDomainDeletion(event) {
     const { domain, deletedCount } = event;
     // Note: Removed verbose logging for cleaner console
-    
+
     // NO automatic sync - only local behavior
     // Sync will happen on timer or manual button press
   }

@@ -240,7 +240,7 @@ class Dashboard {
       if (this.currentNote) {
         // Update existing note
         noteData.id = this.currentNote.id;
-        noteData.created_at = this.currentNote.created_at;
+        noteData.createdAt = this.currentNote.createdAt;
 
         // Update in local array
         const index = this.notes.findIndex(n => n.id === this.currentNote.id);
@@ -250,7 +250,7 @@ class Dashboard {
       } else {
         // Create new note for auto-save
         noteData.id = this.generateId();
-        noteData.created_at = noteData.updated_at;
+        noteData.createdAt = noteData.updatedAt;
         this.currentNote = noteData;
 
         // Add to local array
@@ -351,12 +351,12 @@ class Dashboard {
       url: note.url || '',
       domain: note.domain || this.extractDomain(note.url),
       tags: note.tags || [],
-      created_at: note.created_at || new Date().toISOString(),
-      updated_at: note.updated_at || note.created_at || new Date().toISOString(),
+      createdAt: note.createdAt || new Date().toISOString(),
+      updatedAt: note.updatedAt || note.createdAt || new Date().toISOString(),
       // Add computed fields for display
       preview: this.generatePreview(note.content || ''),
-      formattedDate: this.formatDate(note.updated_at || note.created_at)
-    })).sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+      formattedDate: this.formatDate(note.updatedAt || note.createdAt)
+    })).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
   }
 
   generateId() {
@@ -464,7 +464,7 @@ class Dashboard {
       }
 
       if (cutoffDate) {
-        filtered = filtered.filter(note => new Date(note.updated_at) >= cutoffDate);
+        filtered = filtered.filter(note => new Date(note.updatedAt) >= cutoffDate);
       }
     }
 
@@ -694,7 +694,7 @@ class Dashboard {
 
     // Populate basic info
     titleEl.textContent = note.title || 'Untitled Note';
-    dateEl.textContent = this.formatDate(note.updated_at || note.created_at);
+    dateEl.textContent = this.formatDate(note.updatedAt || note.createdAt);
     domainEl.textContent = note.domain || 'Unknown';
 
     // Populate formatted content
@@ -801,8 +801,8 @@ class Dashboard {
       url: '',
       domain: 'Web App',
       tags: [],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
     this.currentNote = newNote;
@@ -991,7 +991,7 @@ class Dashboard {
       if (this.currentNote && this.currentNote.id) {
         // Update existing note
         noteData.id = this.currentNote.id;
-        noteData.created_at = this.currentNote.created_at;
+        noteData.createdAt = this.currentNote.createdAt;
 
         // Update in local array
         const index = this.notes.findIndex(n => n.id === this.currentNote.id);
@@ -1001,7 +1001,7 @@ class Dashboard {
       } else {
         // Create new note
         noteData.id = this.generateId();
-        noteData.created_at = noteData.updated_at;
+        noteData.createdAt = noteData.updatedAt;
 
         // Add to local array
         this.notes.unshift(this.processNotes([noteData])[0]);

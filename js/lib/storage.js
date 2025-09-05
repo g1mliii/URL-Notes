@@ -318,37 +318,27 @@ class WebStorage {
   async batchUpdateNotes(notes) {
     if (!window.supabaseClient || notes.length === 0) return;
 
-    // Encrypt notes if encryption is available
-    const notesToSync = [];
-    for (const note of notes) {
-      try {
-        let syncNote = { ...note };
-        
-        // Encrypt if user has encryption key
-        if (window.noteEncryption && window.supabaseClient.getUserEncryptionKey) {
-          const userKey = await window.supabaseClient.getUserEncryptionKey();
-          if (userKey) {
-            const encryptedNote = await window.noteEncryption.encryptNoteForCloud(note, userKey);
-            syncNote = {
-              ...note,
-              title_encrypted: encryptedNote.title_encrypted,
-              content_encrypted: encryptedNote.content_encrypted,
-              tags_encrypted: encryptedNote.tags_encrypted,
-              content_hash: encryptedNote.content_hash
-            };
-          }
-        }
-        
-        notesToSync.push(syncNote);
-      } catch (error) {
-        console.warn('Failed to encrypt note for sync:', error);
-        notesToSync.push(note); // Add unencrypted as fallback
-      }
-    }
+    // Prepare sync payload in the exact same format as extension
+    const syncPayload = {
+      operation: 'sync',
+      notes: notes.map(note => ({
+        id: note.id,
+        title: note.title,
+        content: note.content,
+        url: note.url || '',
+        domain: note.domain || '',
+        tags: note.tags || [],
+        createdAt: note.createdAt,
+        updatedAt: note.updatedAt
+      })),
+      deletions: [],
+      lastSyncTime: this.lastSyncTime,
+      timestamp: Date.now()
+    };
 
-    // Use existing sync method from extension
+    // Use the same sync method as extension
     if (window.supabaseClient.syncNotes) {
-      await window.supabaseClient.syncNotes(notesToSync);
+      await window.supabaseClient.syncNotes(syncPayload);
     } else {
       throw new Error('Sync method not available');
     }
@@ -484,6 +474,17 @@ class WebStorage {
       note.createdAt = new Date().toISOString();
     }
     note.updatedAt = new Date().toISOString();
+    
+    // Ensure URL and domain are present for compatibility with extension
+    if (!note.url) {
+      note.url = '';
+    }
+    if (!note.domain) {
+      note.domain = '';
+    }
+    if (!note.tags) {
+      note.tags = [];
+    }
 
     // Save to cache immediately
     this.saveNoteToCache(note);

@@ -114,7 +114,7 @@ class SupabaseClient {
         this.currentUser = result.supabase_session.user;
         const expiresAt = result.supabase_session.expires_at || 0;
         const now = Date.now();
-        
+
         // If the token is expired or expiring within 60s, try to refresh first
         if (!expiresAt || (expiresAt - now) < 60000) {
           try {
@@ -124,7 +124,7 @@ class SupabaseClient {
             await this.signOut();
           }
         }
-        
+
         // Verify token is still valid
         const isValid = await this.verifyToken();
         if (!isValid) {
@@ -135,16 +135,16 @@ class SupabaseClient {
             const { profileLastChecked, userTier } = await this.getStorage(['profileLastChecked', 'userTier']);
             const now = Date.now();
             const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
-            
+
             // Only check profile if we haven't done so in the last hour AND don't have userTier
             if ((!profileLastChecked || (now - profileLastChecked) > oneHour) && !userTier) {
               await this.upsertProfile(this.currentUser);
               await this.setStorage({ profileLastChecked: now });
             } else if (userTier) {
               // Use cached subscription status
-              try { 
-                window.eventBus?.emit('tier:changed', { tier: userTier, active: userTier !== 'free' }); 
-              } catch (_) {}
+              try {
+                window.eventBus?.emit('tier:changed', { tier: userTier, active: userTier !== 'free' });
+              } catch (_) { }
             }
           } catch (e) {
             console.warn('Failed to handle profile on init:', e);
@@ -320,7 +320,7 @@ class SupabaseClient {
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get('code');
       const error = urlParams.get('error');
-      
+
       if (error) {
         const errorDescription = urlParams.get('error_description');
         throw new Error(`OAuth error: ${error} ${errorDescription || ''}`.trim());
@@ -390,9 +390,9 @@ class SupabaseClient {
 
     // Create or update user profile
     await this.upsertProfile(authData.user);
-    try { 
-      window.eventBus?.emit('auth:changed', { user: this.currentUser }); 
-    } catch (_) {}
+    try {
+      window.eventBus?.emit('auth:changed', { user: this.currentUser });
+    } catch (_) { }
   }
 
   // Sign out
@@ -411,29 +411,29 @@ class SupabaseClient {
       this.accessToken = null;
       this.currentUser = null;
       await this.removeStorage(['supabase_session']);
-      
+
       // Clear all caches
       await this.removeStorage([
-        'userTier', 
-        'profileLastChecked', 
-        'subscriptionLastChecked', 
-        'cachedSubscription', 
-        'encryptionKeyLastChecked', 
-        'cachedKeyMaterial', 
+        'userTier',
+        'profileLastChecked',
+        'subscriptionLastChecked',
+        'cachedSubscription',
+        'encryptionKeyLastChecked',
+        'cachedKeyMaterial',
         'cachedSalt'
       ]);
-      
+
       // Reset premium gating
       try {
         await this.setStorage({ userTier: 'free' });
-      } catch (_) {}
-      
-      try { 
-        window.eventBus?.emit('auth:changed', { user: null }); 
-      } catch (_) {}
-      try { 
-        window.eventBus?.emit('tier:changed', { tier: 'free', active: false, expiresAt: null }); 
-      } catch (_) {}
+      } catch (_) { }
+
+      try {
+        window.eventBus?.emit('auth:changed', { user: null });
+      } catch (_) { }
+      try {
+        window.eventBus?.emit('tier:changed', { tier: 'free', active: false, expiresAt: null });
+      } catch (_) { }
     }
   }
 
@@ -497,7 +497,7 @@ class SupabaseClient {
           const j = await response.json();
           detail = j.error_description || j.msg || j.error || JSON.stringify(j);
         } catch (_) {
-          try { detail = await response.text(); } catch (_) {}
+          try { detail = await response.text(); } catch (_) { }
         }
         throw new Error(detail);
       }
@@ -507,16 +507,16 @@ class SupabaseClient {
       // Some responses may omit user; fetch it if needed
       if (!data.user && data.access_token) {
         try {
-          const ures = await fetch(`${this.authUrl}/user`, { 
-            headers: { 
-              ...this.getHeaders(false), 
-              Authorization: `Bearer ${data.access_token}` 
-            } 
+          const ures = await fetch(`${this.authUrl}/user`, {
+            headers: {
+              ...this.getHeaders(false),
+              Authorization: `Bearer ${data.access_token}`
+            }
           });
           if (ures.ok) {
             data.user = await ures.json();
           }
-        } catch (_) {}
+        } catch (_) { }
       }
 
       // If refresh_token not returned, keep existing one
@@ -530,8 +530,8 @@ class SupabaseClient {
       console.error('refreshSession error:', error);
       throw error;
     }
-  } 
- // Create or update user profile
+  }
+  // Create or update user profile
   async upsertProfile(user) {
     try {
       // First, check if profile exists and get current data
@@ -552,7 +552,7 @@ class SupabaseClient {
           body: baseProfile,
           auth: true
         });
-        
+
         // Fetch the newly created profile
         try {
           const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${user.id}&select=salt,subscription_tier,subscription_expires_at`, { auth: true });
@@ -581,12 +581,12 @@ class SupabaseClient {
         const isActive = profile.subscription_expires_at ?
           new Date(profile.subscription_expires_at) > new Date() : false;
         const userTier = isActive ? (profile.subscription_tier || 'premium') : 'free';
-        
+
         await this.setStorage({ userTier });
-        
+
         // Clear premium status cache to force UI refresh
         await this.removeStorage(['cachedPremiumStatus']);
-        
+
         // Store profile data in cache for reuse (including salt for encryption key)
         const profileData = {
           tier: profile.subscription_tier || 'free',
@@ -594,19 +594,19 @@ class SupabaseClient {
           expiresAt: profile.subscription_expires_at,
           salt: profile.salt
         };
-        
-        await this.setStorage({ 
-          subscriptionLastChecked: Date.now(), 
-          cachedSubscription: profileData 
+
+        await this.setStorage({
+          subscriptionLastChecked: Date.now(),
+          cachedSubscription: profileData
         });
-        
-        try { 
-          window.eventBus?.emit('tier:changed', { 
-            tier: userTier, 
-            active: isActive, 
-            expiresAt: profile.subscription_expires_at 
-          }); 
-        } catch (_) {}
+
+        try {
+          window.eventBus?.emit('tier:changed', {
+            tier: userTier,
+            active: isActive,
+            expiresAt: profile.subscription_expires_at
+          });
+        } catch (_) { }
       }
     } catch (error) {
       console.error('Error upserting profile:', error);
@@ -632,7 +632,7 @@ class SupabaseClient {
       }
 
       const encryptedNotes = [];
-      
+
       // Encrypt notes before uploading (only if notes exist)
       if (syncPayload.notes && Array.isArray(syncPayload.notes)) {
         for (const note of syncPayload.notes) {
@@ -641,19 +641,19 @@ class SupabaseClient {
             console.warn('Skipping note without title or content:', note.id);
             continue;
           }
-          
+
           console.log('Encrypting note:', {
             id: note.id,
             titleLength: note.title?.length || 0,
             contentLength: note.content?.length || 0,
             hasEncryptionKey: !!encryptionKey
           });
-          
+
           const encryptedNote = await window.noteEncryption.encryptNoteForCloud(
-            note, 
+            note,
             encryptionKey
           );
-          
+
           console.log('Note encrypted successfully:', {
             id: encryptedNote.id,
             hasTitleEncrypted: !!encryptedNote.title_encrypted,
@@ -661,7 +661,7 @@ class SupabaseClient {
             titleEncryptedType: typeof encryptedNote.title_encrypted,
             contentEncryptedType: typeof encryptedNote.content_encrypted
           });
-          
+
           encryptedNotes.push(encryptedNote);
         }
       }
@@ -720,14 +720,21 @@ class SupabaseClient {
     }
   }
 
-  // Fetch notes from cloud using Edge Function
+  // Fetch notes from cloud using Edge Function with fallback to direct DB access
   async fetchNotes(lastSyncTime = null) {
     if (!this.isAuthenticated()) {
       throw new Error('User not authenticated');
     }
 
     try {
-      // Use Edge Function for fetching
+      // Try Edge Function first
+      console.log('Attempting Edge Function call to sync-notes');
+      const payload = {
+        operation: 'pull',
+        lastSyncTime: lastSyncTime
+      };
+      console.log('Edge Function payload:', payload);
+
       const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-notes`, {
         method: 'POST',
         headers: {
@@ -735,78 +742,122 @@ class SupabaseClient {
           'Authorization': `Bearer ${this.accessToken}`,
           'apikey': this.supabaseAnonKey
         },
-        body: JSON.stringify({
-          operation: 'pull',
-          lastSyncTime: lastSyncTime
-        })
+        body: JSON.stringify(payload)
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Fetch error response:', errorText);
-        let errorData;
-        try {
-          errorData = JSON.parse(errorText);
-        } catch (e) {
-          errorData = { error: errorText || 'Fetch failed' };
-        }
-        throw new Error(errorData.error || `Fetch failed with status ${response.status}`);
-      }
+      console.log('Edge Function response status:', response.status);
 
-      const responseData = await response.json();
-      
-      const { notes: encryptedNotes } = responseData;
-      
+      if (response.ok) {
+        const responseData = await response.json();
+        const { notes: encryptedNotes } = responseData;
+
+        if (encryptedNotes && Array.isArray(encryptedNotes)) {
+          return await this.decryptNotes(encryptedNotes);
+        }
+      } else {
+        console.warn('Edge function failed, falling back to direct database access');
+      }
+    } catch (error) {
+      console.warn('Edge function error, falling back to direct database access:', error);
+    }
+
+    // Fallback: Direct database access
+    try {
+      console.log('Using direct database access for notes');
+      console.log('Current user ID:', this.currentUser?.id);
+      const query = lastSyncTime
+        ? `${this.apiUrl}/notes?user_id=eq.${this.currentUser.id}&updated_at=gte.${lastSyncTime}&is_deleted=eq.false&order=updated_at.desc`
+        : `${this.apiUrl}/notes?user_id=eq.${this.currentUser.id}&is_deleted=eq.false&order=updated_at.desc`;
+
+      const encryptedNotes = await this._request(query, { auth: true });
+
       if (!encryptedNotes || !Array.isArray(encryptedNotes)) {
         return [];
       }
-      
-      const decryptedNotes = [];
 
-      // Decrypt notes after downloading
-      const userKey = await this.getUserEncryptionKey();
-      
-      for (const encryptedNote of encryptedNotes) {
-        try {
-          let decryptedNote;
-          
-          // Check if note is encrypted or plain text
-          if (encryptedNote.title_encrypted && encryptedNote.content_encrypted && userKey) {
-            // Note is encrypted, decrypt it
-            decryptedNote = await window.noteEncryption.decryptNoteFromCloud(
-              encryptedNote, 
-              userKey
-            );
-          } else if (encryptedNote.title && encryptedNote.content) {
-            // Note is plain text, use as-is
-            decryptedNote = {
-              ...encryptedNote,
-              title: encryptedNote.title,
-              content: encryptedNote.content
-            };
-          } else {
-            continue;
-          }
-          
-          decryptedNotes.push(decryptedNote);
-        } catch (error) {
-          console.error('Failed to process note:', encryptedNote.id, error);
-          // Try to use the note as-is if decryption fails
-          if (encryptedNote.title && encryptedNote.content) {
-            decryptedNotes.push({
-              ...encryptedNote,
-              title: encryptedNote.title,
-              content: encryptedNote.content
-            });
-          }
-        }
-      }
-
-      return decryptedNotes;
+      return await this.decryptNotes(encryptedNotes);
     } catch (error) {
       console.error('API: Fetch error:', error);
       throw error;
     }
+  }
+
+  // Helper method to decrypt notes
+  async decryptNotes(encryptedNotes) {
+    if (!encryptedNotes || !Array.isArray(encryptedNotes)) {
+      return [];
+    }
+
+    const decryptedNotes = [];
+    const userKey = await this.getUserEncryptionKey();
+
+    for (const encryptedNote of encryptedNotes) {
+      try {
+        let decryptedNote;
+
+        // Check if note is encrypted or plain text
+        if (encryptedNote.title_encrypted && encryptedNote.content_encrypted && userKey) {
+          // Note is encrypted, decrypt it
+          decryptedNote = await window.noteEncryption.decryptNoteFromCloud(
+            encryptedNote,
+            userKey
+          );
+        } else if (encryptedNote.title && encryptedNote.content) {
+          // Note is plain text, use as-is
+          decryptedNote = {
+            ...encryptedNote,
+            title: encryptedNote.title,
+            content: encryptedNote.content
+          };
+        } else {
+          continue;
+        }
+
+        // Normalize field names to match extension format (camelCase)
+        const normalizedNote = {
+          id: decryptedNote.id,
+          title: decryptedNote.title,
+          content: decryptedNote.content,
+          url: decryptedNote.url || '',
+          domain: decryptedNote.domain || '',
+          tags: decryptedNote.tags || [],
+          createdAt: decryptedNote.created_at || decryptedNote.createdAt || new Date().toISOString(),
+          updatedAt: decryptedNote.updated_at || decryptedNote.updatedAt || new Date().toISOString(),
+          version: decryptedNote.version || 1,
+          // Preserve encrypted fields for future sync operations
+          title_encrypted: decryptedNote.title_encrypted,
+          content_encrypted: decryptedNote.content_encrypted,
+          tags_encrypted: decryptedNote.tags_encrypted,
+          content_hash: decryptedNote.content_hash
+        };
+
+        decryptedNotes.push(normalizedNote);
+      } catch (error) {
+        console.error('Failed to process note:', encryptedNote.id, error);
+        // Try to use the note as-is if decryption fails
+        if (encryptedNote.title && encryptedNote.content) {
+          const fallbackNote = {
+            id: encryptedNote.id,
+            title: encryptedNote.title,
+            content: encryptedNote.content,
+            url: encryptedNote.url || '',
+            domain: encryptedNote.domain || '',
+            tags: encryptedNote.tags || [],
+            createdAt: encryptedNote.created_at || encryptedNote.createdAt || new Date().toISOString(),
+            updatedAt: encryptedNote.updated_at || encryptedNote.updatedAt || new Date().toISOString(),
+            version: encryptedNote.version || 1,
+            // Preserve any encrypted fields that might exist
+            title_encrypted: encryptedNote.title_encrypted,
+            content_encrypted: encryptedNote.content_encrypted,
+            tags_encrypted: encryptedNote.tags_encrypted,
+            content_hash: encryptedNote.content_hash
+          };
+          decryptedNotes.push(fallbackNote);
+        }
+      }
+    }
+
+    return decryptedNotes;
   }
 
   // Delete note from cloud
@@ -848,7 +899,7 @@ class SupabaseClient {
     // Derive key from stable user material + per-user salt from profile
     const keyMaterial = `${this.currentUser.id}:${this.currentUser.email}`;
     let salt = null;
-    
+
     // Try to get salt from cached profile data first
     try {
       const { cachedSubscription } = await this.getStorage(['cachedSubscription']);
@@ -884,11 +935,11 @@ class SupabaseClient {
     }
 
     const encryptionKey = await window.noteEncryption.generateKey(keyMaterial, salt);
-    
+
     // Cache the key material and salt instead of the CryptoKey object
     // CryptoKey objects cannot be serialized to JSON
-    await this.setStorage({ 
-      encryptionKeyLastChecked: now, 
+    await this.setStorage({
+      encryptionKeyLastChecked: now,
       cachedKeyMaterial: keyMaterial,
       cachedSalt: salt
     });
@@ -948,9 +999,9 @@ class SupabaseClient {
 
       if (!profile) {
         const result = { tier: 'free', active: false };
-        await this.setStorage({ 
-          subscriptionLastChecked: now, 
-          cachedSubscription: result 
+        await this.setStorage({
+          subscriptionLastChecked: now,
+          cachedSubscription: result
         });
         return result;
       }
@@ -965,9 +1016,9 @@ class SupabaseClient {
         salt: profile.salt // Include salt for encryption key reuse
       };
 
-      await this.setStorage({ 
-        subscriptionLastChecked: now, 
-        cachedSubscription: result 
+      await this.setStorage({
+        subscriptionLastChecked: now,
+        cachedSubscription: result
       });
 
       return result;
@@ -1016,7 +1067,7 @@ class SupabaseClient {
       // Get both storage_used_bytes and subscription info in ONE API call
       const profiles = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=storage_used_bytes,subscription_tier,subscription_expires_at`, { auth: true });
       const profile = profiles?.[0];
-      
+
       if (!profile) {
         console.log('getStorageUsage: No profile found, returning 0 usage');
         return { used: 0, limit: 0 };
@@ -1026,8 +1077,8 @@ class SupabaseClient {
       const isActive = profile.subscription_expires_at ?
         new Date(profile.subscription_expires_at) > new Date() : false;
       const tier = isActive ? (profile.subscription_tier || 'premium') : 'free';
-      
-      const limit = tier === 'premium' ? 
+
+      const limit = tier === 'premium' ?
         1024 * 1024 * 1024 : // 1GB for premium
         100 * 1024 * 1024;   // 100MB for free
 
