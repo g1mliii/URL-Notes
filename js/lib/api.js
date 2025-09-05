@@ -1167,3 +1167,6 @@ class SupabaseClient {
 
 // Export singleton instance
 window.supabaseClient = new SupabaseClient();
+
+// Also export as window.api for dashboard compatibility
+window.api = window.supabaseClient;

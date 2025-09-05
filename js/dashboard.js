@@ -308,6 +308,13 @@ class Dashboard {
     this.showLoadingState();
 
     try {
+      // Wait for auth module to be ready
+      let attempts = 0;
+      while (!window.auth && attempts < 50) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+
       // Check if user is authenticated
       if (!window.api || !window.api.isAuthenticated()) {
         console.log('User not authenticated, showing empty state');
