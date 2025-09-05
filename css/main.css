@@ -458,38 +458,86 @@ p {
   color: var(--info-color);
 }
 
-/* Mobile-specific fixes for browser UI overlap and safe areas */
+/* Comprehensive mobile browser fixes */
 @media screen and (max-width: 768px) {
-
-  html,
-  body {
-    /* Prevent white space on mobile */
-    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
-    background-attachment: scroll;
-    /* Fixed attachment causes issues on mobile */
-    overflow-x: hidden;
+  html {
+    /* Force full height and prevent zoom */
+    height: 100%;
     width: 100%;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+  }
+
+  body {
+    /* Prevent white space and ensure full coverage */
+    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
+    background-attachment: scroll; /* Fixed causes issues on mobile */
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    overflow-x: hidden;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport */
+    height: -webkit-fill-available; /* Safari fallback */
+    margin: 0;
+    padding: 0;
+    /* Prevent Safari zoom and white bars */
+    -webkit-text-size-adjust: 100%;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
 
   .app-container {
-    /* Ensure full coverage on mobile */
-    width: 100%;
-    max-width: 100%;
-    /* Fix mobile browser UI overlap */
-    min-height: 100vh;
-    min-height: 100dvh;
-    /* Dynamic viewport - respects browser UI */
-    min-height: -webkit-fill-available;
-    /* Add padding for mobile browser UI safe areas */
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    /* Force exact viewport dimensions */
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport */
+    height: -webkit-fill-available; /* Safari */
+    min-height: unset; /* Remove conflicting min-height */
+    max-width: 100vw;
+    overflow-x: hidden;
+    overflow-y: auto;
+    /* Prevent content from going behind browser UI */
+    box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
-/* Safari-specific overscroll fix */
+/* Chrome mobile specific fixes */
+@media screen and (max-width: 768px) and (-webkit-min-device-pixel-ratio: 1) {
+  .app-container {
+    /* Force Chrome to respect full viewport */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+}
+
+/* Safari mobile specific fixes */
 @supports (-webkit-touch-callout: none) {
-  body {
-    /* Prevent Safari bounce scroll showing white */
-    overscroll-behavior-y: none;
-    -webkit-overscroll-behavior-y: none;
+  @media screen and (max-width: 768px) {
+    body {
+      /* Prevent Safari bounce scroll and white bars */
+      overscroll-behavior: none;
+      -webkit-overscroll-behavior: none;
+      position: fixed;
+      width: 100%;
+      height: 100%;
+    }
+    
+    .app-container {
+      /* Safari specific positioning */
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
+    }
   }
 }
