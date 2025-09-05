@@ -111,11 +111,38 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+  min-height: 100dvh;
+  /* Dynamic viewport height for mobile */
+  margin: 0;
+  padding: 0;
+  position: relative;
 }
 
 /* Global scrollbar styles */
 html {
   height: 100%;
+  /* Fix mobile Safari viewport issues */
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+}
+
+/* Mobile Safari specific fixes */
+@supports (-webkit-touch-callout: none) {
+  body {
+    /* Fix Safari background attachment issues */
+    background-attachment: scroll;
+    /* Prevent overscroll bounce showing white */
+    overscroll-behavior: none;
+    -webkit-overscroll-behavior: none;
+  }
+
+  .app-container {
+    /* Fix Safari viewport height issues */
+    min-height: -webkit-fill-available;
+    /* Prevent Safari bounce scroll showing white */
+    overscroll-behavior: none;
+    -webkit-overscroll-behavior: none;
+  }
 }
 
 ::-webkit-scrollbar {
@@ -164,6 +191,8 @@ html {
 /* App Container with Glassmorphism */
 .app-container {
   min-height: 100vh;
+  min-height: 100dvh;
+  /* Dynamic viewport height for mobile */
   background: var(--bg-primary);
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
@@ -175,6 +204,9 @@ html {
   /* Prevent white flashes on mobile */
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
+  /* Fix mobile Safari issues */
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
 }
 
 /* Nebulous liquid-glass background overlay - DISABLED for footer fix */
@@ -434,4 +466,54 @@ p {
 
 .text-info {
   color: var(--info-color);
+}
+
+/* 
+Mobile-specific fixes for white space and scrolling issues */
+@media screen and (max-width: 768px) {
+
+  html,
+  body {
+    /* Prevent white space on mobile */
+    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
+    background-attachment: scroll;
+    /* Fixed attachment causes issues on mobile */
+    overflow-x: hidden;
+    position: relative;
+    width: 100%;
+  }
+
+  .app-container {
+    /* Ensure full coverage on mobile */
+    width: 100vw;
+    max-width: 100%;
+    /* Fix mobile Safari address bar height changes */
+    min-height: 100vh;
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
+  }
+
+  /* Prevent Safari bounce scroll white flash */
+  body {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+  }
+
+  .app-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* iOS Safari specific fixes */
+@supports (-webkit-appearance: none) and (stroke-color: transparent) {
+  .app-container {
+    min-height: -webkit-fill-available;
+  }
 }
