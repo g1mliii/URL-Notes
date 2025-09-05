@@ -598,9 +598,17 @@
     </div>
     <!-- Toast Notification -->
     <div id="toast" class="toast" aria-live="polite" role="status"></div>
+
+    <!-- Ad Container for Free Users -->
+    <div id="adContainer" class="ad-container" style="display: none;">
+      <div id="adContent" class="ad-content">
+        <!-- Ad content will be loaded here -->
+      </div>
+    </div>
   </div>
 
   <script src="../lib/premium.js"></script>
+  <script src="../lib/ads.js"></script>
   <!-- Ensure encryption and Supabase client are available in popup context -->
   <script src="../lib/encryption.js"></script>
   <script src="../lib/api.js"></script>

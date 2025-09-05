@@ -1635,15 +1635,7 @@ html[data-compact="1"] .domain-notes-list {
   margin-bottom: 0;
 }
 
-/* Ad Container (bottom area) */
-.ad-container {
-  display: block;
-  flex: 0 0 auto;
-  padding: 8px 12px;
-  background: var(--bg-secondary);
-  border-top: 1px solid var(--border-color);
-  box-shadow: 0 -8px 16px var(--shadow-dark), inset 0 1px 0 var(--shadow-light);
-}
+/* Ad Container (bottom area) - styles moved to end of file */
 
 /* Compact: make ad bar shorter so full UI fits without outer scroll */
 html[data-compact="1"] .ad-placeholder {
@@ -2912,4 +2904,82 @@ html[data-view="site"] .note-item:hover::after {
 /* Ensure citation button shows in the formatting toolbar */
 .formatting-toolbar .citation-container {
   margin-left: 8px;
+}
+/* Ad Container Styles */
+.ad-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-color);
+  padding: 6px 8px;
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  z-index: 1000;
+  box-shadow: 0 -2px 8px var(--shadow-dark);
+  transform: translateY(0);
+  transition: transform 0.3s ease;
+}
+
+.ad-container:not(.show) {
+  transform: translateY(100%);
+}
+
+.ad-content {
+  max-width: 336px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Ensure popup content doesn't get cut off by ad */
+.app-container {
+  padding-bottom: 0;
+}
+
+.app-container:has(.ad-container.show) {
+  padding-bottom: 70px;
+}
+
+/* Alternative for browsers that don't support :has() */
+.notes-container {
+  margin-bottom: 0;
+  transition: margin-bottom 0.3s ease;
+}
+
+body:has(.ad-container.show) .notes-container {
+  margin-bottom: 70px;
+}
+
+/* Responsive ad styles */
+@media (max-width: 400px) {
+  .ad-container {
+    padding: 4px 6px;
+  }
+  
+  .ad-content {
+    max-width: 100%;
+  }
+  
+  .nordvpn-banner {
+    max-height: 50px;
+  }
+  
+  .fallback-ad {
+    padding: 6px 8px !important;
+    gap: 6px !important;
+  }
+  
+  .fallback-ad .ad-text strong {
+    font-size: 11px !important;
+  }
+  
+  .fallback-ad .ad-text p {
+    font-size: 10px !important;
+  }
+  
+  .upgrade-btn {
+    padding: 4px 8px !important;
+    font-size: 10px !important;
+  }
 }

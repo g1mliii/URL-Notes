@@ -642,7 +642,14 @@ class URLNotesApp {
       this.render();
     }
 
-    // Ad bar UI only (no backend init)
+    // Initialize ad manager for free users
+    try {
+      if (window.adManager && typeof window.adManager.init === 'function') {
+        await window.adManager.init();
+      }
+    } catch (error) {
+      console.warn('Failed to initialize ad manager:', error);
+    }
   }
 
   // NEW: Restore cached UI state immediately to prevent visual shifts

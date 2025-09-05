@@ -33,7 +33,7 @@ class AdManager {
 
     // Load CodeFuel SDK
     await this.loadCodeFuelSDK();
-    
+
     // Show first ad after a delay
     setTimeout(() => this.showAd(), 2000);
   }
@@ -41,41 +41,43 @@ class AdManager {
   // Check if user should see ads (free tier, ads enabled)
   async shouldShowAds() {
     try {
-      const result = await chrome.storage.local.get(['settings', 'userTier']);
+      // Check cached premium status first to avoid API calls
+      const result = await chrome.storage.local.get(['settings', 'userTier', 'premiumStatus', 'lastPremiumCheck']);
       const settings = result.settings || {};
-      const userTier = result.userTier || 'free';
 
-      return userTier === 'free' && settings.showAds !== false;
+      // Check cached premium status
+      let isPremium = false;
+      if (result.premiumStatus && result.lastPremiumCheck) {
+        const cacheAge = Date.now() - result.lastPremiumCheck;
+        const cacheValid = cacheAge < (24 * 60 * 60 * 1000); // 24 hours
+
+        if (cacheValid) {
+          isPremium = result.premiumStatus.tier === 'premium' || result.premiumStatus.tier === 'pro';
+        }
+      }
+
+      // Fallback to userTier if no cached premium status
+      if (!result.premiumStatus) {
+        const userTier = result.userTier || 'free';
+        isPremium = userTier === 'premium' || userTier === 'pro';
+      }
+
+      // Only show ads to free users who haven't disabled them
+      return !isPremium && settings.showAds !== false;
     } catch (error) {
       console.error('Error checking ad settings:', error);
-      return true; // Default to showing ads
+      return true; // Default to showing ads for free users
     }
   }
 
-  // Load CodeFuel SDK dynamically
+  // Load CodeFuel SDK dynamically (currently disabled)
   async loadCodeFuelSDK() {
-    return new Promise((resolve, reject) => {
-      // Check if already loaded
-      if (window.CodeFuel) {
-        resolve();
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = 'https://sdk.codefuel.com/js/cf-sdk.js'; // Replace with actual CodeFuel SDK URL
-      script.async = true;
-      script.onload = () => {
-        // Remove verbose logging
-        resolve();
-      };
-      script.onerror = () => {
-        // In Chrome extensions, CSP often blocks remote scripts. Do not reject; fall back silently.
-        console.warn('CodeFuel SDK blocked by CSP; using fallback ad.');
-        window.__cf_sdk_failed = true;
-        resolve();
-      };
-      
-      document.head.appendChild(script);
+    return new Promise((resolve) => {
+      // Skip CodeFuel SDK loading for now to prevent CSP errors
+      // This will be enabled when CodeFuel is properly configured
+      console.log('CodeFuel SDK loading skipped - using fallback ads');
+      window.__cf_sdk_failed = true;
+      resolve();
     });
   }
 
@@ -92,19 +94,22 @@ class AdManager {
         this.hourlyResetTime = Date.now() + (60 * 60 * 1000);
       }
 
-      // Show ad container
-      this.adContainer.style.display = 'block';
-      
+      // Show ad container with animation
+      if (this.adContainer) {
+        this.adContainer.style.display = 'block';
+        this.adContainer.classList.add('show');
+      }
+
       // Load ad content
       await this.loadAd();
-      
+
       // Update tracking
       this.lastAdTime = Date.now();
       this.adsShownThisHour++;
-      
+
       // Track ad impression
       this.trackAdImpression();
-      
+
     } catch (error) {
       console.error('Error showing ad:', error);
       this.showFallbackAd();
@@ -114,7 +119,7 @@ class AdManager {
   // Check if we can show an ad
   async canShowAd() {
     const now = Date.now();
-    
+
     // Check cooldown
     if (now - this.lastAdTime < this.adConfig.cooldownMs) {
       return false;
@@ -134,17 +139,24 @@ class AdManager {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    // CodeFuel integration (replace with actual implementation)
-    if (window.CodeFuel) {
-      window.CodeFuel.display({
-        containerId: 'adContent',
-        publisherId: this.adConfig.publisherId,
-        adUnitId: this.adConfig.adUnitId,
-        size: '300x50',
-        targeting: await this.getTargetingData()
-      });
-    } else {
-      // Fallback if SDK not loaded
+    // For now, skip CodeFuel integration and go directly to fallback
+    // This prevents errors when CodeFuel isn't implemented
+    try {
+      // CodeFuel integration (disabled until properly configured)
+      if (window.CodeFuel && this.adConfig.publisherId !== 'YOUR_CODEFUEL_PUBLISHER_ID') {
+        window.CodeFuel.display({
+          containerId: 'adContent',
+          publisherId: this.adConfig.publisherId,
+          adUnitId: this.adConfig.adUnitId,
+          size: '300x50',
+          targeting: await this.getTargetingData()
+        });
+      } else {
+        // Use our custom ad system (NordVPN + upgrade ads)
+        this.showFallbackAd();
+      }
+    } catch (error) {
+      console.warn('Error loading external ads, using fallback:', error);
       this.showFallbackAd();
     }
   }
@@ -202,20 +214,111 @@ class AdManager {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
+    // Prioritize NordVPN affiliate ad (80% chance)
+    const showNordVPN = Math.random() < 0.8; // 80% chance for NordVPN
+
+    console.log('Showing ad type:', showNordVPN ? 'NordVPN' : 'Upgrade');
+
+    if (showNordVPN) {
+      this.showNordVPNAd();
+    } else {
+      this.showUpgradeAd();
+    }
+  }
+
+  // Show NordVPN affiliate ad
+  showNordVPNAd() {
+    const adContent = document.getElementById('adContent');
+    if (!adContent) return;
+
+    adContent.innerHTML = `
+      <div class="nordvpn-ad" id="nordvpnAdBanner">
+        <img src="../assets/affiliate-sales-campaign-nordvpn.png" 
+             alt="NordVPN - Secure Your Browsing" 
+             class="nordvpn-banner"
+             loading="lazy">
+      </div>
+    `;
+
+    // Add click event listener (CSP compliant)
+    const nordvpnAd = document.getElementById('nordvpnAdBanner');
+    if (nordvpnAd) {
+      nordvpnAd.addEventListener('click', () => {
+        this.openNordVPN();
+      });
+    }
+
+    this.addNordVPNStyles();
+  }
+
+  // Show upgrade ad
+  showUpgradeAd() {
+    const adContent = document.getElementById('adContent');
+    if (!adContent) return;
+
     adContent.innerHTML = `
       <div class="fallback-ad">
         <div class="ad-text">
           <strong>Upgrade to Premium</strong>
           <p>Remove ads and sync across devices</p>
         </div>
-        <button class="upgrade-btn" onclick="window.adManager.openUpgrade()">
+        <button class="upgrade-btn" id="upgradeAdButton">
           Upgrade Now
         </button>
       </div>
     `;
 
-    // Add fallback ad styles
+    // Add click event listener (CSP compliant)
+    const upgradeBtn = document.getElementById('upgradeAdButton');
+    if (upgradeBtn) {
+      upgradeBtn.addEventListener('click', () => {
+        this.openUpgrade();
+      });
+    }
+
+    this.addFallbackStyles();
+  }
+
+  // Add NordVPN ad styles
+  addNordVPNStyles() {
+    if (document.getElementById('nordvpn-ad-styles')) return;
+
     const style = document.createElement('style');
+    style.id = 'nordvpn-ad-styles';
+    style.textContent = `
+      .nordvpn-ad {
+        display: block;
+        width: 100%;
+        cursor: pointer;
+        border-radius: 6px;
+        overflow: hidden;
+        transition: all 0.2s ease;
+        border: 1px solid rgba(70, 135, 255, 0.2);
+        box-shadow: 0 2px 8px rgba(70, 135, 255, 0.1);
+      }
+      .nordvpn-ad:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(70, 135, 255, 0.2);
+        border-color: rgba(70, 135, 255, 0.4);
+      }
+      .nordvpn-banner {
+        width: 100%;
+        height: auto;
+        display: block;
+        max-height: 58px;
+        object-fit: cover;
+        object-position: center;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Add fallback ad styles
+  addFallbackStyles() {
+    if (document.getElementById('fallback-ad-styles')) return;
+
+    const style = document.createElement('style');
+    style.id = 'fallback-ad-styles';
     style.textContent = `
       .fallback-ad {
         display: flex;
@@ -226,14 +329,14 @@ class AdManager {
         border-radius: 6px;
         border: 1px solid var(--border-color);
       }
-      .ad-text {
+      .fallback-ad .ad-text {
         flex: 1;
       }
-      .ad-text strong {
+      .fallback-ad .ad-text strong {
         color: var(--text-primary);
         font-size: 12px;
       }
-      .ad-text p {
+      .fallback-ad .ad-text p {
         color: var(--text-secondary);
         font-size: 11px;
         margin: 2px 0 0 0;
@@ -259,51 +362,72 @@ class AdManager {
   // Hide ad container
   hideAdContainer() {
     if (this.adContainer) {
-      this.adContainer.style.display = 'none';
+      this.adContainer.classList.remove('show');
+      // Hide after animation completes
+      setTimeout(() => {
+        this.adContainer.style.display = 'none';
+      }, 300);
     }
   }
 
   // Track ad impression for analytics
   trackAdImpression() {
     try {
-      // Send impression data to analytics
+      // Send impression data to analytics (optional - won't break if background script isn't ready)
       chrome.runtime.sendMessage({
         action: 'trackAdImpression',
         data: {
           timestamp: Date.now(),
           adUnit: this.adConfig.adUnitId,
-          domain: window.location.hostname
+          domain: window.location?.hostname || 'unknown'
         }
+      }).catch(() => {
+        // Silently ignore messaging errors
       });
     } catch (error) {
-      console.error('Error tracking ad impression:', error);
+      // Silently ignore tracking errors to prevent breaking ad display
+      console.warn('Ad impression tracking failed:', error);
     }
   }
 
   // Handle upgrade button click
   openUpgrade() {
     chrome.tabs.create({
-      url: 'https://urlnotes.app/upgrade' // Replace with actual upgrade URL
+      url: 'https://anchored.site' // TODO: Change to direct premium signup when subscription service is implemented
     });
+    this.trackAdClick('upgrade');
+  }
+
+  // Handle NordVPN affiliate click
+  openNordVPN() {
+    chrome.tabs.create({
+      url: 'https://go.nordvpn.net/aff_c?offer_id=15&aff_id=130711&url_id=902'
+    });
+    this.trackAdClick('nordvpn');
   }
 
   // Handle ad click
-  onAdClick() {
-    this.trackAdClick();
+  onAdClick(adType = 'unknown') {
+    this.trackAdClick(adType);
   }
 
   // Track ad click
-  trackAdClick() {
+  trackAdClick(adType = 'unknown') {
     try {
+      // Send click data to analytics (optional - won't break if background script isn't ready)
       chrome.runtime.sendMessage({
         action: 'trackAdClick',
         data: {
           timestamp: Date.now(),
-          adUnit: this.adConfig.adUnitId
+          adUnit: this.adConfig.adUnitId,
+          adType: adType
         }
+      }).catch(() => {
+        // Silently ignore messaging errors
       });
     } catch (error) {
-      console.error('Error tracking ad click:', error);
+      // Silently ignore tracking errors to prevent breaking ad functionality
+      console.warn('Ad click tracking failed:', error);
     }
   }
 
