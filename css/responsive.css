@@ -229,6 +229,7 @@
   /* Dashboard Layout for Tablets */
   .dashboard-main {
     padding: 0;
+    min-height: calc(100vh - 80px);
   }
 
   .notes-grid {
@@ -277,6 +278,7 @@
   /* Enhanced Dashboard Layout for Desktop */
   .dashboard-main {
     padding: 0;
+    min-height: calc(100vh - 80px);
   }
 
   .notes-grid {
@@ -321,6 +323,7 @@
 
   .dashboard-main {
     padding: 0;
+    min-height: calc(100vh - 80px);
   }
 
   .notes-grid {
@@ -339,6 +342,7 @@
 @media (max-width: 767px) {
   .dashboard-main {
     padding: 0;
+    min-height: calc(100vh - 60px);
   }
 
   .content-header {
@@ -920,6 +924,7 @@
   .privacy-main,
   .terms-main {
     padding: 1rem 0;
+    flex: 1;
   }
 
   .privacy-container h1,

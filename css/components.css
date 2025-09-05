@@ -493,12 +493,17 @@ Dashboard Specific Styles - Google Drive-like Layout */
   padding: 0;
   position: relative;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .dashboard-content {
   width: 100%;
   background: var(--bg-primary);
   min-height: calc(100vh - 80px);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .content-header {
@@ -682,6 +687,7 @@ Dashboard Specific Styles - Google Drive-like Layout */
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1rem;
   max-width: 100%;
+  flex: 1;
 }
 
 /* Remove domain sections for cleaner grid */
@@ -1419,6 +1425,134 @@ Dashboard Specific Styles - Google Drive-like Layout */
   color: var(--success-color);
   font-size: 0.75rem;
   margin-top: 0.25rem;
+}
+
+/* Footer Styles */
+.site-footer {
+  background: rgba(27, 79, 114, 0.1);
+  border-top: 1px solid var(--border-color);
+  padding: 2rem 0;
+  margin-top: auto;
+  flex-shrink: 0;
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.footer-links {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.footer-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.875rem;
+  transition: color 0.2s ease;
+}
+
+.footer-link:hover {
+  color: var(--text-primary);
+}
+
+.footer-text {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.footer-text p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+/* Privacy and Terms Page Styles */
+.privacy-main,
+.terms-main {
+  flex: 1;
+  padding: 2rem 0;
+  position: relative;
+  z-index: 1;
+}
+
+.privacy-container,
+.terms-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.privacy-container h1,
+.terms-container h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.last-updated {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin-bottom: 3rem;
+}
+
+.privacy-section,
+.terms-section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  box-shadow:
+    0 4px 16px var(--shadow-dark),
+    inset 0 1px 0 var(--shadow-light);
+}
+
+.privacy-section h2,
+.terms-section h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+.privacy-section p,
+.terms-section p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.privacy-section ul,
+.terms-section ul {
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.privacy-section li,
+.terms-section li {
+  margin-bottom: 0.5rem;
+}
+
+.privacy-section strong,
+.terms-section strong {
+  color: var(--text-strong);
+  font-weight: 600;
 }/* Foote
 r Styles */
 .site-footer {

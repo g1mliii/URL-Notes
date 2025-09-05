@@ -482,6 +482,16 @@ class Auth {
         window.eventBus?.emit('auth:changed', { user });
       } catch (_) {}
       
+      // Check for redirect parameter first
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectTo = urlParams.get('redirect');
+      
+      if (redirectTo) {
+        // Clear the redirect parameter and go to intended destination
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return redirectTo;
+      }
+      
       // Determine redirect destination based on current page
       const currentPath = window.location.pathname;
       

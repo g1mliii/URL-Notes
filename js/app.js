@@ -9,16 +9,16 @@ class App {
   async init() {
     // Initialize theme
     this.initTheme();
-    
+
     // Wait for auth module to be ready
     await this.waitForAuthModule();
-    
+
     // Check authentication status
     await this.checkAuthStatus();
-    
+
     // Initialize page-specific functionality
     this.initPageHandlers();
-    
+
     // Set up global event listeners
     this.setupGlobalListeners();
   }
@@ -27,12 +27,12 @@ class App {
   async waitForAuthModule() {
     let attempts = 0;
     const maxAttempts = 50; // 5 seconds max wait
-    
+
     while (!window.auth && attempts < maxAttempts) {
       await new Promise(resolve => setTimeout(resolve, 100));
       attempts++;
     }
-    
+
     if (window.auth) {
       console.log('✅ Auth module ready');
     } else {
@@ -44,7 +44,7 @@ class App {
     // Check for saved theme preference or default to system preference
     const savedTheme = localStorage.getItem('theme');
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
+
     if (savedTheme) {
       document.documentElement.setAttribute('data-theme', savedTheme);
     } else if (systemPrefersDark) {
@@ -68,10 +68,10 @@ class App {
         // Use enhanced authentication status check
         const isAuthed = await window.auth.checkAuthenticationStatus();
         const user = await window.auth.getCurrentUser();
-        
+
         this.isAuthenticated = isAuthed;
         this.currentUser = user;
-        
+
         if (isAuthed && user) {
           // User is authenticated - redirect to dashboard if on login page
           const currentPath = window.location.pathname;
@@ -87,23 +87,40 @@ class App {
           // User is not authenticated - redirect to login if on protected pages
           const currentPath = window.location.pathname;
           if (currentPath.includes('/dashboard') || currentPath.includes('/account')) {
-            window.location.href = '/';
+            // Show a message and redirect after a short delay
+            if (window.auth && window.auth.showNotification) {
+              window.auth.showNotification('Please sign in to access this page', 'info');
+            }
+            setTimeout(() => {
+              window.location.href = '/?redirect=' + encodeURIComponent(currentPath);
+            }, 1500);
             return;
           }
         }
       } else {
-        // Auth module not ready yet, will be handled by auth module initialization
+        // Auth module not ready yet - for protected pages, redirect immediately
+        const currentPath = window.location.pathname;
+        if (currentPath.includes('/dashboard') || currentPath.includes('/account')) {
+          window.location.href = '/?redirect=' + encodeURIComponent(currentPath);
+          return;
+        }
         this.isAuthenticated = false;
       }
     } catch (error) {
       console.error('Auth check failed:', error);
       this.isAuthenticated = false;
+
+      // On error, redirect protected pages to login
+      const currentPath = window.location.pathname;
+      if (currentPath.includes('/dashboard') || currentPath.includes('/account')) {
+        window.location.href = '/?redirect=' + encodeURIComponent(currentPath);
+      }
     }
   }
 
   initPageHandlers() {
     const path = window.location.pathname;
-    
+
     if (path === '/' || path === '/index.html' || path.endsWith('index.html')) {
       this.initLandingPage();
     } else if (path.includes('/dashboard')) {
@@ -119,7 +136,7 @@ class App {
     const showLogin = document.getElementById('showLogin');
     const showForgotPassword = document.getElementById('showForgotPassword');
     const backToLogin = document.getElementById('backToLogin');
-    
+
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');
     const forgotPasswordForm = document.getElementById('forgotPasswordForm');
@@ -171,11 +188,16 @@ class App {
   }
 
   setupGlobalListeners() {
-    // Global logout functionality
-    const logoutBtns = document.querySelectorAll('#logoutBtn');
-    logoutBtns.forEach(btn => {
-      btn.addEventListener('click', () => this.logout());
-    });
+    // Dashboard link handler - check authentication first
+    const dashboardLink = document.getElementById('dashboardLink');
+    if (dashboardLink) {
+      dashboardLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.handleDashboardAccess();
+      });
+    }
+
+    // Note: Logout functionality is handled in auth.js to avoid duplicate listeners
 
     // Global modal close functionality
     document.addEventListener('click', (e) => {
@@ -198,16 +220,65 @@ class App {
     });
   }
 
+  async handleDashboardAccess() {
+    // Check if user is authenticated
+    if (window.auth && window.auth.isAuthenticated()) {
+      // User is authenticated, go to dashboard
+      window.location.href = '/dashboard';
+    } else {
+      // User is not authenticated, show message and scroll to sign-in form
+      this.showAuthPrompt();
+    }
+  }
+
+  showAuthPrompt() {
+    // Show a notification
+    if (window.auth && window.auth.showNotification) {
+      window.auth.showNotification('Please sign in to access your dashboard', 'info');
+    }
+
+    // Scroll to the auth form
+    const authContainer = document.querySelector('.auth-container');
+    if (authContainer) {
+      authContainer.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+
+      // Focus on email input
+      setTimeout(() => {
+        const emailInput = document.getElementById('loginEmail');
+        if (emailInput) {
+          emailInput.focus();
+        }
+      }, 500);
+    }
+  }
+
   logout() {
     // Delegate to auth module if available
     if (window.auth && window.auth.handleSignOut) {
       window.auth.handleSignOut();
     } else {
-      // Fallback logout
-      localStorage.clear();
+      // Fallback logout - clear all auth-related data
+      console.log('Fallback logout - auth module not available');
+      localStorage.removeItem('supabase_session');
+      localStorage.removeItem('userTier');
+      localStorage.removeItem('profileLastChecked');
+      localStorage.removeItem('subscriptionLastChecked');
+      localStorage.removeItem('cachedSubscription');
+      localStorage.removeItem('encryptionKeyLastChecked');
+      localStorage.removeItem('cachedKeyMaterial');
+      localStorage.removeItem('cachedSalt');
+
       this.isAuthenticated = false;
       this.currentUser = null;
-      window.location.href = '/';
+
+      // Show message and redirect
+      this.showMessage('Signed out', 'success');
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 500);
     }
   }
 
@@ -239,12 +310,12 @@ class App {
     const messageEl = document.createElement('div');
     messageEl.className = `${type}-message`;
     messageEl.textContent = message;
-    
+
     // Insert at top of page
     const container = document.querySelector('.app-container');
     if (container) {
       container.insertBefore(messageEl, container.firstChild);
-      
+
       // Auto-remove after 5 seconds
       setTimeout(() => {
         if (messageEl.parentNode) {
@@ -257,7 +328,7 @@ class App {
   // Utility method for API calls (will be enhanced in task 2)
   async apiCall(endpoint, options = {}) {
     const baseUrl = 'https://your-supabase-url.supabase.co'; // Will be configured properly in task 2
-    
+
     const defaultOptions = {
       headers: {
         'Content-Type': 'application/json',
@@ -282,11 +353,11 @@ class App {
 
     try {
       const response = await fetch(`${baseUrl}${endpoint}`, finalOptions);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('API call failed:', error);
