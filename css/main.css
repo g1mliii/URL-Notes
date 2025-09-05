@@ -110,14 +110,12 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
 }
 
-/* Global scrollbar styles to prevent conflicts */
+/* Global scrollbar styles */
 html {
   height: 100%;
-  overflow: hidden;
 }
 
 ::-webkit-scrollbar {
