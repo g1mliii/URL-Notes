@@ -472,7 +472,16 @@ class Dashboard {
   }
 
   generateId() {
-    return 'note_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    // Use crypto.randomUUID() for proper UUID format (same as extension)
+    if (crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    // Fallback for older browsers (though this shouldn't be needed in modern browsers)
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
   }
 
   extractDomain(url) {
@@ -1232,6 +1241,10 @@ class Dashboard {
 
       // Double-check the operation before sending
       console.log('OPERATION CHECK - syncPayload.operation:', syncPayload.operation);
+      console.log('Note ID format check:', {
+        noteId: syncPayload.notes[0]?.id,
+        isValidUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(syncPayload.notes[0]?.id)
+      });
       console.log('FULL PAYLOAD:', JSON.stringify(syncPayload, null, 2));
 
       // Use the API's sync method which handles encryption
