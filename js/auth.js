@@ -239,7 +239,7 @@ class Auth {
     
     if (!this.supabaseClient) {
       console.log('No supabase client, redirecting');
-      window.location.href = 'index.html';
+      window.location.href = '/';
       return;
     }
 
@@ -257,7 +257,7 @@ class Auth {
       
       // Redirect after short delay
       setTimeout(() => {
-        window.location.href = 'index.html';
+        window.location.href = '/';
       }, 500);
       
     } catch (error) {
@@ -271,7 +271,7 @@ class Auth {
       
       // Force redirect even if sign out fails
       setTimeout(() => {
-        window.location.href = 'index.html';
+        window.location.href = '/';
       }, 1000);
     } finally {
       try {
@@ -487,20 +487,20 @@ class Auth {
       
       if (currentPath === '/' || currentPath === '/index.html' || currentPath.endsWith('index.html')) {
         // Redirect from landing page to dashboard
-        return 'dashboard.html';
-      } else if (currentPath.includes('account.html')) {
+        return '/dashboard';
+      } else if (currentPath.includes('/account')) {
         // Stay on account page, just update UI
         return null;
-      } else if (currentPath.includes('dashboard.html')) {
+      } else if (currentPath.includes('/dashboard')) {
         // Stay on dashboard, just update UI
         return null;
       } else {
         // Default redirect to dashboard
-        return 'dashboard.html';
+        return '/dashboard';
       }
     } catch (error) {
       console.error('Error handling authentication success:', error);
-      return 'dashboard.html'; // Default fallback
+      return '/dashboard'; // Default fallback
     }
   }
 
@@ -659,7 +659,7 @@ class Auth {
         
         // Clean up URL and redirect to login
         window.history.replaceState({}, document.title, window.location.pathname);
-        window.location.href = 'index.html';
+        window.location.href = '/';
       }
     }
     
@@ -678,7 +678,7 @@ class Auth {
     
     if (type !== 'recovery' || !accessToken) {
       this.showNotification('Invalid password reset link', 'error');
-      window.location.href = 'index.html';
+      window.location.href = '/';
       return;
     }
 
@@ -689,7 +689,7 @@ class Auth {
     } catch (error) {
       console.error('Password reset callback error:', error);
       this.showNotification('Password reset link expired or invalid', 'error');
-      window.location.href = 'index.html';
+      window.location.href = '/';
     }
   }
 
@@ -746,7 +746,7 @@ class Auth {
         this.showNotification('Password updated successfully! Redirecting to dashboard...', 'success');
         
         setTimeout(() => {
-          window.location.href = 'dashboard.html';
+          window.location.href = '/dashboard';
         }, 2000);
         
       } catch (error) {
@@ -759,7 +759,7 @@ class Auth {
     const closeBtn = modal.querySelector('.modal-close');
     closeBtn.addEventListener('click', () => {
       document.body.removeChild(modal);
-      window.location.href = 'index.html';
+      window.location.href = '/';
     });
     
     // Clean up URL
@@ -822,8 +822,8 @@ class Auth {
           
           // Redirect to login if on protected page
           const currentPath = window.location.pathname;
-          if (currentPath.includes('dashboard.html') || currentPath.includes('account.html')) {
-            window.location.href = 'index.html';
+          if (currentPath.includes('/dashboard') || currentPath.includes('/account')) {
+            window.location.href = '/';
           }
         }
       }
@@ -971,12 +971,12 @@ class Auth {
       try {
         await this.supabaseClient.handleOAuthCallback();
         // Redirect to dashboard after successful OAuth
-        window.location.href = 'dashboard.html';
+        window.location.href = '/dashboard';
       } catch (error) {
         console.error('OAuth callback error:', error);
         window.app.showMessage('Authentication failed. Please try again.', 'error');
         // Redirect to login page
-        window.location.href = 'index.html';
+        window.location.href = '/';
       }
     }
   }

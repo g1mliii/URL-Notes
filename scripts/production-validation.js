@@ -73,8 +73,8 @@ class ProductionValidator {
     async testAuthenticationPages() {
         const pages = [
             { path: '/', name: 'Landing Page' },
-            { path: '/dashboard.html', name: 'Dashboard' },
-            { path: '/account.html', name: 'Account Page' }
+            { path: '/dashboard', name: 'Dashboard' },
+            { path: '/account', name: 'Account Page' }
         ];
 
         for (const page of pages) {
@@ -317,8 +317,8 @@ class ProductionValidator {
                     interval: '5 minutes',
                     endpoints: [
                         'https://anchored.site',
-                        'https://anchored.site/dashboard.html',
-                        'https://anchored.site/account.html'
+                        'https://anchored.site/dashboard',
+                        'https://anchored.site/account'
                     ]
                 },
                 performance: {
@@ -370,8 +370,8 @@ class ProductionValidator {
 const healthChecks = {
   endpoints: [
     'https://anchored.site',
-    'https://anchored.site/dashboard.html',
-    'https://anchored.site/account.html'
+    'https://anchored.site/dashboard',
+    'https://anchored.site/account'
   ],
   
   async checkEndpoint(url) {

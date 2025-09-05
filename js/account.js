@@ -98,7 +98,7 @@ class Account {
 
 // Initialize account module when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-  if (window.location.pathname.includes('account.html')) {
+  if (window.location.pathname.includes('/account')) {
     window.account = new Account();
   }
 });

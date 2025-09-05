@@ -24,7 +24,7 @@ The new direct deployment is working perfectly:
 Before deleting, you can do one final check:
 - Visit: https://anchored.site
 - Test: https://anchored.site/config.js
-- Test: https://anchored.site/dashboard.html
+- Test: https://anchored.site/dashboard
 - Confirm everything works as expected
 
 ### Step 2: Navigate to Old Repository

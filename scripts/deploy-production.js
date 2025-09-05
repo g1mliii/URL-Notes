@@ -235,8 +235,8 @@ UPDATE auth.users SET raw_app_meta_data =
       endpoints: [
         `https://${this.config.domain}`,
         `https://${this.config.domain}/health.json`,
-        `https://${this.config.domain}/dashboard.html`,
-        `https://${this.config.domain}/account.html`
+        `https://${this.config.domain}/dashboard`,
+        `https://${this.config.domain}/account`
       ],
       checks: {
         uptime: { interval: '1m', timeout: '10s' },

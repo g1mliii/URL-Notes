@@ -197,7 +197,7 @@ class BackupManager {
           endpoints: [
             'https://anchored.site',
             'https://anchored.site/health.json',
-            'https://anchored.site/dashboard.html'
+            'https://anchored.site/dashboard'
           ],
           alerts: ['email', 'sms', 'slack']
         },

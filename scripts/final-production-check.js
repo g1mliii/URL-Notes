@@ -188,8 +188,8 @@ class FinalProductionCheck {
     
     const tests = [
       { name: 'Landing Page', path: '/' },
-      { name: 'Dashboard Page', path: '/dashboard.html' },
-      { name: 'Account Page', path: '/account.html' }
+      { name: 'Dashboard Page', path: '/dashboard' },
+      { name: 'Account Page', path: '/account' }
     ];
     
     let allTestsPassed = true;
@@ -316,8 +316,8 @@ ${requirementsList}
 ## Production URLs
 
 - **Main Application:** https://anchored.site
-- **Dashboard:** https://anchored.site/dashboard.html
-- **Account Management:** https://anchored.site/account.html
+- **Dashboard:** https://anchored.site/dashboard
+- **Account Management:** https://anchored.site/account
 
 ## Next Steps
 

@@ -79,15 +79,15 @@ class App {
             // Don't redirect if we're handling a password reset callback
             const urlParams = new URLSearchParams(window.location.search);
             if (!urlParams.has('type') || urlParams.get('type') !== 'recovery') {
-              window.location.href = 'dashboard.html';
+              window.location.href = '/dashboard';
               return;
             }
           }
         } else {
           // User is not authenticated - redirect to login if on protected pages
           const currentPath = window.location.pathname;
-          if (currentPath.includes('dashboard.html') || currentPath.includes('account.html')) {
-            window.location.href = 'index.html';
+          if (currentPath.includes('/dashboard') || currentPath.includes('/account')) {
+            window.location.href = '/';
             return;
           }
         }
@@ -106,9 +106,9 @@ class App {
     
     if (path === '/' || path === '/index.html' || path.endsWith('index.html')) {
       this.initLandingPage();
-    } else if (path.includes('dashboard.html')) {
+    } else if (path.includes('/dashboard')) {
       this.initDashboardPage();
-    } else if (path.includes('account.html')) {
+    } else if (path.includes('/account')) {
       this.initAccountPage();
     }
   }
@@ -207,7 +207,7 @@ class App {
       localStorage.clear();
       this.isAuthenticated = false;
       this.currentUser = null;
-      window.location.href = 'index.html';
+      window.location.href = '/';
     }
   }
 

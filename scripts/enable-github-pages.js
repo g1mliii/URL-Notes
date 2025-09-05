@@ -46,8 +46,8 @@ After setup, the following files will be accessible:
 ✅ https://anchored.site/
 ✅ https://anchored.site/config.js
 ✅ https://anchored.site/health.json
-✅ https://anchored.site/dashboard.html
-✅ https://anchored.site/account.html
+✅ https://anchored.site/dashboard
+✅ https://anchored.site/account
 ✅ https://anchored.site/js/monitoring.js
 
 Note: It may take a few minutes for changes to propagate after deployment.

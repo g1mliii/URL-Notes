@@ -1293,7 +1293,7 @@ class Dashboard {
 
 // Initialize dashboard module when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-  if (window.location.pathname.includes('dashboard.html')) {
+  if (window.location.pathname.includes('/dashboard')) {
     window.dashboard = new Dashboard();
   }
 });

@@ -5,8 +5,8 @@
 const healthChecks = {
   endpoints: [
     'https://anchored.site',
-    'https://anchored.site/dashboard.html',
-    'https://anchored.site/account.html'
+    'https://anchored.site/dashboard',
+    'https://anchored.site/account'
   ],
   
   async checkEndpoint(url) {

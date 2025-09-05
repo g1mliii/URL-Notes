@@ -132,8 +132,8 @@ class DeploymentVerifier {
   async testMainPages() {
     const pages = [
       { path: '/', name: 'Landing Page' },
-      { path: '/dashboard.html', name: 'Dashboard' },
-      { path: '/account.html', name: 'Account Page' }
+      { path: '/dashboard', name: 'Dashboard' },
+      { path: '/account', name: 'Account Page' }
     ];
 
     for (const page of pages) {
