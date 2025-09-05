@@ -177,25 +177,10 @@ html {
   transform: translateZ(0);
 }
 
-/* Nebulous liquid-glass background overlay */
+/* Nebulous liquid-glass background overlay - DISABLED for footer fix */
 .app-container::before {
-  content: '';
-  position: absolute;
-  top: -20%;
-  left: -20%;
-  right: -20%;
-  bottom: -20%;
-  pointer-events: none;
-  z-index: -1;
-  background:
-    linear-gradient(180deg, rgba(27, 79, 114, 0.10), rgba(15, 35, 50, 0.14)),
-    radial-gradient(140px 200px at 18% 12%, rgba(46, 134, 171, 0.18), transparent 60%),
-    radial-gradient(180px 140px at 85% 20%, rgba(168, 218, 220, 0.12), transparent 60%),
-    radial-gradient(220px 180px at 28% 82%, rgba(69, 123, 157, 0.12), transparent 60%),
-    radial-gradient(200px 220px at 92% 88%, rgba(29, 53, 87, 0.12), transparent 60%);
-  filter: blur(34px) saturate(125%);
-  opacity: 1;
-  animation: nebulous-flow 40s ease-in-out infinite;
+  /* content: ''; */
+  display: none;
 }
 
 @media (prefers-color-scheme: dark) {
