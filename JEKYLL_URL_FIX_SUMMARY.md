@@ -31,6 +31,15 @@ The web application was using hardcoded `.html` extensions in JavaScript redirec
 ### 6. `health-check-monitoring.js`
 - **Fixed**: Monitoring endpoints to use clean URLs
 
+### 7. Deployment & Testing Scripts
+- **Fixed**: `scripts/verify-deployment.js` - Updated test URLs
+- **Fixed**: `scripts/test-new-deployment.js` - Updated test URLs  
+- **Fixed**: `scripts/production-validation.js` - Updated monitoring endpoints
+- **Fixed**: `scripts/final-production-check.js` - Updated test URLs and documentation
+- **Fixed**: `scripts/enable-github-pages.js` - Updated verification URLs
+- **Fixed**: `scripts/delete-old-repo-guide.js` - Updated test URLs
+- **Fixed**: `scripts/backup-config.js` - Updated monitoring endpoints
+
 ## URL Mapping Changes
 
 | Old URL | New URL |
