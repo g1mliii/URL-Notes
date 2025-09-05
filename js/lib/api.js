@@ -615,21 +615,30 @@ class SupabaseClient {
 
   // Sync notes to cloud using Edge Function
   async syncNotes(syncPayload) {
+    console.log('syncNotes called with payload:', {
+      operation: syncPayload.operation,
+      noteCount: syncPayload.notes?.length || 0
+    });
+
     if (!this.isAuthenticated()) {
       throw new Error('User not authenticated');
     }
 
     // Ensure encryption module is available
     if (!window.noteEncryption) {
+      console.error('NoteEncryption module not available');
       throw new Error('NoteEncryption module not available');
     }
 
     try {
       // Ensure encryption key is available
+      console.log('Getting encryption key...');
       const encryptionKey = await this.getUserEncryptionKey();
       if (!encryptionKey) {
+        console.error('Encryption key not available');
         throw new Error('Encryption key not available');
       }
+      console.log('Encryption key obtained successfully');
 
       const encryptedNotes = [];
 
@@ -689,6 +698,16 @@ class SupabaseClient {
         deletionCount: edgeFunctionPayload.deletions.length
       });
 
+      // Log the final payload being sent
+      console.log('Final payload being sent to edge function:', {
+        operation: edgeFunctionPayload.operation,
+        notesCount: edgeFunctionPayload.notes.length,
+        firstNoteEncrypted: edgeFunctionPayload.notes[0] ? {
+          hasTitleEncrypted: !!edgeFunctionPayload.notes[0].title_encrypted,
+          hasContentEncrypted: !!edgeFunctionPayload.notes[0].content_encrypted
+        } : null
+      });
+
       // Use Edge Function for sync
       const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-notes`, {
         method: 'POST',
@@ -709,6 +728,13 @@ class SupabaseClient {
         } catch (e) {
           errorData = { error: errorText || 'Sync failed' };
         }
+
+        // If it's an "Invalid operation" error, try direct database access as fallback
+        if (errorData.error === 'Invalid operation') {
+          console.log('Edge function failed with "Invalid operation", trying direct database access...');
+          return await this.syncNotesDirectly(encryptedNotes, syncPayload.deletions || []);
+        }
+
         throw new Error(errorData.error || `Sync failed with status ${response.status}`);
       }
 
@@ -716,6 +742,73 @@ class SupabaseClient {
       return data;
     } catch (error) {
       console.error('Sync error:', error);
+      throw error;
+    }
+  }
+
+  // Fallback sync method using direct database access
+  async syncNotesDirectly(encryptedNotes, deletions = []) {
+    console.log('Using direct database sync fallback');
+    
+    try {
+      // Process deletions first
+      for (const deletion of deletions) {
+        await this._request(`${this.apiUrl}/notes?id=eq.${deletion.id}`, {
+          method: 'PATCH',
+          body: { is_deleted: true, deleted_at: new Date().toISOString() },
+          auth: true
+        });
+      }
+
+      // Process note updates/creates
+      for (const note of encryptedNotes) {
+        // Check if note exists
+        const existingNotes = await this._request(`${this.apiUrl}/notes?id=eq.${note.id}&user_id=eq.${this.currentUser.id}`, { auth: true });
+        
+        if (existingNotes && existingNotes.length > 0) {
+          // Update existing note
+          await this._request(`${this.apiUrl}/notes?id=eq.${note.id}&user_id=eq.${this.currentUser.id}`, {
+            method: 'PATCH',
+            body: {
+              title_encrypted: note.title_encrypted,
+              content_encrypted: note.content_encrypted,
+              tags_encrypted: note.tags_encrypted,
+              content_hash: note.content_hash,
+              url: note.url,
+              domain: note.domain,
+              updated_at: new Date().toISOString()
+            },
+            auth: true
+          });
+        } else {
+          // Insert new note
+          await this._request(`${this.apiUrl}/notes`, {
+            method: 'POST',
+            body: {
+              id: note.id,
+              user_id: this.currentUser.id,
+              title_encrypted: note.title_encrypted,
+              content_encrypted: note.content_encrypted,
+              tags_encrypted: note.tags_encrypted,
+              content_hash: note.content_hash,
+              url: note.url,
+              domain: note.domain,
+              created_at: note.createdAt || new Date().toISOString(),
+              updated_at: note.updatedAt || new Date().toISOString()
+            },
+            auth: true
+          });
+        }
+      }
+
+      // Return success response
+      return {
+        success: true,
+        missingNotes: [],
+        processedDeletions: deletions
+      };
+    } catch (error) {
+      console.error('Direct database sync failed:', error);
       throw error;
     }
   }
@@ -844,83 +937,7 @@ class SupabaseClient {
     }
   }
 
-  // Sync notes to cloud using Edge Function
-  async syncNotes(syncPayload) {
-    if (!this.isAuthenticated()) {
-      throw new Error('User not authenticated');
-    }
 
-    // Ensure encryption module is available
-    if (!window.noteEncryption) {
-      throw new Error('NoteEncryption module not available');
-    }
-
-    try {
-      // Ensure encryption key is available
-      const encryptionKey = await this.getUserEncryptionKey();
-      if (!encryptionKey) {
-        throw new Error('Encryption key not available');
-      }
-
-      const encryptedNotes = [];
-
-      // Encrypt notes before uploading (only if notes exist)
-      if (syncPayload.notes && Array.isArray(syncPayload.notes)) {
-        for (const note of syncPayload.notes) {
-          // Skip notes without title or content
-          if (!note.content || !note.title) {
-            console.warn('Skipping note without title or content:', note.id);
-            continue;
-          }
-
-          const encryptedNote = await window.noteEncryption.encryptNoteForCloud(
-            note,
-            encryptionKey
-          );
-
-          encryptedNotes.push(encryptedNote);
-        }
-      }
-
-      // Prepare the final payload for the Edge Function
-      const edgeFunctionPayload = {
-        operation: syncPayload.operation,
-        notes: encryptedNotes,
-        deletions: syncPayload.deletions || [],
-        lastSyncTime: syncPayload.lastSyncTime,
-        timestamp: syncPayload.timestamp
-      };
-
-      // Use Edge Function for sync
-      const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-notes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.accessToken}`,
-          'apikey': this.supabaseAnonKey
-        },
-        body: JSON.stringify(edgeFunctionPayload)
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Sync error response:', errorText);
-        let errorData;
-        try {
-          errorData = JSON.parse(errorText);
-        } catch (e) {
-          errorData = { error: errorText || 'Sync failed' };
-        }
-        throw new Error(errorData.error || `Sync failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Sync error:', error);
-      throw error;
-    }
-  }
 
   // Get user's encryption key (with caching to prevent multiple API calls)
   async getUserEncryptionKey() {

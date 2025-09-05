@@ -44,8 +44,18 @@ serve(async (req) => {
     console.log('Edge function received:', {
       operation,
       notesCount: notes?.length || 0,
-      deletionsCount: deletions?.length || 0
+      deletionsCount: deletions?.length || 0,
+      requestKeys: Object.keys(requestData)
     });
+
+    // Validate operation
+    if (!operation) {
+      console.error('No operation specified in request');
+      return new Response(
+        JSON.stringify({ error: 'No operation specified' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     if (operation === 'sync') {
       // Remove verbose logging
@@ -59,10 +69,19 @@ serve(async (req) => {
               id: note.id,
               hasTitleEncrypted: !!note.title_encrypted,
               hasContentEncrypted: !!note.content_encrypted,
+              titleEncryptedType: typeof note.title_encrypted,
+              contentEncryptedType: typeof note.content_encrypted,
               noteKeys: Object.keys(note)
             });
             return new Response(
-              JSON.stringify({ error: 'Missing content or style parameter' }),
+              JSON.stringify({
+                error: 'Note missing required encrypted fields',
+                noteId: note.id,
+                missingFields: {
+                  title_encrypted: !note.title_encrypted,
+                  content_encrypted: !note.content_encrypted
+                }
+              }),
               { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
@@ -104,8 +123,13 @@ serve(async (req) => {
       )
     }
 
+    console.error('Invalid operation received:', operation);
     return new Response(
-      JSON.stringify({ error: 'Invalid operation' }),
+      JSON.stringify({
+        error: 'Invalid operation',
+        received: operation,
+        expected: 'sync'
+      }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 

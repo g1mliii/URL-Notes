@@ -588,3 +588,6 @@ class WebStorage {
 
 // Export for use in web application
 window.WebStorage = WebStorage;
+
+// Initialize storage instance immediately
+window.storage = new WebStorage();

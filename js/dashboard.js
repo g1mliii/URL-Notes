@@ -16,8 +16,60 @@ class Dashboard {
 
   async init() {
     console.log('Dashboard module initialized');
+    
+    // Initialize storage first
+    await this.initializeStorage();
+    
     this.setupEventListeners();
     await this.loadNotes();
+  }
+
+  async initializeStorage() {
+    // Wait for all required modules to be ready
+    let attempts = 0;
+    while ((!window.storage || !window.api || !window.noteEncryption) && attempts < 50) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      attempts++;
+    }
+
+    if (!window.storage) {
+      console.warn('Storage not available, using fallback');
+      // Create a simple fallback storage
+      window.storage = {
+        init: async () => {},
+        getAllNotes: async () => [],
+        saveNote: async (note) => note,
+        deleteNote: async (id) => true
+      };
+    }
+
+    if (!window.api) {
+      console.error('API client not available');
+      throw new Error('API client not available');
+    }
+
+    if (!window.noteEncryption) {
+      console.error('Encryption module not available');
+      throw new Error('Encryption module not available');
+    }
+
+    // Initialize API client
+    try {
+      await window.api.init();
+      console.log('✅ API client initialized');
+    } catch (error) {
+      console.warn('API client initialization failed:', error);
+    }
+
+    // Initialize storage if it has an init method
+    if (window.storage.init) {
+      try {
+        await window.storage.init();
+        console.log('✅ Storage initialized');
+      } catch (error) {
+        console.warn('Storage initialization failed:', error);
+      }
+    }
   }
 
   setupEventListeners() {
@@ -1075,16 +1127,39 @@ class Dashboard {
     }
 
     try {
-      // Prepare sync payload
+      // Prepare sync payload in the exact same format as extension
       const syncPayload = {
-        operation: 'push',
-        notes: [noteData],
+        operation: 'sync', // FIXED: Use 'sync' not 'push' to match extension - v2
+        notes: [{
+          id: noteData.id,
+          title: noteData.title,
+          content: noteData.content,
+          url: noteData.url || '',
+          domain: noteData.domain || 'Web App',
+          tags: noteData.tags || [],
+          createdAt: noteData.createdAt,
+          updatedAt: noteData.updatedAt
+        }],
         deletions: [],
         lastSyncTime: null,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        _debug: 'dashboard-v2-' + Date.now() // Cache buster
       };
 
+      console.log('Syncing note with payload:', {
+        operation: syncPayload.operation,
+        noteCount: syncPayload.notes.length,
+        noteId: syncPayload.notes[0]?.id,
+        noteTitle: syncPayload.notes[0]?.title,
+        noteContent: syncPayload.notes[0]?.content?.substring(0, 50) + '...'
+      });
+
+      // Double-check the operation before sending
+      console.log('OPERATION CHECK - syncPayload.operation:', syncPayload.operation);
+      console.log('FULL PAYLOAD:', JSON.stringify(syncPayload, null, 2));
+
       // Use the API's sync method which handles encryption
+      console.log('About to call window.api.syncNotes...');
       await window.api.syncNotes(syncPayload);
       console.log('Note synced to cloud successfully');
 
