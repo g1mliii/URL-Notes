@@ -897,8 +897,9 @@
       background: rgba(20, 45, 65, 0.9) !important;
     }
   }
-}/
-* Footer Responsive Styles */
+}
+
+/* Footer Responsive Styles */
 @media (max-width: 767px) {
   .footer-content {
     flex-direction: column;
