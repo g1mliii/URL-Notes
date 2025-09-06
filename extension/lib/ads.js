@@ -306,8 +306,9 @@ class AdManager {
         height: auto;
         display: block;
         max-height: 58px;
-        object-fit: cover;
+        object-fit: contain;
         object-position: center;
+        background: transparent;
       }
     `;
     document.head.appendChild(style);
