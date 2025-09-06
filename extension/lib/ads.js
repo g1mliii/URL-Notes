@@ -107,8 +107,8 @@ class AdManager {
       this.lastAdTime = Date.now();
       this.adsShownThisHour++;
 
-      // Track ad impression
-      this.trackAdImpression();
+      // Track ad impression - disabled (using NordVPN analytics)
+      // this.trackAdImpression();
 
     } catch (error) {
       console.error('Error showing ad:', error);
@@ -395,7 +395,7 @@ class AdManager {
     chrome.tabs.create({
       url: 'https://anchored.site' // TODO: Change to direct premium signup when subscription service is implemented
     });
-    this.trackAdClick('upgrade');
+    // this.trackAdClick('upgrade'); // Disabled - using NordVPN analytics
   }
 
   // Handle NordVPN affiliate click
@@ -403,12 +403,12 @@ class AdManager {
     chrome.tabs.create({
       url: 'https://go.nordvpn.net/aff_c?offer_id=15&aff_id=130711&url_id=902'
     });
-    this.trackAdClick('nordvpn');
+    // this.trackAdClick('nordvpn'); // Disabled - using NordVPN analytics
   }
 
   // Handle ad click
   onAdClick(adType = 'unknown') {
-    this.trackAdClick(adType);
+    // this.trackAdClick(adType); // Disabled - using NordVPN analytics
   }
 
   // Track ad click
