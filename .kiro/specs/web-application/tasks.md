@@ -140,90 +140,125 @@
     - Create billing history and invoice access
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 7. Implement export functionality
-  - [ ] 7.1 Create export interface with note selection
+- [ ] 7. Implement CJ Affiliate Ad System & Dashboard Upgrade Prompts
+  - [ ] 7.1 Dashboard upgrade prompt system for non-premium users
+    - Detect non-premium users on dashboard login redirect
+    - Show upgrade modal/banner explaining sync limitations
+    - Add clear messaging: "Your extension notes aren't synced yet"
+    - Provide upgrade path with premium benefits
+    - _Requirements: User conversion optimization_
+
+  - [ ] 7.2 CJ Affiliate account setup and campaign management
+    - **CJ Affiliate Setup Steps:**
+      1. Login to CJ Affiliate Dashboard (cj.com)
+      2. Navigate to "Advertisers" → "Find Advertisers"
+      3. Apply to relevant campaigns: VPNs, Software, Financial, E-commerce
+      4. Go to "Links" → "Get Links" once approved
+      5. Download banner assets and copy affiliate URLs
+      6. Set up tracking with CJ's conversion pixels
+    - Apply to high-converting campaigns in relevant categories
+    - Download banner assets in multiple sizes
+    - _Requirements: Revenue diversification_
+
+  - [ ] 7.3 Website CJ affiliate ad rotation system
+    - Create dynamic banner serving system for website
+    - Implement A/B testing framework for different campaigns
+    - Add CJ tracking pixels for conversion measurement
+    - Build responsive ad containers for various banner sizes
+    - Integrate analytics to track performance by campaign
+    - _Requirements: Website monetization_
+
+  - [ ] 7.4 Extension static CJ affiliate integration (future)
+    - Bundle 3-5 top-performing CJ banners in extension
+    - Create local rotation system (no external calls)
+    - Update affiliate URLs in manifest.json
+    - Plan quarterly banner updates with extension releases
+    - _Requirements: Extension revenue diversification_
+
+- [ ] 8. Implement export functionality
+  - [ ] 8.1 Create export interface with note selection
     - Build export modal with format selection dropdown
     - Implement individual note selection with checkboxes
     - Add bulk selection options by domain/URL
     - Create progress indicators for export processing
     - _Requirements: 7.1, 7.2, 7.4_
 
-  - [ ] 7.2 Implement export processing and download
+  - [ ] 8.2 Implement export processing and download
     - Decrypt selected notes for export processing
     - Generate export files using adapted export-formats.js
     - Implement browser file download functionality
     - Handle export errors with retry options
     - _Requirements: 7.3, 7.5_
 
-- [ ] 8. Implement import functionality
-  - [ ] 8.1 Create import interface and file handling
+- [ ] 9. Implement import functionality
+  - [ ] 9.1 Create import interface and file handling
     - Build file upload interface with format validation
     - Support JSON, Markdown, and Plain Text import formats
     - Implement file parsing and validation
     - Display import preview before processing
     - _Requirements: 8.1, 8.2_
 
-  - [ ] 8.2 Process imported notes and handle conflicts
+  - [ ] 9.2 Process imported notes and handle conflicts
     - Encrypt imported notes using user's encryption key
     - Sync imported notes to cloud storage
     - Implement duplicate detection and conflict resolution
     - Display detailed error messages for failed imports
     - _Requirements: 8.3, 8.4, 8.5_
 
-- [ ] 9. Implement responsive design and mobile optimization
-  - [ ] 9.1 Optimize interface for mobile devices
+- [ ] 10. Implement responsive design and mobile optimization
+  - [ ] 10.1 Optimize interface for mobile devices
     - Implement touch-friendly interface elements
     - Add responsive navigation for mobile screens
     - Optimize note cards and editor for touch interaction
     - Test and refine mobile user experience
     - _Requirements: 9.1, 9.4_
 
-  - [ ] 9.2 Implement desktop enhancements
+  - [ ] 10.2 Implement desktop enhancements
     - Utilize available screen space effectively on desktop
     - Add keyboard shortcuts and navigation
     - Implement desktop-specific UI enhancements
     - Ensure consistent functionality across device types
     - _Requirements: 9.2, 9.5_
 
-- [ ] 10. Implement encryption migration for password changes
-  - [ ] 10.1 Create encryption key migration system
+- [ ] 11. Implement encryption migration for password changes
+  - [ ] 11.1 Create encryption key migration system
     - Build system to decrypt notes with old encryption keys
     - Implement re-encryption with new password-derived keys
     - Add progress tracking for migration process
     - Create rollback mechanism for failed migrations
     - _Requirements: 10.1, 10.2, 10.3, 10.5_
 
-  - [ ] 10.2 Integrate migration with password reset flow
+  - [ ] 11.2 Integrate migration with password reset flow
     - Trigger encryption migration during password changes
     - Verify all notes are accessible with new keys after migration
     - Handle migration failures with appropriate error messages
     - Ensure seamless user experience during password updates
     - _Requirements: 10.4, 3.4_
 
-- [ ] 11. Create edge functions for subscription management
-  - [ ] 11.1 Build subscription update edge function
+- [ ] 12. Create edge functions for subscription management
+  - [ ] 12.1 Build subscription update edge function
     - Create Supabase edge function for processing subscription changes
     - Integrate with Stripe webhooks for payment events
     - Update user profile subscription status and expiration
     - Handle subscription activation and deactivation
     - _Requirements: 4.3, 4.4, 5.4_
 
-  - [ ] 11.2 Implement subscription validation edge function
+  - [ ] 12.2 Implement subscription validation edge function
     - Create function to validate current subscription status
     - Handle subscription expiration and downgrade logic
     - Integrate with existing sync functionality
     - Ensure premium feature access control
     - _Requirements: 5.4_
 
-- [ ] 12. Testing and quality assurance
-  - [ ] 12.1 Implement unit tests for core functionality
+- [ ] 13. Testing and quality assurance
+  - [ ] 13.1 Implement unit tests for core functionality
     - Test encryption/decryption with various data types
     - Validate export format conversion accuracy
     - Test authentication flows and error handling
     - Verify data model validation and sanitization
     - _Requirements: All requirements validation_
 
-  - [ ] 12.2 Perform integration and end-to-end testing
+  - [ ] 13.2 Perform integration and end-to-end testing
     - Test complete user registration and onboarding flow
     - Validate note synchronization between web app and extension
     - Test subscription management and payment processing
