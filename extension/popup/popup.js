@@ -1240,13 +1240,8 @@ class URLNotesApp {
 
 
 
-    document.getElementById('importNotesBtn').addEventListener('click', () => {
-      document.getElementById('importNotesInput').click();
-    });
-
-    document.getElementById('importNotesInput').addEventListener('change', (e) => {
-      this.importNotes(e);
-    });
+    // Import functionality is handled by SettingsManager
+    // No need to add duplicate event listeners here
 
     document.getElementById('aiRewriteBtn').addEventListener('click', () => {
       this.showAIDropdown();
@@ -4362,34 +4357,7 @@ class URLNotesApp {
     }
   }
 
-  // Import notes from file
-  async importNotes(event) {
-    try {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const text = await file.text();
-      const data = JSON.parse(text);
-
-      if (this.storageManager && typeof this.storageManager.importNotes === 'function') {
-        await this.storageManager.importNotes(data);
-        Utils.showToast('Notes imported successfully', 'success');
-        // Refresh notes list
-        await this.loadNotes();
-        this.render();
-      } else {
-        Utils.showToast('Import not available', 'info');
-      }
-
-      // Clear the input
-      event.target.value = '';
-    } catch (error) {
-      console.error('Import failed:', error);
-      Utils.showToast('Failed to import notes', 'error');
-      // Clear the input
-      event.target.value = '';
-    }
-  }
+  // Import functionality is handled by SettingsManager.handleImportNotes()
 
   // Show notification message
   showNotification(message, type = 'info') {

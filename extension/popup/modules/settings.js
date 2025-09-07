@@ -33,13 +33,13 @@ class SettingsManager {
     this.authSignInBtn = document.getElementById('authSignInBtn');
     this.authSignOutBtn = document.getElementById('authSignOutBtn');
     this.authStatusText = document.getElementById('authStatusText');
-    
+
     // Sync elements
     this.manualSyncBtn = document.getElementById('manualSyncBtn');
-    
+
     this.currentFont = 'Default';
     this.currentFontSize = 12;
-    
+
     this.setupEventListeners();
   }
 
@@ -72,7 +72,7 @@ class SettingsManager {
         if (actions) {
           actions.style.gridTemplateColumns = '1fr';
         }
-        
+
         // Show sync management for premium users
         // Looking for syncManagement element
         if (syncManagement) {
@@ -83,7 +83,7 @@ class SettingsManager {
             // Remove verbose logging
             show(syncManagement, shouldShow);
             // Sync management display updated
-            
+
             // Update storage usage if sync is visible
             if (shouldShow) {
               this.updateStorageUsage();
@@ -224,16 +224,16 @@ class SettingsManager {
         </svg>
         <span>Syncing...</span>
       `;
-      
+
       await window.syncEngine.manualSync();
-      
+
       this.manualSyncBtn.innerHTML = `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 3v9l3 3"/>
         </svg>
         <span>Sync Complete</span>
       `;
-      
+
       setTimeout(() => {
         this.manualSyncBtn.innerHTML = `
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -244,10 +244,10 @@ class SettingsManager {
         `;
         this.manualSyncBtn.disabled = false;
       }, 2000);
-      
+
       // Update storage usage after sync
       this.updateStorageUsage();
-      
+
     } catch (e) {
       this.showNotification(`Manual sync failed: ${e.message || e}`, 'error');
       this.manualSyncBtn.disabled = false;
@@ -264,19 +264,19 @@ class SettingsManager {
   async updateStorageUsage() {
     try {
       if (!window.supabaseClient?.isAuthenticated()) return;
-      
+
       const usage = await window.supabaseClient.getStorageUsage();
       const progressEl = document.getElementById('storageProgress');
       const textEl = document.getElementById('storageText');
-      
+
       if (progressEl && textEl) {
         const percentage = (usage.used / usage.limit) * 100;
         progressEl.style.width = `${Math.min(percentage, 100)}%`;
-        
+
         const usedMB = (usage.used / (1024 * 1024)).toFixed(1);
         const limitMB = (usage.limit / (1024 * 1024)).toFixed(1);
         textEl.textContent = `${usedMB} MB / ${limitMB} MB`;
-        
+
         // Change color based on usage
         if (percentage > 80) {
           progressEl.style.background = 'var(--error-color, #ef4444)';
@@ -310,7 +310,7 @@ class SettingsManager {
     this.exportNotesBtn?.addEventListener('click', () => this.handleExportNotes());
     this.importNotesBtn?.addEventListener('click', () => this.importNotesInput?.click());
     this.importNotesInput?.addEventListener('change', (e) => this.handleImportNotes(e));
-    
+
     // Sync management
     this.manualSyncBtn?.addEventListener('click', () => this.handleManualSync());
 
@@ -341,14 +341,14 @@ class SettingsManager {
     try {
       window.eventBus?.on('auth:changed', () => this.updateAuthUI());
       window.eventBus?.on('tier:changed', () => this.updateAuthUI());
-    } catch (_) {}
+    } catch (_) { }
   }
 
   // Open settings panel
   openSettings() {
     const notesList = document.querySelector('.notes-container');
     const noteEditor = document.getElementById('noteEditor');
-    
+
     if (notesList) notesList.style.display = 'none';
     if (noteEditor) noteEditor.style.display = 'none';
     if (this.settingsPanel) this.settingsPanel.style.display = 'block';
@@ -362,12 +362,12 @@ class SettingsManager {
   closeSettings() {
     const notesList = document.querySelector('.notes-container');
     const noteEditor = document.getElementById('noteEditor');
-    
+
     if (this.settingsPanel) this.settingsPanel.style.display = 'none';
     // Restore notes container to its stylesheet-defined display (flex),
     // instead of forcing 'block' which changes layout/background.
     if (notesList) notesList.style.removeProperty('display');
-    
+
     // Don't automatically show editor - let the main app handle state
   }
 
@@ -375,10 +375,10 @@ class SettingsManager {
   async loadFontSetting() {
     try {
       const { fontFamily, fontSize } = await chrome.storage.local.get(['fontFamily', 'fontSize']);
-      
+
       this.currentFont = fontFamily || 'Default';
       this.currentFontSize = fontSize || 12;
-      
+
       // Update UI controls
       if (this.fontSelector) {
         this.fontSelector.value = this.currentFont;
@@ -389,7 +389,7 @@ class SettingsManager {
       if (this.fontSizeValue) {
         this.fontSizeValue.textContent = `${this.currentFontSize}px`;
       }
-      
+
       // Apply font settings
       this.applyFontSettings();
     } catch (error) {
@@ -418,27 +418,27 @@ class SettingsManager {
   applyFontSettings() {
     const fontFamily = this.currentFont === 'Default' ? 'inherit' : this.currentFont;
     const fontSize = `${this.currentFontSize}px`;
-    
+
     // Apply to editor content
     const noteContentInput = document.getElementById('noteContentInput');
     if (noteContentInput) {
       noteContentInput.style.fontFamily = fontFamily;
       noteContentInput.style.fontSize = fontSize;
     }
-    
+
     // Apply to preview
     const noteContentPreview = document.getElementById('noteContentPreview');
     if (noteContentPreview) {
       noteContentPreview.style.fontFamily = fontFamily;
       noteContentPreview.style.fontSize = fontSize;
     }
-    
+
     // Apply to font preview
     if (this.fontPreviewText) {
       this.fontPreviewText.style.fontFamily = fontFamily;
       this.fontPreviewText.style.fontSize = fontSize;
     }
-    
+
     // Apply to notes list content
     const notesList = document.getElementById('notesList');
     if (notesList) {
@@ -456,7 +456,7 @@ class SettingsManager {
     if (this.fontPreviewText) {
       this.applyFontSettings();
     }
-    
+
     // Set up any other initial settings UI state
     this.updateFontPreview();
     // Initialize shortcut display
@@ -513,7 +513,7 @@ class SettingsManager {
       if (chrome?.tabs?.create) {
         chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }).catch(() => {
           // Fallback to window.open
-          try { window.open('chrome://extensions/shortcuts', '_blank'); } catch (_) {}
+          try { window.open('chrome://extensions/shortcuts', '_blank'); } catch (_) { }
         });
       } else {
         // Fallback
@@ -550,13 +550,13 @@ class SettingsManager {
       const url = chrome?.runtime?.getURL ? chrome.runtime.getURL('onboarding.html') : 'onboarding.html';
       if (chrome?.tabs?.create) {
         chrome.tabs.create({ url }).catch(() => {
-          try { window.open(url, '_blank'); } catch (_) {}
+          try { window.open(url, '_blank'); } catch (_) { }
         });
       } else {
         window.open(url, '_blank');
       }
     } catch (_) {
-      try { window.open('onboarding.html', '_blank'); } catch (__) {}
+      try { window.open('onboarding.html', '_blank'); } catch (__) { }
     }
   }
 
@@ -570,15 +570,15 @@ class SettingsManager {
   async handleExportNotes() {
     try {
       const exportData = await this.storageManager.exportNotes();
-      
+
       // Get selected format
       const formatSelect = document.getElementById('exportFormatSelect');
       const selectedFormat = formatSelect ? formatSelect.value : 'json';
-      
+
       // Use ExportFormats class to convert data
       const exportFormats = new ExportFormats();
       const exportResult = exportFormats.exportToFormat(exportData, selectedFormat);
-      
+
       // Create and download file
       const blob = new Blob([exportResult.content], { type: exportResult.mimeType });
       const url = URL.createObjectURL(blob);
@@ -589,7 +589,7 @@ class SettingsManager {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+
       // Show success message with format info
       const formatInfo = exportFormats.getSupportedFormats()[selectedFormat];
       this.showNotification(`Notes exported as ${formatInfo.name} successfully!`, 'success');
@@ -605,24 +605,83 @@ class SettingsManager {
     if (!file) return;
 
     try {
-      const text = await file.text();
-      const importData = JSON.parse(text);
-      
-      // Validate import data structure
-      if (!this.isValidImportFormat(importData)) {
-        throw new Error('Invalid import file format');
+      // Validate file type
+      if (!file.name.toLowerCase().endsWith('.json')) {
+        throw new Error('Please select a JSON file (.json)');
       }
-      
+
+      // Validate file size (max 50MB)
+      const maxSize = 50 * 1024 * 1024; // 50MB
+      if (file.size > maxSize) {
+        throw new Error('File is too large. Maximum size is 50MB.');
+      }
+
+      // Show loading state
+      this.showNotification('Importing notes...', 'info');
+
+      const text = await file.text();
+
+      // Validate JSON format
+      let importData;
+      try {
+        importData = JSON.parse(text);
+      } catch (parseError) {
+        throw new Error('Invalid JSON file. Please check the file format.');
+      }
+
+      // Validate import data structure
+      const validation = this.validateImportData(importData);
+      if (!validation.isValid) {
+        throw new Error(`Invalid import format: ${validation.error}`);
+      }
+
       const result = await this.storageManager.importNotes(importData);
-      
-      if (result.success) {
-        this.showNotification(`Successfully imported ${result.imported} notes!`, 'success');
+
+      // Handle different return formats from different storage managers
+      let success = false;
+      let imported = 0;
+      let updated = 0;
+      let skipped = 0;
+      let errorMessage = '';
+
+      if (typeof result === 'number') {
+        // IndexedDB storage manager returns just a count
+        success = result >= 0;
+        imported = result;
+      } else if (typeof result === 'object' && result !== null) {
+        // Chrome storage manager returns an object
+        success = result.success;
+        imported = result.imported || 0;
+        updated = result.updated || 0;
+        skipped = result.skipped || 0;
+        errorMessage = result.error || '';
+      } else {
+        success = false;
+        errorMessage = 'Unknown import result format';
+      }
+
+      if (success) {
+        let message = `Successfully imported ${imported} notes!`;
+        if (updated > 0) {
+          message += ` (${updated} updated)`;
+        }
+        if (skipped > 0) {
+          message += ` (${skipped} skipped)`;
+        }
+
+        this.showNotification(message, 'success');
+
         // Trigger notes reload in main app
-        if (window.urlNotesApp && window.urlNotesApp.loadNotes) {
-          window.urlNotesApp.loadNotes();
+        if (window.urlNotesApp) {
+          if (typeof window.urlNotesApp.loadNotes === 'function') {
+            await window.urlNotesApp.loadNotes();
+          }
+          if (typeof window.urlNotesApp.render === 'function') {
+            window.urlNotesApp.render();
+          }
         }
       } else {
-        throw new Error(result.error || 'Import failed');
+        throw new Error(errorMessage || 'Import failed');
       }
     } catch (error) {
       console.error('Error importing notes:', error);
@@ -633,19 +692,85 @@ class SettingsManager {
     }
   }
 
-  // Check if import data has valid format
-  isValidImportFormat(importData) {
-    // Valid format has domain keys with arrays of notes
-    for (const key in importData) {
-      if (Array.isArray(importData[key])) {
-        // Check if it looks like a notes array
-        const firstItem = importData[key][0];
-        if (firstItem && typeof firstItem === 'object' && firstItem.domain) {
-          return true;
+  // Comprehensive validation of import data
+  validateImportData(importData) {
+    try {
+      // Check if data is an object
+      if (!importData || typeof importData !== 'object') {
+        return { isValid: false, error: 'Import data must be a JSON object' };
+      }
+
+      // Check if it's empty
+      if (Object.keys(importData).length === 0) {
+        return { isValid: false, error: 'Import file is empty' };
+      }
+
+      let totalNotes = 0;
+      let validDomains = 0;
+
+      // Validate each domain
+      for (const [domain, notes] of Object.entries(importData)) {
+        // Skip non-note data (like themeMode)
+        if (domain === 'themeMode' || !Array.isArray(notes)) {
+          continue;
+        }
+
+        validDomains++;
+
+        // Validate notes array
+        for (let i = 0; i < notes.length; i++) {
+          const note = notes[i];
+
+          // Check required fields
+          if (!note || typeof note !== 'object') {
+            return { isValid: false, error: `Invalid note at ${domain}[${i}]: not an object` };
+          }
+
+          if (!note.id || typeof note.id !== 'string') {
+            return { isValid: false, error: `Invalid note at ${domain}[${i}]: missing or invalid ID` };
+          }
+
+          if (!note.domain || typeof note.domain !== 'string') {
+            return { isValid: false, error: `Invalid note at ${domain}[${i}]: missing or invalid domain` };
+          }
+
+          // Validate optional fields if present
+          if (note.title && typeof note.title !== 'string') {
+            return { isValid: false, error: `Invalid note at ${domain}[${i}]: title must be a string` };
+          }
+
+          if (note.content && typeof note.content !== 'string') {
+            return { isValid: false, error: `Invalid note at ${domain}[${i}]: content must be a string` };
+          }
+
+          if (note.tags && !Array.isArray(note.tags)) {
+            return { isValid: false, error: `Invalid note at ${domain}[${i}]: tags must be an array` };
+          }
+
+          totalNotes++;
         }
       }
+
+      // Check if we found any valid notes
+      if (validDomains === 0 || totalNotes === 0) {
+        return { isValid: false, error: 'No valid notes found in import file' };
+      }
+
+      // Check reasonable limits
+      if (totalNotes > 10000) {
+        return { isValid: false, error: `Too many notes (${totalNotes}). Maximum is 10,000 notes per import.` };
+      }
+
+      return { isValid: true, totalNotes, validDomains };
+    } catch (error) {
+      return { isValid: false, error: `Validation error: ${error.message}` };
     }
-    return false;
+  }
+
+  // Legacy method for backward compatibility
+  isValidImportFormat(importData) {
+    const validation = this.validateImportData(importData);
+    return validation.isValid;
   }
 
   // Show notification message - Updated to match sync notification theme
@@ -653,17 +778,17 @@ class SettingsManager {
     // Create notification element
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
-    
+
     // Add icon based on type
     let icon = 'ℹ';
     if (type === 'success') icon = '✓';
     if (type === 'error') icon = '⚠';
-    
+
     notification.innerHTML = `
       <span class="notification-icon">${icon}</span>
       <span class="notification-message">${message}</span>
     `;
-    
+
     // Apply glass morphism styling to match sync notifications
     notification.style.cssText = `
       position: fixed;
@@ -688,7 +813,7 @@ class SettingsManager {
       align-items: center;
       gap: 8px;
     `;
-    
+
     // Apply type-specific styling
     if (type === 'success') {
       notification.style.background = 'color-mix(in oklab, var(--accent-primary) 20%, var(--glass-bg) 80%)';
@@ -700,14 +825,14 @@ class SettingsManager {
       notification.style.background = 'color-mix(in oklab, #007aff 20%, var(--glass-bg) 80%)';
       notification.style.borderColor = 'color-mix(in oklab, #007aff 40%, var(--glass-border) 60%)';
     }
-    
+
     document.body.appendChild(notification);
-    
+
     // Animate in
     setTimeout(() => {
       notification.style.transform = 'translateX(0)';
     }, 10);
-    
+
     // Remove after delay
     setTimeout(() => {
       notification.style.transform = 'translateX(100%)';
@@ -730,10 +855,10 @@ class SettingsManager {
   // Apply settings to new elements (called when notes are rendered)
   applySettingsToElement(element) {
     if (!element) return;
-    
+
     const fontFamily = this.currentFont === 'Default' ? 'inherit' : this.currentFont;
     const fontSize = `${this.currentFontSize}px`;
-    
+
     // Apply to note content within the element
     const noteContents = element.querySelectorAll('.note-content');
     noteContents.forEach(content => {

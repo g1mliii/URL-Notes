@@ -85,14 +85,14 @@ class StorageManager {
 
     // Sort master list again to be safe
     this.allNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-    
+
     // Emit event
     try {
       if (window.eventBus) {
         if (isUpdate) window.eventBus.emit('notes:updated', { note });
         else window.eventBus.emit('notes:created', { note });
       }
-    } catch (_) {}
+    } catch (_) { }
 
     return note;
   }
@@ -115,7 +115,7 @@ class StorageManager {
     await chrome.storage.local.set({ [domain]: notesForDomain });
 
     // Emit event
-    try { window.eventBus?.emit('notes:deleted', { id: noteId, domain }); } catch (_) {}
+    try { window.eventBus?.emit('notes:deleted', { id: noteId, domain }); } catch (_) { }
     return note;
   }
 
@@ -132,7 +132,7 @@ class StorageManager {
     await chrome.storage.local.remove(domain);
 
     // Emit event
-    try { window.eventBus?.emit('notes:domain_deleted', { domain }); } catch (_) {}
+    try { window.eventBus?.emit('notes:domain_deleted', { domain }); } catch (_) { }
     return domain;
   }
 
@@ -142,18 +142,18 @@ class StorageManager {
       // Use the filtered notes from memory (same as what's displayed in UI)
       // This ensures we only export notes that are currently visible to the user
       const filteredNotes = this.allNotes || [];
-      
+
       // Group notes by domain (same structure as before)
       const notesData = {};
       for (const note of filteredNotes) {
         if (!note.domain) continue; // Skip notes without domain
-        
+
         if (!notesData[note.domain]) {
           notesData[note.domain] = [];
         }
         notesData[note.domain].push(note);
       }
-      
+
       return notesData;
     } catch (error) {
       console.error('Error exporting notes:', error);
@@ -166,19 +166,39 @@ class StorageManager {
     try {
       const currentData = await chrome.storage.local.get(null);
       let notesImportedCount = 0;
+      let notesSkippedCount = 0;
+      let notesUpdatedCount = 0;
 
       // Merge data, imported notes will overwrite existing notes with the same ID
       for (const domain in importedData) {
         if (domain === 'themeMode' || !Array.isArray(importedData[domain])) continue;
-        
+
         const existingNotes = currentData[domain] || [];
         const importedNotes = importedData[domain];
         const notesMap = new Map(existingNotes.map(note => [note.id, note]));
-        
+
         importedNotes.forEach(note => {
-          if (note && note.id) { // Basic validation
+          if (note && note.id) {
+            // Check if note already exists
+            const existingNote = notesMap.get(note.id);
+
+            // Add timestamp if missing
+            if (!note.createdAt) {
+              note.createdAt = new Date().toISOString();
+            }
+            if (!note.updatedAt) {
+              note.updatedAt = new Date().toISOString();
+            }
+
             notesMap.set(note.id, note);
-            notesImportedCount++;
+
+            if (existingNote) {
+              notesUpdatedCount++;
+            } else {
+              notesImportedCount++;
+            }
+          } else {
+            notesSkippedCount++;
           }
         });
 
@@ -187,12 +207,32 @@ class StorageManager {
 
       await chrome.storage.local.set(currentData);
       await this.loadNotes(); // Reload all notes into memory
+
       // Emit event
-      try { window.eventBus?.emit('notes:imported', { count: notesImportedCount }); } catch (_) {}
-      return notesImportedCount;
+      try {
+        window.eventBus?.emit('notes:imported', {
+          imported: notesImportedCount,
+          updated: notesUpdatedCount,
+          skipped: notesSkippedCount
+        });
+      } catch (_) { }
+
+      return {
+        success: true,
+        imported: notesImportedCount,
+        updated: notesUpdatedCount,
+        skipped: notesSkippedCount,
+        total: notesImportedCount + notesUpdatedCount
+      };
     } catch (error) {
       console.error('Error importing notes:', error);
-      throw error;
+      return {
+        success: false,
+        error: error.message || 'Unknown import error',
+        imported: 0,
+        updated: 0,
+        skipped: 0
+      };
     }
   }
 
@@ -213,14 +253,14 @@ class StorageManager {
   async saveEditorDraft(noteDraft, caretStart = 0, caretEnd = 0) {
     try {
       if (!noteDraft) return;
-      
+
       const state = {
         open: true,
         noteDraft: { ...noteDraft },
         caretStart,
         caretEnd
       };
-      
+
       await chrome.storage.local.set({ editorState: state });
     } catch (_) { }
   }
@@ -238,7 +278,7 @@ class StorageManager {
       await chrome.storage.local.remove(['editorState']);
       // Also clear any other draft-related storage
       const keys = await chrome.storage.local.get(null);
-      const draftKeys = Object.keys(keys).filter(key => 
+      const draftKeys = Object.keys(keys).filter(key =>
         key.includes('draft') || key.includes('editor')
       );
       if (draftKeys.length > 0) {
@@ -282,9 +322,9 @@ class StorageManager {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
       return crypto.randomUUID();
     }
-    
+
     // Fallback to UUID v4 format for older browsers
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
       const r = Math.random() * 16 | 0;
       const v = c === 'x' ? r : (r & 0x3 | 0x8);
       return v.toString(16);
