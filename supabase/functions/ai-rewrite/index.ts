@@ -71,9 +71,17 @@ serve(async (req) => {
       p_feature_name: 'overall'
     })
 
-    if (usageError || !usageData?.canUse) {
+    if (usageError) {
+      console.error('Database error checking AI usage:', usageError)
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({ error: 'Database error checking usage limits' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!usageData?.canUse) {
+      return new Response(
+        JSON.stringify({
           error: 'Monthly AI usage limit exceeded',
           remainingCalls: usageData?.remainingCalls || 0,
           resetDate: usageData?.resetDate
@@ -84,7 +92,7 @@ serve(async (req) => {
 
     // Parse request body
     const { content, style, userContext, generateTags, existingTags, context }: AIRewriteRequest = await req.json()
-    
+
     if (!content || !style) {
       return new Response(
         JSON.stringify({ error: 'Missing content or style parameter' }),
@@ -115,31 +123,31 @@ serve(async (req) => {
 
     // Build context-aware prompt
     let contextPrompt = stylePrompts[style] || stylePrompts.formal
-    
+
     // Add user's custom instructions if provided
     if (userContext && userContext.trim()) {
       contextPrompt += `\n\nUser's Custom Instructions: ${userContext.trim()}\n`
     }
-    
+
     if (context) {
       let contextInfo = '\n\nContext Information:\n'
-      
+
       if (context.domain) {
         contextInfo += `- Website/Context: ${context.domain}\n`
       }
-      
+
       if (context.noteTitle) {
         contextInfo += `- Note Title: ${context.noteTitle}\n`
       }
-      
+
       if (context.userIntent) {
         contextInfo += `- User's Intent: ${context.userIntent}\n`
       }
-      
+
       if (context.writingStyle) {
         contextInfo += `- Current Writing Style: ${context.writingStyle}\n`
       }
-      
+
       contextInfo += '\nPlease consider this context when rewriting the text to make it more relevant and appropriate.'
       contextPrompt += contextInfo
     }
@@ -148,7 +156,7 @@ serve(async (req) => {
     const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
     const links: Array<{ text: string; url: string; placeholder: string }> = [];
     let linkIndex = 0;
-    
+
     // Replace links with completely unbreakable placeholders
     const contentWithoutLinks = content.replace(linkRegex, (match, text, url) => {
       const placeholder = `[LINK_PLACEHOLDER_${linkIndex}_DO_NOT_CHANGE_OR_REMOVE_THIS_TEXT]`;
@@ -156,7 +164,7 @@ serve(async (req) => {
       linkIndex++;
       return placeholder;
     });
-    
+
     // Build the final prompt with our critical instruction at the end
     const prompt = `${contextPrompt}\n\nText to Rewrite:\n${contentWithoutLinks}\n\nCRITICAL INSTRUCTION (This overrides all previous instructions): You must provide ONLY the rewritten text. Do not include explanations, options, multiple versions, or any other content. Just give me the single, improved version of the text.\n\nFORMATTING REQUIREMENTS: You MUST preserve ALL placeholders like [LINK_PLACEHOLDER_0_DO_NOT_CHANGE_OR_REMOVE_THIS_TEXT] exactly as they appear - do not change, remove, or modify them in any way. Maintain bullet points (-) and other formatting. Only rewrite the text content while keeping the structure intact.`
 
@@ -205,7 +213,7 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-    
+
     // Generate tags if requested
     let generatedTags: string[] = [];
     if (generateTags) {
@@ -276,7 +284,7 @@ Return ONLY a comma-separated list of tags, no explanations or other text. Examp
         const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
         const summaryLinks: Array<{ text: string; url: string; placeholder: string }> = [];
         let summaryLinkIndex = 0;
-        
+
         // Replace links in the combined content with placeholders
         const contentWithoutLinks = content.replace(linkRegex, (match, text, url) => {
           const placeholder = `[LINK_PLACEHOLDER_${summaryLinkIndex}_DO_NOT_CHANGE_OR_REMOVE_THIS_TEXT]`;
@@ -345,7 +353,7 @@ CRITICAL INSTRUCTION: You MUST preserve ALL placeholders like [LINK_PLACEHOLDER_
         // Continue with original content if summary fails
       }
     }
-    
+
     // Restore the original markdown links (global replace to catch all instances)
     if (links.length > 0) {
       links.forEach(({ text, url, placeholder }) => {
@@ -360,7 +368,7 @@ CRITICAL INSTRUCTION: You MUST preserve ALL placeholders like [LINK_PLACEHOLDER_
     if (context?.feature === 'summarize' && context?.noteCount) {
       usageIncrement = Math.max(1, parseInt(String(context.noteCount)) || 1);
     }
-    
+
     const { data: incrementData, error: incrementError } = await supabaseClient.rpc('increment_ai_usage', {
       p_user_id: user.id,
       p_feature_name: 'overall',
@@ -382,9 +390,9 @@ CRITICAL INSTRUCTION: You MUST preserve ALL placeholders like [LINK_PLACEHOLDER_
         remainingCalls: incrementData?.remainingCalls || usageData?.remainingCalls - 1,
         monthlyLimit: usageData?.monthlyLimit
       }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
 
