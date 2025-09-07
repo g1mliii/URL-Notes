@@ -770,6 +770,9 @@ class URLNotesApp {
   // Handle auth change: refresh premium from storage (set by api.js) and update UI
   async handleAuthChanged(payload) {
     try {
+      // Clear local AI usage tracking on auth changes
+      await this.clearLocalAIUsage();
+
       // Refresh premium status from both storage and Supabase client
       this.premiumStatus = await getPremiumStatus();
       await this.updatePremiumUI();
@@ -783,6 +786,9 @@ class URLNotesApp {
   // Handle tier change from api.js with status payload { active, tier }
   async handleTierChanged(status) {
     try {
+      // Clear local AI usage tracking on tier changes (free vs premium have different limits)
+      await this.clearLocalAIUsage();
+
       const isPremium = !!(status && status.active && (status.tier || 'premium') !== 'free');
       this.premiumStatus = { isPremium };
       await this.updatePremiumUI();
@@ -3340,6 +3346,9 @@ class URLNotesApp {
 
       // Log only essential info for debugging
       console.log('AI rewrite: Calling API for', style, 'style');
+      console.log('AI rewrite: API URL:', apiUrl);
+      console.log('AI rewrite: Has access token:', !!window.supabaseClient.accessToken);
+      console.log('AI rewrite: Request body:', requestBody);
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -3352,7 +3361,14 @@ class URLNotesApp {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorData = {};
+        try {
+          errorData = await response.json();
+        } catch (parseError) {
+          console.error('AI rewrite: Failed to parse error response as JSON:', parseError);
+          errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+        }
+
         console.error('AI rewrite API error response:', {
           status: response.status,
           statusText: response.statusText,
@@ -3361,6 +3377,16 @@ class URLNotesApp {
           remainingCalls: errorData.remainingCalls,
           resetDate: errorData.resetDate
         });
+
+        // Show user-friendly error message
+        if (response.status === 401) {
+          Utils.showToast('Please sign in to use AI rewrite.', 'error');
+        } else if (response.status === 429) {
+          Utils.showToast('Monthly AI usage limit exceeded.', 'error');
+        } else {
+          Utils.showToast(errorData.error || 'AI rewrite failed. Please try again.', 'error');
+        }
+
         throw new Error(errorData.error || `AI rewrite failed with status ${response.status}`);
       }
 
@@ -3368,6 +3394,9 @@ class URLNotesApp {
 
       // Log success with remaining calls
       console.log(`AI rewrite successful: ${data.remainingCalls} calls remaining`);
+
+      // Track local AI usage (1 credit for rewrite)
+      await this.trackLocalAIUsage(1);
 
       // Show remaining calls info
       if (data.remainingCalls !== undefined) {
@@ -3384,11 +3413,21 @@ class URLNotesApp {
       return data.rewrittenContent;
     } catch (error) {
       console.error('AI rewrite API call failed:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
 
       // Show helpful message for authentication errors
       if (error.message.includes('create an account')) {
         Utils.showToast(error.message, 'info');
         return null;
+      }
+
+      // Don't show toast here if we already showed one in the response handling
+      if (!error.message.includes('AI rewrite failed')) {
+        Utils.showToast('AI rewrite failed. Using fallback processing.', 'warning');
       }
 
       // Fallback to simulation if API fails for other reasons
@@ -3575,6 +3614,9 @@ class URLNotesApp {
 
       // Setup modal event listeners
       this.setupModalEventListeners();
+
+      // Initialize site content button state
+      this.updateSiteContentButtonState();
     } else {
       console.warn('AI Summary modal not found!');
     }
@@ -3616,6 +3658,26 @@ class URLNotesApp {
     const generateBtn = document.getElementById('aiSummaryGenerateBtn');
     if (generateBtn) {
       generateBtn.onclick = () => this.executeAISummary();
+    }
+
+    // Site content summary button
+    const siteContentBtn = document.getElementById('siteContentSummaryBtn');
+    if (siteContentBtn) {
+      siteContentBtn.onclick = () => this.executeSiteContentSummary();
+    }
+  }
+
+  // Update site content button state
+  updateSiteContentButtonState() {
+    const siteContentBtn = document.getElementById('siteContentSummaryBtn');
+    if (siteContentBtn) {
+      if (this.currentSite && this.currentSite.domain && this.currentSite.url.startsWith('http')) {
+        siteContentBtn.disabled = false;
+        siteContentBtn.textContent = `Summarize ${this.currentSite.domain}`;
+      } else {
+        siteContentBtn.disabled = true;
+        siteContentBtn.textContent = 'Summarize Current Page';
+      }
     }
   }
 
@@ -3724,8 +3786,9 @@ class URLNotesApp {
     const domainSelect = document.getElementById('summaryDomainSelect');
     const domainInfo = document.getElementById('summaryDomainInfo');
     const generateBtn = document.getElementById('aiSummaryGenerateBtn');
+    const siteContentBtn = document.getElementById('siteContentSummaryBtn');
 
-    if (domainSelect && domainInfo && generateBtn) {
+    if (domainSelect && domainInfo && generateBtn && siteContentBtn) {
       const selectedDomain = domainSelect.value;
 
       if (selectedDomain) {
@@ -3757,6 +3820,15 @@ class URLNotesApp {
       } else {
         domainInfo.style.display = 'none';
         generateBtn.disabled = true;
+      }
+
+      // Enable site content summary button if we have a current site
+      if (this.currentSite && this.currentSite.domain && this.currentSite.url.startsWith('http')) {
+        siteContentBtn.disabled = false;
+        siteContentBtn.textContent = `Summarize ${this.currentSite.domain}`;
+      } else {
+        siteContentBtn.disabled = true;
+        siteContentBtn.textContent = 'Summarize Current Page';
       }
     }
   }
@@ -3932,6 +4004,9 @@ class URLNotesApp {
       // Create a new summary note
       await this.createSummaryNote(summaryContent, selectedDomain, domainNotes.length);
 
+      // Track local AI usage (variable credits based on note count)
+      await this.trackLocalAIUsage(domainNotes.length);
+
       // Show success message
       Utils.showToast(`Summary note created for ${selectedDomain}!`, 'success');
 
@@ -4057,7 +4132,200 @@ class URLNotesApp {
     }
   }
 
+  // Execute site content summary
+  async executeSiteContentSummary() {
+    // Check if user is authenticated
+    if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
+      Utils.showToast('Please create an account to use AI Summary. Free users get 5 summaries/month!', 'info');
+      return;
+    }
 
+    const user = window.supabaseClient.getCurrentUser();
+    if (!user) {
+      Utils.showToast('Please create an account to use AI Summary.', 'info');
+      return;
+    }
+
+    // Check if user has premium subscription (AI Summary is premium-only)
+    if (!this.premiumStatus || !this.premiumStatus.isPremium) {
+      Utils.showToast('AI Summary is a premium feature. Upgrade to premium to summarize page content.', 'info');
+      return;
+    }
+
+    // Check if we have a current site
+    if (!this.currentSite || !this.currentSite.domain || !this.currentSite.url.startsWith('http')) {
+      Utils.showToast('No valid webpage to summarize. Please navigate to a webpage first.', 'warning');
+      return;
+    }
+
+    // Hide modal
+    this.hideAISummaryModal();
+
+    // Show loading state
+    Utils.showToast('Extracting page content for AI summary...', 'info');
+
+    try {
+      // Get the current tab
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || !tab.id) {
+        throw new Error('No active tab found');
+      }
+
+      // Try to extract page content using content script
+      let response = null;
+
+      try {
+        // First try sending message to existing content script
+        response = await chrome.tabs.sendMessage(tab.id, { action: 'extractPageContent' });
+      } catch (messageError) {
+        console.log('Content script not ready, injecting...', messageError.message);
+
+        try {
+          // Inject content script and try again
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['content/content.js']
+          });
+
+          // Wait a moment for script to initialize
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // Try message again
+          response = await chrome.tabs.sendMessage(tab.id, { action: 'extractPageContent' });
+        } catch (injectionError) {
+          console.error('Failed to inject content script:', injectionError);
+          throw new Error('Unable to access page content. Please refresh the page and try again.');
+        }
+      }
+
+      if (!response || !response.success || !response.content) {
+        throw new Error('Failed to extract page content');
+      }
+
+      const pageContent = response.content;
+      if (pageContent.length < 100) {
+        Utils.showToast('Page content is too short to summarize meaningfully.', 'warning');
+        return;
+      }
+
+      // Update loading message
+      Utils.showToast('AI is generating page summary...', 'info');
+
+      // Call AI summary API with page content
+      const summaryContent = await this.callSiteContentSummaryAPI(pageContent, this.currentSite.domain, this.currentSite.title);
+
+      if (summaryContent === null) {
+        return; // API call failed
+      }
+
+      // Create a new summary note for the page content
+      await this.createSiteContentSummaryNote(summaryContent, this.currentSite);
+
+      // Track local AI usage (20 credits for site content summary)
+      await this.trackLocalAIUsage(20);
+
+      // Show success message
+      Utils.showToast(`Page summary created for ${this.currentSite.domain}!`, 'success');
+
+    } catch (error) {
+      console.error('Site content summary failed:', error);
+      if (error.message.includes('Could not establish connection')) {
+        Utils.showToast('Please refresh the page and try again.', 'error');
+      } else {
+        Utils.showToast('Failed to summarize page content. Please try again.', 'error');
+      }
+    }
+  }
+
+  // Call AI summary API for site content (uses 20 credits per page)
+  async callSiteContentSummaryAPI(content, domain, pageTitle) {
+    try {
+      const apiUrl = `${window.supabaseClient.supabaseUrl}/functions/v1/hyper-api`;
+
+      const requestBody = {
+        content: content,
+        style: 'concise',
+        generateTags: true,
+        existingTags: [],
+        context: {
+          domain: domain,
+          noteTitle: pageTitle,
+          feature: 'summarize',
+          noteCount: 20 // Site content summary uses 20 note summary credits (equivalent to 1 usage)
+        }
+      };
+
+      // Get access token
+      let accessToken = '';
+      if (window.supabaseClient && window.supabaseClient.isAuthenticated()) {
+        const user = window.supabaseClient.getCurrentUser();
+        if (user) {
+          accessToken = window.supabaseClient.accessToken || '';
+        }
+      }
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+          'apikey': window.supabaseClient.supabaseAnonKey
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+
+        if (response.status === 429) {
+          Utils.showToast('Monthly AI usage limit exceeded. Upgrade to premium for more usage.', 'error');
+        } else if (response.status === 401) {
+          Utils.showToast('Authentication failed. Please sign in again.', 'error');
+        } else {
+          Utils.showToast(errorData.error || 'AI service temporarily unavailable.', 'error');
+        }
+        return null;
+      }
+
+      const data = await response.json();
+      return data.rewrittenContent || null;
+
+    } catch (error) {
+      console.error('Site content summary API error:', error);
+      Utils.showToast('AI service temporarily unavailable. Please try again later.', 'error');
+      return null;
+    }
+  }
+
+  // Create a new summary note for site content
+  async createSiteContentSummaryNote(summaryContent, siteInfo) {
+    try {
+      const summaryNote = {
+        id: Utils.generateId(),
+        title: `Page Summary: ${siteInfo.title || siteInfo.domain}`,
+        content: summaryContent,
+        url: siteInfo.url,
+        domain: siteInfo.domain,
+        tags: ['page-summary', 'ai-generated', siteInfo.domain],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isEncrypted: false
+      };
+
+      // Save the summary note
+      await this.storageManager.saveNote(summaryNote);
+
+      // Refresh the notes list
+      await this.loadNotes();
+
+      // Switch to the new note
+      this.openNote(summaryNote);
+
+    } catch (error) {
+      console.error('Failed to create site content summary note:', error);
+      throw error;
+    }
+  }
 
   // Display context information
   async displayContextInfo() {
@@ -4131,25 +4399,9 @@ class URLNotesApp {
     }
   }
 
-  // Get current AI usage from Supabase
+  // Get current AI usage with local tracking
   async getCurrentAIUsage(featureName = 'overall') {
     try {
-      // Check cache first
-      const cacheKey = 'cachedAIUsage';
-      const result = await chrome.storage.local.get([cacheKey]);
-
-      if (result[cacheKey]) {
-        const { data, timestamp } = result[cacheKey];
-        const now = Date.now();
-        const cacheAge = now - timestamp;
-        const cacheExpiry = 60 * 60 * 1000; // 1 hour cache
-
-        // Return cached data if it's still valid
-        if (cacheAge < cacheExpiry) {
-          return data;
-        }
-      }
-
       if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
         return null;
       }
@@ -4157,35 +4409,130 @@ class URLNotesApp {
       const user = window.supabaseClient.getCurrentUser();
       if (!user) return null;
 
-      // Check if token needs refresh before making RPC call
-      try {
-        await window.supabaseClient.refreshSession();
-      } catch (refreshError) {
-        console.warn('Token refresh failed, continuing with current token:', refreshError);
-      }
+      // Get cached server data and local usage tracking
+      const cacheKey = 'cachedAIUsage';
+      const localUsageKey = 'localAIUsage';
+      const result = await chrome.storage.local.get([cacheKey, localUsageKey]);
 
-      const { data: usageData, error } = await window.supabaseClient.rpc('check_ai_usage', {
-        p_user_id: user.id,
-        p_feature_name: 'overall'
-      });
+      // Check if we have valid cached server data
+      let serverData = null;
+      if (result[cacheKey]) {
+        const { data, timestamp } = result[cacheKey];
+        const now = Date.now();
+        const cacheAge = now - timestamp;
+        const cacheExpiry = 60 * 60 * 1000; // 1 hour cache
 
-      if (error) {
-        console.warn('Failed to get AI usage:', error);
-        return null;
-      }
-
-      // Cache the result with timestamp
-      await chrome.storage.local.set({
-        [cacheKey]: {
-          data: usageData,
-          timestamp: Date.now()
+        if (cacheAge < cacheExpiry) {
+          serverData = data;
         }
-      });
+      }
 
-      return usageData;
+      // If no valid cache, fetch from server
+      if (!serverData) {
+        try {
+          await window.supabaseClient.refreshSession();
+        } catch (refreshError) {
+          console.warn('Token refresh failed, continuing with current token:', refreshError);
+        }
+
+        const { data: usageData, error } = await window.supabaseClient.rpc('check_ai_usage', {
+          p_user_id: user.id,
+          p_feature_name: 'overall'
+        });
+
+        if (error) {
+          console.warn('Failed to get AI usage:', error);
+          return null;
+        }
+
+        serverData = usageData;
+
+        // Cache the server result
+        await chrome.storage.local.set({
+          [cacheKey]: {
+            data: serverData,
+            timestamp: Date.now()
+          }
+        });
+
+        // Reset local usage tracking when we get fresh server data
+        await chrome.storage.local.set({
+          [localUsageKey]: {
+            userId: user.id,
+            usageCount: 0,
+            timestamp: Date.now()
+          }
+        });
+      }
+
+      // Get local usage tracking
+      let localUsage = result[localUsageKey];
+      if (!localUsage || localUsage.userId !== user.id) {
+        // Initialize local usage for this user
+        localUsage = {
+          userId: user.id,
+          usageCount: 0,
+          timestamp: Date.now()
+        };
+        await chrome.storage.local.set({ [localUsageKey]: localUsage });
+      }
+
+      // Calculate current remaining calls with local adjustments
+      const adjustedRemainingCalls = Math.max(0, serverData.remainingCalls - localUsage.usageCount);
+
+      return {
+        ...serverData,
+        remainingCalls: adjustedRemainingCalls,
+        localUsageCount: localUsage.usageCount
+      };
+
     } catch (error) {
       console.warn('Error getting AI usage:', error);
       return null;
+    }
+  }
+
+  // Track local AI usage
+  async trackLocalAIUsage(usageAmount = 1) {
+    try {
+      if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
+        return;
+      }
+
+      const user = window.supabaseClient.getCurrentUser();
+      if (!user) return;
+
+      const localUsageKey = 'localAIUsage';
+      const result = await chrome.storage.local.get([localUsageKey]);
+
+      let localUsage = result[localUsageKey];
+      if (!localUsage || localUsage.userId !== user.id) {
+        localUsage = {
+          userId: user.id,
+          usageCount: 0,
+          timestamp: Date.now()
+        };
+      }
+
+      // Increment local usage
+      localUsage.usageCount += usageAmount;
+      localUsage.timestamp = Date.now();
+
+      await chrome.storage.local.set({ [localUsageKey]: localUsage });
+
+      console.log(`Local AI usage tracked: +${usageAmount}, total local: ${localUsage.usageCount}`);
+    } catch (error) {
+      console.warn('Error tracking local AI usage:', error);
+    }
+  }
+
+  // Clear local AI usage tracking (on auth changes)
+  async clearLocalAIUsage() {
+    try {
+      await chrome.storage.local.remove(['localAIUsage']);
+      console.log('Local AI usage tracking cleared');
+    } catch (error) {
+      console.warn('Error clearing local AI usage:', error);
     }
   }
 
@@ -4509,14 +4856,7 @@ async function clearPremiumStatusCache() {
   }
 }
 
-// Clear AI usage cache
-async function clearAIUsageCache() {
-  try {
-    await chrome.storage.local.remove(['cachedAIUsage']);
-  } catch (error) {
-    console.warn('Failed to clear AI usage cache:', error);
-  }
-}
+// Note: clearAIUsageCache removed - now using local usage tracking instead
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Only clear corrupted caches, not all caches

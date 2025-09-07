@@ -33,6 +33,9 @@ web-app/
 - **Responsive Layout**: Mobile-first design with breakpoints for tablet and desktop
 - **Authentication System**: User registration, login, and password reset (to be implemented)
 - **Notes Dashboard**: View, search, and manage synced notes (to be implemented)
+- **AI-Powered Summarization**: 
+  - **Domain Summary**: Summarize all notes from a specific domain
+  - **Site Content Summary**: Extract and summarize content from the current webpage
 - **Subscription Management**: $2.50/month premium tier with Stripe integration (to be implemented)
 - **Export/Import**: Note data portability with multiple formats (to be implemented)
 

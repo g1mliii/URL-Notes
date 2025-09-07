@@ -98,6 +98,19 @@
           console.error('Error getting multi-highlight state:', error);
           sendResponse({ enabled: false, highlightCount: 0, error: error.message });
         }
+        return false; // No async response needed
+      }
+      
+      // Extract page content for AI summarization
+      if (request.action === 'extractPageContent') {
+        try {
+          const content = extractPageContent();
+          console.log('Extracted page content, length:', content.length);
+          sendResponse({ success: true, content });
+        } catch (error) {
+          console.error('Error extracting page content:', error);
+          sendResponse({ success: false, error: error.message });
+        }
         return true; // Keep message channel open for async response
       }
       
@@ -915,6 +928,60 @@
       }
     }
     return false;
+  }
+
+  // Extract meaningful page content for AI summarization
+  function extractPageContent() {
+    // Remove script and style elements
+    const elementsToRemove = document.querySelectorAll('script, style, nav, header, footer, aside, .sidebar, .navigation, .menu, .ads, .advertisement, .social-share, .comments');
+    const tempDoc = document.cloneNode(true);
+    
+    // Remove unwanted elements from the clone
+    tempDoc.querySelectorAll('script, style, nav, header, footer, aside, .sidebar, .navigation, .menu, .ads, .advertisement, .social-share, .comments').forEach(el => el.remove());
+    
+    // Try to find main content areas
+    const contentSelectors = [
+      'main',
+      'article', 
+      '[role="main"]',
+      '.content',
+      '.main-content',
+      '.post-content',
+      '.entry-content',
+      '.article-content',
+      '#content',
+      '#main'
+    ];
+    
+    let mainContent = null;
+    for (const selector of contentSelectors) {
+      const element = tempDoc.querySelector(selector);
+      if (element && element.textContent.trim().length > 200) {
+        mainContent = element;
+        break;
+      }
+    }
+    
+    // Fallback to body if no main content found
+    if (!mainContent) {
+      mainContent = tempDoc.body || tempDoc.documentElement;
+    }
+    
+    // Extract text content
+    let text = mainContent.textContent || mainContent.innerText || '';
+    
+    // Clean up the text
+    text = text
+      .replace(/\s+/g, ' ') // Replace multiple whitespace with single space
+      .replace(/\n\s*\n/g, '\n') // Remove empty lines
+      .trim();
+    
+    // Limit content length (approximately 8000 characters for reasonable API usage)
+    if (text.length > 8000) {
+      text = text.substring(0, 8000) + '...';
+    }
+    
+    return text;
   }
 
   // Parse :~:text= fragment per Text Fragments spec and return first part

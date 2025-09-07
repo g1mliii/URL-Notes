@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Page for Site Content Summary</title>
+</head>
+<body>
+    <header>
+        <nav>Navigation menu</nav>
+    </header>
+    
+    <main>
+        <article>
+            <h1>Test Article for AI Summarization</h1>
+            <p>This is a test article with meaningful content that should be extracted and summarized by the AI feature.</p>
+            
+            <h2>Key Points</h2>
+            <ul>
+                <li>The site content summarization feature extracts meaningful text from web pages</li>
+                <li>It removes navigation, ads, and other non-content elements</li>
+                <li>The extracted content is sent to the AI service for summarization</li>
+                <li>A new note is created with the AI-generated summary</li>
+            </ul>
+            
+            <h2>Technical Details</h2>
+            <p>The feature works by:</p>
+            <ol>
+                <li>Using a content script to extract page content</li>
+                <li>Filtering out unwanted elements like scripts, styles, navigation</li>
+                <li>Sending the clean content to the AI rewrite edge function</li>
+                <li>Creating a new note with the summarized content</li>
+            </ol>
+            
+            <p>This provides users with a quick way to capture and summarize important information from web pages without manually copying and pasting content.</p>
+        </article>
+    </main>
+    
+    <footer>
+        <p>Footer content that should be filtered out</p>
+    </footer>
+    
+    <script>
+        // This script should be filtered out
+        console.log('This script should not be included in the summary');
+    </script>
+</body>
+</html>
