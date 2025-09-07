@@ -1,65 +1,86 @@
-# Technology Stack
+---
+inclusion: always
+---
 
-## Browser Extension (Manifest V3)
-- **Framework**: Vanilla JavaScript (no build system required)
-- **Storage**: IndexedDB for local notes and file attachments
-- **Architecture**: Service worker background script, content scripts, popup UI
-- **Permissions**: storage, activeTab, tabs, alarms, contextMenus, identity, scripting
+# Technology Stack & Development Guidelines
 
-## Backend Infrastructure
-- **Database**: Supabase (PostgreSQL with Row Level Security)
-- **Authentication**: Supabase Auth (email, Google, GitHub)
-- **Edge Functions**: TypeScript-based serverless functions for sync operations
-- **Real-time**: Supabase real-time subscriptions for live sync
-- **Security**: Client-side AES-256 encryption, zero-knowledge architecture
+## Core Technology Constraints
 
-## Development Dependencies
-- **Supabase CLI**: For database migrations and edge function deployment
-- **Node.js**: Only for development tooling (not required for extension build)
+### Browser Extension (Manifest V3 Only)
+- **No Build System**: Extension must run directly from `/extension/` folder
+- **Vanilla JavaScript**: No transpilation, ES6+ features only if supported in target browsers
+- **IndexedDB Primary**: Local storage is source of truth, cloud sync is secondary
+- **Service Workers**: Use background service workers, never background pages
+- **Required Permissions**: storage, activeTab, tabs, alarms, contextMenus, identity, scripting
 
-## Common Commands
+### Backend Infrastructure
+- **Supabase Stack**: PostgreSQL with Row Level Security, Auth, Edge Functions, Real-time
+- **TypeScript Edge Functions**: All serverless functions in `/supabase/functions/`
+- **Client-Side Encryption**: AES-256-GCM mandatory for all synced content
+- **Zero-Knowledge Architecture**: Server never accesses unencrypted user data
+
+## Development Commands
 
 ### Database Operations
 ```bash
-# Deploy database migrations
+# Deploy schema changes
 supabase db push
 
-# Reset local database
+# Reset local development database
 supabase db reset
 
-# Generate TypeScript types
+# Generate TypeScript types from schema
 supabase gen types typescript --local > types/database.ts
 ```
 
 ### Edge Functions
 ```bash
-# Deploy all functions
+# Deploy all functions to production
 supabase functions deploy
 
 # Deploy specific function
 supabase functions deploy sync-notes
 
-# View function logs
+# Local development server
+supabase functions serve
+
+# View production logs
 supabase functions logs sync-notes
 ```
 
 ### Extension Development
-```bash
-# No build step required - load extension directly from /extension folder
-# Chrome: chrome://extensions/ -> Load unpacked -> select /extension folder
+- **No Build Required**: Load `/extension/` folder directly in Chrome
+- **Chrome DevTools**: Use `chrome://extensions/` → "Load unpacked"
+- **Hot Reload**: Manual refresh required after code changes
+
+## Critical Architecture Rules
+
+### Code Organization
+- **Modular Popup**: Each module owns specific UI domains (notes.js, editor.js, settings.js)
+- **Library Layer**: Pure functions in `/extension/lib/` with no DOM dependencies  
+- **Global Modules**: Use `window.ModuleName = {}` pattern, no ES6 modules
+- **Dependency Injection**: Pass dependencies as parameters, avoid global state
+
+### Data Flow Patterns
+```
+User Action → popup.js → Module → storage.js → IndexedDB
+                    ↓
+Background Sync: sync.js → api.js → Supabase Edge Functions
 ```
 
-### Testing
-```bash
-# Run database tests
-supabase test db
+### Performance Requirements
+- **Popup Load**: <200ms initial render
+- **Search Results**: <100ms for local queries
+- **Offline First**: All core functionality must work without network
 
-# Test edge functions locally
-supabase functions serve
-```
+### Security Constraints
+- **Client-Side Encryption**: All user content encrypted before leaving device
+- **Key Derivation**: Use user password + salt for encryption keys
+- **No Plaintext Storage**: Never store unencrypted content in cloud
+- **Row Level Security**: Database policies enforce user data isolation
 
-## Architecture Patterns
-- **Local-First**: All functionality works offline, sync when available
-- **Modular Popup**: Orchestrator pattern with separate modules for notes, editor, settings
-- **Event-Driven Sync**: Background sync with conflict resolution
-- **Zero-Knowledge**: Server never sees unencrypted content
+## Technology Decisions
+- **No Framework**: Vanilla JS for minimal bundle size and direct browser compatibility
+- **IndexedDB Over LocalStorage**: Handles large datasets and structured queries
+- **Supabase Over Custom Backend**: Reduces infrastructure complexity
+- **TypeScript for Edge Functions**: Type safety for server-side logic only

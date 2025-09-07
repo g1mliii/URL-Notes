@@ -1,25 +1,42 @@
-# Product Overview
+---
+inclusion: always
+---
 
-URL Notes is a browser extension for taking notes on websites with domain/URL-specific organization. It features a glassmorphism design with local-first storage and premium cloud sync capabilities.
+# Product Conventions & Rules
 
-## Core Features
-- **Domain/URL Organization**: Notes can be saved per domain ("This Site") or per specific page ("This Page")
-- **Local-First Storage**: All notes stored locally in IndexedDB with offline functionality
-- **Premium Cloud Sync**: Encrypted cloud sync via Supabase for premium users
-- **Search & Filtering**: Search within current domain/page or across all notes (premium)
-- **Version History**: Automatic versioning with last 5 versions for free users, unlimited for premium
+URL Notes is a browser extension for domain/URL-specific note-taking with glassmorphism design and local-first architecture.
 
-## User Experience
-- **Popup-First UX**: Primary interface via browser extension popup (Alt+E to open)
-- **Keyboard Shortcuts**: Alt+N for new note, Alt+E to open popup
-- **Glassmorphism Design**: Modern glass-like surfaces with backdrop blur effects
-- **Responsive**: Works across Chrome, Brave, and other Chromium browsers
+## Core Product Principles
+- **Local-First**: All functionality must work offline; sync is enhancement, not requirement
+- **Domain-Centric**: Notes organized by domain ("This Site") or specific URL ("This Page")
+- **Zero-Knowledge**: Server never sees unencrypted content; client-side AES-256 encryption mandatory
+- **Freemium Model**: Core features free with ads; premium removes ads and adds cloud sync
 
-## Monetization
-- **Free Tier**: Unlimited local notes, basic features, CodeFuel ads
-- **Premium Tier**: Cloud sync, web app access, advanced search, ad-free ($4.99/month)
+## User Interface Standards
+- **Glassmorphism Design**: Use backdrop-blur, semi-transparent surfaces, subtle shadows
+- **Popup-First UX**: Primary interface is 400x600px popup; optimize for this constraint
+- **Keyboard Shortcuts**: Alt+E (open popup), Alt+N (new note) - preserve these bindings
+- **Responsive Breakpoints**: Support popup (400px), tablet (768px), desktop (1024px+)
 
-## Current Status
-- Phase 1 (Core Extension): ✅ Complete
-- Phase 2 (Backend & Sync): ✅ Complete  
-- Phase 3 (Web Application): In planning
+## Feature Boundaries
+- **Free Tier Limits**: Local storage only, last 5 versions, CodeFuel ads, basic search
+- **Premium Features**: Cloud sync, unlimited versions, global search, ad-free, web app access
+- **Version History**: Always maintain chronological versions; never overwrite without backup
+
+## Development Rules
+- **No Build System**: Extension must load directly from /extension folder
+- **Manifest V3**: Use service workers, not background pages; respect new permission model
+- **IndexedDB First**: Primary storage is local; cloud is sync destination, not source
+- **Modular Architecture**: Popup modules own specific domains (notes.js, editor.js, settings.js)
+
+## Content Guidelines
+- **Note Scope**: "This Site" = domain-level, "This Page" = URL-specific
+- **Search Behavior**: Free users search current domain/page only; premium gets global search
+- **Sync Conflicts**: Last-write-wins with version preservation; never lose user data
+- **Ad Integration**: CodeFuel ads in free tier; respectful placement, not intrusive
+
+## Technical Constraints
+- **Browser Support**: Chrome, Brave, Edge (Chromium-based only)
+- **Storage Limits**: IndexedDB quota management; warn users approaching limits
+- **Encryption**: AES-256-GCM for all synced content; keys derived from user password
+- **Performance**: Popup must load <200ms; search results <100ms for good UX
