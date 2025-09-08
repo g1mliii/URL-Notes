@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Test - URL Notes</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .result {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        .good { background: #d4edda; color: #155724; }
+        .warning { background: #fff3cd; color: #856404; }
+        .bad { background: #f8d7da; color: #721c24; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #testResults {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>URL Notes Performance Test</h1>
+    
+    <div class="test-section">
+        <h2>Quick Performance Check</h2>
+        <p>This page will help you test the performance improvements on your dashboard.</p>
+        
+        <button onclick="runBasicTests()">Run Basic Tests</button>
+        <button onclick="runAdvancedTests()">Run Advanced Tests</button>
+        <button onclick="clearResults()">Clear Results</button>
+        
+        <div id="testResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Manual Testing Instructions</h2>
+        <ol>
+            <li><strong>Test Dashboard Loading:</strong>
+                <ul>
+                    <li>Open your dashboard: <a href="/dashboard?debug=perf" target="_blank">/dashboard?debug=perf</a></li>
+                    <li>Check the performance debug panel in the top-right corner</li>
+                    <li>Look for "Page Load" and "DOM Ready" times</li>
+                </ul>
+            </li>
+            <li><strong>Test Search Performance:</strong>
+                <ul>
+                    <li>Type in the search box and watch for "SLOW INTERACTION" warnings</li>
+                    <li>Good: No warnings or warnings < 100ms</li>
+                    <li>Bad: Multiple warnings > 200ms</li>
+                </ul>
+            </li>
+            <li><strong>Test Note Interactions:</strong>
+                <ul>
+                    <li>Click on notes to open them</li>
+                    <li>Check/uncheck note selections</li>
+                    <li>Watch for "LONG TASK" warnings in the debug panel</li>
+                </ul>
+            </li>
+            <li><strong>Test Filtering:</strong>
+                <ul>
+                    <li>Use domain and date filters</li>
+                    <li>Monitor interaction response times</li>
+                </ul>
+            </li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>Performance Metrics to Watch</h2>
+        <ul>
+            <li><strong>INP (Interaction to Next Paint):</strong> Should be < 200ms (good), < 500ms (acceptable)</li>
+            <li><strong>Page Load Time:</strong> Should be < 2000ms</li>
+            <li><strong>DOM Ready Time:</strong> Should be < 1000ms</li>
+            <li><strong>Long Tasks:</strong> Should be minimal (< 50ms each)</li>
+            <li><strong>Layout Shifts:</strong> Should be < 0.1</li>
+        </ul>
+    </div>
+
+    <script>
+        function runBasicTests() {
+            const results = document.getElementById('testResults');
+            results.innerHTML = '<h3>Running Basic Tests...</h3>';
+            
+            // Test 1: Check if performance API is available
+            const perfSupport = 'performance' in window;
+            addResult(`Performance API Support: ${perfSupport ? '✅ Available' : '❌ Not Available'}`, perfSupport ? 'good' : 'bad');
+            
+            // Test 2: Check navigation timing
+            if (performance.timing) {
+                const loadTime = performance.timing.loadEventEnd - performance.timing.navigationStart;
+                const domTime = performance.timing.domContentLoadedEventEnd - performance.timing.navigationStart;
+                
+                addResult(`Page Load Time: ${loadTime}ms`, loadTime < 2000 ? 'good' : loadTime < 5000 ? 'warning' : 'bad');
+                addResult(`DOM Ready Time: ${domTime}ms`, domTime < 1000 ? 'good' : domTime < 3000 ? 'warning' : 'bad');
+            }
+            
+            // Test 3: Check memory usage (if available)
+            if (performance.memory) {
+                const memoryMB = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+                addResult(`Memory Usage: ${memoryMB}MB`, memoryMB < 50 ? 'good' : memoryMB < 100 ? 'warning' : 'bad');
+            }
+            
+            // Test 4: Check for common performance issues
+            const scripts = document.querySelectorAll('script').length;
+            const stylesheets = document.querySelectorAll('link[rel="stylesheet"]').length;
+            
+            addResult(`Script Count: ${scripts}`, scripts < 10 ? 'good' : scripts < 20 ? 'warning' : 'bad');
+            addResult(`Stylesheet Count: ${stylesheets}`, stylesheets < 5 ? 'good' : stylesheets < 10 ? 'warning' : 'bad');
+        }
+        
+        function runAdvancedTests() {
+            const results = document.getElementById('testResults');
+            results.innerHTML = '<h3>Running Advanced Tests...</h3>';
+            
+            // Test performance observer support
+            const perfObserverSupport = 'PerformanceObserver' in window;
+            addResult(`PerformanceObserver Support: ${perfObserverSupport ? '✅ Available' : '❌ Not Available'}`, perfObserverSupport ? 'good' : 'warning');
+            
+            // Test requestIdleCallback support
+            const idleCallbackSupport = 'requestIdleCallback' in window;
+            addResult(`RequestIdleCallback Support: ${idleCallbackSupport ? '✅ Available' : '❌ Not Available (polyfilled)'}`, idleCallbackSupport ? 'good' : 'warning');
+            
+            // Test intersection observer support
+            const intersectionObserverSupport = 'IntersectionObserver' in window;
+            addResult(`IntersectionObserver Support: ${intersectionObserverSupport ? '✅ Available' : '❌ Not Available'}`, intersectionObserverSupport ? 'good' : 'warning');
+            
+            // Simulate interaction test
+            const startTime = performance.now();
+            
+            // Simulate DOM manipulation
+            const testDiv = document.createElement('div');
+            testDiv.innerHTML = 'Test content';
+            document.body.appendChild(testDiv);
+            document.body.removeChild(testDiv);
+            
+            const endTime = performance.now();
+            const manipulationTime = endTime - startTime;
+            
+            addResult(`DOM Manipulation Test: ${manipulationTime.toFixed(2)}ms`, manipulationTime < 5 ? 'good' : manipulationTime < 20 ? 'warning' : 'bad');
+            
+            // Test dashboard-specific features
+            if (window.location.pathname.includes('dashboard')) {
+                addResult('Dashboard-specific tests available on dashboard page', 'warning');
+            } else {
+                addResult('Visit dashboard page for specific dashboard tests', 'warning');
+            }
+        }
+        
+        function addResult(text, className = '') {
+            const results = document.getElementById('testResults');
+            const div = document.createElement('div');
+            div.className = `result ${className}`;
+            div.textContent = text;
+            results.appendChild(div);
+        }
+        
+        function clearResults() {
+            document.getElementById('testResults').innerHTML = '';
+        }
+        
+        // Auto-run basic tests on page load
+        window.addEventListener('load', () => {
+            setTimeout(runBasicTests, 500);
+        });
+    </script>
+</body>
+</html>

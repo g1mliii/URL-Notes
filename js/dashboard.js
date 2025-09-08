@@ -73,25 +73,8 @@ class Dashboard {
   }
 
   setupEventListeners() {
-    // Search functionality with debounce (main search in header)
-    const mainSearchInput = document.getElementById('mainSearchInput');
-    if (mainSearchInput) {
-      let searchTimeout;
-      mainSearchInput.addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => this.handleSearch(e.target.value), 300);
-      });
-    }
-
-    // Legacy search input (sidebar) - keep for backward compatibility
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput) {
-      let searchTimeout;
-      searchInput.addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => this.handleSearch(e.target.value), 300);
-      });
-    }
+    // Optimized search functionality with better debouncing
+    this.setupOptimizedSearch();
 
     // Filter functionality
     const domainFilter = document.getElementById('domainFilter');
@@ -193,6 +176,32 @@ class Dashboard {
     this.setupSelectionListeners();
   }
 
+  // Optimized search with better performance
+  setupOptimizedSearch() {
+    const searchInputs = ['mainSearchInput', 'searchInput'];
+    let searchTimeout;
+    
+    // Single debounced handler for all search inputs
+    const debouncedSearch = (value) => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        // Use requestAnimationFrame for smooth UI updates
+        requestAnimationFrame(() => {
+          this.handleSearch(value);
+        });
+      }, 150); // Reduced debounce time for better responsiveness
+    };
+
+    searchInputs.forEach(inputId => {
+      const input = document.getElementById(inputId);
+      if (input) {
+        input.addEventListener('input', (e) => {
+          debouncedSearch(e.target.value);
+        }, { passive: true });
+      }
+    });
+  }
+
   setupSelectionListeners() {
     // Select all button
     const selectAllBtn = document.getElementById('selectAllBtn');
@@ -240,29 +249,45 @@ class Dashboard {
   }
 
   setupAutoSave() {
-    // Auto-save on blur for note fields
-    const noteTitle = document.getElementById('noteTitle');
-    const noteContent = document.getElementById('noteContent');
-    const noteUrl = document.getElementById('noteUrl');
+    // Optimized auto-save with throttling instead of debouncing for better UX
+    const autoSaveElements = [
+      { id: 'noteTitle', event: 'blur' },
+      { id: 'noteContent', event: 'input', throttle: 2000 },
+      { id: 'noteContent', event: 'blur' },
+      { id: 'noteUrl', event: 'blur' }
+    ];
 
-    if (noteTitle) {
-      noteTitle.addEventListener('blur', () => this.handleAutoSave());
-    }
+    let autoSaveTimeout;
+    let lastAutoSave = 0;
 
-    if (noteContent) {
-      noteContent.addEventListener('blur', () => this.handleAutoSave());
+    const throttledAutoSave = () => {
+      const now = Date.now();
+      if (now - lastAutoSave > 1000) { // Minimum 1 second between auto-saves
+        lastAutoSave = now;
+        // Use requestIdleCallback for non-critical auto-saves
+        if (window.requestIdleCallback) {
+          requestIdleCallback(() => this.handleAutoSave());
+        } else {
+          setTimeout(() => this.handleAutoSave(), 0);
+        }
+      }
+    };
 
-      // Also auto-save on content change with debounce
-      let autoSaveTimeout;
-      noteContent.addEventListener('input', () => {
-        clearTimeout(autoSaveTimeout);
-        autoSaveTimeout = setTimeout(() => this.handleAutoSave(), 2000); // Auto-save after 2 seconds of inactivity
-      });
-    }
+    const debouncedAutoSave = () => {
+      clearTimeout(autoSaveTimeout);
+      autoSaveTimeout = setTimeout(throttledAutoSave, 2000);
+    };
 
-    if (noteUrl) {
-      noteUrl.addEventListener('blur', () => this.handleAutoSave());
-    }
+    autoSaveElements.forEach(({ id, event, throttle }) => {
+      const element = document.getElementById(id);
+      if (element) {
+        if (event === 'input' && throttle) {
+          element.addEventListener('input', debouncedAutoSave, { passive: true });
+        } else {
+          element.addEventListener(event, throttledAutoSave, { passive: true });
+        }
+      }
+    });
   }
 
   async handleAutoSave() {
@@ -621,13 +646,21 @@ class Dashboard {
     emptyState.classList.add('hidden');
     notesGrid.classList.remove('hidden');
 
-    // Render notes in a flat grid (Google Drive style)
-    notesGrid.innerHTML = '';
-
+    // Use DocumentFragment for efficient DOM manipulation
+    const fragment = document.createDocumentFragment();
+    
+    // Batch create all note cards without individual event listeners
     this.filteredNotes.forEach(note => {
-      const noteCard = this.createNoteCard(note);
-      notesGrid.appendChild(noteCard);
+      const noteCard = this.createOptimizedNoteCard(note);
+      fragment.appendChild(noteCard);
     });
+
+    // Single DOM update
+    notesGrid.innerHTML = '';
+    notesGrid.appendChild(fragment);
+
+    // Set up event delegation (only once)
+    this.setupNoteGridEventDelegation(notesGrid);
   }
 
 
@@ -676,6 +709,72 @@ class Dashboard {
     });
 
     return card;
+  }
+
+  // Optimized note card creation without individual event listeners
+  createOptimizedNoteCard(note) {
+    const card = document.createElement('div');
+    card.className = 'note-card';
+    card.dataset.noteId = note.id;
+
+    const isSelected = this.selectedNotes.has(note.id);
+    if (isSelected) {
+      card.classList.add('selected');
+    }
+
+    card.innerHTML = `
+      <div class="note-card-selection">
+        <input type="checkbox" class="note-checkbox" ${isSelected ? 'checked' : ''} data-note-id="${note.id}">
+      </div>
+      <div class="note-card-content">
+        <div class="note-card-header">
+          <div class="note-card-title">${this.escapeHtml(note.title)}</div>
+          <div class="note-card-date">${note.formattedDate}</div>
+        </div>
+        <div class="note-card-preview">${this.escapeHtml(note.preview)}</div>
+        ${note.url ? `<div class="note-card-url">${this.escapeHtml(this.truncateUrl(note.url))}</div>` : ''}
+        ${note.tags && note.tags.length > 0 ? `
+          <div class="note-card-tags">
+            ${note.tags.map(tag => `<span class="tag">${this.escapeHtml(tag)}</span>`).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `;
+
+    return card;
+  }
+
+  // Event delegation for note grid (much more efficient)
+  setupNoteGridEventDelegation(notesGrid) {
+    // Remove any existing listeners to prevent duplicates
+    const existingHandler = notesGrid._delegatedHandler;
+    if (existingHandler) {
+      notesGrid.removeEventListener('click', existingHandler);
+      notesGrid.removeEventListener('change', existingHandler);
+    }
+
+    // Single delegated event handler
+    const delegatedHandler = (e) => {
+      const noteCard = e.target.closest('.note-card');
+      if (!noteCard) return;
+
+      const noteId = noteCard.dataset.noteId;
+      if (!noteId) return;
+
+      if (e.type === 'change' && e.target.matches('.note-checkbox')) {
+        e.stopPropagation();
+        this.toggleNoteSelection(noteId);
+      } else if (e.type === 'click' && !e.target.matches('.note-checkbox')) {
+        this.showNoteEditor(noteId);
+      }
+    };
+
+    // Add listeners with passive option for better performance
+    notesGrid.addEventListener('click', delegatedHandler, { passive: true });
+    notesGrid.addEventListener('change', delegatedHandler, { passive: true });
+    
+    // Store reference for cleanup
+    notesGrid._delegatedHandler = delegatedHandler;
   }
 
   truncateUrl(url, maxLength = 50) {
