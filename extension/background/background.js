@@ -34,11 +34,9 @@ try {
 
 // Extension installation and updates
 chrome.runtime.onInstalled.addListener(async (details) => {
-  console.log('onInstalled reason:', details.reason);
   setupContextMenus();
   
   if (details.reason === 'install') {
-    console.log('URL Notes extension installed');
     // Set default settings
     chrome.storage.local.set({
       settings: {
@@ -58,7 +56,6 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
 // Ensure context menus exist on browser startup (service worker cold start)
 chrome.runtime.onStartup.addListener(() => {
-  console.log('onStartup: ensuring context menus are created');
   setupContextMenus();
 });
 
@@ -101,8 +98,6 @@ function setupContextMenus() {
       }, () => {
         if (chrome.runtime.lastError) {
           console.warn('Parent menu create error:', chrome.runtime.lastError.message);
-        } else {
-          console.log('Parent menu created');
         }
       });
       
@@ -115,8 +110,6 @@ function setupContextMenus() {
       }, () => {
         if (chrome.runtime.lastError) {
           console.warn('Context menu create error:', chrome.runtime.lastError.message);
-        } else {
-          console.log('Context menu (new note) created');
         }
       });
       
@@ -129,8 +122,6 @@ function setupContextMenus() {
       }, () => {
         if (chrome.runtime.lastError) {
           console.warn('Existing-note menu create error:', chrome.runtime.lastError.message);
-        } else {
-          console.log('Context menu (existing note) created');
         }
       });
       
@@ -155,8 +146,6 @@ function setupContextMenus() {
       }, () => {
         if (chrome.runtime.lastError) {
           console.warn('Multi-highlight menu create error:', chrome.runtime.lastError.message);
-        } else {
-          console.log('Context menu (multi-highlight) created');
         }
       });
     });
@@ -185,12 +174,9 @@ async function addSelectionToNewNote(info, tab) {
     return;
   }
   
-  console.log('Context menu: Creating note for domain:', domain, 'from URL:', pageUrl);
-
   // 1. Prepare display text and Text Fragment URL
   const parts = getClipParts(selectionText, pageUrl);
   if (!parts) {
-    console.warn('No selection text found for context menu action');
     return;
   }
   const { displayText, fragmentUrl } = parts;
@@ -217,7 +203,6 @@ async function addSelectionToNewNote(info, tab) {
     // Store note in chrome.storage.local with proper key (same as main extension)
     const key = `note_${newNote.id}`;
     await chrome.storage.local.set({ [key]: newNote });
-    console.log('Context menu: New note saved to chrome.storage.local with key:', key);
     
     // 5. Mark last action so popup can prioritize showing this note
     await chrome.storage.local.set({ 
@@ -253,8 +238,6 @@ async function addSelectionToExistingNote(info, tab) {
     return;
   }
   
-  console.log('Context menu: Adding to existing note for domain:', domain, 'from URL:', pageUrl);
-  
   const parts = getClipParts(selectionText, pageUrl);
   if (!parts) return;
   const { displayText, fragmentUrl } = parts;
@@ -266,39 +249,14 @@ async function addSelectionToExistingNote(info, tab) {
     let targetNote = null;
     let isDraftNote = false;
     
-    console.log('Context menu: Raw editorState from storage:', editorState);
-    
     // If there's a draft note, use it (regardless of popup state)
     // This allows appending to drafts even when popup is closed
     if (editorState && editorState.noteDraft) {
       const cachedNote = editorState.noteDraft;
-      console.log('Context menu: Found draft in storage:', { 
-        open: editorState.open, 
-        wasEditorOpen: editorState.wasEditorOpen,
-        hasDraft: !!editorState.noteDraft,
-        draftDomain: cachedNote?.domain,
-        targetDomain: domain,
-        domainsMatch: cachedNote?.domain === domain
-      });
       
       if (cachedNote.domain === domain) {
         targetNote = { ...cachedNote }; // Copy to avoid modifying original
         isDraftNote = true;
-        console.log('Context menu: Appending to open draft note for domain:', domain);
-      } else {
-        console.log('Context menu: Domain mismatch - draft domain:', cachedNote.domain, 'vs target domain:', domain);
-      }
-    } else {
-      console.log('Context menu: No editorState or draft found:', { 
-        hasEditorState: !!editorState, 
-        isOpen: editorState?.open, 
-        hasDraft: !!editorState?.noteDraft,
-        editorStateKeys: editorState ? Object.keys(editorState) : []
-      });
-      
-      // Check if popup might be in the process of opening
-      if (!editorState || !editorState.open) {
-        console.log('Context menu: Popup appears to be closed, will create new note instead');
       }
     }
     
@@ -315,17 +273,13 @@ async function addSelectionToExistingNote(info, tab) {
           }
         }
         
-        console.log('Context menu: Found notes in storage:', notes.length, 'for domain:', domain);
-        
         if (notes.length === 0) {
           // No existing note for this domain; fallback to creating a new one
-          console.log('Context menu: No existing notes found, creating new note');
           return addSelectionToNewNote(info, tab);
         }
         // Pick most recently updated
         notes.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
         targetNote = notes[0];
-        console.log('Context menu: Using most recent note:', targetNote.id);
       } catch (error) {
         console.error('Context menu: Failed to get notes from storage, creating new note:', error);
         return addSelectionToNewNote(info, tab);
@@ -334,7 +288,6 @@ async function addSelectionToExistingNote(info, tab) {
     
     // Additional fallback: if we still don't have a target note, create a new one
     if (!targetNote) {
-      console.log('Context menu: Fallback: no target note found, creating new note');
       return addSelectionToNewNote(info, tab);
     }
     
@@ -350,9 +303,6 @@ async function addSelectionToExistingNote(info, tab) {
       // Update the draft in chrome.storage.local to preserve unsaved changes
       editorState.noteDraft = updatedDraft;
       await chrome.storage.local.set({ editorState });
-      console.log('Context menu: Updated draft note with appended content, preserved original properties');
-      
-      // Note: Draft update notification now handled via lastAction mechanism for better timing
       
       // Mark last action for draft updates
       await chrome.storage.local.set({ 
@@ -375,7 +325,6 @@ async function addSelectionToExistingNote(info, tab) {
       // Update them in storage
       const key = `note_${targetNote.id}`;
       await chrome.storage.local.set({ [key]: targetNote });
-      console.log('Context menu: Appended to existing saved note:', targetNote.id);
       
       // Send message to popup to refresh the notes list
       chrome.runtime.sendMessage({
@@ -459,15 +408,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
       break;
     case 'ping':
-      console.log('Background script received ping, responding with pong');
       sendResponse({ status: 'pong', timestamp: Date.now() });
       break;
     case 'addHighlightsToNote':
-      console.log('Background script received addHighlightsToNote message:', request);
       // Handle async response properly
       addHighlightsToNote(request.pageInfo, request.highlights, sender.tab)
         .then(() => {
-          console.log('addHighlightsToNote completed successfully');
           // Send success response
           sendResponse({ success: true });
         })
@@ -484,20 +430,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       // Handle auth changes for sync timer management
       if (request.user) {
         // User signed in, start timer and initialize lastSyncTime
-        console.log('🕐 Background: User signed in, starting sync timer...');
         lastSyncTime = Date.now();
         saveLastSyncTime(); // Save the current time as last sync
         startSyncTimer();
       } else {
         // User signed out, stop timer
-        console.log('🕐 Background: User signed out, stopping sync timer...');
         stopSyncTimer();
       }
       sendResponse({ success: true });
       break;
     case 'restart-sync-timer':
       // Restart timer for next sync cycle
-      console.log('🕐 Background: Received restart-sync-timer message, restarting timer...');
       lastSyncTime = Date.now(); // Mark that we just synced
       saveLastSyncTime(); // Save the updated time
       startSyncTimer();
@@ -505,7 +448,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       break;
     case 'reset-sync-timer':
       // Reset timer due to corrupted data
-      console.log('🕐 Background: Received reset-sync-timer message...');
       resetSyncTimer().then(() => {
         sendResponse({ success: true });
       }).catch(error => {
@@ -516,7 +458,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       break;
     case 'force-reset-sync-timer':
       // Force reset timer due to corrupted data
-      console.log('🕐 Background: Received force-reset-sync-timer message...');
       forceResetSyncTimer().then(() => {
         sendResponse({ success: true });
       }).catch(error => {
@@ -529,18 +470,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       // Popup opened, check if sync is overdue
       const now = Date.now();
       const timeSinceLastSync = now - lastSyncTime;
-      console.log('🕐 Background: popup-opened handler - lastSyncTime:', lastSyncTime, '(', new Date(lastSyncTime), '), timeSinceLastSync:', timeSinceLastSync, 'ms');
       
       if (timeSinceLastSync >= syncInterval) {
-        console.log('🕐 Background: Popup opened, sync overdue by', Math.round(timeSinceLastSync / 1000), 'seconds, triggering sync...');
         sendResponse({ shouldSync: true, timeSinceLastSync });
       } else {
-        console.log('🕐 Background: Popup opened, sync not due yet,', Math.round((syncInterval - timeSinceLastSync) / 1000), 'seconds remaining');
         sendResponse({ shouldSync: false, timeRemaining: syncInterval - timeSinceLastSync });
       }
       break;
-    default:
-      console.log('Unknown action:', request.action);
   }
   return true; // Keep message channel open for async responses
 });
@@ -577,7 +513,6 @@ async function performCleanup() {
     const keysToRemove = Object.keys(sessionData).filter(key => key.startsWith('pageInfo_') && sessionData[key].timestamp < oneHourAgo);
     if (keysToRemove.length > 0) {
       await chrome.storage.session.remove(keysToRemove);
-      console.log(`Cleaned up ${keysToRemove.length} old session entries`);
     }
   } catch (error) {
     console.error('Error during cleanup:', error);
@@ -585,7 +520,6 @@ async function performCleanup() {
 }
 
 function handleSettingsChange(oldSettings, newSettings) {
-  console.log('Settings changed:', { oldSettings, newSettings });
   chrome.tabs.query({}, (tabs) => {
     tabs.forEach(tab => {
       chrome.tabs.sendMessage(tab.id, { action: 'settingsChanged', settings: newSettings }).catch(() => {});
@@ -594,7 +528,6 @@ function handleSettingsChange(oldSettings, newSettings) {
 }
 
 chrome.runtime.onStartup.addListener(() => {
-  console.log('Extension startup');
   updateUninstallUrl();
 });
 
@@ -626,10 +559,7 @@ async function updateUninstallUrl() {
 
 // Function to handle adding multiple highlights to a note
 async function addHighlightsToNote(pageInfo, highlights, tab) {
-  console.log('addHighlightsToNote called with:', { pageInfo, highlights, tab });
-  
   if (!highlights || highlights.length === 0) {
-    console.warn('No highlights provided');
     return;
   }
 
@@ -646,8 +576,6 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
     return;
   }
   
-  console.log('Adding', highlights.length, 'highlights to note for domain:', domain);
-
   // Create note content with all highlights - using same logic as single-selection context menu
   let noteContent = '';
   highlights.forEach((highlight, index) => {
@@ -666,26 +594,13 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
     let targetNote = null;
     let isDraftNote = false;
     
-    console.log('Multi-highlight: Raw editorState from storage:', editorState);
-    
     // If there's a draft note, use it (regardless of popup state)
     if (editorState && editorState.noteDraft) {
       const cachedNote = editorState.noteDraft;
-      console.log('Multi-highlight: Found draft in storage:', { 
-        open: editorState.open, 
-        wasEditorOpen: editorState.wasEditorOpen,
-        hasDraft: !!editorState.noteDraft,
-        draftDomain: cachedNote?.domain,
-        targetDomain: domain,
-        domainsMatch: cachedNote?.domain === domain
-      });
       
       if (cachedNote.domain === domain) {
         targetNote = { ...cachedNote }; // Copy to avoid modifying original
         isDraftNote = true;
-        console.log('Multi-highlight: Appending to open draft note for domain:', domain);
-      } else {
-        console.log('Multi-highlight: Domain mismatch - draft domain:', cachedNote.domain, 'vs target domain:', domain);
       }
     }
     
@@ -701,13 +616,10 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
           }
         }
         
-        console.log('Multi-highlight: Found notes in storage:', notes.length, 'for domain:', domain);
-        
         if (notes.length > 0) {
           // Pick most recently updated
           notes.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
           targetNote = notes[0];
-          console.log('Multi-highlight: Using most recent note:', targetNote.id);
         }
       } catch (error) {
         console.error('Multi-highlight: Failed to get notes from storage:', error);
@@ -727,9 +639,6 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
         // Update the draft in chrome.storage.local to preserve unsaved changes
         editorState.noteDraft = updatedDraft;
         await chrome.storage.local.set({ editorState });
-        console.log('Multi-highlight: Updated draft note with appended highlights, preserved original properties');
-        
-        // Note: Draft update notification now handled via lastAction mechanism for better timing
         
         // Mark last action for draft updates
         await chrome.storage.local.set({ 
@@ -754,7 +663,6 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
         // Update them in storage
         const key = `note_${targetNote.id}`;
         await chrome.storage.local.set({ [key]: targetNote });
-        console.log('Multi-highlight: Appended to existing saved note:', targetNote.id);
         
         // Send message to popup to refresh the notes list
         chrome.runtime.sendMessage({
@@ -787,7 +695,6 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
   }
 
   // If we couldn't append to existing note, create a new one
-  console.log('Multi-highlight: Creating new note for highlights');
   
   const newNote = {
     id: crypto.randomUUID ? crypto.randomUUID() : `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -806,7 +713,6 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
     // Store note in chrome.storage.local
     const key = `note_${newNote.id}`;
     await chrome.storage.local.set({ [key]: newNote });
-    console.log('Multi-highlight note saved with key:', key);
     
     // Send message to popup to refresh the notes list
     chrome.runtime.sendMessage({
@@ -863,17 +769,13 @@ async function toggleMultiHighlightModeFromContextMenu(tab) {
     try {
       await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
       contentScriptReady = true;
-      console.log('Content script is ready for context menu toggle');
     } catch (error) {
-      console.warn('Content script not ready, attempting to inject:', error);
       contentScriptReady = false;
     }
     
     // If content script is not ready, try to inject it
     if (!contentScriptReady) {
       try {
-        console.log('Attempting to inject content script for context menu...');
-        
         if (!chrome.scripting) {
           throw new Error('Scripting API not available');
         }
@@ -884,19 +786,15 @@ async function toggleMultiHighlightModeFromContextMenu(tab) {
           files: ['content/content.js']
         });
         
-        console.log('Content script injection successful for context menu, waiting for initialization...');
-        
         // Wait for the script to initialize and try multiple ping attempts
         let pingSuccess = false;
         for (let attempt = 1; attempt <= 3; attempt++) {
           try {
             await new Promise(resolve => setTimeout(resolve, 300 * attempt)); // Progressive delay
             await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
-            console.log(`Context menu: Content script ping successful on attempt ${attempt}`);
             pingSuccess = true;
             break;
           } catch (pingError) {
-            console.log(`Context menu: Ping attempt ${attempt} failed:`, pingError);
             if (attempt === 3) {
               throw new Error('Content script not responding after injection');
             }
@@ -907,7 +805,6 @@ async function toggleMultiHighlightModeFromContextMenu(tab) {
           throw new Error('Content script not responding after injection');
         }
         
-        console.log('Content script injected and ready for context menu');
         contentScriptReady = true;
         
       } catch (injectError) {
@@ -1026,23 +923,12 @@ let lastSyncTime = 0; // Track when we last synced
 
 // Load lastSyncTime from storage on startup
 async function loadLastSyncTime() {
-  console.log('🕐 Background: loadLastSyncTime function started');
   try {
-    console.log('🕐 Background: Attempting to get lastSyncTime from chrome.storage.local...');
-    
-    // First, let's see what's actually in storage
-    const allStorage = await chrome.storage.local.get(null);
-    console.log('🕐 Background: All storage keys:', Object.keys(allStorage));
-    
     const result = await chrome.storage.local.get(['lastSyncTime']);
-    console.log('🕐 Background: Storage result for lastSyncTime:', result);
     
     if (result.lastSyncTime) {
       const storedTime = result.lastSyncTime;
       const now = Date.now();
-      
-      console.log('🕐 Background: Validation - storedTime:', storedTime, 'now:', now, 'storedTime > now:', storedTime > now);
-      console.log('🕐 Background: Validation - storedTime date:', new Date(storedTime), 'now date:', new Date(now));
       
       // Validate that the stored time is reasonable
       // Check for obviously invalid timestamps (future dates, extremely old dates, or NaN)
@@ -1051,45 +937,31 @@ async function loadLastSyncTime() {
       
       // Check if the stored timestamp is from a future year (like 2025 when we're in 2024)
       if (isNaN(storedTime) || storedTime <= 0 || storedTime > now || storedYear > currentYear) {
-        console.log('🕐 Background: Stored lastSyncTime is invalid (future year, NaN, or too old), resetting to current time');
-        console.log('🕐 Background: Current year:', currentYear, 'Stored year:', storedYear);
         lastSyncTime = now;
         await chrome.storage.local.set({ lastSyncTime: lastSyncTime });
       } else if (storedTime < (now - (24 * 60 * 60 * 1000))) { // More than 24 hours ago
-        console.log('🕐 Background: Stored lastSyncTime is too old (>24 hours), resetting to current time');
         lastSyncTime = now;
         await chrome.storage.local.set({ lastSyncTime: lastSyncTime });
       } else {
         lastSyncTime = storedTime;
-        console.log('🕐 Background: Loaded valid lastSyncTime from storage:', lastSyncTime, '(', new Date(lastSyncTime), ')');
       }
     } else {
       // Initialize to current time if no stored value
-      console.log('🕐 Background: No stored lastSyncTime found, initializing to current time...');
       lastSyncTime = Date.now();
       await chrome.storage.local.set({ lastSyncTime: lastSyncTime });
-      console.log('🕐 Background: Initialized lastSyncTime to current time:', lastSyncTime, '(', new Date(lastSyncTime), ')');
     }
   } catch (error) {
     console.error('🕐 Background: Error loading lastSyncTime:', error);
     // Fallback to current time
-    console.log('🕐 Background: Using fallback time...');
     lastSyncTime = Date.now();
     await saveLastSyncTime(); // Save the fallback time
   }
-  console.log('🕐 Background: loadLastSyncTime function completed, final lastSyncTime:', lastSyncTime, '(', new Date(lastSyncTime), ')');
 }
 
 // Save lastSyncTime to storage
 async function saveLastSyncTime() {
   try {
-    console.log('🕐 Background: Saving lastSyncTime to storage:', lastSyncTime, '(', new Date(lastSyncTime), ')');
     await chrome.storage.local.set({ lastSyncTime: lastSyncTime });
-    console.log('🕐 Background: Successfully saved lastSyncTime to storage');
-    
-    // Verify the save worked
-    const verify = await chrome.storage.local.get(['lastSyncTime']);
-    console.log('🕐 Background: Verification - retrieved from storage:', verify.lastSyncTime, '(', new Date(verify.lastSyncTime), ')');
   } catch (error) {
     console.error('🕐 Background: Error saving lastSyncTime:', error);
   }
@@ -1097,11 +969,9 @@ async function saveLastSyncTime() {
 
 // Clear corrupted lastSyncTime and reset timer
 async function resetSyncTimer() {
-  console.log('🕐 Background: Resetting sync timer due to corrupted data...');
   try {
     // Remove the corrupted lastSyncTime from storage
     await chrome.storage.local.remove(['lastSyncTime']);
-    console.log('🕐 Background: Removed corrupted lastSyncTime from storage');
     
     // Reset to current time
     lastSyncTime = Date.now();
@@ -1116,15 +986,9 @@ async function resetSyncTimer() {
 
 // Force clear corrupted storage and reset
 async function forceResetSyncTimer() {
-  console.log('🕐 Background: Force resetting sync timer...');
   try {
-    // Get all storage and log what we find
-    const allStorage = await chrome.storage.local.get(null);
-    console.log('🕐 Background: Current storage before force reset:', Object.keys(allStorage));
-    
     // Remove the corrupted lastSyncTime from storage
     await chrome.storage.local.remove(['lastSyncTime']);
-    console.log('🕐 Background: Force removed lastSyncTime from storage');
     
     // Reset to current time
     lastSyncTime = Date.now();
@@ -1142,17 +1006,11 @@ function startSyncTimer() {
     clearTimeout(syncTimer);
   }
   
-  console.log('🕐 Background: Starting sync timer for 5 minutes...');
-  console.log('🕐 Background: startSyncTimer called with lastSyncTime:', lastSyncTime, '(', new Date(lastSyncTime), ')');
-  
   // Set a one-time timeout instead of interval
   syncTimer = setTimeout(() => {
-    console.log('🕐 Background: Timer fired! Sending sync-timer-triggered message...');
-    
     // Send message to popup to trigger sync
     chrome.runtime.sendMessage({ action: 'sync-timer-triggered' }).catch(() => {
       // Popup might be closed, that's okay
-      console.log('🕐 Background: Popup closed, sync message not delivered');
       // Mark that we need to sync when popup opens
       // Don't set lastSyncTime here - let the popup handle it when it opens
       // This prevents the invalid future timestamp issue
@@ -1160,7 +1018,6 @@ function startSyncTimer() {
     
     // Clear the timer after it fires
     syncTimer = null;
-    console.log('🕐 Background: Timer cleared, waiting for restart message...');
   }, syncInterval);
 }
 
@@ -1168,7 +1025,6 @@ function stopSyncTimer() {
   if (syncTimer) {
     clearTimeout(syncTimer);
     syncTimer = null;
-    console.log('🕐 Background: Timer stopped');
   }
   // Reset lastSyncTime when stopping timer (e.g., user signs out)
   lastSyncTime = 0;
@@ -1176,24 +1032,15 @@ function stopSyncTimer() {
 }
 
 // Start timer when extension loads
-console.log('🕐 Background: Extension loaded, starting initial sync timer...');
-console.log('🕐 Background: About to load lastSyncTime from storage...');
-
 // Add a small delay to ensure storage is ready
 setTimeout(() => {
   loadLastSyncTime().then(() => {
-    console.log('🕐 Background: loadLastSyncTime completed, lastSyncTime is now:', lastSyncTime, '(', new Date(lastSyncTime), ')');
-    
     // Force reset if the timestamp is still corrupted after validation
     const currentYear = new Date().getFullYear();
     const storedYear = new Date(lastSyncTime).getFullYear();
     
     if (lastSyncTime > Date.now() || storedYear > currentYear) {
-      console.log('🕐 Background: Timestamp still corrupted after validation (future date or future year), forcing reset...');
-      console.log('🕐 Background: Current year:', currentYear, 'Stored year:', storedYear);
-      forceResetSyncTimer().then(() => {
-        console.log('🕐 Background: Force reset completed, timer should now work correctly');
-      });
+      forceResetSyncTimer();
     } else {
       startSyncTimer();
     }

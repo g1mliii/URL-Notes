@@ -6,6 +6,24 @@ class App {
     this.init();
   }
 
+  // Detect search engine crawlers to prevent redirect issues
+  isSearchEngineCrawler() {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const crawlers = [
+      'googlebot',
+      'bingbot', 
+      'slurp',
+      'duckduckbot',
+      'baiduspider',
+      'yandexbot',
+      'facebookexternalhit',
+      'twitterbot',
+      'linkedinbot'
+    ];
+    
+    return crawlers.some(crawler => userAgent.includes(crawler));
+  }
+
   async init() {
     // Initialize theme
     this.initTheme();
@@ -63,6 +81,12 @@ class App {
 
   async checkAuthStatus() {
     try {
+      // Skip redirects for search engine crawlers
+      if (this.isSearchEngineCrawler()) {
+        console.log('Search engine crawler detected, skipping auth redirects');
+        return;
+      }
+
       // Wait for auth module to initialize
       if (window.auth && window.auth.supabaseClient) {
         // Use enhanced authentication status check

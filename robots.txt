@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Allow: /dashboard
+Allow: /account
+Allow: /privacy
+Allow: /terms
+
+# Sitemap location
+Sitemap: https://anchored.site/sitemap.xml
+
+# Allow indexing of main pages but note they may redirect for users
+# Crawlers should see the content before JavaScript executes

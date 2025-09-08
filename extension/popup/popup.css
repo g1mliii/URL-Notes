@@ -1169,32 +1169,32 @@ details.domain-group[open] > .domain-notes-list {
 }
 
 /* Domain header actions: visible by default; when group is open, hide unless hovered/focused */
-details.domain-group > summary.domain-group-header .domain-actions {
+details.domain-group > .domain-actions {
   display: flex !important;
   opacity: 1 !important;
   pointer-events: auto !important;
 }
-details.domain-group[open] > summary.domain-group-header .domain-actions {
+details.domain-group[open] > .domain-actions {
   display: none !important;
   opacity: 0 !important;
   pointer-events: none !important;
   transition: none !important; /* avoid delay when multiple groups are open */
 }
-details.domain-group[open] > summary.domain-group-header:hover .domain-actions,
-details.domain-group[open] > summary.domain-group-header:focus-within .domain-actions {
+details.domain-group[open]:hover > .domain-actions,
+details.domain-group[open]:focus-within > .domain-actions {
   display: flex !important;
   opacity: 1 !important;
   pointer-events: auto !important;
 }
 
 /* All Notes only: when group is open, hide header actions unless hovered/focused */
-html[data-view="all_notes"] details.domain-group[open] > summary.domain-group-header .domain-actions {
+html[data-view="all_notes"] details.domain-group[open] > .domain-actions {
   display: none !important;
   opacity: 0 !important;
   pointer-events: none !important;
 }
-html[data-view="all_notes"] details.domain-group[open] > summary.domain-group-header:hover .domain-actions,
-html[data-view="all_notes"] details.domain-group[open] > summary.domain-group-header:focus-within .domain-actions {
+html[data-view="all_notes"] details.domain-group[open]:hover > .domain-actions,
+html[data-view="all_notes"] details.domain-group[open]:focus-within > .domain-actions {
   display: flex !important;
   opacity: 1 !important;
   pointer-events: auto !important;

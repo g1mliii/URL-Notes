@@ -13,17 +13,17 @@ class NotesManager {
     const searchInput = document.getElementById('searchInput');
     const notesCounter = document.getElementById('notesCounter');
     if (!notesList) return;
-    
+
     // Use DocumentFragment for smoother rendering
     const fragment = document.createDocumentFragment();
-    
+
     // Show empty state if no notes exist
     if (!app.allNotes || app.allNotes.length === 0) {
       this.showEmptyState(notesList, 'No notes yet', 'Create your first note to get started!');
       if (notesCounter) notesCounter.classList.add('hidden');
       return;
     }
-    
+
     // Only clear if we have notes to clear
     if (notesList.children.length > 0) {
       notesList.innerHTML = '';
@@ -39,7 +39,7 @@ class NotesManager {
 
     // 1) Filter
     let filteredNotes = [];
-    
+
     if (app.filterMode === 'site') {
       // Only filter by site if we have a valid currentSite with domain
       if (app.currentSite && app.currentSite.domain && app.currentSite.domain !== 'localhost') {
@@ -92,31 +92,31 @@ class NotesManager {
       notesCounter.classList.remove('hidden');
       const counterNumber = notesCounter.querySelector('#counterNumber');
       if (counterNumber) counterNumber.textContent = filteredNotes.length;
-      
+
       // Check if ads are present and position counter accordingly
       this.updateCounterPosition(notesCounter);
     }
-    
+
     // Don't clear again - already cleared at the beginning
 
     // Search placeholder is now handled centrally in popup.js to prevent caching conflicts
     // No need to update it here anymore
 
-         if (app.filterMode === 'all_notes') {
-       await this.renderGroupedNotes(filteredNotes, notesList);
-     } else {
-       // Check premium status once for all notes using cached function
-       const premiumStatus = await getPremiumStatus();
-       const isPremium = premiumStatus.isPremium;
-       
-       // Use DocumentFragment for smoother rendering
-       for (const note of filteredNotes) {
-         const el = await this.createNoteElement(note, isPremium);
-         fragment.appendChild(el);
-       }
-       
-              // Append all notes at once for better performance
-       notesList.appendChild(fragment);
+    if (app.filterMode === 'all_notes') {
+      await this.renderGroupedNotes(filteredNotes, notesList);
+    } else {
+      // Check premium status once for all notes using cached function
+      const premiumStatus = await getPremiumStatus();
+      const isPremium = premiumStatus.isPremium;
+
+      // Use DocumentFragment for smoother rendering
+      for (const note of filteredNotes) {
+        const el = await this.createNoteElement(note, isPremium);
+        fragment.appendChild(el);
+      }
+
+      // Append all notes at once for better performance
+      notesList.appendChild(fragment);
     }
   }
 
@@ -135,7 +135,7 @@ class NotesManager {
       notesCounter.classList.remove('hidden');
       const counterNumber = notesCounter.querySelector('#counterNumber');
       if (counterNumber) counterNumber.textContent = notes.length;
-      
+
       // Check if ads are present and position counter accordingly
       this.updateCounterPosition(notesCounter);
     }
@@ -143,10 +143,10 @@ class NotesManager {
     // Check premium status once for all notes using cached function
     const premiumStatus = await getPremiumStatus();
     const isPremium = premiumStatus.isPremium;
-    
+
     const grouped = this.groupNotesByDomain(notes);
     const sortedDomains = Object.keys(grouped).sort();
-    
+
     // Clear container for new content
     container.innerHTML = '';
     container.classList.add('notes-fade-in');
@@ -165,7 +165,7 @@ class NotesManager {
       const domainGroup = document.createElement('details');
       domainGroup.className = 'domain-group';
       domainGroup.setAttribute('data-domain', domain);
-      
+
       // Set open state based on cached value
       domainGroup.open = openSet.has(domain);
 
@@ -180,25 +180,26 @@ class NotesManager {
           <div class="domain-header-info">
             <span>${domain} (${domainNotes.length})</span>
           </div>
-          <div class="domain-actions">
-            <button class="icon-btn sm glass open-domain-btn" data-domain="${domain}" title="Open ${domain}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                <polyline points="15,3 21,3 21,9"></polyline>
-                <line x1="10" y1="14" x2="21" y2="3"></line>
-              </svg>
-            </button>
-            <button class="icon-btn sm glass delete-domain-btn" data-domain="${domain}" title="Delete all notes for this domain">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3,6 5,6 21,6"></polyline>
-                <path d="m19,6v14a2,2,0,0,1-2,2H7a2,2 0,0,1 -2,-2V6m3,0V4a2,2 0,0,1 2,-2h4a2,2 0,0,1 2,2v2"></path>
-                <line x1="10" y1="11" x2="10" y2="17"></line>
-                <line x1="14" y1="11" x2="14" y2="17"></line>
-              </svg>
-            </button>
-          </div>
+
           ${rightDomainTagsHtml}
         </summary>
+        <div class="domain-actions">
+          <button class="icon-btn sm glass open-domain-btn" data-domain="${domain}" title="Open ${domain}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15,3 21,3 21,9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+          </button>
+          <button class="icon-btn sm glass delete-domain-btn" data-domain="${domain}" title="Delete all notes for this domain">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3,6 5,6 21,6"></polyline>
+              <path d="m19,6v14a2,2,0,0,1-2,2H7a2,2 0,0,1 -2,-2V6m3,0V4a2,2 0,0,1 2,-2h4a2,2 0,0,1 2,2v2"></path>
+              <line x1="10" y1="11" x2="10" y2="17"></line>
+              <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+          </button>
+        </div>
         <div class="domain-notes-list"></div>
       `;
 
@@ -232,10 +233,10 @@ class NotesManager {
         noteEl.classList.add('note-item-stagger');
         domainNotesList.appendChild(noteEl);
       }
-      
+
       container.appendChild(domainGroup);
     }
-    
+
     // Grouped notes rendered successfully
   }
 
@@ -245,7 +246,7 @@ class NotesManager {
       console.warn('NotesManager.groupNotesByDomain: notes is not an array');
       return {};
     }
-    
+
     const grouped = notes.reduce((acc, note) => {
       const domain = note.domain || 'No Domain';
       if (!acc[domain]) acc[domain] = { notes: [], tagCounts: {} };
@@ -258,7 +259,7 @@ class NotesManager {
 
     for (const d in grouped) {
       grouped[d].tags = Object.entries(grouped[d].tagCounts)
-        .sort(([,a],[,b]) => b - a)
+        .sort(([, a], [, b]) => b - a)
         .slice(0, 5)
         .map(([tag]) => tag);
     }
@@ -276,7 +277,7 @@ class NotesManager {
 
     // Use passed premium status instead of checking again
     const hasVersionHistory = isPremium;
-    
+
     // Only log debug info in development mode
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       console.log('Creating note element:', {
@@ -391,7 +392,7 @@ class NotesManager {
   async showVersionHistory(note) {
     try {
       const versions = await window.notesStorage.getVersionHistory(note.id);
-      
+
       if (versions.length === 0) {
         // Use the app's notification method instead of window.showToast
         if (this.app && this.app.showNotification) {
@@ -401,7 +402,7 @@ class NotesManager {
         }
         return;
       }
-      
+
       // Create version history dialog
       const dialog = document.createElement('div');
       dialog.className = 'version-history-dialog';
@@ -426,12 +427,12 @@ class NotesManager {
           </div>
         </div>
       `;
-      
+
       // Add event listeners
       dialog.querySelector('.close-btn').addEventListener('click', () => {
         document.body.removeChild(dialog);
       });
-      
+
       dialog.querySelectorAll('.restore-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           const versionNum = parseInt(e.target.dataset.version);
@@ -439,9 +440,9 @@ class NotesManager {
           document.body.removeChild(dialog);
         });
       });
-      
+
       document.body.appendChild(dialog);
-      
+
     } catch (error) {
       console.error('Failed to show version history:', error);
       // Use the app's notification method instead of window.showToast
@@ -458,17 +459,17 @@ class NotesManager {
     try {
       const versions = await window.notesStorage.getVersionHistory(noteId);
       const targetVersion = versions.find(v => v.version === versionNum);
-      
+
       if (!targetVersion) {
         throw new Error('Version not found');
       }
-      
+
       // Get current note
       const currentNote = await window.notesStorage.getNote(noteId);
       if (!currentNote) {
         throw new Error('Note not found');
       }
-      
+
       // Instead of creating a new version, open the restored content as a draft
       // This allows the user to review and manually save if they want to keep it
       const restoredContent = {
@@ -481,17 +482,17 @@ class NotesManager {
         draftSource: `Restored from version ${versionNum}`,
         draftTimestamp: new Date().toISOString()
       };
-      
+
       // Open the note in the editor with restored content
       if (this.app && this.app.openNote) {
         this.app.openNote(restoredContent);
       }
-      
+
       // Use the app's notification method instead of window.showToast
       if (this.app && this.app.showNotification) {
         this.app.showNotification('Version restored as draft - save to keep changes', 'info');
       }
-      
+
     } catch (error) {
       console.error('Failed to restore version:', error);
       // Use the app's notification method instead of window.showToast
@@ -561,7 +562,7 @@ class NotesManager {
       if (titleEl) titleEl.textContent = title;
       if (messageEl) messageEl.textContent = message;
     }
-    
+
     // Only clear if there are other children to prevent unnecessary clearing
     if (notesList.children.length > 0 && !notesList.querySelector('#emptyState')) {
       notesList.innerHTML = '';
@@ -578,20 +579,20 @@ class NotesManager {
         .map(d => d.getAttribute('data-domain'))
         .filter(Boolean);
       chrome.storage.local.set({ allNotesOpenDomains: currentlyOpen });
-    } catch (_) {}
+    } catch (_) { }
   }
 
   // Update counter position based on ads visibility
   updateCounterPosition(counter) {
     if (!counter) return;
-    
+
     try {
       const adContainer = document.getElementById('adContainer');
-      const isAdsVisible = adContainer && 
-        adContainer.style.display !== 'none' && 
-        !adContainer.hidden && 
+      const isAdsVisible = adContainer &&
+        adContainer.style.display !== 'none' &&
+        !adContainer.hidden &&
         adContainer.offsetHeight > 0;
-      
+
       if (isAdsVisible) {
         counter.style.bottom = '80px'; // Above ads
       } else {
@@ -608,7 +609,7 @@ class NotesManager {
   async deleteDomainNotesIndividually(domainNotes) {
     try {
       let deletedCount = 0;
-      
+
       // Delete each note individually
       for (const note of domainNotes) {
         try {
@@ -618,14 +619,14 @@ class NotesManager {
           console.warn(`Failed to delete note ${note.id}:`, error);
         }
       }
-      
+
       // Show success message
       if (deletedCount > 0) {
         this.app.showNotification(`Deleted ${deletedCount} notes`, 'success');
         // Refresh the notes display
         this.render();
       }
-      
+
     } catch (error) {
       console.error('Error deleting domain notes individually:', error);
       this.app.showNotification('Failed to delete some notes', 'error');

@@ -100,6 +100,20 @@ serve(async (req) => {
       )
     }
 
+    // Content size protection: Prevent context limit errors and cost explosion
+    const MAX_INPUT_CHARS = 80000; // ~20,000 tokens, ~15,000 words max
+    const contentLength = content.length;
+
+    if (contentLength > MAX_INPUT_CHARS) {
+      return new Response(
+        JSON.stringify({
+          error: `Content too large for AI processing. Maximum ${Math.floor(MAX_INPUT_CHARS / 5.3).toLocaleString()} words allowed.`,
+          hint: "Try summarizing smaller sections or breaking the content into parts."
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Determine feature name for usage tracking
     const featureName = context?.feature === 'summarize' ? 'note_summary' : 'ai_rewrite';
 

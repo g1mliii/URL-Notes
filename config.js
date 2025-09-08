@@ -24,13 +24,18 @@ window.urlNotesConfig = {
   getCurrentConfig() {
     const hostname = window.location.hostname;
     const protocol = window.location.protocol;
-    
-    // Force HTTPS in production
-    if (hostname === 'anchored.site' && protocol === 'http:') {
+
+    // Force HTTPS in production (skip for crawlers)
+    const isSearchEngineCrawler = () => {
+      const userAgent = navigator.userAgent.toLowerCase();
+      return ['googlebot', 'bingbot', 'slurp', 'duckduckbot'].some(crawler => userAgent.includes(crawler));
+    };
+
+    if (hostname === 'anchored.site' && protocol === 'http:' && !isSearchEngineCrawler()) {
       window.location.href = window.location.href.replace('http:', 'https:');
       return;
     }
-    
+
     // Determine environment based on hostname
     if (hostname === 'anchored.site') {
       return this.production;
@@ -42,7 +47,7 @@ window.urlNotesConfig = {
   // Load configuration for the current environment
   async loadConfig() {
     const config = this.getCurrentConfig();
-    
+
     // Validate HTTPS in production
     if (config.httpsOnly && window.location.protocol === 'http:') {
       console.warn('HTTPS required in production environment');
@@ -50,7 +55,7 @@ window.urlNotesConfig = {
       window.location.href = window.location.href.replace('http:', 'https:');
       return;
     }
-    
+
     return config;
   },
 
@@ -68,7 +73,7 @@ window.urlNotesConfig = {
         'base-uri': "'self'",
         'form-action': "'self'"
       },
-      
+
       // Additional security headers
       headers: {
         'X-Content-Type-Options': 'nosniff',

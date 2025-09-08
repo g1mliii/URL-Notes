@@ -211,13 +211,13 @@
 }
 
 /* Domain header actions: visible by default; when group is open, hide unless hovered/focused */
-details.domain-group>summary.domain-group-header .domain-actions {
+details.domain-group > .domain-actions {
   display: flex !important;
   opacity: 1 !important;
   pointer-events: auto !important;
 }
 
-details.domain-group[open]>summary.domain-group-header .domain-actions {
+details.domain-group[open] > .domain-actions {
   display: none !important;
   opacity: 0 !important;
   pointer-events: none !important;
@@ -225,8 +225,8 @@ details.domain-group[open]>summary.domain-group-header .domain-actions {
   /* avoid delay flash when opening */
 }
 
-details.domain-group[open]>summary.domain-group-header:hover .domain-actions,
-details.domain-group[open]>summary.domain-group-header:focus-within .domain-actions {
+details.domain-group[open]:hover > .domain-actions,
+details.domain-group[open]:focus-within > .domain-actions {
   display: flex !important;
   opacity: 1 !important;
   pointer-events: auto !important;
@@ -876,7 +876,7 @@ html[data-view="all_notes"] details.domain-group .note-item:focus-within .note-a
 }
 
 /* All Notes view: when group is open, hide header actions unless hovered/focused (explicit) */
-html[data-view="all_notes"] details.domain-group[open]>summary.domain-group-header .domain-actions {
+html[data-view="all_notes"] details.domain-group[open] > .domain-actions {
   display: flex !important;
   /* keep layout; only fade */
   opacity: 0 !important;
@@ -886,8 +886,8 @@ html[data-view="all_notes"] details.domain-group[open]>summary.domain-group-head
   will-change: opacity;
 }
 
-html[data-view="all_notes"] details.domain-group[open]>summary.domain-group-header:hover .domain-actions,
-html[data-view="all_notes"] details.domain-group[open]>summary.domain-group-header:focus-within .domain-actions {
+html[data-view="all_notes"] details.domain-group[open]:hover > .domain-actions,
+html[data-view="all_notes"] details.domain-group[open]:focus-within > .domain-actions {
   opacity: 1 !important;
   pointer-events: auto !important;
 }
@@ -1608,6 +1608,7 @@ html[data-compact="1"] .domain-notes-list {
   border-radius: 20px;
   background: var(--bg-primary);
   /* lighter element background */
+  position: relative;
   /* Remove layered background effect */
   background: var(--bg-primary);
   overflow: hidden;
@@ -1829,6 +1830,10 @@ html[data-compact="1"] .domain-notes-list {
   display: flex;
   gap: 8px;
   /* match note actions spacing */
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
 }
 
 .domain-tags {
