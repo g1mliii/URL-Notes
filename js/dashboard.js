@@ -16,10 +16,10 @@ class Dashboard {
 
   async init() {
     console.log('Dashboard module initialized');
-    
+
     // Initialize storage first
     await this.initializeStorage();
-    
+
     this.setupEventListeners();
     await this.loadNotes();
   }
@@ -36,7 +36,7 @@ class Dashboard {
       console.warn('Storage not available, using fallback');
       // Create a simple fallback storage
       window.storage = {
-        init: async () => {},
+        init: async () => { },
         getAllNotes: async () => [],
         saveNote: async (note) => note,
         deleteNote: async (id) => true
@@ -180,7 +180,7 @@ class Dashboard {
   setupOptimizedSearch() {
     const searchInputs = ['mainSearchInput', 'searchInput'];
     let searchTimeout;
-    
+
     // Single debounced handler for all search inputs
     const debouncedSearch = (value) => {
       clearTimeout(searchTimeout);
@@ -462,7 +462,7 @@ class Dashboard {
     try {
       console.log('Manual cleanup initiated by user');
       const result = await window.api.cleanupOldDeletedNotes();
-      
+
       if (result.cleaned > 0) {
         this.showNotification(`Successfully cleaned up ${result.cleaned} old deleted notes`, 'success');
       } else {
@@ -502,7 +502,7 @@ class Dashboard {
       return crypto.randomUUID();
     }
     // Fallback for older browsers (though this shouldn't be needed in modern browsers)
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
       const r = Math.random() * 16 | 0;
       const v = c == 'x' ? r : (r & 0x3 | 0x8);
       return v.toString(16);
@@ -648,10 +648,10 @@ class Dashboard {
 
     // Use DocumentFragment for efficient DOM manipulation
     const fragment = document.createDocumentFragment();
-    
-    // Batch create all note cards without individual event listeners
+
+    // Create note cards with individual event listeners (more reliable)
     this.filteredNotes.forEach(note => {
-      const noteCard = this.createOptimizedNoteCard(note);
+      const noteCard = this.createNoteCard(note);
       fragment.appendChild(noteCard);
     });
 
@@ -659,8 +659,8 @@ class Dashboard {
     notesGrid.innerHTML = '';
     notesGrid.appendChild(fragment);
 
-    // Set up event delegation (only once)
-    this.setupNoteGridEventDelegation(notesGrid);
+    // Don't set up event delegation here - it causes issues
+    // Individual event listeners are more reliable for now
   }
 
 
@@ -772,7 +772,7 @@ class Dashboard {
     // Add listeners with passive option for better performance
     notesGrid.addEventListener('click', delegatedHandler, { passive: true });
     notesGrid.addEventListener('change', delegatedHandler, { passive: true });
-    
+
     // Store reference for cleanup
     notesGrid._delegatedHandler = delegatedHandler;
   }
@@ -1268,7 +1268,7 @@ class Dashboard {
       // Use the same deletion method as extension - sync with deletions array
       if (window.api && window.api.isAuthenticated()) {
         console.log('Deleting note using sync method (like extension):', this.currentNote.id);
-        
+
         // Prepare deletion payload in the same format as extension
         const deletionPayload = {
           operation: 'sync',
