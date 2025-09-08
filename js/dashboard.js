@@ -289,8 +289,8 @@ class Dashboard {
       const noteData = {
         title: title || 'Untitled Note',
         content: content,
-        url: url,
-        domain: url ? this.extractDomain(url) : 'Web App',
+        url: url || 'chrome://extensions',
+        domain: url ? this.extractDomain(url) : 'general',
         tags: [],
         updated_at: new Date().toISOString()
       };
@@ -460,8 +460,8 @@ class Dashboard {
       id: note.id || this.generateId(),
       title: note.title || 'Untitled Note',
       content: note.content || '',
-      url: note.url || '',
-      domain: note.domain || this.extractDomain(note.url),
+      url: note.url || 'chrome://extensions',
+      domain: note.domain || this.extractDomain(note.url || 'chrome://extensions'),
       tags: note.tags || [],
       createdAt: note.createdAt || new Date().toISOString(),
       updatedAt: note.updatedAt || note.createdAt || new Date().toISOString(),
@@ -485,12 +485,13 @@ class Dashboard {
   }
 
   extractDomain(url) {
-    if (!url) return 'Unknown';
+    if (!url) return 'general';
+    if (url === 'chrome://extensions') return 'general';
     try {
       const urlObj = new URL(url);
       return urlObj.hostname;
     } catch (e) {
-      return 'Unknown';
+      return 'general';
     }
   }
 
@@ -919,8 +920,8 @@ class Dashboard {
       id: this.generateId(),
       title: '',
       content: '',
-      url: '',
-      domain: 'Web App',
+      url: 'chrome://extensions',
+      domain: 'general',
       tags: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -1103,8 +1104,8 @@ class Dashboard {
       const noteData = {
         title: title || 'Untitled Note',
         content: content,
-        url: url,
-        domain: url ? this.extractDomain(url) : 'Web App',
+        url: url || 'chrome://extensions',
+        domain: url ? this.extractDomain(url) : 'general',
         tags: tags,
         updated_at: new Date().toISOString()
       };
@@ -1219,8 +1220,8 @@ class Dashboard {
           id: noteData.id,
           title: noteData.title,
           content: noteData.content,
-          url: noteData.url || '',
-          domain: noteData.domain || 'Web App',
+          url: noteData.url || 'chrome://extensions',
+          domain: noteData.domain || 'general',
           tags: noteData.tags || [],
           createdAt: noteData.createdAt,
           updatedAt: noteData.updatedAt
