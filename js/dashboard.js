@@ -1553,7 +1553,7 @@ class Dashboard {
         this.handleUpgradeBanner(window.subscriptionManager.currentSubscription);
       } else {
         // Fallback: try to get subscription status directly
-        const response = await window.api.callFunction('subscription-management', {
+        const response = await window.api.callFunction('subscription-api', {
           action: 'get_subscription_status'
         });
         this.handleUpgradeBanner(response);

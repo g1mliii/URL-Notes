@@ -19,7 +19,7 @@ class SubscriptionManager {
 
   async loadSubscriptionStatus() {
     try {
-      const response = await this.api.callFunction('subscription-management', {
+      const response = await this.api.callFunction('subscription-api', {
         action: 'get_subscription_status'
       });
 
@@ -195,7 +195,7 @@ class SubscriptionManager {
         upgradeBtn.textContent = 'Processing...';
       }
 
-      const response = await this.api.callFunction('subscription-management', {
+      const response = await this.api.callFunction('subscription-api', {
         action: 'create_checkout_session',
         origin: window.location.origin
       });
@@ -228,7 +228,7 @@ class SubscriptionManager {
         manageBtn.textContent = 'Loading...';
       }
 
-      const response = await this.api.callFunction('subscription-management', {
+      const response = await this.api.callFunction('subscription-api', {
         action: 'create_portal_session',
         origin: window.location.origin
       });
