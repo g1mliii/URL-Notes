@@ -682,7 +682,7 @@
 /* iOS Safari specific fixes */
 @supports (-webkit-touch-callout: none) {
 
-  /* iOS Safari - completely disable complex effects */
+  /* iOS Safari - completely disable complex effects and fix white bars */
   html {
     -webkit-overflow-scrolling: touch;
     background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
@@ -693,6 +693,9 @@
     /* Prevent overscroll bounce showing white */
     overscroll-behavior: none;
     -webkit-overscroll-behavior: none;
+    /* Fix white bars - remove default margins */
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   body {
@@ -703,14 +706,29 @@
     height: 100dvh; /* Dynamic viewport */
     height: -webkit-fill-available; /* Fix Safari bottom white bar */
     overflow: hidden;
+    /* Fix white bars - remove default margins and padding */
+    margin: 0 !important;
+    padding: 0 !important;
     /* Safe area padding for Safari */
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
+    padding-top: env(safe-area-inset-top) !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+    padding-left: env(safe-area-inset-left) !important;
+    padding-right: env(safe-area-inset-right) !important;
     /* Prevent overscroll bounce showing white */
     overscroll-behavior: none;
     -webkit-overscroll-behavior: none;
+  }
+
+  /* Fix all heading elements that might have default margins */
+  h1, h2, h3, h4, h5, h6 {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Fix navigation text specifically */
+  .navigationtext h2 {
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .app-container {
@@ -722,6 +740,9 @@
     transform: translate3d(0, 0, 0);
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
+    /* Remove any margins that could cause white bars */
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   /* Completely remove the problematic overlay on iOS */
@@ -1091,12 +1112,101 @@ me mobile fade effect and bottom cut-off */
     mask-image: none !important;
   }
   
-  /* Ensure full viewport coverage */
+  /* Ensure full viewport coverage and fix white bars */
   html {
     background-color: #1D3557; /* Fallback color matching gradient end */
+    margin: 0 !important;
+    padding: 0 !important;
   }
   
   body {
     background-color: #1D3557; /* Fallback color matching gradient end */
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Fix all heading elements on mobile */
+  h1, h2, h3, h4, h5, h6 {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* Fix navigation and container elements */
+  #container, #navigation, #content {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .navigationtext h2 {
+    margin: 0 !important;
+  }
+}
+/* Com
+prehensive Mobile Safari White Bar Fix */
+@media screen and (max-width: 768px) {
+  /* Force remove all default margins and padding that cause white bars */
+  html, body, * {
+    margin: 0 !important;
+  }
+  
+  /* Specifically target common elements that have default margins */
+  h1, h2, h3, h4, h5, h6, p, ul, ol, li, div, section, article, header, footer, nav {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+  
+  /* Fix body to prevent white space */
+  body {
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    height: -webkit-fill-available !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    overflow: hidden !important;
+  }
+  
+  /* Fix app container positioning */
+  .app-container {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow-y: scroll !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+}
+
+/* Safari-specific white bar elimination */
+@supports (-webkit-touch-callout: none) {
+  @media screen and (max-width: 768px) {
+    /* Prevent Safari's default margins on all elements */
+    * {
+      margin: 0 !important;
+    }
+    
+    /* Force body to fill entire viewport */
+    body {
+      position: fixed !important;
+      width: 100% !important;
+      height: 100% !important;
+      overflow: hidden !important;
+      /* Prevent overscroll bounce that shows white */
+      overscroll-behavior: none !important;
+      -webkit-overscroll-behavior: none !important;
+    }
+    
+    /* Ensure app container scrolls properly */
+    .app-container {
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      overflow-y: scroll !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
   }
 }
