@@ -696,6 +696,10 @@
     /* Fix white bars - remove default margins */
     margin: 0 !important;
     padding: 0 !important;
+    /* Ensure background covers entire viewport including safe areas */
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
   }
 
   body {
@@ -709,14 +713,31 @@
     /* Fix white bars - remove default margins and padding */
     margin: 0 !important;
     padding: 0 !important;
-    /* Safe area padding for Safari */
-    padding-top: env(safe-area-inset-top) !important;
-    padding-bottom: env(safe-area-inset-bottom) !important;
-    padding-left: env(safe-area-inset-left) !important;
-    padding-right: env(safe-area-inset-right) !important;
+    /* Safe area padding for Safari - but only for content, not background */
     /* Prevent overscroll bounce showing white */
     overscroll-behavior: none;
     -webkit-overscroll-behavior: none;
+    /* Ensure background covers entire viewport including safe areas */
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    position: relative;
+  }
+
+  /* Create a full-screen background layer that extends into safe areas */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%);
+    z-index: -1;
+    /* Extend into safe areas */
+    margin-top: calc(-1 * env(safe-area-inset-top));
+    margin-bottom: calc(-1 * env(safe-area-inset-bottom));
+    margin-left: calc(-1 * env(safe-area-inset-left));
+    margin-right: calc(-1 * env(safe-area-inset-right));
   }
 
   /* Fix all heading elements that might have default margins */
@@ -953,6 +974,9 @@
       background: linear-gradient(135deg, #1D3557 0%, #0A1A24 100%) !important;
       height: 100%;
       overflow: hidden;
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
     }
 
     body {
@@ -960,6 +984,13 @@
       background-attachment: scroll !important;
       height: 100vh;
       overflow: hidden;
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+    }
+
+    /* Create a full-screen dark background layer that extends into safe areas */
+    body::before {
+      background: linear-gradient(135deg, #1D3557 0%, #0A1A24 100%);
     }
 
     .app-container {
