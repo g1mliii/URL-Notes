@@ -146,13 +146,20 @@
     box-shadow: none !important;
   }
 
-  .input-group {
-    margin-bottom: 1.5rem;
+  /* Auth form specific spacing on mobile - force override */
+  .auth-form .input-group {
+    margin-bottom: 1.5rem !important;
   }
 
   /* Add extra spacing between last input and button */
   .auth-form .input-group:last-of-type {
-    margin-bottom: 2rem;
+    margin-bottom: 2rem !important;
+  }
+
+  /* Other input groups (non-auth) */
+  .dashboard-content .input-group,
+  .modal .input-group {
+    margin-bottom: 1.5rem;
   }
 
   .btn-primary {
@@ -262,13 +269,20 @@
     margin: 0 1rem;
   }
 
-  .input-group {
-    margin-bottom: 1.5rem;
+  /* Auth form specific spacing on tablet - force override */
+  .auth-form .input-group {
+    margin-bottom: 1.5rem !important;
   }
 
   /* Add extra spacing between last input and button on tablet */
   .auth-form .input-group:last-of-type {
-    margin-bottom: 2rem;
+    margin-bottom: 2rem !important;
+  }
+
+  /* Other input groups (non-auth) */
+  .dashboard-content .input-group,
+  .modal .input-group {
+    margin-bottom: 1.5rem;
   }
 
   .btn-primary {
@@ -499,14 +513,14 @@
   .site-footer {
     display: block;
   }
-  
+
   /* Hide footer on mobile for dashboard pages (when dashboard-main exists) */
-  .dashboard-main ~ .site-footer {
+  .dashboard-main~.site-footer {
     display: none;
   }
-  
+
   /* Hide footer on mobile for account pages (when account-main exists) */
-  .account-main ~ .site-footer {
+  .account-main~.site-footer {
     display: none;
   }
 
@@ -816,8 +830,10 @@
     -webkit-overflow-scrolling: touch;
     background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
     height: 100%;
-    height: 100dvh; /* Dynamic viewport */
-    height: -webkit-fill-available; /* Fix Safari bottom white bar */
+    height: 100dvh;
+    /* Dynamic viewport */
+    height: -webkit-fill-available;
+    /* Fix Safari bottom white bar */
     overflow: hidden;
     /* Prevent overscroll bounce showing white */
     overscroll-behavior: none;
@@ -836,8 +852,10 @@
     background-attachment: scroll !important;
     -webkit-overflow-scrolling: touch;
     height: 100vh;
-    height: 100dvh; /* Dynamic viewport */
-    height: -webkit-fill-available; /* Fix Safari bottom white bar */
+    height: 100dvh;
+    /* Dynamic viewport */
+    height: -webkit-fill-available;
+    /* Fix Safari bottom white bar */
     overflow: hidden;
     /* Fix white bars - remove default margins and padding */
     margin: 0 !important;
@@ -870,7 +888,12 @@
   }
 
   /* Fix all heading elements that might have default margins */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     margin: 0 !important;
     padding: 0 !important;
   }
@@ -926,8 +949,10 @@
   html {
     background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
     height: 100%;
-    height: 100dvh; /* Dynamic viewport */
-    height: -webkit-fill-available; /* Safari fallback */
+    height: 100dvh;
+    /* Dynamic viewport */
+    height: -webkit-fill-available;
+    /* Safari fallback */
     overflow: hidden;
     /* Prevent fade effects */
     -webkit-appearance: none;
@@ -938,8 +963,10 @@
     background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
     background-attachment: scroll !important;
     height: 100vh;
-    height: 100dvh; /* Dynamic viewport */
-    height: -webkit-fill-available; /* Safari fallback */
+    height: 100dvh;
+    /* Dynamic viewport */
+    height: -webkit-fill-available;
+    /* Safari fallback */
     overflow: hidden;
     margin: 0;
     padding: 0;
@@ -1216,18 +1243,21 @@
     font-size: 1.75rem;
   }
 }
+
 /* Fix Chro
 me mobile fade effect and bottom cut-off */
 @media screen and (max-width: 768px) {
+
   /* Prevent Chrome's fade effect at bottom */
-  html, body {
+  html,
+  body {
     position: relative;
     overflow-x: hidden;
     /* Remove any default fade masks */
     -webkit-mask-image: none;
     mask-image: none;
   }
-  
+
   .app-container {
     /* Ensure content reaches full bottom */
     padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
@@ -1235,7 +1265,7 @@ me mobile fade effect and bottom cut-off */
     -webkit-mask-image: none;
     mask-image: none;
   }
-  
+
   /* Specifically target the footer to ensure it's visible */
   .site-footer {
     margin-bottom: env(safe-area-inset-bottom);
@@ -1254,7 +1284,7 @@ me mobile fade effect and bottom cut-off */
     -webkit-mask-image: none;
     mask-image: none;
   }
-  
+
   .app-container {
     /* Ensure container fills viewport completely */
     min-height: 100vh;
@@ -1266,33 +1296,45 @@ me mobile fade effect and bottom cut-off */
 
 /* Additional fix for mobile browser UI overlays */
 @media screen and (max-width: 768px) {
+
   /* Prevent any browser-applied fade effects */
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     -webkit-mask-image: none !important;
     mask-image: none !important;
   }
-  
+
   /* Ensure full viewport coverage and fix white bars */
   html {
-    background-color: #1D3557; /* Fallback color matching gradient end */
+    background-color: #1D3557;
+    /* Fallback color matching gradient end */
     margin: 0 !important;
     padding: 0 !important;
   }
-  
+
   body {
-    background-color: #1D3557; /* Fallback color matching gradient end */
+    background-color: #1D3557;
+    /* Fallback color matching gradient end */
     margin: 0 !important;
     padding: 0 !important;
   }
 
   /* Fix all heading elements on mobile */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     margin-top: 0 !important;
     margin-bottom: 0 !important;
   }
 
   /* Fix navigation and container elements */
-  #container, #navigation, #content {
+  #container,
+  #navigation,
+  #content {
     margin: 0 !important;
     padding: 0 !important;
   }
@@ -1301,20 +1343,39 @@ me mobile fade effect and bottom cut-off */
     margin: 0 !important;
   }
 }
+
 /* Com
 prehensive Mobile Safari White Bar Fix */
 @media screen and (max-width: 768px) {
+
   /* Force remove all default margins and padding that cause white bars */
-  html, body, * {
+  html,
+  body,
+  * {
     margin: 0 !important;
   }
-  
+
   /* Specifically target common elements that have default margins */
-  h1, h2, h3, h4, h5, h6, p, ul, ol, li, div, section, article, header, footer, nav {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  ul,
+  ol,
+  li,
+  div,
+  section,
+  article,
+  header,
+  footer,
+  nav {
     margin-top: 0 !important;
     margin-bottom: 0 !important;
   }
-  
+
   /* Fix body to prevent white space */
   body {
     width: 100vw !important;
@@ -1326,7 +1387,7 @@ prehensive Mobile Safari White Bar Fix */
     left: 0 !important;
     overflow: hidden !important;
   }
-  
+
   /* Fix app container positioning */
   .app-container {
     position: absolute !important;
@@ -1342,11 +1403,12 @@ prehensive Mobile Safari White Bar Fix */
 /* Safari-specific white bar elimination */
 @supports (-webkit-touch-callout: none) {
   @media screen and (max-width: 768px) {
+
     /* Prevent Safari's default margins on all elements */
     * {
       margin: 0 !important;
     }
-    
+
     /* Force body to fill entire viewport */
     body {
       position: fixed !important;
@@ -1357,7 +1419,7 @@ prehensive Mobile Safari White Bar Fix */
       overscroll-behavior: none !important;
       -webkit-overscroll-behavior: none !important;
     }
-    
+
     /* Ensure app container scrolls properly */
     .app-container {
       position: absolute !important;
