@@ -147,11 +147,11 @@
   }
 
   .input-group {
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
   }
 
   .btn-primary {
-    margin-top: 0.5rem;
+    margin-top: 1rem;
     width: 100%;
   }
 
@@ -258,11 +258,11 @@
   }
 
   .input-group {
-    margin-bottom: 1.25rem;
+    margin-bottom: 1.5rem;
   }
 
   .btn-primary {
-    margin-top: 0.5rem;
+    margin-top: 1rem;
   }
 
   .features-section {
@@ -447,6 +447,16 @@
     font-weight: 500;
   }
 
+  /* Make New Note button same style as other dashboard buttons on mobile */
+  #newNoteBtn {
+    padding: 0.375rem 0.625rem !important;
+    font-size: 0.7rem !important;
+    border-radius: 20px !important;
+    font-weight: 500 !important;
+    min-width: auto !important;
+    white-space: nowrap !important;
+  }
+
   /* Make selection actions chip-style on mobile */
   .selection-info {
     padding: 0.375rem 0.75rem;
@@ -593,6 +603,16 @@
     font-size: 0.8rem;
     border-radius: 16px;
     font-weight: 500;
+  }
+
+  /* Make New Note button same style as other dashboard buttons on tablet */
+  #newNoteBtn {
+    padding: 0.5rem 0.875rem !important;
+    font-size: 0.8rem !important;
+    border-radius: 16px !important;
+    font-weight: 500 !important;
+    min-width: auto !important;
+    white-space: nowrap !important;
   }
 
   .filters-bar {
