@@ -687,9 +687,12 @@
     -webkit-overflow-scrolling: touch;
     background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
     height: 100%;
-    /* Fix Safari bottom white bar */
-    height: -webkit-fill-available;
+    height: 100dvh; /* Dynamic viewport */
+    height: -webkit-fill-available; /* Fix Safari bottom white bar */
     overflow: hidden;
+    /* Prevent overscroll bounce showing white */
+    overscroll-behavior: none;
+    -webkit-overscroll-behavior: none;
   }
 
   body {
@@ -697,10 +700,17 @@
     background-attachment: scroll !important;
     -webkit-overflow-scrolling: touch;
     height: 100vh;
-    /* Fix Safari bottom white bar */
-    height: -webkit-fill-available;
+    height: 100dvh; /* Dynamic viewport */
+    height: -webkit-fill-available; /* Fix Safari bottom white bar */
     overflow: hidden;
-    /* Simplified gradient for better iOS performance */
+    /* Safe area padding for Safari */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    /* Prevent overscroll bounce showing white */
+    overscroll-behavior: none;
+    -webkit-overscroll-behavior: none;
   }
 
   .app-container {
@@ -745,20 +755,31 @@
   html {
     background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
     height: 100%;
-    /* Fix Safari bottom white bar */
-    height: -webkit-fill-available;
+    height: 100dvh; /* Dynamic viewport */
+    height: -webkit-fill-available; /* Safari fallback */
     overflow: hidden;
+    /* Prevent fade effects */
+    -webkit-appearance: none;
+    appearance: none;
   }
 
   body {
     background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
     background-attachment: scroll !important;
     height: 100vh;
-    /* Fix Safari bottom white bar */
-    height: -webkit-fill-available;
+    height: 100dvh; /* Dynamic viewport */
+    height: -webkit-fill-available; /* Safari fallback */
     overflow: hidden;
     margin: 0;
     padding: 0;
+    /* Safe area padding for notched devices */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    /* Prevent fade effects */
+    -webkit-appearance: none;
+    appearance: none;
   }
 
   /* Ensure app container shows background gradient */
@@ -1012,5 +1033,70 @@
   .privacy-container h1,
   .terms-container h1 {
     font-size: 1.75rem;
+  }
+}
+/* Fix Chro
+me mobile fade effect and bottom cut-off */
+@media screen and (max-width: 768px) {
+  /* Prevent Chrome's fade effect at bottom */
+  html, body {
+    position: relative;
+    overflow-x: hidden;
+    /* Remove any default fade masks */
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  
+  .app-container {
+    /* Ensure content reaches full bottom */
+    padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+    /* Remove any fade masks */
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  
+  /* Specifically target the footer to ensure it's visible */
+  .site-footer {
+    margin-bottom: env(safe-area-inset-bottom);
+    /* Ensure footer background extends to bottom */
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* Chrome Android specific fixes */
+@media screen and (max-width: 768px) and (-webkit-min-device-pixel-ratio: 1) {
+  body {
+    /* Force Chrome to show full content */
+    min-height: 100vh;
+    min-height: 100dvh;
+    /* Prevent Chrome's automatic fade */
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  
+  .app-container {
+    /* Ensure container fills viewport completely */
+    min-height: 100vh;
+    min-height: 100dvh;
+    /* Add extra padding for gesture area */
+    padding-bottom: calc(env(safe-area-inset-bottom) + 2rem);
+  }
+}
+
+/* Additional fix for mobile browser UI overlays */
+@media screen and (max-width: 768px) {
+  /* Prevent any browser-applied fade effects */
+  *, *::before, *::after {
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+  
+  /* Ensure full viewport coverage */
+  html {
+    background-color: #1D3557; /* Fallback color matching gradient end */
+  }
+  
+  body {
+    background-color: #1D3557; /* Fallback color matching gradient end */
   }
 }
