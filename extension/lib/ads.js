@@ -214,16 +214,22 @@ class AdManager {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    // Prioritize NordVPN affiliate ad (80% chance)
-    const showNordVPN = Math.random() < 0.8; // 80% chance for NordVPN
-
-    console.log('Showing ad type:', showNordVPN ? 'NordVPN' : 'Upgrade');
-
-    if (showNordVPN) {
+    // Rotate between three ads: NordVPN (50%), Vrbo (30%), Upgrade (20%)
+    const random = Math.random();
+    let adType;
+    
+    if (random < 0.5) {
+      adType = 'nordvpn';
       this.showNordVPNAd();
+    } else if (random < 0.8) {
+      adType = 'vrbo';
+      this.showVrboAd();
     } else {
+      adType = 'upgrade';
       this.showUpgradeAd();
     }
+
+    console.log('Showing ad type:', adType);
   }
 
   // Show NordVPN affiliate ad
@@ -249,6 +255,31 @@ class AdManager {
     }
 
     this.addNordVPNStyles();
+  }
+
+  // Show Vrbo affiliate ad
+  showVrboAd() {
+    const adContent = document.getElementById('adContent');
+    if (!adContent) return;
+
+    adContent.innerHTML = `
+      <div class="vrbo-ad" id="vrboAdBanner">
+        <img src="../assets/vrbo.gif" 
+             alt="Vrbo - Book Your Perfect Vacation Rental" 
+             class="vrbo-banner"
+             loading="lazy">
+      </div>
+    `;
+
+    // Add click event listener (CSP compliant)
+    const vrboAd = document.getElementById('vrboAdBanner');
+    if (vrboAd) {
+      vrboAd.addEventListener('click', () => {
+        this.openVrbo();
+      });
+    }
+
+    this.addVrboStyles();
   }
 
   // Show upgrade ad
@@ -302,6 +333,41 @@ class AdManager {
         border-color: rgba(70, 135, 255, 0.4);
       }
       .nordvpn-banner {
+        width: 100%;
+        height: auto;
+        display: block;
+        max-height: 58px;
+        object-fit: contain;
+        object-position: center;
+        background: transparent;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Add Vrbo ad styles
+  addVrboStyles() {
+    if (document.getElementById('vrbo-ad-styles')) return;
+
+    const style = document.createElement('style');
+    style.id = 'vrbo-ad-styles';
+    style.textContent = `
+      .vrbo-ad {
+        display: block;
+        width: 100%;
+        cursor: pointer;
+        border-radius: 6px;
+        overflow: hidden;
+        transition: all 0.2s ease;
+        border: 1px solid rgba(255, 140, 0, 0.2);
+        box-shadow: 0 2px 8px rgba(255, 140, 0, 0.1);
+      }
+      .vrbo-ad:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(255, 140, 0, 0.2);
+        border-color: rgba(255, 140, 0, 0.4);
+      }
+      .vrbo-banner {
         width: 100%;
         height: auto;
         display: block;
@@ -405,6 +471,14 @@ class AdManager {
       url: 'https://go.nordvpn.net/aff_c?offer_id=15&aff_id=130711&url_id=902'
     });
     // this.trackAdClick('nordvpn'); // Disabled - using NordVPN analytics
+  }
+
+  // Handle Vrbo affiliate click
+  openVrbo() {
+    chrome.tabs.create({
+      url: 'https://www.jdoqocy.com/click-101532226-13820699'
+    });
+    // this.trackAdClick('vrbo'); // Disabled - using affiliate analytics
   }
 
   // Handle ad click
