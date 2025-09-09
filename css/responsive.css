@@ -396,8 +396,18 @@
     height: 18px;
   }
 
-  /* Hide footer on mobile for cleaner UX */
+  /* Show footer on mobile by default (main page) */
   .site-footer {
+    display: block;
+  }
+  
+  /* Hide footer on mobile for dashboard pages (when dashboard-main exists) */
+  .dashboard-main ~ .site-footer {
+    display: none;
+  }
+  
+  /* Hide footer on mobile for account pages (when account-main exists) */
+  .account-main ~ .site-footer {
     display: none;
   }
 
