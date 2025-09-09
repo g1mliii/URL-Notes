@@ -97,11 +97,27 @@ class Account {
       // Update user subscription status directly using the API pattern
       console.log('🔄 Updating profile to premium...');
       
+      // For manual testing, we need to get the customer ID from Stripe
+      // In a real scenario, this would come from the checkout session
+      let stripeCustomerId = null;
+      
+      // Try to get customer ID from a real session if available
+      if (sessionId && sessionId !== 'manual-test') {
+        // This would be a real Stripe session - we'd need to fetch the customer ID
+        // For now, we'll leave it null for manual testing
+        console.log('Real session ID detected:', sessionId);
+      }
+
       const updateData = {
         subscription_tier: 'premium',
         subscription_expires_at: null,
         updated_at: new Date().toISOString()
       };
+
+      // Add stripe_customer_id if we have it
+      if (stripeCustomerId) {
+        updateData.stripe_customer_id = stripeCustomerId;
+      }
 
       const profileResponse = await window.api._request(
         `${window.api.apiUrl}/profiles?id=eq.${window.api.currentUser.id}`, 
@@ -220,6 +236,18 @@ class Account {
     if (deleteAccountBtn) {
       deleteAccountBtn.addEventListener('click', () => this.confirmDeleteAccount());
     }
+
+    // View billing history button
+    const viewBillingBtn = document.getElementById('viewBillingBtn');
+    if (viewBillingBtn) {
+      viewBillingBtn.addEventListener('click', () => this.viewBillingHistory());
+    }
+
+    // Sync subscription button
+    const syncSubscriptionBtn = document.getElementById('syncSubscriptionBtn');
+    if (syncSubscriptionBtn) {
+      syncSubscriptionBtn.addEventListener('click', () => this.syncSubscriptionStatus());
+    }
   }
 
   async loadAccountData() {
@@ -313,10 +341,46 @@ class Account {
   }
 
   manageSubscription() {
-    if (window.subscriptionManager) {
-      window.subscriptionManager.createPortalSession();
-    } else {
-      console.error('Subscription manager not available');
+    // Direct link to Stripe customer portal
+    window.open('https://billing.stripe.com/p/login/test_28E00icerfLI4Ha6Kj9R600', '_blank');
+  }
+
+  viewBillingHistory() {
+    // Same Stripe portal link - users can view billing history there
+    window.open('https://billing.stripe.com/p/login/test_28E00icerfLI4Ha6Kj9R600', '_blank');
+  }
+
+  async syncSubscriptionStatus() {
+    try {
+      const syncBtn = document.getElementById('syncSubscriptionBtn');
+      if (syncBtn) {
+        syncBtn.disabled = true;
+        syncBtn.textContent = 'Syncing...';
+      }
+
+      console.log('🔄 Syncing subscription status with Stripe...');
+      
+      const response = await window.api.callFunction('sync-subscription', {});
+      
+      console.log('📊 Sync result:', response);
+      
+      if (response.success) {
+        alert(`Subscription synced! Status: ${response.subscription_tier}`);
+        // Refresh the page to show updated status
+        location.reload();
+      } else {
+        alert('Sync completed: ' + (response.message || 'No changes needed'));
+      }
+
+    } catch (error) {
+      console.error('❌ Error syncing subscription:', error);
+      alert('Failed to sync subscription status. Please try again.');
+    } finally {
+      const syncBtn = document.getElementById('syncSubscriptionBtn');
+      if (syncBtn) {
+        syncBtn.disabled = false;
+        syncBtn.textContent = 'Sync Subscription Status';
+      }
     }
   }
 
