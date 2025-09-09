@@ -520,7 +520,8 @@ Dashboard Specific Styles - Google Drive-like Layout */
   overflow: hidden;
 }
 
-.content-header::before {
+/* Removed decorative ::before element for simpler design and better performance */
+/* .content-header::before {
   content: '';
   position: absolute;
   top: 0;
@@ -533,7 +534,7 @@ Dashboard Specific Styles - Google Drive-like Layout */
     radial-gradient(circle at 40% 60%, color-mix(in srgb, var(--accent-primary) 4%, transparent) 0%, transparent 50%);
   pointer-events: none;
   opacity: 0.7;
-}
+} */
 
 .header-top {
   display: flex;

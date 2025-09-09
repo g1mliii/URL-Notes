@@ -15,7 +15,6 @@ class Dashboard {
   }
 
   async init() {
-    console.log('Dashboard module initialized');
 
     // Initialize storage first
     await this.initializeStorage();
@@ -56,7 +55,6 @@ class Dashboard {
     // Initialize API client
     try {
       await window.api.init();
-      console.log('✅ API client initialized');
     } catch (error) {
       console.warn('API client initialization failed:', error);
     }
@@ -65,7 +63,6 @@ class Dashboard {
     if (window.storage.init) {
       try {
         await window.storage.init();
-        console.log('✅ Storage initialized');
       } catch (error) {
         console.warn('Storage initialization failed:', error);
       }
@@ -400,7 +397,6 @@ class Dashboard {
 
       // Check if user is authenticated
       if (!window.api || !window.api.isAuthenticated()) {
-        console.log('User not authenticated, showing empty state');
         this.notes = [];
         this.filteredNotes = [];
         this.showEmptyState();
@@ -409,7 +405,6 @@ class Dashboard {
 
       // Fetch notes from API
       const fetchedNotes = await window.api.fetchNotes();
-      console.log('Fetched notes:', fetchedNotes.length);
 
       // Process and organize notes
       this.notes = this.processNotes(fetchedNotes);
@@ -431,14 +426,9 @@ class Dashboard {
   async cleanupOldDeletedNotes() {
     try {
       if (window.api && window.api.isAuthenticated()) {
-        console.log('Running background cleanup of old deleted notes...');
-        const result = await window.api.cleanupOldDeletedNotes();
-        if (result.cleaned > 0) {
-          console.log(`Background cleanup: removed ${result.cleaned} old deleted notes`);
-        }
+        await window.api.cleanupOldDeletedNotes();
       }
     } catch (error) {
-      console.warn('Background cleanup failed:', error);
       // Don't show error to user - this is a background operation
     }
   }
@@ -460,7 +450,6 @@ class Dashboard {
     cleanupBtn.textContent = 'Cleaning...';
 
     try {
-      console.log('Manual cleanup initiated by user');
       const result = await window.api.cleanupOldDeletedNotes();
 
       if (result.cleaned > 0) {
@@ -867,14 +856,11 @@ class Dashboard {
   }
 
   showNoteEditor(noteId = null) {
-    console.log('showNoteEditor called with noteId:', noteId);
     this.currentNote = noteId ? this.notes.find(n => n.id === noteId) : null;
 
     if (this.currentNote) {
-      console.log('Showing existing note panel');
       this.showNotePanel(this.currentNote);
     } else {
-      console.log('Creating new note');
       this.createNewNote();
     }
   }
@@ -1014,7 +1000,6 @@ class Dashboard {
   }
 
   createNewNote() {
-    console.log('createNewNote called');
     const newNote = {
       id: this.generateId(),
       title: '',
@@ -1027,7 +1012,6 @@ class Dashboard {
     };
 
     this.currentNote = newNote;
-    console.log('About to show note edit mode');
     this.showNoteEditMode();
   }
 
@@ -1041,14 +1025,9 @@ class Dashboard {
   }
 
   showNoteEditMode() {
-    console.log('showNoteEditMode called');
     const panel = document.getElementById('notePanel');
     const noteView = document.getElementById('noteView');
     const noteEdit = document.getElementById('noteEdit');
-
-    console.log('Panel found:', !!panel);
-    console.log('Note view found:', !!noteView);
-    console.log('Note edit found:', !!noteEdit);
 
     if (!panel || !noteView || !noteEdit) {
       console.error('Note panel elements not found');
@@ -1267,8 +1246,6 @@ class Dashboard {
     try {
       // Use the same deletion method as extension - sync with deletions array
       if (window.api && window.api.isAuthenticated()) {
-        console.log('Deleting note using sync method (like extension):', this.currentNote.id);
-
         // Prepare deletion payload in the same format as extension
         const deletionPayload = {
           operation: 'sync',
@@ -1282,7 +1259,6 @@ class Dashboard {
           _debug: 'deletion-v1-' + Date.now()
         };
 
-        console.log('Deletion payload:', deletionPayload);
         await window.api.syncNotes(deletionPayload);
       }
 
@@ -1307,7 +1283,6 @@ class Dashboard {
   async syncNoteToCloud(noteData) {
     // Only sync if user is authenticated
     if (!window.api || !window.api.isAuthenticated()) {
-      console.log('User not authenticated, skipping cloud sync');
       return;
     }
 
@@ -1331,26 +1306,8 @@ class Dashboard {
         _debug: 'dashboard-v2-' + Date.now() // Cache buster
       };
 
-      console.log('Syncing note with payload:', {
-        operation: syncPayload.operation,
-        noteCount: syncPayload.notes.length,
-        noteId: syncPayload.notes[0]?.id,
-        noteTitle: syncPayload.notes[0]?.title,
-        noteContent: syncPayload.notes[0]?.content?.substring(0, 50) + '...'
-      });
-
-      // Double-check the operation before sending
-      console.log('OPERATION CHECK - syncPayload.operation:', syncPayload.operation);
-      console.log('Note ID format check:', {
-        noteId: syncPayload.notes[0]?.id,
-        isValidUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(syncPayload.notes[0]?.id)
-      });
-      console.log('FULL PAYLOAD:', JSON.stringify(syncPayload, null, 2));
-
       // Use the API's sync method which handles encryption
-      console.log('About to call window.api.syncNotes...');
       await window.api.syncNotes(syncPayload);
-      console.log('Note synced to cloud successfully');
 
     } catch (error) {
       console.error('Cloud sync failed:', error);
@@ -1413,14 +1370,11 @@ class Dashboard {
   }
 
   showExportModal() {
-    // Placeholder - actual implementation in task 6
-    console.log('Show export modal');
     window.app.showModal('exportModal');
   }
 
   showImportModal() {
     // Placeholder - actual implementation in task 7
-    console.log('Show import modal');
   }
 
   // Selection Management Methods

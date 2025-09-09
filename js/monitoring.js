@@ -154,7 +154,7 @@ class ApplicationMonitor {
       sessionId: this.sessionId
     };
 
-    console.log(`📊 Performance metric: ${metric}`, data);
+    // console.log(`📊 Performance metric: ${metric}`, data);
   }
 
   trackPageView() {
@@ -459,7 +459,7 @@ class ApplicationMonitor {
       ...this.metrics
     };
 
-    console.log('📊 Metrics report:', metrics);
+    // console.log('📊 Metrics report:', metrics);
 
     // In production, send to analytics service
     if (this.config?.environment === 'production') {

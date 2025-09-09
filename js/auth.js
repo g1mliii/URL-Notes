@@ -23,7 +23,7 @@ class Auth {
     if (window.supabaseClient) {
       this.supabaseClient = window.supabaseClient;
       await this.supabaseClient.init();
-      console.log('✅ Supabase client initialized for web environment');
+
     } else {
       console.error('❌ Supabase client not available');
     }
@@ -31,7 +31,7 @@ class Auth {
     // Initialize encryption library
     if (window.noteEncryption) {
       this.encryption = window.noteEncryption;
-      console.log('✅ Encryption library loaded successfully');
+
     } else {
       console.warn('⚠️ Encryption library not available');
     }
@@ -1045,18 +1045,18 @@ class Auth {
       
       // Encrypt note
       const encrypted = await this.encryption.encryptNoteForCloud(testNote, key);
-      console.log('✅ Note encrypted successfully');
+
       
       // Decrypt note
       const decrypted = await this.encryption.decryptNoteFromCloud(encrypted, key);
-      console.log('✅ Note decrypted successfully');
+
       
       // Verify integrity
       const isValid = decrypted.title === testNote.title && 
                      decrypted.content === testNote.content;
       
       if (isValid) {
-        console.log('✅ Encryption integration test passed!');
+
         return true;
       } else {
         console.error('❌ Decrypted data does not match original');

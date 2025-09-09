@@ -51,9 +51,7 @@ class App {
       attempts++;
     }
 
-    if (window.auth) {
-      console.log('✅ Auth module ready');
-    } else {
+    if (!window.auth) {
       console.warn('⚠️ Auth module not available after timeout');
     }
   }
