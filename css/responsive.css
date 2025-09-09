@@ -225,7 +225,7 @@
   /* Dashboard Layout for Tablets */
   .dashboard-main {
     padding: 0;
-    min-height: calc(100vh - 80px - 80px); /* Account for header (80px) + footer (~80px) */
+    /* Remove min-height - let flexbox handle the layout naturally */
   }
 
   .notes-grid {
@@ -274,7 +274,7 @@
   /* Enhanced Dashboard Layout for Desktop */
   .dashboard-main {
     padding: 0;
-    min-height: calc(100vh - 80px - 80px); /* Account for header (80px) + footer (~80px) */
+    /* Remove min-height - let flexbox handle the layout naturally */
   }
 
   .notes-grid {
@@ -319,7 +319,7 @@
 
   .dashboard-main {
     padding: 0;
-    min-height: calc(100vh - 80px - 80px); /* Account for header (80px) + footer (~80px) */
+    /* Remove min-height - let flexbox handle the layout naturally */
   }
 
   .notes-grid {
@@ -338,12 +338,13 @@
 @media (max-width: 767px) {
   .dashboard-main {
     padding: 0;
-    min-height: calc(100vh - 60px - 80px); /* Account for header (60px) + footer (~80px) */
+    /* Remove min-height - let flexbox handle the layout naturally */
   }
 
   .content-header {
     padding: 1rem;
-    overflow: visible; /* Fix for mobile - prevents notes from being hidden behind header */
+    overflow: visible;
+    /* Fix for mobile - prevents notes from being hidden behind header */
   }
 
   .header-top {
@@ -390,7 +391,8 @@
   }
 
   .logout-btn .logout-text {
-    display: none; /* Hide text on mobile, show only icon */
+    display: none;
+    /* Hide text on mobile, show only icon */
   }
 
   .logout-btn svg {
@@ -486,7 +488,8 @@
 
   .content-header {
     padding: 1.5rem;
-    overflow: visible; /* Fix for tablet - prevents notes from being hidden behind header */
+    overflow: visible;
+    /* Fix for tablet - prevents notes from being hidden behind header */
   }
 
   /* Show logout text on tablet */
@@ -508,15 +511,20 @@
 }
 
 /* Short viewport height fix - prevents footer overlap */
-@media (max-height: 600px) {
-  .dashboard-main {
-    min-height: calc(100vh - 140px) !important; /* Extra space for very short screens */
-    padding-bottom: 1rem;
+@media (max-height: 800px) {
+  .app-container {
+    min-height: 100vh !important;
+    height: 100vh !important;
   }
-  
+
+  .dashboard-main {
+    flex: 1 !important;
+    overflow-y: auto !important;
+  }
+
   .site-footer {
-    position: relative;
-    margin-top: 1rem;
+    flex-shrink: 0 !important;
+    margin-top: auto !important;
   }
 }
 
@@ -771,7 +779,8 @@
     background: rgba(240, 248, 250, 0.8) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    overflow: visible !important; /* Fix for iOS - prevents notes from being hidden behind header */
+    overflow: visible !important;
+    /* Fix for iOS - prevents notes from being hidden behind header */
   }
 
   .filters-bar {
@@ -919,7 +928,8 @@
 
     .content-header {
       background: rgba(20, 45, 65, 0.9) !important;
-      overflow: visible !important; /* Fix for iOS dark mode - prevents notes from being hidden behind header */
+      overflow: visible !important;
+      /* Fix for iOS dark mode - prevents notes from being hidden behind header */
     }
 
     .filters-bar {

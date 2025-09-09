@@ -188,6 +188,7 @@ html {
 /* App Container with Glassmorphism */
 .app-container {
   min-height: 100vh;
+  height: 100vh; /* Force exact viewport height */
   background: var(--bg-primary);
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
