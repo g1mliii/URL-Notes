@@ -523,7 +523,7 @@
 Dashboard Specific Styles - Google Drive-like Layout */
 .dashboard-main {
   flex: 1;
-  min-height: calc(100vh - 80px);
+  min-height: calc(100vh - 80px - 80px); /* Account for header (80px) + footer (~80px) */
   padding: 0;
   position: relative;
   z-index: 1;

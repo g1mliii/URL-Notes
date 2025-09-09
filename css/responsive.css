@@ -225,7 +225,7 @@
   /* Dashboard Layout for Tablets */
   .dashboard-main {
     padding: 0;
-    min-height: calc(100vh - 80px);
+    min-height: calc(100vh - 80px - 80px); /* Account for header (80px) + footer (~80px) */
   }
 
   .notes-grid {
@@ -274,7 +274,7 @@
   /* Enhanced Dashboard Layout for Desktop */
   .dashboard-main {
     padding: 0;
-    min-height: calc(100vh - 80px);
+    min-height: calc(100vh - 80px - 80px); /* Account for header (80px) + footer (~80px) */
   }
 
   .notes-grid {
@@ -319,7 +319,7 @@
 
   .dashboard-main {
     padding: 0;
-    min-height: calc(100vh - 80px);
+    min-height: calc(100vh - 80px - 80px); /* Account for header (80px) + footer (~80px) */
   }
 
   .notes-grid {
@@ -338,7 +338,7 @@
 @media (max-width: 767px) {
   .dashboard-main {
     padding: 0;
-    min-height: calc(100vh - 60px);
+    min-height: calc(100vh - 60px - 80px); /* Account for header (60px) + footer (~80px) */
   }
 
   .content-header {
@@ -504,6 +504,19 @@
   /* Show logout text on desktop */
   .logout-btn .logout-text {
     display: inline;
+  }
+}
+
+/* Short viewport height fix - prevents footer overlap */
+@media (max-height: 600px) {
+  .dashboard-main {
+    min-height: calc(100vh - 140px) !important; /* Extra space for very short screens */
+    padding-bottom: 1rem;
+  }
+  
+  .site-footer {
+    position: relative;
+    margin-top: 1rem;
   }
 }
 
