@@ -150,15 +150,20 @@
     margin-bottom: 1.5rem;
   }
 
+  /* Add extra spacing between last input and button */
+  .auth-form .input-group:last-of-type {
+    margin-bottom: 2rem;
+  }
+
   .btn-primary {
-    margin-top: 1rem;
+    margin-top: 1.5rem;
     width: 100%;
   }
 
   .auth-links {
-    margin-top: 1.25rem;
+    margin-top: 2rem;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 1rem;
     text-align: center;
   }
 
@@ -261,8 +266,13 @@
     margin-bottom: 1.5rem;
   }
 
+  /* Add extra spacing between last input and button on tablet */
+  .auth-form .input-group:last-of-type {
+    margin-bottom: 2rem;
+  }
+
   .btn-primary {
-    margin-top: 1rem;
+    margin-top: 1.5rem;
   }
 
   .features-section {
@@ -433,9 +443,9 @@
 
   .header-right {
     justify-content: flex-start;
-    gap: 0.5rem;
+    gap: 0.75rem;
     flex-wrap: wrap;
-    margin-top: 0.75rem;
+    margin-top: 1rem;
   }
 
   .btn-icon {
@@ -502,9 +512,10 @@
 
   .filters-bar {
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.5rem;
     align-items: stretch;
-    margin-top: 1rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
   }
 
   .search-section {
@@ -516,6 +527,7 @@
   .filters-section {
     justify-content: stretch;
     width: 100%;
+    gap: 1rem;
   }
 
   .filter-select {
@@ -595,7 +607,7 @@
 
   /* Fix dashboard header buttons on tablet */
   .header-right {
-    gap: 0.625rem;
+    gap: 0.875rem;
   }
 
   .btn-icon {
@@ -616,7 +628,8 @@
   }
 
   .filters-bar {
-    margin-top: 0.75rem;
+    margin-top: 1.25rem;
+    padding-top: 0.75rem;
   }
 
   /* Show logout text on tablet */

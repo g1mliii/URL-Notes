@@ -177,6 +177,15 @@
   margin-bottom: 1rem;
 }
 
+/* Auth form specific spacing */
+.auth-form .input-group {
+  margin-bottom: 1.25rem;
+}
+
+.auth-form .input-group:last-of-type {
+  margin-bottom: 1.75rem;
+}
+
 .input-group label {
   display: block;
   margin-bottom: 0.5rem;
@@ -370,7 +379,8 @@
 .auth-links {
   display: flex;
   justify-content: space-between;
-  margin-top: 1rem;
+  margin-top: 1.5rem;
+  padding-top: 0.5rem;
 }
 
 .auth-links a {
@@ -621,6 +631,8 @@ Dashboard Specific Styles - Google Drive-like Layout */
   justify-content: space-between;
   position: relative;
   z-index: 1;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
 }
 
 .search-section {
