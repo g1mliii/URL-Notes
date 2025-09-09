@@ -1320,6 +1320,43 @@ class SupabaseClient {
       return { data: null, error: error.message };
     }
   }
+
+  // Call Supabase Edge Functions
+  async callFunction(functionName, params = {}) {
+    if (!this.isAuthenticated()) {
+      throw new Error('User not authenticated');
+    }
+
+    try {
+      const response = await fetch(`${this.supabaseUrl}/functions/v1/${functionName}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.accessToken}`,
+          'apikey': this.supabaseAnonKey
+        },
+        body: JSON.stringify(params)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Function ${functionName} error response:`, errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { error: errorText || `Function ${functionName} failed` };
+        }
+        throw new Error(errorData.error || `Function ${functionName} failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error(`Function ${functionName} error:`, error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance

@@ -8,6 +8,7 @@ scripts:
   - js/lib/api.js
   - js/app.js
   - js/auth.js
+  - js/subscription.js
   - js/account.js
   - js/monitoring.js
 ---
@@ -64,9 +65,30 @@ scripts:
                             </div>
                         </div>
 
+                        <!-- Detailed Subscription Information (Premium users) -->
+                        <div class="subscription-details hidden" id="subscriptionDetails">
+                            <div class="detail-row">
+                                <span class="detail-label">Plan:</span>
+                                <span class="detail-value">Premium ($2.50/month)</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Status:</span>
+                                <span class="detail-value" id="subscriptionStatusText">Active</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Next Billing:</span>
+                                <span class="detail-value" id="nextBillingDate">Loading...</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">AI Usage:</span>
+                                <span class="detail-value" id="aiUsageInfo">Loading...</span>
+                            </div>
+                        </div>
+
                         <div class="subscription-actions">
                             <button id="upgradeBtn" class="btn-primary">Upgrade to Premium</button>
                             <button id="manageSubscriptionBtn" class="btn-secondary hidden">Manage Subscription</button>
+                            <button id="viewBillingBtn" class="btn-secondary hidden">View Billing History</button>
                         </div>
                     </div>
 
@@ -161,14 +183,63 @@ scripts:
 
         <!-- Subscription Modal -->
         <div class="modal hidden" id="subscriptionModal">
-            <div class="modal-content">
+            <div class="modal-content subscription-modal">
                 <div class="modal-header">
                     <h3>Upgrade to Premium</h3>
                     <button class="modal-close" id="closeSubscriptionModal">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <!-- Subscription interface will be implemented in task 5 -->
-                    <p>Subscription management will be implemented in task 5.</p>
+                    <div class="subscription-plan">
+                        <div class="plan-header">
+                            <h4>Anchored Premium</h4>
+                            <div class="plan-price">
+                                <span class="price">$2.50</span>
+                                <span class="period">/month</span>
+                            </div>
+                        </div>
+                        
+                        <div class="plan-features">
+                            <h5>Premium Features Include:</h5>
+                            <ul>
+                                <li>✓ Cloud sync across all devices</li>
+                                <li>✓ Web application access</li>
+                                <li>✓ Advanced search and filtering</li>
+                                <li>✓ Unlimited version history</li>
+                                <li>✓ AI features (500 uses/month vs 5 free)</li>
+                                <li>✓ All export formats (JSON, Markdown, Obsidian, Notion, etc.)</li>
+                                <li>✓ Import functionality</li>
+                                <li>✓ Ad-free experience</li>
+                                <li>✓ Priority support</li>
+                            </ul>
+                        </div>
+
+                        <div class="plan-comparison">
+                            <div class="comparison-row">
+                                <span class="feature">AI Uses per Month</span>
+                                <span class="free-value">5</span>
+                                <span class="premium-value">500</span>
+                            </div>
+                            <div class="comparison-row">
+                                <span class="feature">Cloud Sync</span>
+                                <span class="free-value">✗</span>
+                                <span class="premium-value">✓</span>
+                            </div>
+                            <div class="comparison-row">
+                                <span class="feature">Web App Access</span>
+                                <span class="free-value">✗</span>
+                                <span class="premium-value">✓</span>
+                            </div>
+                        </div>
+
+                        <div class="plan-actions">
+                            <button id="startSubscriptionBtn" class="btn-primary btn-large">
+                                Start Premium Subscription
+                            </button>
+                            <p class="subscription-note">
+                                Secure payment processed by Stripe. Cancel anytime.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

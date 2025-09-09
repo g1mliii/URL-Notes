@@ -124,20 +124,30 @@
     - Drag-and-drop file editing supported
     - _Requirements: All requirements in production environment_
 
-- [ ] 6. Implement subscription management system
-  - [ ] 6.1 Create subscription upgrade interface
+- [x] 6. Implement subscription management system
+
+
+
+
+
+  - [x] 6.1 Create subscription upgrade interface
+
+
     - Build premium plan selection interface with $2.50/month pricing
-    - Integrate Stripe or paypal merchant, or braintree payment processing for monthly subscriptions
+    - Integrate Stripe  payment processing for monthly subscriptions
     - Create edge function for subscription status updates
+    - create upgrade fucntion and end of subcscription for already existing users and thier ai usage to 500 and back to 5, 
     - Handle successful payment and account activation
     - Display clear free vs premium feature comparison
     - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-  - [ ] 6.2 Build subscription management dashboard
-    - Display current subscription status and details
-    - Implement payment method update functionality
-    - Add subscription cancellation with expiration handling
-    - Create billing history and invoice access
+  - [x] 6.2 Build subscription management dashboard
+
+
+    - Display current subscription status and details using stripe integraion
+    - Implement payment method update functionality using strip integration
+    - Add subscription cancellation with expiration handling using stripe integration 
+    - Create billing history and invoice access using stripe integration
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
 - [ ] 7. Implement CJ Affiliate Ad System & Dashboard Upgrade Prompts

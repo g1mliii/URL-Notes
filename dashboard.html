@@ -9,6 +9,7 @@ scripts:
 - js/lib/storage.js
 - js/app.js
 - js/auth.js
+- js/subscription.js
 - js/dashboard.js
 - js/monitoring.js
 ---
@@ -35,6 +36,20 @@ scripts:
             </nav>
         </div>
     </header>
+
+    <!-- Upgrade Prompt Banner (for free users) -->
+    <div class="upgrade-banner hidden" id="upgradeBanner">
+        <div class="upgrade-content">
+            <div class="upgrade-message">
+                <h4>Your extension notes aren't synced yet</h4>
+                <p>Upgrade to Premium for $2.50/month to sync your notes across all devices and access the web app.</p>
+            </div>
+            <div class="upgrade-actions">
+                <button id="upgradeFromBannerBtn" class="btn-primary btn-small">Upgrade to Premium</button>
+                <button id="dismissBannerBtn" class="btn-text btn-small">Dismiss</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Dashboard Content -->
     <main class="dashboard-main">

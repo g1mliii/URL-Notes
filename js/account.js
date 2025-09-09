@@ -75,10 +75,23 @@ class Account {
 
   showSubscriptionModal() {
     window.app.showModal('subscriptionModal');
+    
+    // Set up subscription modal event listener
+    const startSubscriptionBtn = document.getElementById('startSubscriptionBtn');
+    if (startSubscriptionBtn && window.subscriptionManager) {
+      startSubscriptionBtn.onclick = () => {
+        window.app.hideModal('subscriptionModal');
+        window.subscriptionManager.createCheckoutSession();
+      };
+    }
   }
 
   manageSubscription() {
-    console.log('Manage subscription - will be implemented in task 5');
+    if (window.subscriptionManager) {
+      window.subscriptionManager.createPortalSession();
+    } else {
+      console.error('Subscription manager not available');
+    }
   }
 
   exportAllData() {

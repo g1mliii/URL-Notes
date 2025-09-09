@@ -116,7 +116,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
-  min-height: 100dvh; /* Dynamic viewport height for mobile */
+  min-height: 100dvh;
+  /* Dynamic viewport height for mobile */
   margin: 0;
   padding: 0;
   /* Don't add safe area padding to body - let app-container handle it */
@@ -195,7 +196,8 @@ html {
 /* App Container with Glassmorphism */
 .app-container {
   min-height: 100vh;
-  min-height: 100dvh; /* Dynamic viewport height for mobile */
+  min-height: 100dvh;
+  /* Dynamic viewport height for mobile */
   background: var(--bg-primary);
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
@@ -490,14 +492,17 @@ p {
   body {
     /* Prevent white space and ensure full coverage */
     background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
-    background-attachment: scroll; /* Fixed causes issues on mobile */
+    background-attachment: scroll;
+    /* Fixed causes issues on mobile */
     background-size: 100% 100%;
     background-repeat: no-repeat;
     overflow-x: hidden;
     width: 100vw;
     height: 100vh;
-    height: 100dvh; /* Dynamic viewport */
-    height: -webkit-fill-available; /* Safari fallback */
+    height: 100dvh;
+    /* Dynamic viewport */
+    height: -webkit-fill-available;
+    /* Safari fallback */
     margin: 0;
     padding: 0;
     /* Prevent Safari zoom and white bars */
@@ -511,9 +516,12 @@ p {
     /* Force exact viewport dimensions */
     width: 100vw;
     height: 100vh;
-    height: 100dvh; /* Dynamic viewport */
-    height: -webkit-fill-available; /* Safari */
-    min-height: unset; /* Remove conflicting min-height */
+    height: 100dvh;
+    /* Dynamic viewport */
+    height: -webkit-fill-available;
+    /* Safari */
+    min-height: unset;
+    /* Remove conflicting min-height */
     max-width: 100vw;
     overflow-x: hidden;
     overflow-y: auto;
@@ -546,7 +554,7 @@ p {
       width: 100%;
       height: 100%;
     }
-    
+
     .app-container {
       /* Safari specific positioning */
       position: absolute;
@@ -557,5 +565,453 @@ p {
       overflow-y: scroll;
       -webkit-overflow-scrolling: touch;
     }
+  }
+}
+
+/* Sub
+scription Management Styles */
+.subscription-modal .modal-content {
+  max-width: 600px;
+  width: 90%;
+}
+
+.subscription-plan {
+  padding: 0;
+}
+
+.plan-header {
+  text-align: center;
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1.5rem;
+}
+
+.plan-header h4 {
+  margin: 0 0 0.5rem 0;
+  color: var(--text-strong);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.plan-price {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.plan-price .price {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+}
+
+.plan-price .period {
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+.plan-features {
+  margin-bottom: 2rem;
+}
+
+.plan-features h5 {
+  margin: 0 0 1rem 0;
+  color: var(--text-strong);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.plan-features ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.plan-features li {
+  padding: 0.5rem 0;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.plan-features li::before {
+  content: "✓";
+  color: var(--success-color);
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.plan-comparison {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 2rem;
+  backdrop-filter: blur(var(--backdrop-blur));
+}
+
+.comparison-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.comparison-row:last-child {
+  border-bottom: none;
+}
+
+.comparison-row .feature {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.comparison-row .free-value {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-align: center;
+  min-width: 40px;
+}
+
+.comparison-row .premium-value {
+  color: var(--success-color);
+  font-weight: 600;
+  text-align: center;
+  min-width: 40px;
+}
+
+.plan-actions {
+  text-align: center;
+}
+
+.btn-large {
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.subscription-note {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Subscription Status Styles */
+.subscription-status {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.status-badge {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.free {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.status-badge.premium {
+  background: linear-gradient(135deg, var(--success-color), #20B2AA);
+  color: white;
+  box-shadow: 0 2px 8px rgba(46, 139, 87, 0.3);
+}
+
+.status-details {
+  flex: 1;
+}
+
+.status-details p {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.status-details p:first-child {
+  font-weight: 500;
+}
+
+.status-details p:last-child {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+.subscription-actions {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.subscription-actions .btn-primary,
+.subscription-actions .btn-secondary {
+  flex: 1;
+}
+
+/* Feature Lists */
+.free-features,
+.premium-features {
+  margin-bottom: 2rem;
+}
+
+.free-features h4,
+.premium-features h4 {
+  color: var(--text-strong);
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.premium-features h4 {
+  color: var(--accent-primary);
+}
+
+.free-features ul,
+.premium-features ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.free-features li,
+.premium-features li {
+  padding: 0.4rem 0;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.premium-features li {
+  color: var(--accent-primary);
+  font-weight: 500;
+}
+
+/* Error and Success Messages */
+.error-message,
+.success-message {
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+  display: none;
+}
+
+.error-message {
+  background: rgba(220, 20, 60, 0.1);
+  color: var(--error-color);
+  border: 1px solid rgba(220, 20, 60, 0.2);
+}
+
+.success-message {
+  background: rgba(46, 139, 87, 0.1);
+  color: var(--success-color);
+  border: 1px solid rgba(46, 139, 87, 0.2);
+}
+
+/* Responsive Design for Subscription Modal */
+@media (max-width: 768px) {
+  .subscription-modal .modal-content {
+    width: 95%;
+    margin: 1rem;
+  }
+
+  .plan-price .price {
+    font-size: 2rem;
+  }
+
+  .subscription-actions {
+    flex-direction: column;
+  }
+
+  .comparison-row {
+    grid-template-columns: 1fr auto auto;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* Upgrade 
+Banner Styles */
+.upgrade-banner {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: white;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.upgrade-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.upgrade-message h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: white;
+}
+
+.upgrade-message p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.4;
+}
+
+.upgrade-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.upgrade-actions .btn-primary {
+  background: white;
+  color: var(--accent-primary);
+  border: none;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  white-space: nowrap;
+}
+
+.upgrade-actions .btn-primary:hover {
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-1px);
+}
+
+.upgrade-actions .btn-text {
+  color: rgba(255, 255, 255, 0.8);
+  background: none;
+  border: none;
+  text-decoration: underline;
+  font-size: 0.85rem;
+  padding: 0.5rem;
+}
+
+.upgrade-actions .btn-text:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  text-decoration: none;
+}
+
+/* Responsive upgrade banner */
+@media (max-width: 768px) {
+  .upgrade-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .upgrade-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .upgrade-actions .btn-primary {
+    width: 100%;
+  }
+}
+
+/* Detailed Subscription Information Styles */
+.subscription-details {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  backdrop-filter: blur(var(--backdrop-blur));
+  border: 1px solid var(--border-color);
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.detail-value {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  text-align: right;
+}
+
+/* AI Usage specific styling */
+.detail-row .detail-value[id="aiUsageInfo"] {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+}
+
+/* Subscription actions enhancement */
+.subscription-actions {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.subscription-actions .btn-primary,
+.subscription-actions .btn-secondary {
+  flex: 1;
+  min-width: 150px;
+}
+
+/* Responsive design for subscription details */
+@media (max-width: 768px) {
+  .subscription-details {
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+
+  .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    padding: 0.5rem 0;
+  }
+
+  .detail-value {
+    text-align: left;
+    font-size: 0.85rem;
+  }
+
+  .subscription-actions {
+    flex-direction: column;
+  }
+
+  .subscription-actions .btn-primary,
+  .subscription-actions .btn-secondary {
+    width: 100%;
   }
 }

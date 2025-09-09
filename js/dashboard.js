@@ -21,6 +21,7 @@ class Dashboard {
 
     this.setupEventListeners();
     await this.loadNotes();
+    await this.checkSubscriptionStatus();
   }
 
   async initializeStorage() {
@@ -1203,26 +1204,38 @@ class Dashboard {
         noteData.id = this.generateId();
         noteData.createdAt = noteData.updatedAt;
 
-        // Add to local array
-        this.notes.unshift(this.processNotes([noteData])[0]);
+        // Add to local array at the beginning (most recent first)
+        const processedNote = this.processNotes([noteData])[0];
+        this.notes.unshift(processedNote);
+        console.log('New note added to local array:', processedNote.title, 'Total notes:', this.notes.length);
       }
 
       // Update current note
       this.currentNote = { ...this.currentNote, ...noteData };
 
       // Sync to cloud with encryption
-      await this.syncNoteToCloud(noteData);
+      try {
+        await this.syncNoteToCloud(noteData);
+      } catch (syncError) {
+        console.warn('Cloud sync failed, but note saved locally:', syncError);
+        // Note is still saved locally, so we can continue
+      }
 
-      // Refresh display
+      // Refresh display to show the new/updated note
       this.populateDomainFilter();
       this.applyFilters();
+      
+      // Force a UI refresh to ensure the new note appears
+      this.renderNotes();
 
-      // Switch back to view mode
-      this.populateNoteView(this.currentNote);
-      const noteView = document.getElementById('noteView');
-      const noteEdit = document.getElementById('noteEdit');
-      noteEdit.classList.add('hidden');
-      noteView.classList.remove('hidden');
+      // Switch back to view mode and update the panel with the saved note
+      setTimeout(() => {
+        this.populateNoteView(this.currentNote);
+        const noteView = document.getElementById('noteView');
+        const noteEdit = document.getElementById('noteEdit');
+        noteEdit.classList.add('hidden');
+        noteView.classList.remove('hidden');
+      }, 100);
 
       this.showNotification('Note saved successfully!', 'success');
 
@@ -1313,6 +1326,7 @@ class Dashboard {
       console.error('Cloud sync failed:', error);
       // Don't throw error - note is saved locally
       this.showNotification('Note saved locally. Cloud sync will retry later.', 'warning');
+      throw error; // Re-throw so the caller knows sync failed
     }
   }
 
@@ -1445,11 +1459,22 @@ class Dashboard {
         bulkDeleteBtn.classList.add('loading');
       }
 
-      // Delete from cloud
+      // Delete from cloud using the same method as single note delete
       if (window.api && window.api.isAuthenticated()) {
-        for (const noteId of selectedIds) {
-          await window.api.deleteNote(noteId);
-        }
+        // Prepare deletion payload in the same format as single note delete
+        const deletionPayload = {
+          operation: 'sync',
+          notes: [], // No notes to sync, just deletions
+          deletions: selectedIds.map(noteId => ({
+            id: noteId,
+            deletedAt: new Date().toISOString()
+          })),
+          lastSyncTime: null,
+          timestamp: Date.now(),
+          _debug: 'bulk-deletion-v1-' + Date.now()
+        };
+
+        await window.api.syncNotes(deletionPayload);
       }
 
       // Remove from local array
@@ -1513,6 +1538,96 @@ class Dashboard {
   // Public method to refresh notes (can be called from other modules)
   async refresh() {
     await this.loadNotes();
+  }
+
+  // Subscription and upgrade banner management
+  async checkSubscriptionStatus() {
+    try {
+      if (!window.api || !window.api.isAuthenticated()) {
+        return;
+      }
+
+      // Check if subscription manager is available
+      if (window.subscriptionManager) {
+        await window.subscriptionManager.loadSubscriptionStatus();
+        this.handleUpgradeBanner(window.subscriptionManager.currentSubscription);
+      } else {
+        // Fallback: try to get subscription status directly
+        const response = await window.api.callFunction('subscription-management', {
+          action: 'get_subscription_status'
+        });
+        this.handleUpgradeBanner(response);
+      }
+    } catch (error) {
+      console.error('Error checking subscription status:', error);
+      // Show upgrade banner by default if we can't determine status
+      this.showUpgradeBanner();
+    }
+  }
+
+  handleUpgradeBanner(subscriptionData) {
+    if (!subscriptionData) {
+      this.showUpgradeBanner();
+      return;
+    }
+
+    const isPremium = subscriptionData.subscription_tier === 'premium';
+    
+    if (isPremium) {
+      this.hideUpgradeBanner();
+    } else {
+      // Check if user has dismissed the banner recently
+      const dismissed = localStorage.getItem('upgradeBannerDismissed');
+      const dismissedTime = dismissed ? parseInt(dismissed) : 0;
+      const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+      
+      if (dismissedTime < oneDayAgo) {
+        this.showUpgradeBanner();
+      }
+    }
+  }
+
+  showUpgradeBanner() {
+    const banner = document.getElementById('upgradeBanner');
+    if (banner) {
+      banner.classList.remove('hidden');
+      
+      // Set up event listeners if not already set
+      const upgradeBtn = document.getElementById('upgradeFromBannerBtn');
+      const dismissBtn = document.getElementById('dismissBannerBtn');
+      
+      if (upgradeBtn && !upgradeBtn.hasAttribute('data-listener')) {
+        upgradeBtn.setAttribute('data-listener', 'true');
+        upgradeBtn.addEventListener('click', () => {
+          if (window.subscriptionManager) {
+            window.subscriptionManager.createCheckoutSession();
+          } else {
+            // Fallback: redirect to account page
+            window.location.href = '/account';
+          }
+        });
+      }
+      
+      if (dismissBtn && !dismissBtn.hasAttribute('data-listener')) {
+        dismissBtn.setAttribute('data-listener', 'true');
+        dismissBtn.addEventListener('click', () => {
+          this.dismissUpgradeBanner();
+        });
+      }
+    }
+  }
+
+  hideUpgradeBanner() {
+    const banner = document.getElementById('upgradeBanner');
+    if (banner) {
+      banner.classList.add('hidden');
+    }
+  }
+
+  dismissUpgradeBanner() {
+    this.hideUpgradeBanner();
+    // Remember dismissal for 24 hours
+    localStorage.setItem('upgradeBannerDismissed', Date.now().toString());
   }
 }
 
