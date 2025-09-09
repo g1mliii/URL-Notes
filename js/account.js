@@ -19,16 +19,27 @@ class Account {
     const canceled = urlParams.get('canceled');
     const sessionId = urlParams.get('session_id');
 
+    console.log('🔍 Checking payment success:', {
+      success,
+      canceled,
+      sessionId,
+      fullUrl: window.location.href
+    });
+
     if (success === 'true' && sessionId) {
+      console.log('✅ Payment success detected, starting upgrade...');
       this.handlePaymentSuccess(sessionId);
     } else if (canceled === 'true') {
+      console.log('❌ Payment was canceled');
       this.showPaymentCanceled();
+    } else {
+      console.log('ℹ️ No payment status detected');
     }
   }
 
   async handlePaymentSuccess(sessionId) {
     console.log('Payment successful, upgrading user to premium');
-    
+
     try {
       // Show success message
       const successDiv = document.getElementById('paymentSuccess');
@@ -41,7 +52,7 @@ class Account {
 
       // Update user to premium in database
       await this.upgradeUserToPremium(sessionId);
-      
+
       // Reload subscription status
       if (window.subscriptionManager) {
         await window.subscriptionManager.loadSubscriptionStatus();
@@ -60,37 +71,65 @@ class Account {
 
   async upgradeUserToPremium(sessionId) {
     try {
+      console.log('🔄 Starting premium upgrade for user:', window.api.user?.id);
+      console.log('🔄 Session ID:', sessionId);
+
+      // Check if we have the user and API available
+      if (!window.api || !window.api.user) {
+        console.error('❌ API or user not available');
+        throw new Error('API or user not available');
+      }
+
       // Update user subscription status directly
-      const { error: profileError } = await window.api.supabase
+      console.log('🔄 Updating profile to premium...');
+      const { data: profileData, error: profileError } = await window.api.supabase
         .from('profiles')
         .update({
           subscription_tier: 'premium',
           subscription_expires_at: null,
           updated_at: new Date().toISOString()
         })
-        .eq('id', window.api.user.id);
+        .eq('id', window.api.user.id)
+        .select();
+
+      console.log('📊 Profile update result:', { profileData, profileError });
 
       if (profileError) {
-        console.error('Error upgrading user profile:', profileError);
+        console.error('❌ Error upgrading user profile:', profileError);
         throw profileError;
       }
 
+      console.log('✅ Profile updated successfully');
+
       // Update AI usage limits to 500 for premium users
+      console.log('🔄 Updating AI usage limits...');
       const { data: aiUsage, error: aiError } = await window.api.supabase.rpc('check_ai_usage', {
         p_user_id: window.api.user.id,
         p_feature_name: 'overall'
       });
 
+      console.log('📊 AI usage update result:', { aiUsage, aiError });
+
       if (aiError) {
-        console.error('Error updating AI usage limits:', aiError);
+        console.error('⚠️ Error updating AI usage limits:', aiError);
         // Don't throw here - profile update succeeded, AI update is secondary
       } else {
-        console.log('AI usage limits updated:', aiUsage);
+        console.log('✅ AI usage limits updated:', aiUsage);
       }
 
-      console.log('User successfully upgraded to premium with 500 AI uses per month');
+      console.log('🎉 User successfully upgraded to premium with 500 AI uses per month');
+
+      // Force refresh the subscription status display
+      setTimeout(() => {
+        if (window.subscriptionManager) {
+          console.log('🔄 Refreshing subscription display...');
+          window.subscriptionManager.loadSubscriptionStatus();
+        }
+      }, 1000);
+
     } catch (error) {
-      console.error('Failed to upgrade user:', error);
+      console.error('❌ Failed to upgrade user:', error);
+      alert('Failed to upgrade account. Please contact support with session ID: ' + sessionId);
       throw error;
     }
   }
@@ -134,6 +173,28 @@ class Account {
       exportAllBtn.addEventListener('click', () => this.exportAllData());
     }
 
+    // Refresh status button
+    const refreshStatusBtn = document.getElementById('refreshStatusBtn');
+    if (refreshStatusBtn) {
+      refreshStatusBtn.addEventListener('click', () => {
+        console.log('🔄 Manual refresh requested');
+        if (window.subscriptionManager) {
+          window.subscriptionManager.loadSubscriptionStatus();
+        }
+        location.reload(); // Force full page reload
+      });
+    }
+
+    // Manual upgrade button (for testing)
+    const manualUpgradeBtn = document.getElementById('manualUpgradeBtn');
+    if (manualUpgradeBtn) {
+      manualUpgradeBtn.addEventListener('click', () => {
+        console.log('🔄 Manual upgrade triggered');
+        const sessionId = new URLSearchParams(window.location.search).get('session_id') || 'manual-test';
+        this.upgradeUserToPremium(sessionId);
+      });
+    }
+
     const deleteAccountBtn = document.getElementById('deleteAccountBtn');
     if (deleteAccountBtn) {
       deleteAccountBtn.addEventListener('click', () => this.confirmDeleteAccount());
@@ -143,7 +204,7 @@ class Account {
   async loadAccountData() {
     try {
       console.log('Loading account data...');
-      
+
       // Wait for API to be available
       if (!window.api) {
         console.warn('API not available yet, retrying...');
@@ -202,7 +263,7 @@ class Account {
     const userEmail = document.getElementById('userEmail');
     const accountCreated = document.getElementById('accountCreated');
     const statusBadge = document.getElementById('statusBadge');
-    
+
     if (userEmail) userEmail.textContent = userData.email;
     if (accountCreated) {
       accountCreated.textContent = new Date(userData.created_at).toLocaleDateString();
@@ -219,7 +280,7 @@ class Account {
 
   showSubscriptionModal() {
     window.app.showModal('subscriptionModal');
-    
+
     // Set up subscription modal event listener
     const startSubscriptionBtn = document.getElementById('startSubscriptionBtn');
     if (startSubscriptionBtn && window.subscriptionManager) {
