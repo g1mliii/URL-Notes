@@ -1,0 +1,11 @@
+{
+  "functions": {
+    "api/stripe-webhook.js": {
+      "maxDuration": 10
+    }
+  },
+  "env": {
+    "SUPABASE_URL": "https://kqjcorjjvunmyrnzvqgr.supabase.co",
+    "SUPABASE_SERVICE_ROLE_KEY": "@supabase-service-role-key"
+  }
+}

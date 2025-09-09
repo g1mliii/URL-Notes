@@ -8,8 +8,93 @@ class Account {
 
   init() {
     console.log('Account module initialized - will be implemented in task 5');
+    this.checkPaymentSuccess();
     this.setupEventListeners();
     this.loadAccountData();
+  }
+
+  checkPaymentSuccess() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const canceled = urlParams.get('canceled');
+    const sessionId = urlParams.get('session_id');
+
+    if (success === 'true' && sessionId) {
+      this.handlePaymentSuccess(sessionId);
+    } else if (canceled === 'true') {
+      this.showPaymentCanceled();
+    }
+  }
+
+  async handlePaymentSuccess(sessionId) {
+    console.log('Payment successful, upgrading user to premium');
+    
+    try {
+      // Show success message
+      const successDiv = document.getElementById('paymentSuccess');
+      if (successDiv) {
+        successDiv.style.display = 'block';
+        setTimeout(() => {
+          successDiv.style.display = 'none';
+        }, 10000); // Hide after 10 seconds
+      }
+
+      // Update user to premium in database
+      await this.upgradeUserToPremium(sessionId);
+      
+      // Reload subscription status
+      if (window.subscriptionManager) {
+        await window.subscriptionManager.loadSubscriptionStatus();
+      }
+
+      // Clean up URL
+      const url = new URL(window.location);
+      url.searchParams.delete('success');
+      url.searchParams.delete('session_id');
+      window.history.replaceState({}, document.title, url.pathname);
+
+    } catch (error) {
+      console.error('Error handling payment success:', error);
+    }
+  }
+
+  async upgradeUserToPremium(sessionId) {
+    try {
+      // Update user subscription status directly
+      const { error } = await window.api.supabase
+        .from('profiles')
+        .update({
+          subscription_tier: 'premium',
+          subscription_expires_at: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', window.api.user.id);
+
+      if (error) {
+        console.error('Error upgrading user:', error);
+        throw error;
+      }
+
+      console.log('User successfully upgraded to premium');
+    } catch (error) {
+      console.error('Failed to upgrade user:', error);
+      throw error;
+    }
+  }
+
+  showPaymentCanceled() {
+    const canceledDiv = document.getElementById('paymentCanceled');
+    if (canceledDiv) {
+      canceledDiv.style.display = 'block';
+      setTimeout(() => {
+        canceledDiv.style.display = 'none';
+      }, 5000); // Hide after 5 seconds
+    }
+
+    // Clean up URL
+    const url = new URL(window.location);
+    url.searchParams.delete('canceled');
+    window.history.replaceState({}, document.title, url.pathname);
   }
 
   setupEventListeners() {

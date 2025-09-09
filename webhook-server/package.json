@@ -1,0 +1,13 @@
+{
+  "name": "anchored-webhook-server",
+  "version": "1.0.0",
+  "description": "Simple webhook server for Stripe events",
+  "main": "api/stripe-webhook.js",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  }
+}

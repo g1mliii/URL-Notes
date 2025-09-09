@@ -1029,4 +1029,42 @@ Banner Styles */
   .subscription-actions .btn-secondary {
     width: 100%;
   }
+}/* Payme
+nt Success/Error Messages */
+.success-message {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 6px rgba(16, 185, 129, 0.1);
+}
+
+.success-message h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.2rem;
+}
+
+.success-message p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+.error-message {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 6px rgba(239, 68, 68, 0.1);
+}
+
+.error-message h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.2rem;
+}
+
+.error-message p {
+  margin: 0;
+  opacity: 0.9;
 }
