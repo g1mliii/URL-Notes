@@ -34,9 +34,9 @@ serve(async (req) => {
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
@@ -51,22 +51,22 @@ serve(async (req) => {
     switch (action) {
       case 'create_checkout_session':
         return await createCheckoutSession(stripe, supabaseClient, user, requestData)
-      
+
       case 'create_portal_session':
         return await createPortalSession(stripe, supabaseClient, user, requestData)
-      
+
       case 'get_subscription_status':
         return await getSubscriptionStatus(supabaseClient, user)
-      
+
       case 'webhook':
         return await handleWebhook(stripe, supabaseClient, req)
-      
+
       default:
         return new Response(
           JSON.stringify({ error: 'Invalid action' }),
-          { 
-            status: 400, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           }
         )
     }
@@ -74,9 +74,9 @@ serve(async (req) => {
     console.error('Subscription management error:', error)
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
   }
@@ -86,7 +86,7 @@ async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: 
   try {
     // Get or create customer
     let customerId = null
-    
+
     // Check if user already has a Stripe customer ID
     const { data: profile } = await supabaseClient
       .from('profiles')
@@ -139,22 +139,32 @@ async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: 
       metadata: {
         supabase_user_id: user.id,
       },
+      // Enable automatic tax calculation
+      automatic_tax: {
+        enabled: true,
+      },
+      // Collect customer address for tax calculation
+      billing_address_collection: 'required',
+      // Optional: collect shipping address if needed
+      // shipping_address_collection: {
+      //   allowed_countries: ['US', 'CA', 'GB', 'AU', 'DE', 'FR', 'IT', 'ES'],
+      // },
     })
 
     return new Response(
       JSON.stringify({ sessionId: session.id, url: session.url }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
   } catch (error) {
     console.error('Create checkout session error:', error)
     return new Response(
       JSON.stringify({ error: 'Failed to create checkout session' }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
   }
@@ -172,9 +182,9 @@ async function createPortalSession(stripe: Stripe, supabaseClient: any, user: an
     if (!profile?.stripe_customer_id) {
       return new Response(
         JSON.stringify({ error: 'No subscription found' }),
-        { 
-          status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
@@ -187,18 +197,18 @@ async function createPortalSession(stripe: Stripe, supabaseClient: any, user: an
 
     return new Response(
       JSON.stringify({ url: session.url }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
   } catch (error) {
     console.error('Create portal session error:', error)
     return new Response(
       JSON.stringify({ error: 'Failed to create portal session' }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
   }
@@ -225,18 +235,18 @@ async function getSubscriptionStatus(supabaseClient: any, user: any) {
         has_stripe_customer: !!profile?.stripe_customer_id,
         ai_usage: aiUsage || null,
       }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
   } catch (error) {
     console.error('Get subscription status error:', error)
     return new Response(
       JSON.stringify({ error: 'Failed to get subscription status' }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
   }
@@ -258,11 +268,11 @@ async function handleWebhook(stripe: Stripe, supabaseClient: any, req: Request) 
       case 'checkout.session.completed':
         await handleCheckoutCompleted(supabaseClient, event.data.object)
         break
-      
+
       case 'invoice_payment.paid':
         await handlePaymentSucceeded(supabaseClient, event.data.object)
         break
-      
+
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted':
@@ -301,7 +311,7 @@ async function handleCheckoutCompleted(supabaseClient: any, session: any) {
 
 async function handlePaymentSucceeded(supabaseClient: any, invoice: any) {
   const customerId = invoice.customer
-  
+
   // Find user by Stripe customer ID
   const { data: profile } = await supabaseClient
     .from('profiles')
@@ -323,7 +333,7 @@ async function handlePaymentSucceeded(supabaseClient: any, invoice: any) {
 
 async function handleSubscriptionChanged(supabaseClient: any, subscription: any) {
   const customerId = subscription.customer
-  
+
   // Find user by Stripe customer ID
   const { data: profile } = await supabaseClient
     .from('profiles')
@@ -343,7 +353,7 @@ async function handleSubscriptionChanged(supabaseClient: any, subscription: any)
         .eq('id', profile.id)
     } else if (['canceled', 'unpaid', 'past_due'].includes(subscription.status)) {
       // Downgrade to free
-      const expiresAt = subscription.current_period_end 
+      const expiresAt = subscription.current_period_end
         ? new Date(subscription.current_period_end * 1000).toISOString()
         : new Date().toISOString()
 
