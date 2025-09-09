@@ -206,6 +206,14 @@ html {
   box-sizing: border-box;
 }
 
+/* Flexbox layout to push footer to bottom - desktop/tablet only */
+@media (min-width: 768px) {
+  .app-container {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
 /* Nebulous liquid-glass background overlay - DISABLED for footer fix */
 .app-container::before {
   /* content: ''; */
