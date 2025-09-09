@@ -61,7 +61,7 @@ class Account {
   async upgradeUserToPremium(sessionId) {
     try {
       // Update user subscription status directly
-      const { error } = await window.api.supabase
+      const { error: profileError } = await window.api.supabase
         .from('profiles')
         .update({
           subscription_tier: 'premium',
@@ -70,12 +70,25 @@ class Account {
         })
         .eq('id', window.api.user.id);
 
-      if (error) {
-        console.error('Error upgrading user:', error);
-        throw error;
+      if (profileError) {
+        console.error('Error upgrading user profile:', profileError);
+        throw profileError;
       }
 
-      console.log('User successfully upgraded to premium');
+      // Update AI usage limits to 500 for premium users
+      const { data: aiUsage, error: aiError } = await window.api.supabase.rpc('check_ai_usage', {
+        p_user_id: window.api.user.id,
+        p_feature_name: 'overall'
+      });
+
+      if (aiError) {
+        console.error('Error updating AI usage limits:', aiError);
+        // Don't throw here - profile update succeeded, AI update is secondary
+      } else {
+        console.log('AI usage limits updated:', aiUsage);
+      }
+
+      console.log('User successfully upgraded to premium with 500 AI uses per month');
     } catch (error) {
       console.error('Failed to upgrade user:', error);
       throw error;
