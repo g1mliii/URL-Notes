@@ -138,6 +138,40 @@
   transform: translateY(0);
 }
 
+/* Logout Button */
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.logout-btn:hover {
+  background: var(--error-color);
+  color: var(--text-invert);
+  border-color: var(--error-color);
+  transform: translateY(-1px);
+}
+
+.logout-btn svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+}
+
+.logout-btn:hover svg {
+  transform: translateX(2px);
+}
+
 /* Form Elements */
 .input-group {
   margin-bottom: 1rem;
@@ -520,21 +554,7 @@ Dashboard Specific Styles - Google Drive-like Layout */
   overflow: hidden;
 }
 
-/* Removed decorative ::before element for simpler design and better performance */
-/* .content-header::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background:
-    radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--accent-primary) 8%, transparent) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, color-mix(in srgb, var(--accent-secondary) 6%, transparent) 0%, transparent 50%),
-    radial-gradient(circle at 40% 60%, color-mix(in srgb, var(--accent-primary) 4%, transparent) 0%, transparent 50%);
-  pointer-events: none;
-  opacity: 0.7;
-} */
+/* Removed decorative ::before element for better mobile performance */
 
 .header-top {
   display: flex;
