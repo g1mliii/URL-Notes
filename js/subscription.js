@@ -241,7 +241,13 @@ class SubscriptionManager {
       window.location.href = response.url;
     } catch (error) {
       console.error('Error creating portal session:', error);
-      this.showError('Failed to open subscription management. Please try again.');
+      
+      // Show specific error message if it's the "no Stripe subscription" issue
+      if (error.message.includes('No Stripe subscription found')) {
+        this.showError('This account has premium status but no Stripe subscription. Please create a new subscription or contact support.');
+      } else {
+        this.showError('Failed to open subscription management. Please try again.');
+      }
       
       // Reset button state
       const manageBtn = document.getElementById('manageSubscriptionBtn');

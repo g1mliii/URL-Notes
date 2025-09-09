@@ -187,8 +187,12 @@ async function createPortalSession(stripe: Stripe, supabaseClient: any, user: an
       .single()
 
     if (!profile?.stripe_customer_id) {
+      console.log('No Stripe customer ID found for user:', user.id)
       return new Response(
-        JSON.stringify({ error: 'No subscription found' }),
+        JSON.stringify({ 
+          error: 'No Stripe subscription found',
+          message: 'This account has premium status but no Stripe subscription. Please contact support or create a new subscription.'
+        }),
         {
           status: 404,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -211,8 +215,12 @@ async function createPortalSession(stripe: Stripe, supabaseClient: any, user: an
     )
   } catch (error) {
     console.error('Create portal session error:', error)
+    console.error('Error details:', error.message, error.stack)
     return new Response(
-      JSON.stringify({ error: 'Failed to create portal session' }),
+      JSON.stringify({ 
+        error: 'Failed to create portal session',
+        details: error.message 
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
