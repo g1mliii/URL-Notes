@@ -26,11 +26,56 @@ serve(async (req) => {
       apiVersion: '2023-10-16',
     })
 
-    // Get all users with Stripe customer IDs
+    // First, handle expired subscriptions without calling Stripe API
+    const { data: expiredProfiles, error: expiredError } = await supabaseClient
+      .from('profiles')
+      .select('id, subscription_expires_at')
+      .not('subscription_expires_at', 'is', null)
+      .lt('subscription_expires_at', new Date().toISOString())
+      .eq('subscription_tier', 'premium')
+
+    if (expiredError) {
+      throw expiredError
+    }
+
+    let expiredCount = 0
+    if (expiredProfiles.length > 0) {
+      console.log(`⏰ Found ${expiredProfiles.length} expired subscriptions to downgrade`)
+      
+      // Bulk update expired users to free
+      const { error: bulkUpdateError } = await supabaseClient
+        .from('profiles')
+        .update({
+          subscription_tier: 'free',
+          updated_at: new Date().toISOString()
+        })
+        .in('id', expiredProfiles.map(p => p.id))
+
+      if (bulkUpdateError) {
+        throw bulkUpdateError
+      }
+
+      expiredCount = expiredProfiles.length
+      console.log(`✅ Downgraded ${expiredCount} expired users to free`)
+    }
+
+    // Get users with Stripe customer IDs that need Stripe API checks
+    // Check users who expire yesterday, today, or tomorrow (or have no expiry date)
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const dayAfterTomorrow = new Date(today)
+    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2)
+
+    console.log(`🔍 Checking users expiring between ${yesterday.toISOString()} and ${dayAfterTomorrow.toISOString()}`)
+
     const { data: profiles, error: profilesError } = await supabaseClient
       .from('profiles')
-      .select('id, stripe_customer_id, subscription_tier')
+      .select('id, stripe_customer_id, subscription_tier, subscription_expires_at')
       .not('stripe_customer_id', 'is', null)
+      .or(`subscription_expires_at.is.null,subscription_expires_at.gte.${yesterday.toISOString()},subscription_expires_at.lt.${dayAfterTomorrow.toISOString()}`)
 
     if (profilesError) {
       throw profilesError
@@ -127,12 +172,13 @@ serve(async (req) => {
       }
     }
 
-    console.log(`✅ Sync complete: ${updatedCount} updated, ${errorCount} errors`)
+    console.log(`✅ Sync complete: ${expiredCount} expired, ${updatedCount} stripe-checked, ${errorCount} errors`)
 
     return new Response(JSON.stringify({
       success: true,
-      total_users: profiles.length,
-      updated_count: updatedCount,
+      total_users_checked: profiles.length,
+      expired_users_downgraded: expiredCount,
+      stripe_api_updates: updatedCount,
       error_count: errorCount,
       timestamp: new Date().toISOString()
     }), {
