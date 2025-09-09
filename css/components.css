@@ -522,22 +522,14 @@
 /* 
 Dashboard Specific Styles - Google Drive-like Layout */
 .dashboard-main {
-  flex: 1;
   padding: 0;
   position: relative;
   z-index: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0; /* Allow flexbox to shrink if needed */
 }
 
 .dashboard-content {
   width: 100%;
   background: var(--bg-primary);
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: calc(100vh - 200px); /* Ensure enough height to push footer down */
 }
 
 .content-header {
@@ -707,7 +699,6 @@ Dashboard Specific Styles - Google Drive-like Layout */
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1rem;
   max-width: 100%;
-  flex: 1;
 }
 
 /* Remove domain sections for cleaner grid */
@@ -828,11 +819,6 @@ Dashboard Specific Styles - Google Drive-like Layout */
   text-align: center;
   padding: 3rem 1rem;
   color: var(--text-secondary);
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
 }
 
 .empty-state h3 {

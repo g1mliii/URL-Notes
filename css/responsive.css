@@ -225,7 +225,6 @@
   /* Dashboard Layout for Tablets */
   .dashboard-main {
     padding: 0;
-    /* Remove min-height - let flexbox handle the layout naturally */
   }
 
   .notes-grid {
@@ -274,7 +273,6 @@
   /* Enhanced Dashboard Layout for Desktop */
   .dashboard-main {
     padding: 0;
-    /* Remove min-height - let flexbox handle the layout naturally */
   }
 
   .notes-grid {
@@ -319,7 +317,6 @@
 
   .dashboard-main {
     padding: 0;
-    /* Remove min-height - let flexbox handle the layout naturally */
   }
 
   .notes-grid {
@@ -338,7 +335,6 @@
 @media (max-width: 767px) {
   .dashboard-main {
     padding: 0;
-    /* Remove min-height - let flexbox handle the layout naturally */
   }
 
   .content-header {
@@ -398,6 +394,11 @@
   .logout-btn svg {
     width: 18px;
     height: 18px;
+  }
+
+  /* Hide footer on mobile for cleaner UX */
+  .site-footer {
+    display: none;
   }
 
   .filters-bar {
@@ -496,6 +497,11 @@
   .logout-btn .logout-text {
     display: inline;
   }
+
+  /* Show footer on tablet and larger */
+  .site-footer {
+    display: block;
+  }
 }
 
 /* Desktop styles */
@@ -507,6 +513,11 @@
   /* Show logout text on desktop */
   .logout-btn .logout-text {
     display: inline;
+  }
+
+  /* Show footer on desktop */
+  .site-footer {
+    display: block;
   }
 }
 
