@@ -50,6 +50,10 @@ class Account {
         }, 10000); // Hide after 10 seconds
       }
 
+      // Wait a bit for the page to fully load
+      console.log('⏳ Waiting for page to fully load before upgrade...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
       // Update user to premium in database
       await this.upgradeUserToPremium(sessionId);
 
@@ -71,14 +75,24 @@ class Account {
 
   async upgradeUserToPremium(sessionId) {
     try {
-      console.log('🔄 Starting premium upgrade for user:', window.api.user?.id);
+      console.log('🔄 Starting premium upgrade for user:', window.api?.currentUser?.id);
       console.log('🔄 Session ID:', sessionId);
 
-      // Check if we have the user and API available
-      if (!window.api || !window.api.user) {
-        console.error('❌ API or user not available');
-        throw new Error('API or user not available');
+      // Wait for API and user to be available
+      let attempts = 0;
+      while ((!window.api || !window.api.currentUser) && attempts < 10) {
+        console.log(`⏳ Waiting for API/user... attempt ${attempts + 1}`);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        attempts++;
       }
+
+      // Check if we have the user and API available
+      if (!window.api || !window.api.currentUser) {
+        console.error('❌ API or user still not available after waiting');
+        throw new Error('API or user not available after waiting');
+      }
+
+      console.log('✅ API and user are now available:', window.api.currentUser.id);
 
       // Update user subscription status directly
       console.log('🔄 Updating profile to premium...');
@@ -89,7 +103,7 @@ class Account {
           subscription_expires_at: null,
           updated_at: new Date().toISOString()
         })
-        .eq('id', window.api.user.id)
+        .eq('id', window.api.currentUser.id)
         .select();
 
       console.log('📊 Profile update result:', { profileData, profileError });
@@ -104,7 +118,7 @@ class Account {
       // Update AI usage limits to 500 for premium users
       console.log('🔄 Updating AI usage limits...');
       const { data: aiUsage, error: aiError } = await window.api.supabase.rpc('check_ai_usage', {
-        p_user_id: window.api.user.id,
+        p_user_id: window.api.currentUser.id,
         p_feature_name: 'overall'
       });
 
