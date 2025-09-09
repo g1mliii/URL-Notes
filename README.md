@@ -9,22 +9,34 @@ A companion web platform for the Anchored browser extension, providing premium u
 ## Project Structure
 
 ```
-web-app/
+anchored/
 ├── index.html              # Landing/login page
-├── dashboard.html          # Main notes dashboard
+├── dashboard.html          # Main notes dashboard  
 ├── account.html           # Account management
-├── css/
-│   ├── main.css           # Core styles with glassmorphism design tokens
+├── privacy.html           # Privacy policy
+├── terms.html             # Terms of service
+├── css/                   # Stylesheets
+│   ├── main.css           # Core styles with glassmorphism design
 │   ├── components.css     # Reusable UI components
 │   └── responsive.css     # Mobile-first responsive breakpoints
-├── js/
+├── js/                    # JavaScript modules
 │   ├── app.js            # Main application orchestrator
-│   ├── auth.js           # Authentication management (task 3)
-│   ├── dashboard.js      # Notes dashboard functionality (task 4)
-│   ├── account.js        # Account management (task 5)
-│   └── lib/              # Shared libraries (adapted from extension)
-│       └── placeholder.js # Placeholder for future libraries
-└── README.md             # This file
+│   ├── auth.js           # Authentication management
+│   ├── dashboard.js      # Notes dashboard functionality
+│   ├── account.js        # Account management
+│   └── lib/              # Shared libraries
+│       ├── api.js        # Supabase API client
+│       └── monitoring.js # Error tracking and analytics
+├── extension/             # Browser extension code
+│   ├── manifest.json     # Extension manifest
+│   ├── popup/            # Extension popup UI
+│   └── lib/              # Extension libraries
+├── supabase/             # Database and Edge Functions
+│   ├── migrations/       # Database schema
+│   └── functions/        # Edge Functions (sync, AI)
+├── guide files/          # Documentation and guides
+├── scripts/              # Deployment and utility scripts
+└── _layouts/             # Jekyll layouts for GitHub Pages
 ```
 
 ## Features
