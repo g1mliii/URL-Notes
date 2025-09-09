@@ -9,12 +9,12 @@ class Account {
   init() {
     console.log('🚀 Account module initialized');
     console.log('🔍 Current URL:', window.location.href);
-    
+
     // Add a small delay to ensure page is fully loaded
     setTimeout(() => {
       this.checkPaymentSuccess();
     }, 1000);
-    
+
     this.setupEventListeners();
     this.loadAccountData();
   }
@@ -60,8 +60,8 @@ class Account {
       console.log('⏳ Waiting for page to fully load before upgrade...');
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Update user to premium in database
-      await this.upgradeUserToPremium(sessionId);
+      // Sync subscription status from Stripe
+      await this.syncSubscriptionStatus();
 
       // Reload subscription status
       if (window.subscriptionManager) {
@@ -102,11 +102,11 @@ class Account {
 
       // Update user subscription status directly using the API pattern
       console.log('🔄 Updating profile to premium...');
-      
+
       // For manual testing, we need to get the customer ID from Stripe
       // In a real scenario, this would come from the checkout session
       let stripeCustomerId = null;
-      
+
       // Try to get customer ID from a real session if available
       if (sessionId && sessionId !== 'manual-test') {
         // This would be a real Stripe session - we'd need to fetch the customer ID
@@ -126,7 +126,7 @@ class Account {
       }
 
       const profileResponse = await window.api._request(
-        `${window.api.apiUrl}/profiles?id=eq.${window.api.currentUser.id}`, 
+        `${window.api.apiUrl}/profiles?id=eq.${window.api.currentUser.id}`,
         {
           method: 'PATCH',
           auth: true,
@@ -139,10 +139,10 @@ class Account {
 
       // Update AI usage limits by calling the RPC function
       console.log('🔄 Updating AI usage limits...');
-      
+
       try {
         const aiUsageResponse = await window.api._request(
-          `${window.api.apiUrl}/rpc/check_ai_usage`, 
+          `${window.api.apiUrl}/rpc/check_ai_usage`,
           {
             method: 'POST',
             auth: true,
@@ -174,6 +174,84 @@ class Account {
       console.error('❌ Failed to upgrade user:', error);
       alert('Failed to upgrade account. Please contact support with session ID: ' + sessionId);
       throw error;
+    }
+  }
+
+  async syncSubscriptionStatus() {
+    try {
+      console.log('🔄 Syncing subscription status from Stripe...');
+
+      // Wait for API to be available
+      let attempts = 0;
+      while ((!window.api || !window.api.currentUser) && attempts < 10) {
+        console.log(`⏳ Waiting for API/user... attempt ${attempts + 1}`);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        attempts++;
+      }
+
+      if (!window.api || !window.api.currentUser) {
+        throw new Error('API or user not available');
+      }
+
+      // Show loading state
+      const syncBtn = document.getElementById('syncSubscriptionBtn');
+      if (syncBtn) {
+        syncBtn.disabled = true;
+        syncBtn.textContent = 'Syncing...';
+      }
+
+      // Call the sync subscription status function
+      const result = await window.api.callFunction('subscription-api', {
+        action: 'sync_subscription_status'
+      });
+
+      console.log('✅ Sync result:', result);
+
+      // Show success message
+      if (result.updated) {
+        console.log(`🎉 Subscription updated: ${result.message}`);
+
+        // Show a temporary success message
+        const successMessage = document.createElement('div');
+        successMessage.className = 'alert alert-success';
+        successMessage.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 1000; padding: 15px; border-radius: 5px; background: #d4edda; border: 1px solid #c3e6cb; color: #155724;';
+        successMessage.textContent = result.message;
+        document.body.appendChild(successMessage);
+
+        setTimeout(() => {
+          document.body.removeChild(successMessage);
+        }, 5000);
+      } else {
+        console.log(`ℹ️ No update needed: ${result.message}`);
+      }
+
+      // Force refresh the subscription status display
+      if (window.subscriptionManager) {
+        await window.subscriptionManager.loadSubscriptionStatus();
+      }
+
+    } catch (error) {
+      console.error('❌ Failed to sync subscription status:', error);
+
+      // Show error message
+      const errorMessage = document.createElement('div');
+      errorMessage.className = 'alert alert-error';
+      errorMessage.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 1000; padding: 15px; border-radius: 5px; background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24;';
+      errorMessage.textContent = `Failed to sync subscription: ${error.message}`;
+      document.body.appendChild(errorMessage);
+
+      setTimeout(() => {
+        if (document.body.contains(errorMessage)) {
+          document.body.removeChild(errorMessage);
+        }
+      }, 5000);
+    } finally {
+      // Reset button state
+      const syncBtn = document.getElementById('syncSubscriptionBtn');
+      if (syncBtn) {
+        syncBtn.disabled = false;
+        syncBtn.textContent = 'Sync Subscription Status';
+      }
     }
   }
 
@@ -228,13 +306,12 @@ class Account {
       });
     }
 
-    // Manual upgrade button (for testing)
-    const manualUpgradeBtn = document.getElementById('manualUpgradeBtn');
-    if (manualUpgradeBtn) {
-      manualUpgradeBtn.addEventListener('click', () => {
-        console.log('🔄 Manual upgrade triggered');
-        const sessionId = new URLSearchParams(window.location.search).get('session_id') || 'manual-test';
-        this.upgradeUserToPremium(sessionId);
+    // Sync subscription status button
+    const syncSubscriptionBtn = document.getElementById('syncSubscriptionBtn');
+    if (syncSubscriptionBtn) {
+      syncSubscriptionBtn.addEventListener('click', () => {
+        console.log('🔄 Sync subscription status triggered');
+        this.syncSubscriptionStatus();
       });
     }
 

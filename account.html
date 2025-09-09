@@ -39,13 +39,16 @@ scripts:
                 <!-- Success Message -->
                 <div id="paymentSuccess" class="success-message" style="display: none;">
                     <h3>🎉 Payment Successful!</h3>
-                    <p>Your account has been upgraded to Premium. Enjoy unlimited features!</p>
-                    <button id="refreshStatusBtn" class="btn-primary" style="margin-top: 10px;">Refresh Status</button>
+                    <p>Your subscription status is being synced automatically...</p>
+                    <div class="loading-spinner" style="margin: 10px 0;">⏳ Syncing...</div>
                 </div>
 
-                <!-- Manual Upgrade Button (for testing) -->
+                <!-- Sync Subscription Status Button -->
                 <div style="margin-bottom: 20px;">
-                    <button id="manualUpgradeBtn" class="btn-secondary">Manual Upgrade (Testing)</button>
+                    <button id="syncSubscriptionBtn" class="btn-secondary">Sync Subscription Status</button>
+                    <p style="font-size: 0.9em; color: #666; margin-top: 5px;">
+                        Click to check your latest subscription status from Stripe
+                    </p>
                 </div>
 
                 <!-- Canceled Message -->
