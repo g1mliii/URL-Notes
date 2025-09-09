@@ -94,41 +94,48 @@ class Account {
 
       console.log('✅ API and user are now available:', window.api.currentUser.id);
 
-      // Update user subscription status directly
+      // Update user subscription status directly using the API pattern
       console.log('🔄 Updating profile to premium...');
-      const { data: profileData, error: profileError } = await window.api.supabase
-        .from('profiles')
-        .update({
-          subscription_tier: 'premium',
-          subscription_expires_at: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', window.api.currentUser.id)
-        .select();
+      
+      const updateData = {
+        subscription_tier: 'premium',
+        subscription_expires_at: null,
+        updated_at: new Date().toISOString()
+      };
 
-      console.log('📊 Profile update result:', { profileData, profileError });
+      const profileResponse = await window.api._request(
+        `${window.api.apiUrl}/profiles?id=eq.${window.api.currentUser.id}`, 
+        {
+          method: 'PATCH',
+          auth: true,
+          body: JSON.stringify(updateData)
+        }
+      );
 
-      if (profileError) {
-        console.error('❌ Error upgrading user profile:', profileError);
-        throw profileError;
-      }
-
+      console.log('📊 Profile update result:', profileResponse);
       console.log('✅ Profile updated successfully');
 
-      // Update AI usage limits to 500 for premium users
+      // Update AI usage limits by calling the RPC function
       console.log('🔄 Updating AI usage limits...');
-      const { data: aiUsage, error: aiError } = await window.api.supabase.rpc('check_ai_usage', {
-        p_user_id: window.api.currentUser.id,
-        p_feature_name: 'overall'
-      });
+      
+      try {
+        const aiUsageResponse = await window.api._request(
+          `${window.api.apiUrl}/rpc/check_ai_usage`, 
+          {
+            method: 'POST',
+            auth: true,
+            body: JSON.stringify({
+              p_user_id: window.api.currentUser.id,
+              p_feature_name: 'overall'
+            })
+          }
+        );
 
-      console.log('📊 AI usage update result:', { aiUsage, aiError });
-
-      if (aiError) {
+        console.log('📊 AI usage update result:', aiUsageResponse);
+        console.log('✅ AI usage limits updated');
+      } catch (aiError) {
         console.error('⚠️ Error updating AI usage limits:', aiError);
         // Don't throw here - profile update succeeded, AI update is secondary
-      } else {
-        console.log('✅ AI usage limits updated:', aiUsage);
       }
 
       console.log('🎉 User successfully upgraded to premium with 500 AI uses per month');
