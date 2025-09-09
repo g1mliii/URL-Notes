@@ -142,7 +142,7 @@ async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: 
       metadata: {
         supabase_user_id: user.id,
       },
-      // Enable automatic tax calculation
+      // Enable automatic tax calculation (now configured in Stripe dashboard)
       automatic_tax: {
         enabled: true,
       },
