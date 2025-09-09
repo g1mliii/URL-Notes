@@ -84,6 +84,9 @@ serve(async (req) => {
 
 async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: any, data: any) {
   try {
+    console.log('Creating checkout session for user:', user.id, user.email)
+    console.log('Request data:', data)
+    
     // Get or create customer
     let customerId = null
 
@@ -160,8 +163,12 @@ async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: 
     )
   } catch (error) {
     console.error('Create checkout session error:', error)
+    console.error('Error details:', error.message, error.stack)
     return new Response(
-      JSON.stringify({ error: 'Failed to create checkout session' }),
+      JSON.stringify({ 
+        error: 'Failed to create checkout session',
+        details: error.message 
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

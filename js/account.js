@@ -43,15 +43,61 @@ class Account {
   }
 
   async loadAccountData() {
-    // Placeholder - actual implementation in task 5
-    console.log('Loading account data...');
-    
-    // Update UI with placeholder data
-    this.updateAccountUI({
-      email: 'user@example.com',
-      created_at: new Date().toISOString(),
-      subscription_tier: 'free'
-    });
+    try {
+      console.log('Loading account data...');
+      
+      // Wait for API to be available
+      if (!window.api) {
+        console.warn('API not available yet, retrying...');
+        setTimeout(() => this.loadAccountData(), 500);
+        return;
+      }
+
+      // Check if user is authenticated
+      if (!window.api.isAuthenticated()) {
+        console.warn('User not authenticated');
+        // Redirect to login or show error
+        window.location.href = '/';
+        return;
+      }
+
+      // Get current user data
+      const currentUser = window.api.currentUser;
+      if (!currentUser) {
+        console.warn('No current user data');
+        return;
+      }
+
+      // Get user profile data from Supabase
+      let profileData = null;
+      try {
+        const response = await window.api._request(`${window.api.apiUrl}/profiles?id=eq.${currentUser.id}`, { auth: true });
+        if (response && response.length > 0) {
+          profileData = response[0];
+        }
+      } catch (error) {
+        console.warn('Could not load profile data:', error);
+      }
+
+      // Combine user data with profile data
+      const userData = {
+        email: currentUser.email || 'Unknown',
+        created_at: profileData?.created_at || currentUser.created_at || new Date().toISOString(),
+        subscription_tier: profileData?.subscription_tier || 'free'
+      };
+
+      console.log('Loaded user data:', userData);
+      this.updateAccountUI(userData);
+
+    } catch (error) {
+      console.error('Error loading account data:', error);
+      // Show placeholder data if loading fails
+      this.updateAccountUI({
+        email: 'Error loading email',
+        created_at: new Date().toISOString(),
+        subscription_tier: 'free'
+      });
+    }
   }
 
   updateAccountUI(userData) {
