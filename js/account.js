@@ -243,11 +243,7 @@ class Account {
       viewBillingBtn.addEventListener('click', () => this.viewBillingHistory());
     }
 
-    // Sync subscription button
-    const syncSubscriptionBtn = document.getElementById('syncSubscriptionBtn');
-    if (syncSubscriptionBtn) {
-      syncSubscriptionBtn.addEventListener('click', () => this.syncSubscriptionStatus());
-    }
+
   }
 
   async loadAccountData() {
@@ -350,39 +346,7 @@ class Account {
     window.open('https://billing.stripe.com/p/login/test_28E00icerfLI4Ha6Kj9R600', '_blank');
   }
 
-  async syncSubscriptionStatus() {
-    try {
-      const syncBtn = document.getElementById('syncSubscriptionBtn');
-      if (syncBtn) {
-        syncBtn.disabled = true;
-        syncBtn.textContent = 'Syncing...';
-      }
 
-      console.log('🔄 Syncing subscription status with Stripe...');
-      
-      const response = await window.api.callFunction('sync-subscription', {});
-      
-      console.log('📊 Sync result:', response);
-      
-      if (response.success) {
-        alert(`Subscription synced! Status: ${response.subscription_tier}`);
-        // Refresh the page to show updated status
-        location.reload();
-      } else {
-        alert('Sync completed: ' + (response.message || 'No changes needed'));
-      }
-
-    } catch (error) {
-      console.error('❌ Error syncing subscription:', error);
-      alert('Failed to sync subscription status. Please try again.');
-    } finally {
-      const syncBtn = document.getElementById('syncSubscriptionBtn');
-      if (syncBtn) {
-        syncBtn.disabled = false;
-        syncBtn.textContent = 'Sync Subscription Status';
-      }
-    }
-  }
 
   exportAllData() {
     console.log('Export all data - will be implemented in task 6');
