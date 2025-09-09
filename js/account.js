@@ -7,8 +7,14 @@ class Account {
   }
 
   init() {
-    console.log('Account module initialized - will be implemented in task 5');
-    this.checkPaymentSuccess();
+    console.log('🚀 Account module initialized');
+    console.log('🔍 Current URL:', window.location.href);
+    
+    // Add a small delay to ensure page is fully loaded
+    setTimeout(() => {
+      this.checkPaymentSuccess();
+    }, 1000);
+    
     this.setupEventListeners();
     this.loadAccountData();
   }
