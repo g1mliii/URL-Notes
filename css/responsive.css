@@ -510,23 +510,7 @@
   }
 }
 
-/* Short viewport height fix - prevents footer overlap */
-@media (max-height: 800px) {
-  .app-container {
-    min-height: 100vh !important;
-    height: 100vh !important;
-  }
-
-  .dashboard-main {
-    flex: 1 !important;
-    overflow-y: auto !important;
-  }
-
-  .site-footer {
-    flex-shrink: 0 !important;
-    margin-top: auto !important;
-  }
-}
+/* Removed problematic height-based media query that was causing scroll issues */
 
 /* Large desktop styles */
 @media (min-width: 1440px) {
