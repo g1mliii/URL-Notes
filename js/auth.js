@@ -1422,6 +1422,30 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('🔐 Manual detection test error:', error);
     }
   };
+  
+  // Auto-detect password reset on page load
+  setTimeout(() => {
+    console.log('🔐 Auto-detecting password reset...');
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const isRecovery = hashParams.has('type') && hashParams.get('type') === 'recovery';
+    const hasTokens = hashParams.has('access_token') && hashParams.has('refresh_token');
+    
+    console.log('🔐 Auto-detection check:', { isRecovery, hasTokens });
+    
+    if (isRecovery && hasTokens) {
+      console.log('🔐 Password reset detected! Showing modal...');
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      
+      // Show notification first
+      window.auth.showNotification('Password reset link verified. Please enter your new password.', 'success');
+      
+      // Show modal after brief delay
+      setTimeout(() => {
+        window.auth.showPasswordResetForm(accessToken, refreshToken);
+      }, 1000);
+    }
+  }, 2000); // Wait 2 seconds for everything to load
 });
 
 // Export for use in other modules
