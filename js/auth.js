@@ -799,7 +799,18 @@ class Auth {
     const isRecovery = (urlParams.has('type') && urlParams.get('type') === 'recovery') ||
                       (hashParams.has('type') && hashParams.get('type') === 'recovery');
     
+    console.log('Password reset detection:', {
+      hasQueryType: urlParams.has('type'),
+      queryType: urlParams.get('type'),
+      hasHashType: hashParams.has('type'),
+      hashType: hashParams.get('type'),
+      isRecovery: isRecovery,
+      fullHash: window.location.hash,
+      fullSearch: window.location.search
+    });
+    
     if (isRecovery) {
+      console.log('Calling handlePasswordResetCallback...');
       await this.handlePasswordResetCallback();
     }
   }
