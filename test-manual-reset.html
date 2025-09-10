@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Password Reset Test</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="nav-header">
+            <div class="nav-content">
+                <div class="logo">
+                    <h1>Manual Password Reset Test</h1>
+                </div>
+            </div>
+        </header>
+
+        <main class="hero-section">
+            <div class="hero-content">
+                <h2>Manual Password Reset Test</h2>
+                <p>This page manually tests the password reset modal</p>
+
+                <div class="auth-container">
+                    <div class="auth-form">
+                        <h3>Test Controls</h3>
+                        <button id="testModalBtn" class="btn-primary">Show Password Reset Modal</button>
+                        <button id="testDetectionBtn" class="btn-secondary">Test URL Detection</button>
+                        <button id="testNotificationBtn" class="btn-secondary">Test Notification</button>
+                        
+                        <div id="results" style="margin-top: 1rem; padding: 1rem; background: var(--bg-tertiary); border-radius: 8px;">
+                            <p>Click buttons above to test functionality</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="config.js"></script>
+    <script src="js/lib/encryption.js"></script>
+    <script src="js/lib/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const results = document.getElementById('results');
+            
+            // Wait for auth to be available
+            let attempts = 0;
+            while (!window.auth && attempts < 50) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            
+            if (!window.auth) {
+                results.innerHTML = '<p style="color: red;">❌ Auth module not available</p>';
+                return;
+            }
+            
+            results.innerHTML = '<p style="color: green;">✅ Auth module loaded successfully</p>';
+            
+            // Test modal button
+            document.getElementById('testModalBtn').addEventListener('click', () => {
+                try {
+                    window.auth.showPasswordResetForm('test_token', 'test_refresh');
+                    results.innerHTML += '<p>✅ Password reset modal triggered</p>';
+                } catch (error) {
+                    results.innerHTML += `<p style="color: red;">❌ Modal error: ${error.message}</p>`;
+                }
+            });
+            
+            // Test detection button
+            document.getElementById('testDetectionBtn').addEventListener('click', async () => {
+                try {
+                    await window.auth.handlePasswordResetCallback();
+                    results.innerHTML += '<p>✅ Password reset callback triggered</p>';
+                } catch (error) {
+                    results.innerHTML += `<p style="color: red;">❌ Detection error: ${error.message}</p>`;
+                }
+            });
+            
+            // Test notification button
+            document.getElementById('testNotificationBtn').addEventListener('click', () => {
+                try {
+                    window.auth.showNotification('Test notification message', 'success');
+                    results.innerHTML += '<p>✅ Notification triggered</p>';
+                } catch (error) {
+                    results.innerHTML += `<p style="color: red;">❌ Notification error: ${error.message}</p>`;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
