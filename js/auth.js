@@ -49,10 +49,14 @@ class Auth {
     // Check for OAuth callback and password reset
     console.log('🔐 About to call handleOAuthCallback...');
     try {
-      await this.handleOAuthCallback();
-      console.log('🔐 handleOAuthCallback completed');
+      // Don't await - call it without blocking
+      this.handleOAuthCallback().then(() => {
+        console.log('🔐 handleOAuthCallback completed');
+      }).catch((error) => {
+        console.error('🔐 Error in handleOAuthCallback:', error);
+      });
     } catch (error) {
-      console.error('🔐 Error in handleOAuthCallback:', error);
+      console.error('🔐 Error calling handleOAuthCallback:', error);
     }
     
     // Update auth UI based on current state
@@ -925,7 +929,12 @@ class Auth {
       
       // Show password reset form after a brief delay
       setTimeout(() => {
-        this.showPasswordResetForm(accessToken, refreshToken);
+        try {
+          this.showPasswordResetForm(accessToken, refreshToken);
+        } catch (error) {
+          console.error('Error showing password reset form:', error);
+          this.showNotification('Error showing password reset form. Please try again.', 'error');
+        }
       }, 1000);
       
     } catch (error) {
@@ -1389,6 +1398,27 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('🔐 window.supabaseClient available at creation:', !!window.supabaseClient);
   window.auth = new Auth();
   console.log('🔐 Auth instance created and assigned to window.auth');
+  
+  // Add manual test functions to window for debugging
+  window.testPasswordReset = () => {
+    console.log('🔐 Manual password reset test triggered');
+    try {
+      window.auth.showPasswordResetForm('test_token', 'test_refresh');
+      console.log('🔐 Manual test: Modal should be visible');
+    } catch (error) {
+      console.error('🔐 Manual test error:', error);
+    }
+  };
+  
+  window.testPasswordResetDetection = () => {
+    console.log('🔐 Manual password reset detection test');
+    try {
+      window.auth.handlePasswordResetCallback();
+      console.log('🔐 Manual detection test completed');
+    } catch (error) {
+      console.error('🔐 Manual detection test error:', error);
+    }
+  };
 });
 
 // Export for use in other modules

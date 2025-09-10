@@ -100,9 +100,17 @@ class App {
           if (currentPath === '/' || currentPath === '/index.html' || currentPath.endsWith('index.html')) {
             // Don't redirect if we're handling a password reset callback
             const urlParams = new URLSearchParams(window.location.search);
-            if (!urlParams.has('type') || urlParams.get('type') !== 'recovery') {
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            
+            const isRecovery = (urlParams.has('type') && urlParams.get('type') === 'recovery') ||
+                              (hashParams.has('type') && hashParams.get('type') === 'recovery');
+            
+            if (!isRecovery) {
+              console.log('🔐 Authenticated user on login page, redirecting to dashboard');
               window.location.href = '/dashboard';
               return;
+            } else {
+              console.log('🔐 Password reset callback detected, skipping dashboard redirect');
             }
           }
         } else {
