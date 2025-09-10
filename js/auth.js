@@ -785,7 +785,7 @@ class Auth {
 
   // Handle OAuth callback with proper error handling and redirect
   async handleOAuthCallback() {
-    console.log('🔐 handleOAuthCallback started');
+    console.log('🔐 handleOAuthCallback started - VERSION 2025-01-10-20:15 - CACHE BUST');
     
     const urlParams = new URLSearchParams(window.location.search);
     
