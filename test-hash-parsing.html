@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Hash Fragment Parsing</title>
+</head>
+<body>
+    <h1>Hash Fragment Test</h1>
+    <p>This page tests if we can parse tokens from URL hash fragments</p>
+    
+    <div id="results"></div>
+    
+    <script>
+        // Test the hash fragment parsing
+        function testHashParsing() {
+            const results = document.getElementById('results');
+            
+            // Get current URL info
+            results.innerHTML = `
+                <h3>Current URL Info:</h3>
+                <p><strong>Full URL:</strong> ${window.location.href}</p>
+                <p><strong>Search:</strong> ${window.location.search}</p>
+                <p><strong>Hash:</strong> ${window.location.hash}</p>
+                
+                <h3>Parsed Parameters:</h3>
+            `;
+            
+            // Parse query parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            
+            // Check for recovery tokens
+            const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
+            const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
+            const type = urlParams.get('type') || hashParams.get('type');
+            
+            results.innerHTML += `
+                <p><strong>Access Token:</strong> ${accessToken ? 'Found (' + accessToken.substring(0, 20) + '...)' : 'Not found'}</p>
+                <p><strong>Refresh Token:</strong> ${refreshToken ? 'Found (' + refreshToken.substring(0, 20) + '...)' : 'Not found'}</p>
+                <p><strong>Type:</strong> ${type || 'Not found'}</p>
+                
+                <h3>Detection Result:</h3>
+                <p><strong>Is Recovery:</strong> ${type === 'recovery' ? 'YES' : 'NO'}</p>
+                <p><strong>Has Tokens:</strong> ${accessToken && refreshToken ? 'YES' : 'NO'}</p>
+            `;
+            
+            // If it's a recovery, show success
+            if (type === 'recovery' && accessToken) {
+                results.innerHTML += `
+                    <div style="background: green; color: white; padding: 10px; margin: 10px 0;">
+                        ✅ Password reset callback detected successfully!
+                    </div>
+                `;
+            }
+        }
+        
+        // Run test when page loads
+        testHashParsing();
+    </script>
+</body>
+</html>

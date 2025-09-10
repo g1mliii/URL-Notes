@@ -759,6 +759,9 @@ class Auth {
   async handleOAuthCallback() {
     const urlParams = new URLSearchParams(window.location.search);
     
+    // Also check URL hash fragment for Supabase auth tokens
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    
     // Handle success messages from redirects
     const message = urlParams.get('message');
     if (message === 'password-reset-success') {
@@ -792,8 +795,11 @@ class Auth {
       }
     }
     
-    // Handle password reset callback
-    if (urlParams.has('type') && urlParams.get('type') === 'recovery') {
+    // Handle password reset callback - check both query params and hash fragment
+    const isRecovery = (urlParams.has('type') && urlParams.get('type') === 'recovery') ||
+                      (hashParams.has('type') && hashParams.get('type') === 'recovery');
+    
+    if (isRecovery) {
       await this.handlePasswordResetCallback();
     }
   }
@@ -801,11 +807,14 @@ class Auth {
   // Handle password reset callback from email link
   async handlePasswordResetCallback() {
     const urlParams = new URLSearchParams(window.location.search);
-    const accessToken = urlParams.get('access_token');
-    const refreshToken = urlParams.get('refresh_token');
-    const type = urlParams.get('type');
-    const error = urlParams.get('error');
-    const errorDescription = urlParams.get('error_description');
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    
+    // Check both query params and hash fragment for tokens
+    const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
+    const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
+    const type = urlParams.get('type') || hashParams.get('type');
+    const error = urlParams.get('error') || hashParams.get('error');
+    const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
     
     // Show loading state while processing
     this.showNotification('Processing password reset link...', 'info');
@@ -1013,7 +1022,7 @@ class Auth {
     };
     document.addEventListener('keydown', handleEscape);
     
-    // Clean up URL
+    // Clean up URL (remove both query params and hash fragment)
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 

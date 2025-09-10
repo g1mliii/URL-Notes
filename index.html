@@ -37,10 +37,10 @@ scripts:
                         <h3>Sign In</h3>
                         <form id="signInForm">
                             <div class="input-group">
-                                <input type="email" id="loginEmail" placeholder="Email" required>
+                                <input type="email" id="loginEmail" placeholder="Email" required autocomplete="email">
                             </div>
                             <div class="input-group">
-                                <input type="password" id="loginPassword" placeholder="Password" required>
+                                <input type="password" id="loginPassword" placeholder="Password" required autocomplete="current-password">
                             </div>
                             <button type="submit" class="btn-primary">Sign In</button>
                         </form>
@@ -55,13 +55,13 @@ scripts:
                         <h3>Create Account</h3>
                         <form id="signUpForm">
                             <div class="input-group">
-                                <input type="email" id="registerEmail" placeholder="Email" required>
+                                <input type="email" id="registerEmail" placeholder="Email" required autocomplete="email">
                             </div>
                             <div class="input-group">
-                                <input type="password" id="registerPassword" placeholder="Password" required>
+                                <input type="password" id="registerPassword" placeholder="Password" required autocomplete="new-password">
                             </div>
                             <div class="input-group">
-                                <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+                                <input type="password" id="confirmPassword" placeholder="Confirm Password" required autocomplete="new-password">
                             </div>
                             <button type="submit" class="btn-primary">Create Account</button>
                         </form>
@@ -75,7 +75,7 @@ scripts:
                         <h3>Reset Password</h3>
                         <form id="resetPasswordForm">
                             <div class="input-group">
-                                <input type="email" id="resetEmail" placeholder="Email" required>
+                                <input type="email" id="resetEmail" placeholder="Email" required autocomplete="email">
                             </div>
                             <button type="submit" class="btn-primary">Send Reset Link</button>
                         </form>
