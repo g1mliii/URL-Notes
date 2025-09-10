@@ -48,13 +48,32 @@ class Auth {
     
     // Check for OAuth callback and password reset
     console.log('🔐 About to call handleOAuthCallback...');
-    this.handleOAuthCallback();
+    try {
+      await this.handleOAuthCallback();
+      console.log('🔐 handleOAuthCallback completed');
+    } catch (error) {
+      console.error('🔐 Error in handleOAuthCallback:', error);
+    }
     
     // Update auth UI based on current state
-    this.updateAuthUI();
+    console.log('🔐 About to call updateAuthUI...');
+    try {
+      await this.updateAuthUI();
+      console.log('🔐 updateAuthUI completed');
+    } catch (error) {
+      console.error('🔐 Error in updateAuthUI:', error);
+    }
     
     // Set up authentication state monitoring
-    this.setupAuthStateMonitoring();
+    console.log('🔐 About to call setupAuthStateMonitoring...');
+    try {
+      this.setupAuthStateMonitoring();
+      console.log('🔐 setupAuthStateMonitoring completed');
+    } catch (error) {
+      console.error('🔐 Error in setupAuthStateMonitoring:', error);
+    }
+    
+    console.log('🔐 Auth.init() completed successfully');
   }
 
   // Initialize auth form elements (adapted from extension settings.js)
