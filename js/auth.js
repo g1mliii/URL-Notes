@@ -19,11 +19,15 @@ class Auth {
   }
 
   async init() {
+    console.log('🔐 Auth.init() called');
+    console.log('🔐 window.supabaseClient available:', !!window.supabaseClient);
+    
     // Initialize Supabase client from global instance
     if (window.supabaseClient) {
       this.supabaseClient = window.supabaseClient;
+      console.log('🔐 Initializing Supabase client...');
       await this.supabaseClient.init();
-
+      console.log('🔐 Supabase client initialized');
     } else {
       console.error('❌ Supabase client not available');
     }
@@ -43,6 +47,7 @@ class Auth {
     this.setupFormListeners();
     
     // Check for OAuth callback and password reset
+    console.log('🔐 About to call handleOAuthCallback...');
     this.handleOAuthCallback();
     
     // Update auth UI based on current state
@@ -1348,7 +1353,10 @@ class Auth {
 
 // Initialize auth module when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('🔐 DOMContentLoaded - Creating Auth instance...');
+  console.log('🔐 window.supabaseClient available at creation:', !!window.supabaseClient);
   window.auth = new Auth();
+  console.log('🔐 Auth instance created and assigned to window.auth');
 });
 
 // Export for use in other modules
