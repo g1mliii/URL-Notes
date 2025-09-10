@@ -440,6 +440,10 @@ class SupabaseClient {
   // Reset password
   async resetPassword(email) {
     try {
+      // Get current domain for redirect URL
+      const currentDomain = window.location.origin;
+      const redirectUrl = `${currentDomain}/`;
+      
       const response = await fetch(`${this.authUrl}/recover`, {
         method: 'POST',
         headers: {
@@ -448,7 +452,10 @@ class SupabaseClient {
         },
         body: JSON.stringify({
           email: email,
-          type: 'recovery'
+          type: 'recovery',
+          options: {
+            redirectTo: redirectUrl
+          }
         })
       });
 

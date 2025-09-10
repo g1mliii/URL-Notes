@@ -197,10 +197,32 @@ class Auth {
   async handleForgotPassword(event) {
     event.preventDefault();
     
-    const email = document.getElementById('resetEmail')?.value?.trim();
+    const emailInput = document.getElementById('resetEmail');
+    const email = emailInput?.value?.trim();
+    const submitBtn = document.querySelector('#resetPasswordForm button[type="submit"]');
+    
+    // Clear previous error states
+    if (emailInput) {
+      emailInput.style.borderColor = '';
+    }
     
     if (!email) {
       this.showNotification('Please enter your email address', 'error');
+      if (emailInput) {
+        emailInput.style.borderColor = 'var(--error-color)';
+        emailInput.focus();
+      }
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      this.showNotification('Please enter a valid email address', 'error');
+      if (emailInput) {
+        emailInput.style.borderColor = 'var(--error-color)';
+        emailInput.focus();
+      }
       return;
     }
 
@@ -211,23 +233,61 @@ class Auth {
 
     try {
       this.setAuthBusy(true);
+      
+      // Update button state
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('loading');
+        submitBtn.textContent = 'Sending...';
+      }
+      
       console.log('Password reset attempt:', { email });
       
       // Use same resetPassword method as extension
       await this.supabaseClient.resetPassword(email);
       
-      this.showNotification('Password reset email sent. Check your inbox.', 'success');
-      
-      // Switch back to login form (same as extension behavior)
-      const forgotPasswordForm = document.getElementById('forgotPasswordForm');
-      const loginForm = document.getElementById('loginForm');
-      if (forgotPasswordForm && loginForm && window.app) {
-        window.app.switchAuthForm(forgotPasswordForm, loginForm);
+      // Success state
+      if (submitBtn) {
+        submitBtn.classList.remove('loading');
+        submitBtn.textContent = 'Email Sent!';
+        submitBtn.style.background = 'var(--success-color)';
       }
+      
+      this.showNotification('Password reset email sent. Check your inbox and spam folder.', 'success');
+      
+      // Switch back to login form after delay (same as extension behavior)
+      setTimeout(() => {
+        const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+        const loginForm = document.getElementById('loginForm');
+        if (forgotPasswordForm && loginForm && window.app) {
+          window.app.switchAuthForm(forgotPasswordForm, loginForm);
+        }
+        
+        // Reset button state
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.classList.remove('loading');
+          submitBtn.textContent = 'Send Reset Link';
+          submitBtn.style.background = '';
+        }
+      }, 3000);
       
     } catch (error) {
       console.error('Password reset error:', error);
-      this.showNotification(`Password reset failed: ${error.message || error}`, 'error');
+      const userMessage = this.handlePasswordResetError(error);
+      this.showNotification(userMessage, 'error');
+      
+      // Reset button state
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('loading');
+        submitBtn.textContent = 'Send Reset Link';
+      }
+      
+      // Focus back to email input
+      if (emailInput) {
+        emailInput.focus();
+      }
     } finally {
       this.setAuthBusy(false);
     }
@@ -514,6 +574,57 @@ class Auth {
     }
   }
 
+  // Verify reset token validity
+  async verifyResetToken(accessToken) {
+    if (!this.supabaseClient || !accessToken) {
+      return false;
+    }
+
+    try {
+      const response = await fetch(`${this.supabaseClient.authUrl}/user`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'apikey': this.supabaseClient.supabaseAnonKey
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Token verification failed:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Token verification error:', error);
+      return false;
+    }
+  }
+
+  // Handle password reset errors with user-friendly messages
+  handlePasswordResetError(error) {
+    let userMessage = 'Password reset failed. Please try again.';
+    
+    if (error.message) {
+      const errorMsg = error.message.toLowerCase();
+      
+      if (errorMsg.includes('expired') || errorMsg.includes('invalid')) {
+        userMessage = 'Password reset link has expired. Please request a new one.';
+      } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+        userMessage = 'Network error. Please check your connection and try again.';
+      } else if (errorMsg.includes('weak') || errorMsg.includes('password')) {
+        userMessage = 'Password is too weak. Please choose a stronger password.';
+      } else if (errorMsg.includes('rate limit') || errorMsg.includes('too many')) {
+        userMessage = 'Too many attempts. Please wait a few minutes before trying again.';
+      } else if (errorMsg.includes('user not found') || errorMsg.includes('email')) {
+        userMessage = 'Email address not found. Please check your email or create a new account.';
+      }
+    }
+    
+    return userMessage;
+  }
+
   // Enhanced password reset flow with encryption key migration support
   async handlePasswordReset(newPassword, resetToken) {
     if (!this.supabaseClient) {
@@ -648,6 +759,14 @@ class Auth {
   async handleOAuthCallback() {
     const urlParams = new URLSearchParams(window.location.search);
     
+    // Handle success messages from redirects
+    const message = urlParams.get('message');
+    if (message === 'password-reset-success') {
+      this.showNotification('Password updated successfully! You can now sign in with your new password.', 'success');
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
     // Handle OAuth callback
     if (urlParams.has('code') && this.supabaseClient) {
       try {
@@ -685,21 +804,78 @@ class Auth {
     const accessToken = urlParams.get('access_token');
     const refreshToken = urlParams.get('refresh_token');
     const type = urlParams.get('type');
+    const error = urlParams.get('error');
+    const errorDescription = urlParams.get('error_description');
+    
+    // Show loading state while processing
+    this.showNotification('Processing password reset link...', 'info');
+    
+    // Handle errors from Supabase
+    if (error) {
+      console.error('Password reset callback error:', error, errorDescription);
+      
+      let userMessage = 'Password reset failed. Please try again.';
+      if (errorDescription) {
+        if (errorDescription.includes('expired')) {
+          userMessage = 'Password reset link has expired. Please request a new one.';
+        } else if (errorDescription.includes('invalid')) {
+          userMessage = 'Invalid password reset link. Please request a new one.';
+        } else {
+          userMessage = `Password reset failed: ${errorDescription}`;
+        }
+      }
+      
+      this.showNotification(userMessage, 'error');
+      
+      // Clean up URL and redirect
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 4000);
+      return;
+    }
     
     if (type !== 'recovery' || !accessToken) {
-      this.showNotification('Invalid password reset link', 'error');
-      window.location.href = '/';
+      this.showNotification('Invalid password reset link. Please request a new one.', 'error');
+      
+      // Clean up URL and redirect
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 4000);
       return;
     }
 
     try {
-      // Show password reset form
-      this.showPasswordResetForm(accessToken, refreshToken);
+      // Verify the token is valid before showing the form
+      const isValid = await this.verifyResetToken(accessToken);
+      if (!isValid) {
+        throw new Error('Reset token is invalid or expired');
+      }
+      
+      // Show success message and password reset form
+      this.showNotification('Password reset link verified. Please enter your new password.', 'success');
+      
+      // Show password reset form after a brief delay
+      setTimeout(() => {
+        this.showPasswordResetForm(accessToken, refreshToken);
+      }, 1000);
       
     } catch (error) {
       console.error('Password reset callback error:', error);
-      this.showNotification('Password reset link expired or invalid', 'error');
-      window.location.href = '/';
+      
+      let userMessage = 'Password reset link expired or invalid. Please request a new one.';
+      if (error.message && error.message.includes('network')) {
+        userMessage = 'Network error. Please check your connection and try again.';
+      }
+      
+      this.showNotification(userMessage, 'error');
+      
+      // Clean up URL and redirect
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 4000);
     }
   }
 
@@ -712,65 +888,130 @@ class Auth {
       <div class="modal-content">
         <div class="modal-header">
           <h3>Set New Password</h3>
-          <button class="modal-close">&times;</button>
+          <button class="modal-close" type="button">&times;</button>
         </div>
         <form id="newPasswordForm">
           <div class="input-group">
-            <input type="password" id="newPassword" placeholder="New Password" required minlength="6">
+            <input type="password" id="newPassword" placeholder="New Password (minimum 6 characters)" required minlength="6" autocomplete="new-password">
           </div>
           <div class="input-group">
-            <input type="password" id="confirmNewPassword" placeholder="Confirm New Password" required minlength="6">
+            <input type="password" id="confirmNewPassword" placeholder="Confirm New Password" required minlength="6" autocomplete="new-password">
           </div>
-          <button type="submit" class="btn-primary">Update Password</button>
+          <button type="submit" class="btn-primary" id="updatePasswordBtn">Update Password</button>
         </form>
       </div>
     `;
     
     document.body.appendChild(modal);
-    modal.classList.remove('hidden');
+    
+    // Focus on first input
+    setTimeout(() => {
+      const firstInput = modal.querySelector('#newPassword');
+      if (firstInput) {
+        firstInput.focus();
+      }
+    }, 100);
     
     // Handle form submission
     const form = modal.querySelector('#newPasswordForm');
+    const submitBtn = modal.querySelector('#updatePasswordBtn');
+    
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       
-      const newPassword = document.getElementById('newPassword').value;
-      const confirmPassword = document.getElementById('confirmNewPassword').value;
+      const newPasswordInput = document.getElementById('newPassword');
+      const confirmPasswordInput = document.getElementById('confirmNewPassword');
+      const newPassword = newPasswordInput.value;
+      const confirmPassword = confirmPasswordInput.value;
       
-      if (newPassword !== confirmPassword) {
-        this.showNotification('Passwords do not match', 'error');
+      // Clear previous error states
+      newPasswordInput.style.borderColor = '';
+      confirmPasswordInput.style.borderColor = '';
+      
+      // Validation
+      if (newPassword.length < 6) {
+        this.showNotification('Password must be at least 6 characters long', 'error');
+        newPasswordInput.style.borderColor = 'var(--error-color)';
+        newPasswordInput.focus();
         return;
       }
       
-      if (newPassword.length < 6) {
-        this.showNotification('Password must be at least 6 characters long', 'error');
+      if (newPassword !== confirmPassword) {
+        this.showNotification('Passwords do not match', 'error');
+        confirmPasswordInput.style.borderColor = 'var(--error-color)';
+        confirmPasswordInput.focus();
         return;
       }
       
       try {
+        // Set loading state
+        submitBtn.disabled = true;
+        submitBtn.classList.add('loading');
+        submitBtn.textContent = 'Updating...';
+        
         // Update password using the reset token
         await this.handlePasswordReset(newPassword, accessToken);
         
-        // Close modal and redirect
-        document.body.removeChild(modal);
+        // Success state
+        submitBtn.classList.remove('loading');
+        submitBtn.textContent = 'Success!';
+        submitBtn.style.background = 'var(--success-color)';
+        
+        // Show success message
         this.showNotification('Password updated successfully! Redirecting to dashboard...', 'success');
         
+        // Close modal and redirect after delay
         setTimeout(() => {
-          window.location.href = '/dashboard';
+          if (document.body.contains(modal)) {
+            document.body.removeChild(modal);
+          }
+          
+          // Check if user is authenticated and redirect appropriately
+          if (this.isAuthenticated()) {
+            window.location.href = '/dashboard';
+          } else {
+            // If not authenticated, redirect to login with success message
+            window.location.href = '/?message=password-reset-success';
+          }
         }, 2000);
         
       } catch (error) {
         console.error('Password update error:', error);
-        this.showNotification(`Password update failed: ${error.message}`, 'error');
+        
+        // Reset button state
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('loading');
+        submitBtn.textContent = 'Update Password';
+        
+        // Show user-friendly error
+        const userMessage = this.handlePasswordResetError(error);
+        this.showNotification(userMessage, 'error');
+        
+        // Focus back to first input
+        newPasswordInput.focus();
       }
     });
     
     // Handle modal close
     const closeBtn = modal.querySelector('.modal-close');
     closeBtn.addEventListener('click', () => {
-      document.body.removeChild(modal);
+      if (document.body.contains(modal)) {
+        document.body.removeChild(modal);
+      }
       window.location.href = '/';
     });
+    
+    // Handle escape key
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        if (document.body.contains(modal)) {
+          document.body.removeChild(modal);
+        }
+        window.location.href = '/';
+        document.removeEventListener('keydown', handleEscape);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
     
     // Clean up URL
     window.history.replaceState({}, document.title, window.location.pathname);

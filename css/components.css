@@ -322,6 +322,24 @@
   margin-top: 1.5rem;
 }
 
+/* Password Reset Modal Specific Styles */
+.modal form {
+  padding: 0 1.5rem 1.5rem 1.5rem;
+}
+
+.modal .input-group {
+  margin-bottom: 1.25rem;
+}
+
+.modal .input-group:last-of-type {
+  margin-bottom: 1.75rem;
+}
+
+.modal .btn-primary {
+  width: 100%;
+  justify-content: center;
+}
+
 /* Hero Section */
 .hero-section {
   flex: 1;
