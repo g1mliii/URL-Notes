@@ -340,6 +340,30 @@
   justify-content: center;
 }
 
+/* Mobile-specific modal improvements */
+@media (max-width: 768px) {
+  .modal {
+    padding: 0.5rem;
+  }
+
+  .modal-content {
+    max-width: 100%;
+    margin: 0;
+  }
+
+  .modal form {
+    padding: 0 1rem 1.5rem 1rem;
+  }
+
+  .modal .input-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .modal .input-group:last-of-type {
+    margin-bottom: 2rem;
+  }
+}
+
 /* Hero Section */
 .hero-section {
   flex: 1;
@@ -753,7 +777,8 @@ Dashboard Specific Styles - Google Drive-like Layout */
 @media (min-width: 768px) {
   .notes-grid {
     flex: 1;
-    min-height: 0; /* Allow grid to shrink if needed */
+    min-height: 0;
+    /* Allow grid to shrink if needed */
   }
 }
 

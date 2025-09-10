@@ -975,10 +975,16 @@ class Auth {
         </div>
         <form id="newPasswordForm">
           <div class="input-group">
-            <input type="password" id="newPassword" placeholder="New Password (minimum 6 characters)" required minlength="6" autocomplete="new-password">
+            <div style="position: relative;">
+              <input type="password" id="newPassword" placeholder="New Password (minimum 6 characters)" required minlength="6" autocomplete="new-password">
+              <button type="button" class="toggle-password" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.875rem;">Show</button>
+            </div>
           </div>
           <div class="input-group">
-            <input type="password" id="confirmNewPassword" placeholder="Confirm New Password" required minlength="6" autocomplete="new-password">
+            <div style="position: relative;">
+              <input type="password" id="confirmNewPassword" placeholder="Confirm New Password" required minlength="6" autocomplete="new-password">
+              <button type="button" class="toggle-password" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.875rem;">Show</button>
+            </div>
           </div>
           <button type="submit" class="btn-primary" id="updatePasswordBtn">Update Password</button>
         </form>
@@ -994,6 +1000,17 @@ class Auth {
         firstInput.focus();
       }
     }, 100);
+    
+    // Handle password visibility toggles
+    const toggleBtns = modal.querySelectorAll('.toggle-password');
+    toggleBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const input = btn.previousElementSibling;
+        const isPassword = input.type === 'password';
+        input.type = isPassword ? 'text' : 'password';
+        btn.textContent = isPassword ? 'Hide' : 'Show';
+      });
+    });
     
     // Handle form submission
     const form = modal.querySelector('#newPasswordForm');
@@ -1056,7 +1073,7 @@ class Auth {
             // If not authenticated, redirect to login with success message
             window.location.href = '/?message=password-reset-success';
           }
-        }, 2000);
+        }, 1000);
         
       } catch (error) {
         console.error('Password update error:', error);
@@ -1443,9 +1460,9 @@ document.addEventListener('DOMContentLoaded', () => {
       // Show modal after brief delay
       setTimeout(() => {
         window.auth.showPasswordResetForm(accessToken, refreshToken);
-      }, 1000);
+      }, 500);
     }
-  }, 2000); // Wait 2 seconds for everything to load
+  }, 1000); // Wait 1 second for everything to load
 });
 
 // Export for use in other modules
