@@ -762,10 +762,18 @@ class Auth {
 
   // Handle OAuth callback with proper error handling and redirect
   async handleOAuthCallback() {
+    console.log('🔐 handleOAuthCallback started');
+    
     const urlParams = new URLSearchParams(window.location.search);
     
     // Also check URL hash fragment for Supabase auth tokens
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    
+    console.log('🔐 URL parsing:', {
+      search: window.location.search,
+      hash: window.location.hash,
+      hashParams: Array.from(hashParams.entries())
+    });
     
     // Handle success messages from redirects
     const message = urlParams.get('message');
@@ -776,6 +784,11 @@ class Auth {
     }
     
     // Handle OAuth callback
+    console.log('🔐 Checking OAuth callback:', {
+      hasCode: urlParams.has('code'),
+      hasSupabaseClient: !!this.supabaseClient
+    });
+    
     if (urlParams.has('code') && this.supabaseClient) {
       try {
         await this.supabaseClient.handleOAuthCallback();
