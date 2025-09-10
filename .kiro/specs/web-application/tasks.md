@@ -150,127 +150,65 @@
     - Create billing history and invoice access using stripe integration
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 7. Implement CJ Affiliate Ad System & Dashboard Upgrade Prompts
-  - [ ] 7.1 Dashboard upgrade prompt system for non-premium users
-    - Detect non-premium users on dashboard login redirect
-    - Show upgrade modal/banner explaining sync limitations
-    - Add clear messaging: "Your extension notes aren't synced yet"
-    - Provide upgrade path with premium benefits
-    - _Requirements: User conversion optimization_
+- [x] 8. ~~Standardize encryption~~ (COMPLETE - Both platforms already use identical encryption)
+  - [x] 8.1 ~~Update web app encryption~~ (COMPLETE - Already uses `user.id:user.email + salt`)
+  - [x] 8.2 ~~Verify extension encryption~~ (COMPLETE - Already uses `user.id:user.email + salt`)
+  - **Status**: Both extension and web app use identical key derivation: `PBKDF2(user.id:user.email, salt, 100000 iterations)`
+  - **Verified**: Same encryption logic, same salt storage, full compatibility
+  - _Requirements: 10.1, 11.1, 3.4, 10.2 - All satisfied_
 
-  - [ ] 7.2 CJ Affiliate account setup and campaign management
-    - **CJ Affiliate Setup Steps:**
-      1. Login to CJ Affiliate Dashboard (cj.com)
-      2. Navigate to "Advertisers" → "Find Advertisers"
-      3. Apply to relevant campaigns: VPNs, Software, Financial, E-commerce
-      4. Go to "Links" → "Get Links" once approved
-      5. Download banner assets and copy affiliate URLs
-      6. Set up tracking with CJ's conversion pixels
-    - Apply to high-converting campaigns in relevant categories
-    - Download banner assets in multiple sizes
-    - _Requirements: Revenue diversification_
+- [ ] 9. Complete password reset functionality implementation 
+  - [ ] 9.1 Configure password reset redirect and callback handling
+    - Configure Supabase Auth redirect URL to point to anchored.site password reset page
+    - Create password reset callback handler to process email link parameters
+    - Build password reset form interface for entering new password
+    - Implement Supabase Auth password update using access token from email link
+    - Test complete forgot password → email → reset → login flow
+    - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-  - [ ] 7.3 Website CJ affiliate ad rotation system
-    - Create dynamic banner serving system for website
-    - Implement A/B testing framework for different campaigns
-    - Add CJ tracking pixels for conversion measurement
-    - Build responsive ad containers for various banner sizes
-    - Integrate analytics to track performance by campaign
-    - _Requirements: Website monetization_
+  - [ ] 9.2 Handle password reset edge cases and user experience
+    - Add proper error handling for invalid/expired reset tokens
+    - Add user feedback for successful reset email sending
+    - Ensure proper redirect flow after successful password reset
+    - Add loading states and success/error messages
+    - Note: No encryption migration needed with email-based keys
+    - _Requirements: 3.5_
 
-  - [ ] 7.4 Extension static CJ affiliate integration (future)
-    - Bundle 3-5 top-performing CJ banners in extension
-    - Create local rotation system (no external calls)
-    - Update affiliate URLs in manifest.json
-    - Plan quarterly banner updates with extension releases
-    - _Requirements: Extension revenue diversification_
-
-- [ ] 8. Implement export functionality
-  - [ ] 8.1 Create export interface with note selection
+- [ ] 10. Implement export functionality build from same code as extension export since they should behave the same way
+  - [ ] 10.1 Create export interface with note selection
     - Build export modal with format selection dropdown
     - Implement individual note selection with checkboxes
     - Add bulk selection options by domain/URL
     - Create progress indicators for export processing
     - _Requirements: 7.1, 7.2, 7.4_
 
-  - [ ] 8.2 Implement export processing and download
-    - Decrypt selected notes for export processing
+  - [ ] 10.2 Implement export processing and download
+    - implement actual export functionality similir to extension export since file structur should be similar,
     - Generate export files using adapted export-formats.js
     - Implement browser file download functionality
     - Handle export errors with retry options
     - _Requirements: 7.3, 7.5_
 
-- [ ] 9. Implement import functionality
-  - [ ] 9.1 Create import interface and file handling
+- [ ] 11. Implement import functionality i dont think our extension encrypts on import so we can just import normal and when syncs it should encrypt just like extenion unless our wepbage behaves differntly.
+  - [ ] 11.1 Create import interface and file handling
     - Build file upload interface with format validation
     - Support JSON, Markdown, and Plain Text import formats
     - Implement file parsing and validation
     - Display import preview before processing
     - _Requirements: 8.1, 8.2_
 
-  - [ ] 9.2 Process imported notes and handle conflicts
-    - Encrypt imported notes using user's encryption key
-    - Sync imported notes to cloud storage
-    - Implement duplicate detection and conflict resolution
-    - Display detailed error messages for failed imports
-    - _Requirements: 8.3, 8.4, 8.5_
-
-- [ ] 10. Implement responsive design and mobile optimization
-  - [ ] 10.1 Optimize interface for mobile devices
-    - Implement touch-friendly interface elements
-    - Add responsive navigation for mobile screens
-    - Optimize note cards and editor for touch interaction
-    - Test and refine mobile user experience
-    - _Requirements: 9.1, 9.4_
-
-  - [ ] 10.2 Implement desktop enhancements
-    - Utilize available screen space effectively on desktop
-    - Add keyboard shortcuts and navigation
-    - Implement desktop-specific UI enhancements
-    - Ensure consistent functionality across device types
-    - _Requirements: 9.2, 9.5_
-
-- [ ] 11. Implement encryption migration for password changes
-  - [ ] 11.1 Create encryption key migration system
-    - Build system to decrypt notes with old encryption keys
-    - Implement re-encryption with new password-derived keys
-    - Add progress tracking for migration process
-    - Create rollback mechanism for failed migrations
-    - _Requirements: 10.1, 10.2, 10.3, 10.5_
-
-  - [ ] 11.2 Integrate migration with password reset flow
-    - Trigger encryption migration during password changes
-    - Verify all notes are accessible with new keys after migration
-    - Handle migration failures with appropriate error messages
-    - Ensure seamless user experience during password updates
-    - _Requirements: 10.4, 3.4_
-
-- [ ] 12. Create edge functions for subscription management
-  - [ ] 12.1 Build subscription update edge function
-    - Create Supabase edge function for processing subscription changes
-    - Integrate with Stripe webhooks for payment events
-    - Update user profile subscription status and expiration
-    - Handle subscription activation and deactivation
-    - _Requirements: 4.3, 4.4, 5.4_
-
-  - [ ] 12.2 Implement subscription validation edge function
-    - Create function to validate current subscription status
-    - Handle subscription expiration and downgrade logic
-    - Integrate with existing sync functionality
-    - Ensure premium feature access control
-    - _Requirements: 5.4_
-
-- [ ] 13. Testing and quality assurance
-  - [ ] 13.1 Implement unit tests for core functionality
-    - Test encryption/decryption with various data types
-    - Validate export format conversion accuracy
-    - Test authentication flows and error handling
+- [ ] 12. Testing and quality assurance
+  - [ ] 12.1 Implement unit tests for core functionality
+    - Test updated encryption/decryption with email-based keys
+    - Validate export format conversion accuracy with new encryption
+    - Test complete authentication flows including password reset
     - Verify data model validation and sanitization
     - _Requirements: All requirements validation_
 
-  - [ ] 13.2 Perform integration and end-to-end testing
+  - [ ] 12.2 Perform integration and end-to-end testing
     - Test complete user registration and onboarding flow
-    - Validate note synchronization between web app and extension
+    - Validate note synchronization between web app and extension.
     - Test subscription management and payment processing
-    - Verify export/import functionality with real data
+    - Verify export/import functionality.
+    - Test complete forgot password → reset → login flow
     - _Requirements: All requirements validation_

@@ -92,19 +92,21 @@ serve(async (req) => {
     let statusMessage = ''
 
     if (activeSubscription) {
-      // User has active subscription
-      if (profile.subscription_tier !== 'premium') {
+      // User has active subscription - set expiration to current period end
+      const expiresAt = new Date(activeSubscription.current_period_end * 1000).toISOString()
+      
+      if (profile.subscription_tier !== 'premium' || profile.subscription_expires_at !== expiresAt) {
         updateData = {
           subscription_tier: 'premium',
-          subscription_expires_at: null,
+          subscription_expires_at: expiresAt,
           updated_at: new Date().toISOString()
         }
         shouldUpdate = true
-        statusMessage = `Activated premium subscription (was ${profile.subscription_tier})`
-        console.log('✅ User has active subscription - upgrading to premium')
+        statusMessage = `Set premium with expiry ${new Date(expiresAt).toLocaleDateString()} (was ${profile.subscription_tier}, expires: ${profile.subscription_expires_at})`
+        console.log('✅ User has active subscription - setting premium with correct expiry date')
       } else {
-        statusMessage = 'Premium subscription already active'
-        console.log('✅ User already has premium status')
+        statusMessage = `Premium subscription already active with correct expiry: ${new Date(expiresAt).toLocaleDateString()}`
+        console.log('✅ User already has premium status with correct expiry')
       }
     } else {
       // Check for canceled subscription that's still in current period
@@ -115,14 +117,21 @@ serve(async (req) => {
       if (canceledSubscription) {
         // Canceled but still active until period end
         const expiresAt = new Date(canceledSubscription.current_period_end * 1000).toISOString()
-        updateData = {
-          subscription_tier: 'premium',
-          subscription_expires_at: expiresAt,
-          updated_at: new Date().toISOString()
+        
+        // Only update if the expiration date has changed or user isn't premium
+        if (profile.subscription_tier !== 'premium' || profile.subscription_expires_at !== expiresAt) {
+          updateData = {
+            subscription_tier: 'premium',
+            subscription_expires_at: expiresAt,
+            updated_at: new Date().toISOString()
+          }
+          shouldUpdate = true
+          statusMessage = `Premium subscription canceled, expires ${new Date(expiresAt).toLocaleDateString()} (was: ${profile.subscription_expires_at})`
+          console.log('⏰ User has canceled subscription, setting/updating expiry date')
+        } else {
+          statusMessage = `Premium subscription canceled, expires ${new Date(expiresAt).toLocaleDateString()} (already set correctly)`
+          console.log('⏰ User canceled subscription expiry already correct')
         }
-        shouldUpdate = true
-        statusMessage = `Premium subscription canceled, expires ${new Date(expiresAt).toLocaleDateString()}`
-        console.log('⏰ User has canceled subscription, setting expiry date')
       } else {
         // No active subscription - should be free
         if (profile.subscription_tier !== 'free') {

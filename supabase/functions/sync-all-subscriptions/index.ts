@@ -72,22 +72,21 @@ serve(async (req) => {
         }
 
         // Get users with Stripe customer IDs that need Stripe API checks
-        // Check users who expire yesterday, today, or tomorrow (or have no expiry date)
+        // Only check users with null expiration dates OR users near their expiration date (±1 day)
         const today = new Date()
         const yesterday = new Date(today)
         yesterday.setDate(yesterday.getDate() - 1)
         const tomorrow = new Date(today)
         tomorrow.setDate(tomorrow.getDate() + 1)
-        const dayAfterTomorrow = new Date(today)
-        dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2)
 
-        console.log(`🔍 Checking users expiring between ${yesterday.toISOString()} and ${dayAfterTomorrow.toISOString()}`)
+        console.log(`🔍 Checking users with null expiration OR expiring between ${yesterday.toISOString()} and ${tomorrow.toISOString()}`)
 
         const { data: profiles, error: profilesError } = await supabaseClient
             .from('profiles')
             .select('id, stripe_customer_id, subscription_tier, subscription_expires_at')
             .not('stripe_customer_id', 'is', null)
-            .or(`subscription_expires_at.is.null,subscription_expires_at.gte.${yesterday.toISOString()},subscription_expires_at.lt.${dayAfterTomorrow.toISOString()}`)
+            .eq('subscription_tier', 'premium')
+            .or(`subscription_expires_at.is.null,and(subscription_expires_at.gte.${yesterday.toISOString()},subscription_expires_at.lte.${tomorrow.toISOString()})`)
 
         if (profilesError) {
             throw profilesError
@@ -102,12 +101,18 @@ serve(async (req) => {
         for (const profile of profiles) {
             try {
                 console.log(`🔍 Checking user ${profile.id} (customer: ${profile.stripe_customer_id})`)
+                console.log(`   Current status: ${profile.subscription_tier}, expires: ${profile.subscription_expires_at}`)
 
                 // Get customer's subscriptions from Stripe
                 const subscriptions = await stripe.subscriptions.list({
                     customer: profile.stripe_customer_id,
                     status: 'all',
                     limit: 10
+                })
+
+                console.log(`   Found ${subscriptions.data.length} subscriptions in Stripe`)
+                subscriptions.data.forEach(sub => {
+                    console.log(`   - Subscription ${sub.id}: status=${sub.status}, current_period_end=${new Date(sub.current_period_end * 1000).toISOString()}`)
                 })
 
                 // Find active subscription
@@ -119,15 +124,19 @@ serve(async (req) => {
                 let shouldUpdate = false
 
                 if (activeSubscription) {
-                    // User has active subscription
-                    if (profile.subscription_tier !== 'premium') {
+                    // User has active subscription - set expiration to current period end
+                    const expiresAt = new Date(activeSubscription.current_period_end * 1000).toISOString()
+
+                    if (profile.subscription_tier !== 'premium' || profile.subscription_expires_at !== expiresAt) {
                         updateData = {
                             subscription_tier: 'premium',
-                            subscription_expires_at: null,
+                            subscription_expires_at: expiresAt,
                             updated_at: new Date().toISOString()
                         }
                         shouldUpdate = true
-                        console.log(`✅ User ${profile.id}: Activating premium (was ${profile.subscription_tier})`)
+                        console.log(`✅ User ${profile.id}: Setting premium with expiry ${expiresAt} (was ${profile.subscription_tier}, expires: ${profile.subscription_expires_at})`)
+                    } else {
+                        console.log(`✅ User ${profile.id}: Already premium with correct expiry: ${expiresAt}`)
                     }
                 } else {
                     // Check for canceled subscription that's still in current period
@@ -138,13 +147,19 @@ serve(async (req) => {
                     if (canceledSubscription) {
                         // Canceled but still active until period end
                         const expiresAt = new Date(canceledSubscription.current_period_end * 1000).toISOString()
-                        updateData = {
-                            subscription_tier: 'premium',
-                            subscription_expires_at: expiresAt,
-                            updated_at: new Date().toISOString()
+
+                        // Only update if the expiration date has changed or user isn't premium
+                        if (profile.subscription_tier !== 'premium' || profile.subscription_expires_at !== expiresAt) {
+                            updateData = {
+                                subscription_tier: 'premium',
+                                subscription_expires_at: expiresAt,
+                                updated_at: new Date().toISOString()
+                            }
+                            shouldUpdate = true
+                            console.log(`⏰ User ${profile.id}: Canceled, setting/updating expiry to ${expiresAt} (was: ${profile.subscription_expires_at})`)
+                        } else {
+                            console.log(`⏰ User ${profile.id}: Canceled subscription expiry already correct (${expiresAt})`)
                         }
-                        shouldUpdate = true
-                        console.log(`⏰ User ${profile.id}: Canceled, expires ${expiresAt}`)
                     } else {
                         // No active subscription - should be free
                         if (profile.subscription_tier !== 'free') {
