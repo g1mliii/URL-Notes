@@ -817,6 +817,8 @@ class Auth {
 
   // Handle password reset callback from email link
   async handlePasswordResetCallback() {
+    console.log('handlePasswordResetCallback called');
+    
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     
@@ -826,6 +828,14 @@ class Auth {
     const type = urlParams.get('type') || hashParams.get('type');
     const error = urlParams.get('error') || hashParams.get('error');
     const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
+    
+    console.log('Password reset callback tokens:', {
+      accessToken: accessToken ? 'Found' : 'Missing',
+      refreshToken: refreshToken ? 'Found' : 'Missing',
+      type: type,
+      error: error,
+      errorDescription: errorDescription
+    });
     
     // Show loading state while processing
     this.showNotification('Processing password reset link...', 'info');
@@ -901,6 +911,11 @@ class Auth {
 
   // Show password reset form (creates a modal or redirects to reset page)
   showPasswordResetForm(accessToken, refreshToken) {
+    console.log('showPasswordResetForm called with tokens:', {
+      accessToken: accessToken ? 'Present' : 'Missing',
+      refreshToken: refreshToken ? 'Present' : 'Missing'
+    });
+    
     // Create a modal for password reset
     const modal = document.createElement('div');
     modal.className = 'modal';
