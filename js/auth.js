@@ -798,6 +798,8 @@ class Auth {
       hashParams: Array.from(hashParams.entries())
     });
     
+    console.log('🔐 Checking for password reset tokens...');
+    
     // Handle success messages from redirects
     const message = urlParams.get('message');
     if (message === 'password-reset-success') {
