@@ -1079,7 +1079,8 @@ class Auth {
       if (document.body.contains(modal)) {
         document.body.removeChild(modal);
       }
-      window.location.href = '/';
+      // Don't redirect - just close the modal
+      // User can navigate manually if needed
     });
     
     // Handle escape key
@@ -1088,7 +1089,7 @@ class Auth {
         if (document.body.contains(modal)) {
           document.body.removeChild(modal);
         }
-        window.location.href = '/';
+        // Don't redirect - just close the modal
         document.removeEventListener('keydown', handleEscape);
       }
     };
