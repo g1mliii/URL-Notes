@@ -207,9 +207,10 @@
 
 - [ ] 12. Testing and quality assurance
   - [ ] 12.1 Implement unit tests for core functionality
-    - Test updated encryption/decryption with email-based keys
-    - Validate export format conversion accuracy with new encryption
-    - Test complete authentication flows including password reset
+    - remove logging in webpage for public use, as well as any logging that is send from edge functions to console
+    - immplement performacne optimizations without changing style or design of webpage and mobile page
+    - fix dashboard notes not showing up when creating a new note and requirind a refresh of the page to be visible
+    - make sure monitoring.js loggin and errors are ready so that we are publish and user ready for public. making sure we dont show console logs if that is industry standard for this not sure
     - Verify data model validation and sanitization
     - _Requirements: All requirements validation_
 
@@ -221,8 +222,13 @@
     - Test complete forgot password → reset → login flow
     - _Requirements: All requirements validation_
 
-- [ ] 13. Implement extension uninstall redirect to website
+- [x] 13. Implement extension uninstall redirect to website and toast notificatoin fix in webpage authentication to show isntead of error for confirm email signup 
+
+
+
+  - change toast notificatoin for not verified email in signup for webpage to show a notification that asks user to verify email instead of error toast notification.
   - Configure extension uninstall URL to redirect to anchored.site
+  - make sure toast notifications for website are not being done through monitoring which should be eventually not shown for production.
   - _Requirements: User retention and feedback collection_
 
 - [ ] 14. Transition Stripe integration to live production keys
@@ -261,7 +267,7 @@
   - _Requirements: Account security and support workflow_
 
 - [ ] 20. Implement password change using existing reset logic
-  - Replace current change password section with password reset implementation
+  - Replace current change password section in account area with forgot password implmentation keeping the ui the same but reusing the same logic with the same listeners as forgot password so we dont run into issues of not detecting/oppening modal.
   - Reuse existing password reset modal and validation logic
   - Ensure consistent password change experience across platform
   - _Requirements: Consistent password management_
