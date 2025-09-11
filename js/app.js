@@ -81,7 +81,6 @@ class App {
     try {
       // Skip redirects for search engine crawlers
       if (this.isSearchEngineCrawler()) {
-        console.log('Search engine crawler detected, skipping auth redirects');
         return;
       }
 
@@ -106,11 +105,8 @@ class App {
                               (hashParams.has('type') && hashParams.get('type') === 'recovery');
             
             if (!isRecovery) {
-              console.log('🔐 Authenticated user on login page, redirecting to dashboard');
               window.location.href = '/dashboard';
               return;
-            } else {
-              console.log('🔐 Password reset callback detected, skipping dashboard redirect');
             }
           }
         } else {
@@ -204,12 +200,10 @@ class App {
 
   initDashboardPage() {
     // Dashboard-specific initialization will be handled in dashboard.js (task 4)
-    console.log('Dashboard page initialized');
   }
 
   initAccountPage() {
     // Account-specific initialization will be handled in account.js (task 5)
-    console.log('Account page initialized');
   }
 
   switchAuthForm(hideForm, showForm) {
@@ -291,7 +285,6 @@ class App {
       window.auth.handleSignOut();
     } else {
       // Fallback logout - clear all auth-related data
-      console.log('Fallback logout - auth module not available');
       localStorage.removeItem('supabase_session');
       localStorage.removeItem('userTier');
       localStorage.removeItem('profileLastChecked');

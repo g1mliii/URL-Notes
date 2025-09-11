@@ -19,15 +19,10 @@ class Auth {
   }
 
   async init() {
-    console.log('🔐 Auth.init() called');
-    console.log('🔐 window.supabaseClient available:', !!window.supabaseClient);
-    
     // Initialize Supabase client from global instance
     if (window.supabaseClient) {
       this.supabaseClient = window.supabaseClient;
-      console.log('🔐 Initializing Supabase client...');
       await this.supabaseClient.init();
-      console.log('🔐 Supabase client initialized');
     } else {
       console.error('❌ Supabase client not available');
     }
@@ -35,7 +30,6 @@ class Auth {
     // Initialize encryption library
     if (window.noteEncryption) {
       this.encryption = window.noteEncryption;
-
     } else {
       console.warn('⚠️ Encryption library not available');
     }
@@ -47,11 +41,10 @@ class Auth {
     this.setupFormListeners();
     
     // Check for OAuth callback and password reset
-    console.log('🔐 About to call handleOAuthCallback...');
     try {
       // Don't await - call it without blocking
       this.handleOAuthCallback().then(() => {
-        console.log('🔐 handleOAuthCallback completed');
+        // OAuth callback completed
       }).catch((error) => {
         console.error('🔐 Error in handleOAuthCallback:', error);
       });
@@ -60,24 +53,18 @@ class Auth {
     }
     
     // Update auth UI based on current state
-    console.log('🔐 About to call updateAuthUI...');
     try {
       await this.updateAuthUI();
-      console.log('🔐 updateAuthUI completed');
     } catch (error) {
       console.error('🔐 Error in updateAuthUI:', error);
     }
     
     // Set up authentication state monitoring
-    console.log('🔐 About to call setupAuthStateMonitoring...');
     try {
       this.setupAuthStateMonitoring();
-      console.log('🔐 setupAuthStateMonitoring completed');
     } catch (error) {
       console.error('🔐 Error in setupAuthStateMonitoring:', error);
     }
-    
-    console.log('🔐 Auth.init() completed successfully');
   }
 
   // Initialize auth form elements (adapted from extension settings.js)
@@ -269,7 +256,7 @@ class Auth {
         submitBtn.textContent = 'Sending...';
       }
       
-      console.log('Password reset attempt:', { email });
+      // Password reset attempt for email
       
       // Use same resetPassword method as extension
       await this.supabaseClient.resetPassword(email);
@@ -323,19 +310,14 @@ class Auth {
 
   // Handle sign out (adapted from extension settings.js)
   async handleSignOut() {
-    console.log('handleSignOut called');
-    
     if (!this.supabaseClient) {
-      console.log('No supabase client, redirecting');
       window.location.href = '/';
       return;
     }
 
     try {
-      console.log('Setting auth busy and signing out');
       this.setAuthBusy(true);
       await this.supabaseClient.signOut();
-      console.log('Sign out successful');
       
       try {
         this.showNotification('Signed out', 'success');
@@ -705,7 +687,7 @@ class Auth {
     }
 
     try {
-      console.log('Starting encryption key migration for password change');
+      // Starting encryption key migration for password change
       
       // Get old encryption key (from cached data)
       const oldKey = await this.supabaseClient.getUserEncryptionKey();
@@ -737,11 +719,8 @@ class Auth {
       const notes = await this.supabaseClient.fetchNotes();
       
       if (notes.length === 0) {
-        console.log('No notes to migrate');
         return;
       }
-
-      console.log(`Migrating ${notes.length} notes to new encryption key`);
       
       // Re-encrypt all notes with new key
       const migratedNotes = [];
@@ -766,7 +745,7 @@ class Auth {
           timestamp: Date.now()
         });
         
-        console.log(`Successfully migrated ${migratedNotes.length} notes`);
+        // Successfully migrated notes
       }
       
       // Clear cached encryption key data to force regeneration
@@ -785,20 +764,10 @@ class Auth {
 
   // Handle OAuth callback with proper error handling and redirect
   async handleOAuthCallback() {
-    console.log('🔐 handleOAuthCallback started - VERSION 2025-01-10-20:15 - CACHE BUST');
-    
     const urlParams = new URLSearchParams(window.location.search);
     
     // Also check URL hash fragment for Supabase auth tokens
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    
-    console.log('🔐 URL parsing:', {
-      search: window.location.search,
-      hash: window.location.hash,
-      hashParams: Array.from(hashParams.entries())
-    });
-    
-    console.log('🔐 Checking for password reset tokens...');
     
     // Handle success messages from redirects
     const message = urlParams.get('message');
@@ -809,10 +778,6 @@ class Auth {
     }
     
     // Handle OAuth callback
-    console.log('🔐 Checking OAuth callback:', {
-      hasCode: urlParams.has('code'),
-      hasSupabaseClient: !!this.supabaseClient
-    });
     
     if (urlParams.has('code') && this.supabaseClient) {
       try {
@@ -842,25 +807,13 @@ class Auth {
     const isRecovery = (urlParams.has('type') && urlParams.get('type') === 'recovery') ||
                       (hashParams.has('type') && hashParams.get('type') === 'recovery');
     
-    console.log('Password reset detection:', {
-      hasQueryType: urlParams.has('type'),
-      queryType: urlParams.get('type'),
-      hasHashType: hashParams.has('type'),
-      hashType: hashParams.get('type'),
-      isRecovery: isRecovery,
-      fullHash: window.location.hash,
-      fullSearch: window.location.search
-    });
-    
     if (isRecovery) {
-      console.log('Calling handlePasswordResetCallback...');
       await this.handlePasswordResetCallback();
     }
   }
 
   // Handle password reset callback from email link
   async handlePasswordResetCallback() {
-    console.log('handlePasswordResetCallback called');
     
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -872,13 +825,7 @@ class Auth {
     const error = urlParams.get('error') || hashParams.get('error');
     const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
     
-    console.log('Password reset callback tokens:', {
-      accessToken: accessToken ? 'Found' : 'Missing',
-      refreshToken: refreshToken ? 'Found' : 'Missing',
-      type: type,
-      error: error,
-      errorDescription: errorDescription
-    });
+    // Check for password reset tokens
     
     // Show loading state while processing
     this.showNotification('Processing password reset link...', 'info');
@@ -959,10 +906,6 @@ class Auth {
 
   // Show password reset form (creates a modal or redirects to reset page)
   showPasswordResetForm(accessToken, refreshToken) {
-    console.log('showPasswordResetForm called with tokens:', {
-      accessToken: accessToken ? 'Present' : 'Missing',
-      refreshToken: refreshToken ? 'Present' : 'Missing'
-    });
     
     // Create a modal for password reset
     const modal = document.createElement('div');
@@ -1147,7 +1090,6 @@ class Auth {
       if (this.isAuthenticated() && this.supabaseClient) {
         const isValid = await this.supabaseClient.verifyToken();
         if (!isValid) {
-          console.log('Session expired, signing out');
           await this.handleSignOut();
         }
       }
@@ -1265,7 +1207,7 @@ class Auth {
       if (error.message.includes('Invalid login credentials')) {
         errorMessage = 'Invalid email or password';
       } else if (error.message.includes('Email not confirmed')) {
-        errorMessage = 'Please check your email and confirm your account';
+        errorMessage = 'Please verify your email address by clicking the link we sent to your inbox before signing in';
       }
       
       this.showNotification(errorMessage, 'error');
@@ -1288,7 +1230,7 @@ class Auth {
       
       const user = this.supabaseClient.getCurrentUser();
       
-      this.showNotification('Account created successfully', 'success');
+      this.showNotification('Account created successfully! Please check your email to verify your account.', 'success');
       
       // Handle authentication success and redirect
       const redirectTo = await this.handleAuthenticationSuccess(user);
@@ -1307,6 +1249,8 @@ class Auth {
         errorMessage = 'An account with this email already exists';
       } else if (error.message.includes('Password')) {
         errorMessage = 'Password must be at least 6 characters long';
+      } else if (error.message.includes('Email not confirmed') || error.message.includes('confirm')) {
+        errorMessage = 'Please verify your email address by clicking the link we sent to your inbox';
       }
       
       this.showNotification(errorMessage, 'error');
@@ -1370,7 +1314,7 @@ class Auth {
     }
 
     try {
-      console.log('🧪 Testing encryption integration...');
+      // Testing encryption integration
       
       // Test basic encryption
       const password = 'test-password-123';
@@ -1414,43 +1358,15 @@ class Auth {
 
 // Initialize auth module when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🔐 DOMContentLoaded - Creating Auth instance...');
-  console.log('🔐 window.supabaseClient available at creation:', !!window.supabaseClient);
   window.auth = new Auth();
-  console.log('🔐 Auth instance created and assigned to window.auth');
-  
-  // Add manual test functions to window for debugging
-  window.testPasswordReset = () => {
-    console.log('🔐 Manual password reset test triggered');
-    try {
-      window.auth.showPasswordResetForm('test_token', 'test_refresh');
-      console.log('🔐 Manual test: Modal should be visible');
-    } catch (error) {
-      console.error('🔐 Manual test error:', error);
-    }
-  };
-  
-  window.testPasswordResetDetection = () => {
-    console.log('🔐 Manual password reset detection test');
-    try {
-      window.auth.handlePasswordResetCallback();
-      console.log('🔐 Manual detection test completed');
-    } catch (error) {
-      console.error('🔐 Manual detection test error:', error);
-    }
-  };
   
   // Auto-detect password reset on page load
   setTimeout(() => {
-    console.log('🔐 Auto-detecting password reset...');
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const isRecovery = hashParams.has('type') && hashParams.get('type') === 'recovery';
     const hasTokens = hashParams.has('access_token') && hashParams.has('refresh_token');
     
-    console.log('🔐 Auto-detection check:', { isRecovery, hasTokens });
-    
     if (isRecovery && hasTokens) {
-      console.log('🔐 Password reset detected! Showing modal...');
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
       

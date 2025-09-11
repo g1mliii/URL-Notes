@@ -7,8 +7,6 @@ class Account {
   }
 
   init() {
-    console.log('🚀 Account module initialized');
-    console.log('🔍 Current URL:', window.location.href);
 
     // Add a small delay to ensure page is fully loaded
     setTimeout(() => {
@@ -33,13 +31,9 @@ class Account {
     });
 
     if (success === 'true' && sessionId) {
-      console.log('✅ Payment success detected, starting upgrade...');
       this.handlePaymentSuccess(sessionId);
     } else if (canceled === 'true') {
-      console.log('❌ Payment was canceled');
       this.showPaymentCanceled();
-    } else {
-      console.log('ℹ️ No payment status detected');
     }
   }
 

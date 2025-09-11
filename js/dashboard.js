@@ -1207,7 +1207,7 @@ class Dashboard {
         // Add to local array at the beginning (most recent first)
         const processedNote = this.processNotes([noteData])[0];
         this.notes.unshift(processedNote);
-        console.log('New note added to local array:', processedNote.title, 'Total notes:', this.notes.length);
+        // New note added to local array
       }
 
       // Update current note
