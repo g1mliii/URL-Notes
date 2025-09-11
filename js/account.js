@@ -160,7 +160,7 @@ class Account {
         // Don't throw here - profile update succeeded, AI update is secondary
       }
 
-      console.log('🎉 User successfully upgraded to premium with 500 AI uses per month');
+      console.log('🎉 User successfully upgraded to premium with 500 AI tokens per month');
 
       // Force refresh the subscription status display
       setTimeout(() => {

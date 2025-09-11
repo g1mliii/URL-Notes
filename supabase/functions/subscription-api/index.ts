@@ -129,7 +129,7 @@ async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: 
             currency: 'usd',
             product_data: {
               name: 'Anchored Premium',
-              description: 'Cloud sync, web app access, unlimited exports, and 500 AI uses per month',
+              description: 'Cloud sync, web app access, unlimited exports, and 500 AI tokens per month',
             },
             unit_amount: 250, // $2.50 in cents
             recurring: {

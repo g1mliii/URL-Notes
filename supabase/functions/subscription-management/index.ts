@@ -16,13 +16,13 @@ serve(async (req) => {
 
   // ALLOW ALL REQUESTS - NO AUTHENTICATION REQUIRED
   console.log('🚀 ALLOWING ALL REQUESTS - NO AUTH CHECK')
-  
+
   const userAgent = req.headers.get('user-agent') || ''
-  
+
   // If it's a Stripe webhook, process it
   if (userAgent.includes('Stripe')) {
     console.log('🎯 STRIPE WEBHOOK DETECTED - PROCESSING')
-    
+
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
       apiVersion: '2023-10-16',
     })
@@ -177,7 +177,7 @@ async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: 
             currency: 'usd',
             product_data: {
               name: 'Anchored Premium',
-              description: 'Cloud sync, web app access, unlimited exports, and 500 AI uses per month',
+              description: 'Cloud sync, web app access, unlimited exports, and 500 AI tokens per month',
             },
             unit_amount: 250, // $2.50 in cents
             recurring: {
@@ -343,7 +343,7 @@ async function handleWebhook(stripe: Stripe, supabaseClient: any, req: Request) 
 
     console.log('🎯 Webhook event type:', event.type)
     console.log('🆔 Webhook event ID:', event.id)
-    
+
     // Log the event data for debugging
     if (event.data?.object) {
       console.log('📋 Event object keys:', Object.keys(event.data.object))
