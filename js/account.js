@@ -309,10 +309,7 @@ class Account {
       });
     }
 
-    const deleteAccountBtn = document.getElementById('deleteAccountBtn');
-    if (deleteAccountBtn) {
-      deleteAccountBtn.addEventListener('click', () => this.confirmDeleteAccount());
-    }
+
 
     // View billing history button
     const viewBillingBtn = document.getElementById('viewBillingBtn');
@@ -429,15 +426,7 @@ class Account {
     console.log('Export all data - will be implemented in task 6');
   }
 
-  confirmDeleteAccount() {
-    if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-      this.deleteAccount();
-    }
-  }
 
-  async deleteAccount() {
-    console.log('Delete account - will be implemented in task 5');
-  }
 }
 
 // Initialize account module when DOM is loaded

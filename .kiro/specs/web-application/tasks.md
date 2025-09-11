@@ -171,9 +171,6 @@
     - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
   - [x] 9.2 Handle password reset edge cases and user experience
-
-
-
     - Add proper error handling for invalid/expired reset tokens
     - Add user feedback for successful reset email sending
     - Ensure proper redirect flow after successful password reset
@@ -222,15 +219,6 @@
     - Test complete forgot password → reset → login flow
     - _Requirements: All requirements validation_
 
-- [x] 13. Implement extension uninstall redirect to website and toast notificatoin fix in webpage authentication to show isntead of error for confirm email signup 
-
-
-
-  - change toast notificatoin for not verified email in signup for webpage to show a notification that asks user to verify email instead of error toast notification.
-  - Configure extension uninstall URL to redirect to anchored.site
-  - make sure toast notifications for website are not being done through monitoring which should be eventually not shown for production.
-  - _Requirements: User retention and feedback collection_
-
 - [ ] 14. Transition Stripe integration to live production keys
   - Replace test Stripe API keys with live production keys
   - Update customer portal links to use live Stripe environment
@@ -244,26 +232,17 @@
   - Ensure portal provides access to both subscription management and billing history
   - _Requirements: Simplified user experience_
 
-- [ ] 16. Fix extension premium upgrade redirect
-  - Update premium ad in extension to redirect to account page instead of placeholder
-  - Ensure seamless transition from extension to web account page
-  - _Requirements: Consistent upgrade experience_
-
 - [ ] 17. Fix extension settings UI z-index issues
   - Resolve ads appearing above settings area blocking help and onboarding buttons
   - Adjust z-index values to ensure proper layering
   - Test settings accessibility on all screen sizes
   - _Requirements: Accessible settings interface_
 
-- [ ] 18. Update extension onboarding to use web-based flow
-  - Ensure settings onboarding button uses same flow as new user login onboarding/ opens that new page with the onbarding instead of the current implmentation 
-  - Maintain consistent onboarding experience across platforms
-  - _Requirements: Unified onboarding experience_
-
-- [ ] 19. Remove delete account functionality from web interface
+- [x] 19. Remove delete account functionality from web interface
   - Remove delete account section from account page
   - Update account page layout to remove delete account UI
   - Ensure account deletion is only available through support channels
+  - remove test files in workspace
   - _Requirements: Account security and support workflow_
 
 - [ ] 20. Implement password change using existing reset logic
@@ -272,23 +251,3 @@
   - Ensure consistent password change experience across platform
   - _Requirements: Consistent password management_
 
-  
-- [x] 22. Correct AI usage limits and pricing model on webstie feature and pricing areaas show 500 tokens total
-
-
-
-
-
-  - Update AI rewrite and AI summary to show ai reqrite 1 token per note ai summary 20 uses per site, and ai domain ummary 1 use pernote in domain summary, for features
-  - Correct pricing and feature descriptions to reflect actual usage model
-  - _Requirements: Accurate usage tracking and billing_
-
-- [x] 23. Update free tier feature restrictions on website features and pricing area
-
-
-
-
-
-  - Remove and replace export format restrictions feature list
-  - Remove version history feature from free tier feature list
-  - _Requirements: Accurate free tier feature set_

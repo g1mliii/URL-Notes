@@ -214,19 +214,19 @@ class AdManager {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    // Rotate between three ads: NordVPN (50%), Vrbo (30%), Upgrade (20%)
+    // Rotate between three ads: Upgrade (50%), NordVPN (30%), Vrbo (20%)
     const random = Math.random();
     let adType;
-    
+
     if (random < 0.5) {
-      adType = 'nordvpn';
-      this.showNordVPNAd();
-    } else if (random < 0.8) {
-      adType = 'vrbo';
-      this.showVrboAd();
-    } else {
       adType = 'upgrade';
       this.showUpgradeAd();
+    } else if (random < 0.8) {
+      adType = 'nordvpn';
+      this.showNordVPNAd();
+    } else {
+      adType = 'vrbo';
+      this.showVrboAd();
     }
 
     console.log('Showing ad type:', adType);
@@ -459,8 +459,21 @@ class AdManager {
 
   // Handle upgrade button click
   openUpgrade() {
+    // Check if user is authenticated to determine redirect destination
+    let targetUrl = 'https://anchored.site'; // Default to main page
+
+    try {
+      // If user is authenticated, redirect to account page for subscription management
+      if (window.supabaseClient && window.supabaseClient.isAuthenticated()) {
+        targetUrl = 'https://anchored.site/account';
+      }
+    } catch (error) {
+      console.warn('Error checking authentication status for upgrade redirect:', error);
+      // Fall back to main page if there's an error
+    }
+
     chrome.tabs.create({
-      url: 'https://anchored.site' // TODO: Change to direct premium signup when subscription service is implemented
+      url: targetUrl
     });
     // this.trackAdClick('upgrade'); // Disabled - using NordVPN analytics
   }

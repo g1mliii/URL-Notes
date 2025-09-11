@@ -8,10 +8,6 @@ class SettingsManager {
     this.settingsBtn = document.getElementById('settingsBtn');
     this.settingsBackBtn = document.getElementById('settingsBackBtn');
     this.openOnboardingBtn = document.getElementById('openOnboardingBtn');
-    // Inline onboarding panel elements
-    this.onboardingPanel = document.getElementById('onboardingPanel');
-    this.onboardingBackBtn = document.getElementById('onboardingBackBtn');
-    this.onboardingFrame = document.getElementById('onboardingFrame');
     this.fontSelector = document.getElementById('fontSelector');
     this.fontSizeSlider = document.getElementById('fontSizeSlider');
     this.fontSizeValue = document.getElementById('fontSizeValue');
@@ -334,8 +330,6 @@ class SettingsManager {
 
     // Open onboarding
     this.openOnboardingBtn?.addEventListener('click', () => this.openOnboarding());
-    // Back from onboarding
-    this.onboardingBackBtn?.addEventListener('click', () => this.backFromOnboarding());
 
     // React to global auth and tier changes
     try {
@@ -522,30 +516,9 @@ class SettingsManager {
     } catch (_) { /* noop */ }
   }
 
-  // Open onboarding inside popup
+  // Open onboarding in new tab (same as new install flow)
   openOnboarding() {
-    // If inline panel exists, use it; otherwise fall back to tab
-    if (this.onboardingPanel && this.onboardingFrame) {
-      try {
-        const url = chrome?.runtime?.getURL ? chrome.runtime.getURL('onboarding.html') : 'onboarding.html';
-        // Only set src if different to avoid reload flicker
-        if (this.onboardingFrame.getAttribute('src') !== url) {
-          this.onboardingFrame.setAttribute('src', url);
-        }
-      } catch (_) {
-        // Best-effort local fallback
-        if (!this.onboardingFrame.getAttribute('src')) {
-          this.onboardingFrame.setAttribute('src', 'onboarding.html');
-        }
-      }
-
-      // Show onboarding panel, hide settings
-      if (this.settingsPanel) this.settingsPanel.style.display = 'none';
-      this.onboardingPanel.style.display = 'block';
-      return;
-    }
-
-    // Fallback to opening in a new tab if inline not available
+    // Always open in new tab to match new user onboarding experience
     try {
       const url = chrome?.runtime?.getURL ? chrome.runtime.getURL('onboarding.html') : 'onboarding.html';
       if (chrome?.tabs?.create) {
@@ -560,11 +533,7 @@ class SettingsManager {
     }
   }
 
-  // Navigate back from onboarding panel to settings
-  backFromOnboarding() {
-    if (this.onboardingPanel) this.onboardingPanel.style.display = 'none';
-    if (this.settingsPanel) this.settingsPanel.style.display = 'block';
-  }
+
 
   // Handle export notes
   async handleExportNotes() {
