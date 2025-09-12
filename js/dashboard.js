@@ -108,6 +108,9 @@ class Dashboard {
       importBtn.addEventListener('click', () => this.showImportModal());
     }
 
+    // Import modal event listeners
+    this.setupImportModalListeners();
+
     // Panel close handlers
     const closePanel = document.getElementById('closePanel');
     if (closePanel) {
@@ -117,6 +120,11 @@ class Dashboard {
     const closeExportModal = document.getElementById('closeExportModal');
     if (closeExportModal) {
       closeExportModal.addEventListener('click', () => window.app.hideModal('exportModal'));
+    }
+
+    const closeImportModal = document.getElementById('closeImportModal');
+    if (closeImportModal) {
+      closeImportModal.addEventListener('click', () => window.app.hideModal('importModal'));
     }
 
     // Panel action buttons
@@ -1383,6 +1391,517 @@ class Dashboard {
     }, 3000);
   }
 
+  // Import Modal Functionality
+  setupImportModalListeners() {
+    const fileUploadArea = document.getElementById('fileUploadArea');
+    const importFileInput = document.getElementById('importFileInput');
+    const selectFileBtn = document.getElementById('selectFileBtn');
+    const cancelImportBtn = document.getElementById('cancelImportBtn');
+    const startImportBtn = document.getElementById('startImportBtn');
+
+    // File selection
+    if (selectFileBtn) {
+      selectFileBtn.addEventListener('click', () => importFileInput?.click());
+    }
+
+    if (fileUploadArea) {
+      fileUploadArea.addEventListener('click', () => importFileInput?.click());
+    }
+
+    // File input change
+    if (importFileInput) {
+      importFileInput.addEventListener('change', (e) => this.handleFileSelection(e));
+    }
+
+    // Drag and drop
+    if (fileUploadArea) {
+      fileUploadArea.addEventListener('dragover', (e) => this.handleDragOver(e));
+      fileUploadArea.addEventListener('dragleave', (e) => this.handleDragLeave(e));
+      fileUploadArea.addEventListener('drop', (e) => this.handleFileDrop(e));
+    }
+
+    // Import actions
+    if (cancelImportBtn) {
+      cancelImportBtn.addEventListener('click', () => this.cancelImport());
+    }
+
+    if (startImportBtn) {
+      startImportBtn.addEventListener('click', () => this.startImport());
+    }
+  }
+
+  showImportModal() {
+    // Reset modal state
+    this.resetImportModal();
+    
+    // Show modal
+    window.app.showModal('importModal');
+  }
+
+  resetImportModal() {
+    // Reset file input
+    const importFileInput = document.getElementById('importFileInput');
+    if (importFileInput) {
+      importFileInput.value = '';
+    }
+
+    // Hide sections
+    const fileInfoSection = document.getElementById('fileInfoSection');
+    const importPreviewSection = document.getElementById('importPreviewSection');
+    const importProgress = document.getElementById('importProgress');
+
+    if (fileInfoSection) fileInfoSection.classList.add('hidden');
+    if (importPreviewSection) importPreviewSection.classList.add('hidden');
+    if (importProgress) importProgress.classList.add('hidden');
+
+    // Reset button state
+    const startImportBtn = document.getElementById('startImportBtn');
+    if (startImportBtn) {
+      startImportBtn.disabled = true;
+      startImportBtn.classList.remove('importing');
+    }
+
+    // Reset status text
+    const importStatusText = document.getElementById('importStatusText');
+    if (importStatusText) {
+      importStatusText.textContent = 'Select a file to import';
+    }
+
+    // Reset drag state
+    const fileUploadArea = document.getElementById('fileUploadArea');
+    if (fileUploadArea) {
+      fileUploadArea.classList.remove('dragover');
+    }
+
+    // Clear stored import data
+    this.importData = null;
+    this.importFileInfo = null;
+  }
+
+  handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const fileUploadArea = document.getElementById('fileUploadArea');
+    if (fileUploadArea) {
+      fileUploadArea.classList.add('dragover');
+    }
+  }
+
+  handleDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const fileUploadArea = document.getElementById('fileUploadArea');
+    if (fileUploadArea) {
+      fileUploadArea.classList.remove('dragover');
+    }
+  }
+
+  handleFileDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const fileUploadArea = document.getElementById('fileUploadArea');
+    if (fileUploadArea) {
+      fileUploadArea.classList.remove('dragover');
+    }
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      this.processSelectedFile(files[0]);
+    }
+  }
+
+  handleFileSelection(e) {
+    const file = e.target.files[0];
+    if (file) {
+      this.processSelectedFile(file);
+    }
+  }
+
+  async processSelectedFile(file) {
+    try {
+      // Validate file type
+      if (!file.name.toLowerCase().endsWith('.json')) {
+        throw new Error('Please select a JSON file (.json)');
+      }
+
+      // Validate file size (max 50MB)
+      const maxSize = 50 * 1024 * 1024; // 50MB
+      if (file.size > maxSize) {
+        throw new Error('File is too large. Maximum size is 50MB.');
+      }
+
+      // Update status
+      const importStatusText = document.getElementById('importStatusText');
+      if (importStatusText) {
+        importStatusText.textContent = 'Reading file...';
+      }
+
+      // Read file content
+      const text = await file.text();
+
+      // Parse JSON
+      let importData;
+      try {
+        importData = JSON.parse(text);
+      } catch (parseError) {
+        throw new Error('Invalid JSON file. Please check the file format.');
+      }
+
+      // Validate import data structure
+      const validation = this.validateImportData(importData);
+      if (!validation.isValid) {
+        throw new Error(`Invalid import format: ${validation.error}`);
+      }
+
+      // Store import data
+      this.importData = importData;
+      this.importFileInfo = {
+        name: file.name,
+        size: file.size,
+        totalNotes: validation.totalNotes,
+        validDomains: validation.validDomains
+      };
+
+      // Show file info and preview
+      this.showFileInfo();
+      this.showImportPreview();
+
+      // Enable import button
+      const startImportBtn = document.getElementById('startImportBtn');
+      if (startImportBtn) {
+        startImportBtn.disabled = false;
+      }
+
+      // Update status
+      if (importStatusText) {
+        importStatusText.textContent = `Ready to import ${validation.totalNotes} notes from ${validation.validDomains} domains`;
+      }
+
+    } catch (error) {
+      this.showNotification(`Failed to process file: ${error.message}`, 'error');
+      
+      // Update status
+      const importStatusText = document.getElementById('importStatusText');
+      if (importStatusText) {
+        importStatusText.textContent = 'Select a file to import';
+      }
+    }
+  }
+
+  validateImportData(importData) {
+    try {
+      // Check if data is an object
+      if (!importData || typeof importData !== 'object') {
+        return { isValid: false, error: 'Import data must be a JSON object' };
+      }
+
+      // Check if it's empty
+      if (Object.keys(importData).length === 0) {
+        return { isValid: false, error: 'Import file is empty' };
+      }
+
+      let totalNotes = 0;
+      let validDomains = 0;
+
+      // Validate each domain
+      for (const [domain, notes] of Object.entries(importData)) {
+        // Skip non-note data (like themeMode)
+        if (domain === 'themeMode' || !Array.isArray(notes)) {
+          continue;
+        }
+
+        validDomains++;
+
+        // Validate notes array
+        for (let i = 0; i < notes.length; i++) {
+          const note = notes[i];
+
+          // Check required fields
+          if (!note || typeof note !== 'object') {
+            return { isValid: false, error: `Invalid note at ${domain}[${i}]: not an object` };
+          }
+
+          if (!note.id || typeof note.id !== 'string') {
+            return { isValid: false, error: `Invalid note at ${domain}[${i}]: missing or invalid ID` };
+          }
+
+          // Validate optional fields if present
+          if (note.title && typeof note.title !== 'string') {
+            return { isValid: false, error: `Invalid note at ${domain}[${i}]: title must be a string` };
+          }
+
+          if (note.content && typeof note.content !== 'string') {
+            return { isValid: false, error: `Invalid note at ${domain}[${i}]: content must be a string` };
+          }
+
+          if (note.tags && !Array.isArray(note.tags)) {
+            return { isValid: false, error: `Invalid note at ${domain}[${i}]: tags must be an array` };
+          }
+
+          totalNotes++;
+        }
+      }
+
+      // Check if we found any valid notes
+      if (validDomains === 0 || totalNotes === 0) {
+        return { isValid: false, error: 'No valid notes found in import file' };
+      }
+
+      // Check reasonable limits
+      if (totalNotes > 10000) {
+        return { isValid: false, error: `Too many notes (${totalNotes}). Maximum is 10,000 notes per import.` };
+      }
+
+      return { isValid: true, totalNotes, validDomains };
+    } catch (error) {
+      return { isValid: false, error: `Validation error: ${error.message}` };
+    }
+  }
+
+  showFileInfo() {
+    const fileInfoSection = document.getElementById('fileInfoSection');
+    const fileInfo = document.getElementById('fileInfo');
+
+    if (!fileInfoSection || !fileInfo || !this.importFileInfo) return;
+
+    const formatFileSize = (bytes) => {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
+
+    fileInfo.innerHTML = `
+      <div class="file-info-item">
+        <span class="file-info-label">File Name:</span>
+        <span class="file-info-value">${this.escapeHtml(this.importFileInfo.name)}</span>
+      </div>
+      <div class="file-info-item">
+        <span class="file-info-label">File Size:</span>
+        <span class="file-info-value">${formatFileSize(this.importFileInfo.size)}</span>
+      </div>
+      <div class="file-info-item">
+        <span class="file-info-label">Total Notes:</span>
+        <span class="file-info-value">${this.importFileInfo.totalNotes}</span>
+      </div>
+      <div class="file-info-item">
+        <span class="file-info-label">Domains:</span>
+        <span class="file-info-value">${this.importFileInfo.validDomains}</span>
+      </div>
+    `;
+
+    fileInfoSection.classList.remove('hidden');
+  }
+
+  showImportPreview() {
+    const importPreviewSection = document.getElementById('importPreviewSection');
+    const importPreview = document.getElementById('importPreview');
+
+    if (!importPreviewSection || !importPreview || !this.importData) return;
+
+    let previewHtml = '';
+
+    // Show preview of domains and notes
+    for (const [domain, notes] of Object.entries(this.importData)) {
+      if (!Array.isArray(notes) || notes.length === 0) continue;
+
+      previewHtml += `
+        <div class="preview-domain">
+          <div class="preview-domain-title">
+            ${this.escapeHtml(domain)}
+            <span class="preview-note-count">${notes.length} notes</span>
+          </div>
+          <div class="preview-notes">
+      `;
+
+      // Show first few notes as preview
+      const previewNotes = notes.slice(0, 3);
+      previewNotes.forEach(note => {
+        const title = note.title || 'Untitled Note';
+        const content = note.content || '';
+        const preview = content.length > 100 ? content.substring(0, 100) + '...' : content;
+
+        previewHtml += `
+          <div class="preview-note">
+            <div class="preview-note-title">${this.escapeHtml(title)}</div>
+            ${preview ? `<div class="preview-note-content">${this.escapeHtml(preview)}</div>` : ''}
+          </div>
+        `;
+      });
+
+      if (notes.length > 3) {
+        previewHtml += `
+          <div class="preview-note">
+            <div class="preview-note-content">... and ${notes.length - 3} more notes</div>
+          </div>
+        `;
+      }
+
+      previewHtml += `
+          </div>
+        </div>
+      `;
+    }
+
+    importPreview.innerHTML = previewHtml;
+    importPreviewSection.classList.remove('hidden');
+  }
+
+  cancelImport() {
+    window.app.hideModal('importModal');
+  }
+
+  async startImport() {
+    if (!this.importData) {
+      this.showNotification('No file selected for import', 'error');
+      return;
+    }
+
+    try {
+      // Show progress
+      this.showImportProgress();
+
+      // Update button state
+      const startImportBtn = document.getElementById('startImportBtn');
+      if (startImportBtn) {
+        startImportBtn.disabled = true;
+        startImportBtn.classList.add('importing');
+      }
+
+      // Update progress
+      this.updateImportProgress(10, 'Preparing import...');
+
+      // Check authentication
+      if (!window.api || !window.api.isAuthenticated()) {
+        throw new Error('Please sign in to import notes');
+      }
+
+      // Update progress
+      this.updateImportProgress(20, 'Processing notes...');
+
+      let importedCount = 0;
+      let updatedCount = 0;
+      let skippedCount = 0;
+      const totalNotes = this.importFileInfo.totalNotes;
+
+      // Import notes domain by domain
+      let processedNotes = 0;
+      for (const [domain, notes] of Object.entries(this.importData)) {
+        if (!Array.isArray(notes)) continue;
+
+        for (const note of notes) {
+          if (note && note.id) {
+            try {
+              // Prepare note data for import
+              const noteData = {
+                ...note,
+                // Ensure required fields
+                id: note.id,
+                title: note.title || 'Untitled Note',
+                content: note.content || '',
+                url: note.url || 'chrome://extensions',
+                domain: note.domain || domain,
+                tags: Array.isArray(note.tags) ? note.tags : [],
+                // Set timestamps
+                createdAt: note.createdAt || new Date().toISOString(),
+                updatedAt: note.updatedAt || new Date().toISOString(),
+                // Ensure note is not marked as deleted
+                is_deleted: false,
+                deleted_at: null
+              };
+
+              // Check if note already exists
+              const existingNote = this.notes.find(n => n.id === noteData.id);
+              
+              if (existingNote) {
+                // Update existing note
+                await window.api.saveNote(noteData);
+                updatedCount++;
+              } else {
+                // Import new note
+                await window.api.saveNote(noteData);
+                importedCount++;
+              }
+
+              processedNotes++;
+              
+              // Update progress
+              const progress = 20 + (processedNotes / totalNotes) * 70;
+              this.updateImportProgress(progress, `Importing notes... ${processedNotes}/${totalNotes}`);
+
+              // Small delay to prevent overwhelming the API
+              if (processedNotes % 10 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+              }
+
+            } catch (error) {
+              console.warn('Failed to import note:', note.id, error);
+              skippedCount++;
+            }
+          }
+        }
+      }
+
+      // Update progress
+      this.updateImportProgress(95, 'Refreshing notes...');
+
+      // Reload notes to show imported data
+      await this.loadNotes();
+
+      // Update progress
+      this.updateImportProgress(100, 'Import complete!');
+
+      // Show success message
+      let message = `Successfully imported ${importedCount} notes!`;
+      if (updatedCount > 0) {
+        message += ` (${updatedCount} updated)`;
+      }
+      if (skippedCount > 0) {
+        message += ` (${skippedCount} skipped)`;
+      }
+
+      this.showNotification(message, 'success');
+
+      // Close modal after a short delay
+      setTimeout(() => {
+        window.app.hideModal('importModal');
+      }, 2000);
+
+    } catch (error) {
+      console.error('Import failed:', error);
+      this.showNotification(`Import failed: ${error.message}`, 'error');
+      
+      // Reset button state
+      const startImportBtn = document.getElementById('startImportBtn');
+      if (startImportBtn) {
+        startImportBtn.disabled = false;
+        startImportBtn.classList.remove('importing');
+      }
+    }
+  }
+
+  showImportProgress() {
+    const importProgress = document.getElementById('importProgress');
+    if (importProgress) {
+      importProgress.classList.remove('hidden');
+    }
+  }
+
+  updateImportProgress(percentage, text) {
+    const importProgressFill = document.getElementById('importProgressFill');
+    const importProgressText = document.getElementById('importProgressText');
+
+    if (importProgressFill) {
+      importProgressFill.style.width = `${Math.min(100, Math.max(0, percentage))}%`;
+    }
+
+    if (importProgressText) {
+      importProgressText.textContent = text;
+    }
+  }
+
   showExportModal() {
     this.initializeExportModal();
     window.app.showModal('exportModal');
@@ -1932,9 +2451,7 @@ class Dashboard {
     }
   }
 
-  showImportModal() {
-    // Placeholder - actual implementation in task 7
-  }
+
 
   // Selection Management Methods
   toggleNoteSelection(noteId) {

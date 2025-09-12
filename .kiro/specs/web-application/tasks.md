@@ -178,7 +178,7 @@
     - Note: No encryption migration needed with email-based keys
     - _Requirements: 3.5_
 
-- [ ] 10. Implement export functionality build from same code as extension export since they should behave the same way
+- [x] 10. Implement export functionality build from same code as extension export since they should behave the same way
 
   - [x] 10.1 Create export interface with note selection build from same code as extension export since they should behave the same way mostly with some additiona features in webpage
 
@@ -195,20 +195,15 @@
 
   - [x] 10.2 Implement export processing and download
 
-
-
-
-
     - implement actual export functionality similir to extension export since file structur should be similar,
     - Generate export files using adapted export-formats.js
     - Implement browser file download functionality
     - Handle export errors with retry options
     - _Requirements: 7.3, 7.5_
-
-- [ ] 11. Implement import functionality i dont think our extension encrypts on import so we can just import normal and when syncs it should encrypt just like extenion unless our wepbage behaves differntly.
-  - [ ] 11.1 Create import interface and file handling
+    
+- [x] 11 Implement import functionality i dont think our extension encrypts on import so we can just import normal and when syncs it should encrypt just like extenion unless our wepbage behaves differntl
     - Build file upload interface with format validation
-    - Support JSON, Markdown, and Plain Text import formats
+    - Support JSON imports rename export and import from json to anchored so user doenst get confused.
     - Implement file parsing and validation
     - Display import preview before processing
     - _Requirements: 8.1, 8.2_
@@ -231,7 +226,9 @@
     - _Requirements: All requirements validation_
 
 - [ ] 14. Transition Stripe integration to live production keys
-  - Replace test Stripe API keys with live production keys i think they are only used in supabased index just check as im not sure where i need to replace any keys for live versions
+  - if not already trigger sync subscriptin status when opening account section so that users dont have to do it manually. and so that when we redirect bck to account from stripe it works properluy.
+  - update toast notification for sync subscription status to reword premium subscrition cancelled expired at wahtever date to be less confusing should be subscription expires at date subscritopn recurring billing cancelled something like that but shorter and more precise less confusing to user.
+  - Replace test Stripe API keys with live production keys i think they are only used in supabase so i can do that just tell me what need to be changed. just check as im not sure where i need to replace any keys for live versions
   - Update customer portal links to use live Stripe environment https://billing.stripe.com/p/login/7sY7sN0nf3Vl3IY6gW3oA00
   - Test live payment processing
   - Verify production and subscription management
@@ -243,8 +240,10 @@
   - _Requirements: Simplified user experience_
 
 
-- [ ] 20. Implement password change using existing reset logic
+- [-] 20. Implement password change using existing reset logic
+
   - Replace current change password section in account area with forgot password implmentation keeping the ui the same but reusing the same logic with the same listeners as forgot password so we dont run into issues of not detecting/oppening modal.
+  - update description in this area as well as we dont need to reinecrypt data or do any transition step anymore since password does not effect this.
   - Reuse existing password reset modal and validation logic
   - Ensure consistent password change experience across platform
   - _Requirements: Consistent password management_

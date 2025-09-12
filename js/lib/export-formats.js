@@ -4,7 +4,7 @@
 class ExportFormats {
   constructor() {
     this.supportedFormats = {
-      'json': { name: 'JSON Backup', extension: '.json', mimeType: 'application/json' },
+      'json': { name: 'Anchored', extension: '.json', mimeType: 'application/json' },
       'markdown': { name: 'Markdown', extension: '.md', mimeType: 'text/markdown' },
       'obsidian': { name: 'Obsidian', extension: '.md', mimeType: 'text/markdown' },
       'notion': { name: 'Notion', extension: '.html', mimeType: 'text/html' },
