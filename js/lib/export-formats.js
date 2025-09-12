@@ -338,8 +338,31 @@ class ExportFormats {
   // Browser-based file download functionality
   downloadFile(content, filename, mimeType) {
     try {
+      // Validate inputs
+      if (!content) {
+        throw new Error('No content to export');
+      }
+      
+      if (!filename) {
+        throw new Error('Invalid filename');
+      }
+
+      // Check if browser supports required APIs
+      if (!window.Blob) {
+        throw new Error('Your browser does not support file downloads');
+      }
+
+      if (!URL.createObjectURL) {
+        throw new Error('Your browser does not support file downloads');
+      }
+
       // Create blob with the content
       const blob = new Blob([content], { type: mimeType });
+      
+      // Check blob size (warn if very large)
+      if (blob.size > 50 * 1024 * 1024) { // 50MB
+        console.warn('Large export file detected:', blob.size, 'bytes');
+      }
       
       // Create download URL
       const url = URL.createObjectURL(blob);
@@ -367,53 +390,102 @@ class ExportFormats {
 
   // Main export method that converts data to the specified format and triggers download
   exportToFormat(notesData, format, isSingleNote = false) {
+    // Validate inputs
+    if (!notesData || typeof notesData !== 'object') {
+      throw new Error('Invalid notes data provided');
+    }
+
+    // Check if we have any notes to export
+    const totalNotes = Object.values(notesData).reduce((total, domainNotes) => {
+      return total + (Array.isArray(domainNotes) ? domainNotes.length : 0);
+    }, 0);
+
+    if (totalNotes === 0) {
+      throw new Error('No notes found to export');
+    }
+
     const formatInfo = this.supportedFormats[format];
     if (!formatInfo) {
-      throw new Error(`Unsupported format: ${format}`);
+      throw new Error(`Unsupported export format: ${format}. Supported formats: ${Object.keys(this.supportedFormats).join(', ')}`);
     }
 
     let content;
-    switch (format) {
-      case 'json':
-        content = this.toJSON(notesData);
-        break;
-      case 'markdown':
-        content = this.toMarkdown(notesData);
-        break;
-      case 'obsidian':
-        content = this.toObsidian(notesData);
-        break;
-      case 'notion':
-        content = this.toNotion(notesData);
-        break;
-      case 'txt':
-        content = this.toTXT(notesData, isSingleNote);
-        break;
-      case 'docx':
-        content = this.toDOCX(notesData);
-        break;
-      default:
-        throw new Error(`Unsupported format: ${format}`);
+    try {
+      switch (format) {
+        case 'json':
+          content = this.toJSON(notesData);
+          break;
+        case 'markdown':
+          content = this.toMarkdown(notesData);
+          break;
+        case 'obsidian':
+          content = this.toObsidian(notesData);
+          break;
+        case 'notion':
+          content = this.toNotion(notesData);
+          break;
+        case 'txt':
+          content = this.toTXT(notesData, isSingleNote);
+          break;
+        case 'docx':
+          content = this.toDOCX(notesData);
+          break;
+        default:
+          throw new Error(`Unsupported export format: ${format}`);
+      }
+    } catch (error) {
+      throw new Error(`Failed to convert notes to ${format.toUpperCase()} format: ${error.message}`);
     }
 
-    const filename = `url-notes-export-${new Date().toISOString().split('T')[0]}${formatInfo.extension}`;
+    if (!content || content.trim().length === 0) {
+      throw new Error(`Generated ${format.toUpperCase()} content is empty`);
+    }
+
+    // Generate filename with timestamp and note count
+    const timestamp = new Date().toISOString().split('T')[0];
+    const noteCountSuffix = totalNotes > 1 ? `-${totalNotes}notes` : '';
+    const filename = `url-notes-export-${timestamp}${noteCountSuffix}${formatInfo.extension}`;
     
     return {
       content,
       filename,
-      mimeType: formatInfo.mimeType
+      mimeType: formatInfo.mimeType,
+      noteCount: totalNotes
     };
   }
 
   // Export and download in one step
   async exportAndDownload(notesData, format, isSingleNote = false) {
     try {
+      // Add a small delay to allow UI updates
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const exportResult = this.exportToFormat(notesData, format, isSingleNote);
+      
+      // Add another small delay before download
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       this.downloadFile(exportResult.content, exportResult.filename, exportResult.mimeType);
-      return exportResult;
+      
+      return {
+        ...exportResult,
+        success: true,
+        message: `Successfully exported ${exportResult.noteCount} note${exportResult.noteCount !== 1 ? 's' : ''}`
+      };
     } catch (error) {
       console.error('Export and download failed:', error);
-      throw error;
+      
+      // Provide more specific error messages
+      let userMessage = error.message;
+      if (error.message.includes('browser does not support')) {
+        userMessage = 'Your browser does not support file downloads. Please try using a modern browser like Chrome, Firefox, or Safari.';
+      } else if (error.message.includes('No notes found')) {
+        userMessage = 'No notes were selected for export. Please select at least one note.';
+      } else if (error.message.includes('Invalid notes data')) {
+        userMessage = 'There was an issue with the note data. Please try refreshing the page and selecting your notes again.';
+      }
+      
+      throw new Error(userMessage);
     }
   }
 

@@ -7,6 +7,7 @@ scripts:
 - js/lib/encryption.js
 - js/lib/api.js
 - js/lib/storage.js
+- js/lib/export-formats.js
 - js/app.js
 - js/auth.js
 - js/subscription.js
@@ -178,14 +179,90 @@ scripts:
 
     <!-- Export Modal -->
     <div class="modal hidden" id="exportModal">
-        <div class="modal-content">
+        <div class="modal-content export-modal-content">
             <div class="modal-header">
                 <h3>Export Notes</h3>
                 <button class="modal-close" id="closeExportModal">&times;</button>
             </div>
             <div class="modal-body">
-                <!-- Export interface will be implemented in later tasks -->
-                <p>Export functionality will be implemented in task 6.</p>
+                <!-- Export Format Selection -->
+                <div class="export-section">
+                    <h4>Export Format</h4>
+                    <select id="exportFormat" class="export-format-select">
+                        <option value="json">JSON Backup</option>
+                        <option value="markdown">Markdown</option>
+                        <option value="obsidian">Obsidian</option>
+                        <option value="notion">Notion</option>
+                        <option value="txt">Plain Text</option>
+                        <option value="docx">Google Docs</option>
+                    </select>
+                </div>
+
+                <!-- Note Selection -->
+                <div class="export-section">
+                    <div class="export-section-header">
+                        <h4>Select Notes to Export</h4>
+                        <div class="export-selection-controls">
+                            <button type="button" id="selectAllExportBtn" class="btn-secondary btn-small">Select All</button>
+                            <button type="button" id="deselectAllExportBtn" class="btn-secondary btn-small">Deselect All</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Bulk Selection Options -->
+                    <div class="bulk-selection-options">
+                        <div class="bulk-option">
+                            <label>
+                                <input type="checkbox" id="selectByDomainCheckbox" class="bulk-checkbox">
+                                Select by Domain:
+                            </label>
+                            <select id="domainBulkSelect" class="bulk-select" disabled>
+                                <option value="">Choose domain...</option>
+                            </select>
+                        </div>
+                        <div class="bulk-option">
+                            <label>
+                                <input type="checkbox" id="selectByDateCheckbox" class="bulk-checkbox">
+                                Select by Date Range:
+                            </label>
+                            <select id="dateBulkSelect" class="bulk-select" disabled>
+                                <option value="">Choose date range...</option>
+                                <option value="today">Today</option>
+                                <option value="week">This Week</option>
+                                <option value="month">This Month</option>
+                                <option value="all">All Time</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Notes List for Selection -->
+                    <div class="export-notes-container">
+                        <div class="export-notes-list" id="exportNotesList">
+                            <!-- Notes will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Export Actions -->
+                <div class="export-actions">
+                    <div class="export-info">
+                        <span id="exportSelectedCount">0 notes selected</span>
+                    </div>
+                    <div class="export-buttons">
+                        <button type="button" id="cancelExportBtn" class="btn-secondary">Cancel</button>
+                        <button type="button" id="startExportBtn" class="btn-primary" disabled>
+                            <span class="export-btn-text">Export Notes</span>
+                            <span class="export-btn-loading hidden">Exporting...</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Progress Indicator -->
+                <div class="export-progress hidden" id="exportProgress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="exportProgressFill"></div>
+                    </div>
+                    <div class="progress-text" id="exportProgressText">Preparing export...</div>
+                </div>
             </div>
         </div>
     </div>

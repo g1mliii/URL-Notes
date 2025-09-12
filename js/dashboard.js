@@ -1384,7 +1384,552 @@ class Dashboard {
   }
 
   showExportModal() {
+    this.initializeExportModal();
     window.app.showModal('exportModal');
+  }
+
+  initializeExportModal() {
+    // Initialize export modal with current notes
+    this.selectedExportNotes = new Set();
+    this.populateExportNotesList();
+    this.populateExportDomainFilter();
+    this.setupExportEventListeners();
+    this.updateExportSelectedCount();
+  }
+
+  populateExportNotesList() {
+    const exportNotesList = document.getElementById('exportNotesList');
+    if (!exportNotesList) return;
+
+    // Clear existing notes
+    exportNotesList.innerHTML = '';
+
+    if (this.filteredNotes.length === 0) {
+      exportNotesList.innerHTML = `
+        <div class="export-empty-state">
+          <p>No notes available for export.</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Create note items for selection
+    const fragment = document.createDocumentFragment();
+    
+    this.filteredNotes.forEach(note => {
+      const noteItem = this.createExportNoteItem(note);
+      fragment.appendChild(noteItem);
+    });
+
+    exportNotesList.appendChild(fragment);
+  }
+
+  createExportNoteItem(note) {
+    const item = document.createElement('div');
+    item.className = 'export-note-item';
+    item.dataset.noteId = note.id;
+
+    const isSelected = this.selectedExportNotes.has(note.id);
+    if (isSelected) {
+      item.classList.add('selected');
+    }
+
+    item.innerHTML = `
+      <input type="checkbox" class="export-note-checkbox" ${isSelected ? 'checked' : ''} data-note-id="${note.id}">
+      <div class="export-note-content">
+        <div class="export-note-title">${this.escapeHtml(note.title)}</div>
+        <div class="export-note-meta">
+          <span class="export-note-domain">${this.escapeHtml(note.domain)}</span>
+          <span class="export-note-date">${note.formattedDate}</span>
+        </div>
+        <div class="export-note-preview">${this.escapeHtml(note.preview)}</div>
+      </div>
+    `;
+
+    // Add event listeners
+    const checkbox = item.querySelector('.export-note-checkbox');
+    checkbox.addEventListener('change', (e) => {
+      e.stopPropagation();
+      this.toggleExportNoteSelection(note.id);
+    });
+
+    item.addEventListener('click', (e) => {
+      if (!e.target.matches('.export-note-checkbox')) {
+        this.toggleExportNoteSelection(note.id);
+      }
+    });
+
+    return item;
+  }
+
+  populateExportDomainFilter() {
+    const domainBulkSelect = document.getElementById('domainBulkSelect');
+    if (!domainBulkSelect) return;
+
+    // Get unique domains from current notes
+    const domains = [...new Set(this.filteredNotes.map(note => note.domain))].sort();
+
+    // Clear existing options (except first)
+    domainBulkSelect.innerHTML = '<option value="">Choose domain...</option>';
+
+    // Add domain options
+    domains.forEach(domain => {
+      const option = document.createElement('option');
+      option.value = domain;
+      option.textContent = domain;
+      domainBulkSelect.appendChild(option);
+    });
+  }
+
+  setupExportEventListeners() {
+    // Remove existing listeners to prevent duplicates
+    this.removeExportEventListeners();
+
+    // Select/Deselect all buttons
+    const selectAllExportBtn = document.getElementById('selectAllExportBtn');
+    const deselectAllExportBtn = document.getElementById('deselectAllExportBtn');
+    
+    if (selectAllExportBtn) {
+      this.selectAllExportHandler = () => this.selectAllExportNotes();
+      selectAllExportBtn.addEventListener('click', this.selectAllExportHandler);
+    }
+    
+    if (deselectAllExportBtn) {
+      this.deselectAllExportHandler = () => this.deselectAllExportNotes();
+      deselectAllExportBtn.addEventListener('click', this.deselectAllExportHandler);
+    }
+
+    // Bulk selection checkboxes
+    const selectByDomainCheckbox = document.getElementById('selectByDomainCheckbox');
+    const selectByDateCheckbox = document.getElementById('selectByDateCheckbox');
+    const domainBulkSelect = document.getElementById('domainBulkSelect');
+    const dateBulkSelect = document.getElementById('dateBulkSelect');
+
+    if (selectByDomainCheckbox && domainBulkSelect) {
+      this.domainCheckboxHandler = (e) => {
+        domainBulkSelect.disabled = !e.target.checked;
+        if (!e.target.checked) {
+          domainBulkSelect.value = '';
+        }
+      };
+      selectByDomainCheckbox.addEventListener('change', this.domainCheckboxHandler);
+
+      this.domainSelectHandler = (e) => {
+        if (e.target.value && selectByDomainCheckbox.checked) {
+          this.selectNotesByDomain(e.target.value);
+        }
+      };
+      domainBulkSelect.addEventListener('change', this.domainSelectHandler);
+    }
+
+    if (selectByDateCheckbox && dateBulkSelect) {
+      this.dateCheckboxHandler = (e) => {
+        dateBulkSelect.disabled = !e.target.checked;
+        if (!e.target.checked) {
+          dateBulkSelect.value = '';
+        }
+      };
+      selectByDateCheckbox.addEventListener('change', this.dateCheckboxHandler);
+
+      this.dateSelectHandler = (e) => {
+        if (e.target.value && selectByDateCheckbox.checked) {
+          this.selectNotesByDateRange(e.target.value);
+        }
+      };
+      dateBulkSelect.addEventListener('change', this.dateSelectHandler);
+    }
+
+    // Export buttons
+    const cancelExportBtn = document.getElementById('cancelExportBtn');
+    const startExportBtn = document.getElementById('startExportBtn');
+
+    if (cancelExportBtn) {
+      this.cancelExportHandler = () => this.cancelExport();
+      cancelExportBtn.addEventListener('click', this.cancelExportHandler);
+    }
+
+    if (startExportBtn) {
+      this.startExportHandler = () => this.startExport();
+      startExportBtn.addEventListener('click', this.startExportHandler);
+    }
+  }
+
+  removeExportEventListeners() {
+    // Clean up existing event listeners
+    const selectAllExportBtn = document.getElementById('selectAllExportBtn');
+    const deselectAllExportBtn = document.getElementById('deselectAllExportBtn');
+    const selectByDomainCheckbox = document.getElementById('selectByDomainCheckbox');
+    const selectByDateCheckbox = document.getElementById('selectByDateCheckbox');
+    const domainBulkSelect = document.getElementById('domainBulkSelect');
+    const dateBulkSelect = document.getElementById('dateBulkSelect');
+    const cancelExportBtn = document.getElementById('cancelExportBtn');
+    const startExportBtn = document.getElementById('startExportBtn');
+
+    if (selectAllExportBtn && this.selectAllExportHandler) {
+      selectAllExportBtn.removeEventListener('click', this.selectAllExportHandler);
+    }
+    if (deselectAllExportBtn && this.deselectAllExportHandler) {
+      deselectAllExportBtn.removeEventListener('click', this.deselectAllExportHandler);
+    }
+    if (selectByDomainCheckbox && this.domainCheckboxHandler) {
+      selectByDomainCheckbox.removeEventListener('change', this.domainCheckboxHandler);
+    }
+    if (selectByDateCheckbox && this.dateCheckboxHandler) {
+      selectByDateCheckbox.removeEventListener('change', this.dateCheckboxHandler);
+    }
+    if (domainBulkSelect && this.domainSelectHandler) {
+      domainBulkSelect.removeEventListener('change', this.domainSelectHandler);
+    }
+    if (dateBulkSelect && this.dateSelectHandler) {
+      dateBulkSelect.removeEventListener('change', this.dateSelectHandler);
+    }
+    if (cancelExportBtn && this.cancelExportHandler) {
+      cancelExportBtn.removeEventListener('click', this.cancelExportHandler);
+    }
+    if (startExportBtn && this.startExportHandler) {
+      startExportBtn.removeEventListener('click', this.startExportHandler);
+    }
+  }
+
+  toggleExportNoteSelection(noteId) {
+    if (this.selectedExportNotes.has(noteId)) {
+      this.selectedExportNotes.delete(noteId);
+    } else {
+      this.selectedExportNotes.add(noteId);
+    }
+
+    // Update UI
+    this.updateExportNoteItemUI(noteId);
+    this.updateExportSelectedCount();
+    this.updateExportButtonState();
+  }
+
+  updateExportNoteItemUI(noteId) {
+    const noteItem = document.querySelector(`[data-note-id="${noteId}"]`);
+    const checkbox = noteItem?.querySelector('.export-note-checkbox');
+    
+    if (noteItem && checkbox) {
+      const isSelected = this.selectedExportNotes.has(noteId);
+      checkbox.checked = isSelected;
+      
+      if (isSelected) {
+        noteItem.classList.add('selected');
+      } else {
+        noteItem.classList.remove('selected');
+      }
+    }
+  }
+
+  selectAllExportNotes() {
+    this.filteredNotes.forEach(note => {
+      this.selectedExportNotes.add(note.id);
+    });
+    this.updateAllExportNoteItemsUI();
+    this.updateExportSelectedCount();
+    this.updateExportButtonState();
+  }
+
+  deselectAllExportNotes() {
+    this.selectedExportNotes.clear();
+    this.updateAllExportNoteItemsUI();
+    this.updateExportSelectedCount();
+    this.updateExportButtonState();
+  }
+
+  selectNotesByDomain(domain) {
+    this.filteredNotes
+      .filter(note => note.domain === domain)
+      .forEach(note => {
+        this.selectedExportNotes.add(note.id);
+      });
+    
+    this.updateAllExportNoteItemsUI();
+    this.updateExportSelectedCount();
+    this.updateExportButtonState();
+  }
+
+  selectNotesByDateRange(dateRange) {
+    const now = new Date();
+    let cutoffDate;
+
+    switch (dateRange) {
+      case 'today':
+        cutoffDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case 'week':
+        cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        cutoffDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case 'all':
+        cutoffDate = null;
+        break;
+      default:
+        return;
+    }
+
+    const notesToSelect = cutoffDate 
+      ? this.filteredNotes.filter(note => new Date(note.updatedAt) >= cutoffDate)
+      : this.filteredNotes;
+
+    notesToSelect.forEach(note => {
+      this.selectedExportNotes.add(note.id);
+    });
+
+    this.updateAllExportNoteItemsUI();
+    this.updateExportSelectedCount();
+    this.updateExportButtonState();
+  }
+
+  updateAllExportNoteItemsUI() {
+    const exportNotesList = document.getElementById('exportNotesList');
+    if (!exportNotesList) return;
+
+    const noteItems = exportNotesList.querySelectorAll('.export-note-item');
+    noteItems.forEach(item => {
+      const noteId = item.dataset.noteId;
+      const checkbox = item.querySelector('.export-note-checkbox');
+      
+      if (checkbox) {
+        const isSelected = this.selectedExportNotes.has(noteId);
+        checkbox.checked = isSelected;
+        
+        if (isSelected) {
+          item.classList.add('selected');
+        } else {
+          item.classList.remove('selected');
+        }
+      }
+    });
+  }
+
+  updateExportSelectedCount() {
+    const exportSelectedCount = document.getElementById('exportSelectedCount');
+    if (exportSelectedCount) {
+      const count = this.selectedExportNotes.size;
+      exportSelectedCount.textContent = `${count} note${count !== 1 ? 's' : ''} selected`;
+    }
+  }
+
+  updateExportButtonState() {
+    const startExportBtn = document.getElementById('startExportBtn');
+    if (startExportBtn) {
+      startExportBtn.disabled = this.selectedExportNotes.size === 0;
+    }
+  }
+
+  cancelExport() {
+    // Reset export state
+    this.selectedExportNotes = new Set();
+    
+    // Reset form elements
+    const selectByDomainCheckbox = document.getElementById('selectByDomainCheckbox');
+    const selectByDateCheckbox = document.getElementById('selectByDateCheckbox');
+    const domainBulkSelect = document.getElementById('domainBulkSelect');
+    const dateBulkSelect = document.getElementById('dateBulkSelect');
+    
+    if (selectByDomainCheckbox) selectByDomainCheckbox.checked = false;
+    if (selectByDateCheckbox) selectByDateCheckbox.checked = false;
+    if (domainBulkSelect) {
+      domainBulkSelect.value = '';
+      domainBulkSelect.disabled = true;
+    }
+    if (dateBulkSelect) {
+      dateBulkSelect.value = '';
+      dateBulkSelect.disabled = true;
+    }
+
+    // Hide progress
+    this.hideExportProgress();
+    
+    // Close modal
+    window.app.hideModal('exportModal');
+  }
+
+  async startExport() {
+    if (this.selectedExportNotes.size === 0) {
+      this.showNotification('Please select at least one note to export', 'warning');
+      return;
+    }
+
+    const exportFormat = document.getElementById('exportFormat')?.value || 'json';
+    
+    try {
+      // Show progress
+      this.showExportProgress();
+      this.updateExportProgress(10, 'Preparing notes for export...');
+
+      // Get selected notes data
+      const selectedNotes = this.filteredNotes.filter(note => 
+        this.selectedExportNotes.has(note.id)
+      );
+
+      if (selectedNotes.length === 0) {
+        throw new Error('No valid notes found for export');
+      }
+
+      this.updateExportProgress(30, 'Organizing notes by domain...');
+
+      // Organize notes by domain (same format as extension)
+      const notesData = {};
+      selectedNotes.forEach(note => {
+        if (!notesData[note.domain]) {
+          notesData[note.domain] = [];
+        }
+        // Clean the note data for export (remove any UI-specific fields)
+        const cleanNote = {
+          id: note.id,
+          title: note.title,
+          content: note.content,
+          url: note.url,
+          domain: note.domain,
+          tags: note.tags || [],
+          createdAt: note.createdAt,
+          updatedAt: note.updatedAt,
+          pageTitle: note.pageTitle || ''
+        };
+        notesData[note.domain].push(cleanNote);
+      });
+
+      this.updateExportProgress(60, 'Converting to export format...');
+
+      // Use ExportFormats class to convert and download
+      if (!window.ExportFormats) {
+        throw new Error('Export functionality not available. Please refresh the page and try again.');
+      }
+
+      const exportFormats = new window.ExportFormats();
+      
+      this.updateExportProgress(80, 'Generating export file...');
+
+      // Export and download with error handling
+      const isSingleNote = selectedNotes.length === 1;
+      await exportFormats.exportAndDownload(notesData, exportFormat, isSingleNote);
+
+      this.updateExportProgress(100, 'Export completed successfully!');
+
+      // Show success message
+      const formatName = exportFormats.getSupportedFormats()[exportFormat]?.name || exportFormat.toUpperCase();
+      this.showNotification(`Successfully exported ${selectedNotes.length} note${selectedNotes.length !== 1 ? 's' : ''} as ${formatName}`, 'success');
+
+      // Close modal after a short delay
+      setTimeout(() => {
+        this.cancelExport();
+      }, 1500);
+
+    } catch (error) {
+      console.error('Export failed:', error);
+      this.hideExportProgress();
+      this.showExportError(error.message);
+    }
+  }
+
+  showExportError(errorMessage) {
+    // Show error with retry option
+    const errorHtml = `
+      <div class="export-error">
+        <h4>Export Failed</h4>
+        <p>${this.escapeHtml(errorMessage)}</p>
+        <div class="error-actions">
+          <button type="button" id="retryExportBtn" class="btn-primary btn-small">Try Again</button>
+          <button type="button" id="cancelExportErrorBtn" class="btn-secondary btn-small">Cancel</button>
+        </div>
+      </div>
+    `;
+
+    // Show error in progress area
+    const exportProgress = document.getElementById('exportProgress');
+    if (exportProgress) {
+      exportProgress.innerHTML = errorHtml;
+      exportProgress.classList.remove('hidden');
+
+      // Add event listeners for error actions
+      const retryBtn = exportProgress.querySelector('#retryExportBtn');
+      const cancelBtn = exportProgress.querySelector('#cancelExportErrorBtn');
+
+      if (retryBtn) {
+        retryBtn.addEventListener('click', () => {
+          this.hideExportProgress();
+          this.startExport();
+        });
+      }
+
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+          this.hideExportProgress();
+        });
+      }
+    } else {
+      // Fallback to notification
+      this.showNotification(`Export failed: ${errorMessage}`, 'error');
+    }
+  }
+
+  showExportProgress() {
+    const exportProgress = document.getElementById('exportProgress');
+    const startExportBtn = document.getElementById('startExportBtn');
+    const exportBtnText = startExportBtn?.querySelector('.export-btn-text');
+    const exportBtnLoading = startExportBtn?.querySelector('.export-btn-loading');
+
+    if (exportProgress) {
+      exportProgress.classList.remove('hidden');
+    }
+
+    if (startExportBtn) {
+      startExportBtn.disabled = true;
+    }
+
+    if (exportBtnText) {
+      exportBtnText.classList.add('hidden');
+    }
+
+    if (exportBtnLoading) {
+      exportBtnLoading.classList.remove('hidden');
+    }
+  }
+
+  hideExportProgress() {
+    const exportProgress = document.getElementById('exportProgress');
+    const startExportBtn = document.getElementById('startExportBtn');
+    const exportBtnText = startExportBtn?.querySelector('.export-btn-text');
+    const exportBtnLoading = startExportBtn?.querySelector('.export-btn-loading');
+
+    if (exportProgress) {
+      exportProgress.classList.add('hidden');
+      // Reset progress content to original structure
+      exportProgress.innerHTML = `
+        <div class="progress-bar">
+          <div class="progress-fill" id="exportProgressFill"></div>
+        </div>
+        <div class="progress-text" id="exportProgressText">Preparing export...</div>
+      `;
+    }
+
+    if (startExportBtn) {
+      startExportBtn.disabled = this.selectedExportNotes.size === 0;
+    }
+
+    if (exportBtnText) {
+      exportBtnText.classList.remove('hidden');
+    }
+
+    if (exportBtnLoading) {
+      exportBtnLoading.classList.add('hidden');
+    }
+  }
+
+  updateExportProgress(percentage, message) {
+    const exportProgressFill = document.getElementById('exportProgressFill');
+    const exportProgressText = document.getElementById('exportProgressText');
+
+    if (exportProgressFill) {
+      exportProgressFill.style.width = `${percentage}%`;
+    }
+
+    if (exportProgressText) {
+      exportProgressText.textContent = message;
+    }
   }
 
   showImportModal() {
@@ -1504,34 +2049,55 @@ class Dashboard {
   }
 
   async handleBulkExport() {
-    if (this.selectedNotes.size === 0) return;
+    if (this.selectedNotes.size === 0) {
+      this.showNotification('Please select at least one note to export', 'warning');
+      return;
+    }
 
     const selectedNotes = this.notes.filter(note => this.selectedNotes.has(note.id));
 
     try {
-      // Create export data
-      const exportData = {
-        notes: selectedNotes,
-        exportDate: new Date().toISOString(),
-        totalNotes: selectedNotes.length
-      };
+      // Organize notes by domain (same format as extension and main export)
+      const notesData = {};
+      selectedNotes.forEach(note => {
+        if (!notesData[note.domain]) {
+          notesData[note.domain] = [];
+        }
+        // Clean the note data for export
+        const cleanNote = {
+          id: note.id,
+          title: note.title,
+          content: note.content,
+          url: note.url,
+          domain: note.domain,
+          tags: note.tags || [],
+          createdAt: note.createdAt,
+          updatedAt: note.updatedAt,
+          pageTitle: note.pageTitle || ''
+        };
+        notesData[note.domain].push(cleanNote);
+      });
 
-      // Create and download file
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `anchored-notes-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Use ExportFormats class for consistency
+      if (!window.ExportFormats) {
+        throw new Error('Export functionality not available. Please refresh the page and try again.');
+      }
 
-      this.showNotification(`${selectedNotes.length} notes exported successfully!`, 'success');
+      const exportFormats = new window.ExportFormats();
+      
+      // Export as JSON by default for bulk export
+      const isSingleNote = selectedNotes.length === 1;
+      await exportFormats.exportAndDownload(notesData, 'json', isSingleNote);
+
+      // Show success message
+      this.showNotification(`Successfully exported ${selectedNotes.length} note${selectedNotes.length !== 1 ? 's' : ''} as JSON`, 'success');
+
+      // Clear selection after successful export
+      this.deselectAllNotes();
 
     } catch (error) {
-      // Error exporting notes
-      this.showNotification('Failed to export notes. Please try again.', 'error');
+      console.error('Bulk export failed:', error);
+      this.showNotification(`Export failed: ${error.message}`, 'error');
     }
   }
 

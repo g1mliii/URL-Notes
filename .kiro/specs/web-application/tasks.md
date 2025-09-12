@@ -179,7 +179,13 @@
     - _Requirements: 3.5_
 
 - [ ] 10. Implement export functionality build from same code as extension export since they should behave the same way
-  - [ ] 10.1 Create export interface with note selection
+
+  - [x] 10.1 Create export interface with note selection build from same code as extension export since they should behave the same way mostly with some additiona features in webpage
+
+
+
+
+
     - Build export modal with format selection dropdown
     - Implement individual note selection with checkboxes
     - Add bulk selection options by domain/URL
@@ -187,7 +193,12 @@
     - also fix the domain and datefilter from looking differnet in dashboard for mac os safari webpage not mobile, verion style is not the same as other browsers.
     - _Requirements: 7.1, 7.2, 7.4_
 
-  - [ ] 10.2 Implement export processing and download
+  - [x] 10.2 Implement export processing and download
+
+
+
+
+
     - implement actual export functionality similir to extension export since file structur should be similar,
     - Generate export files using adapted export-formats.js
     - Implement browser file download functionality
