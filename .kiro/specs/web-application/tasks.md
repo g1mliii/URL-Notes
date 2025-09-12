@@ -240,12 +240,8 @@
   - _Requirements: Simplified user experience_
 
 
-- [x] 20. Implement password change using existing reset logic
+- [x] 20. remove account area passwor reset module entirely and all associated code/styling for it 
 
 
 
-  - Replace current change password section in account area with forgot password implmentation keeping the ui the same but reusing the same logic with the same listeners as forgot password so we dont run into issues of not detecting/oppening modal.
-  - update description in this area as well as we dont need to reinecrypt data or do any transition step anymore since password does not effect this.
-  - Reuse existing password reset modal and validation logic
-  - Ensure consistent password change experience across platform
   - _Requirements: Consistent password management_

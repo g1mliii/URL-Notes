@@ -156,9 +156,8 @@ scripts:
                 <section class="account-section">
                     <h3>Security</h3>
                     <div class="security-settings">
-                        <button id="changePasswordBtn" class="btn-secondary">Change Password</button>
                         <p class="security-note">
-                            Change your password using our secure reset process. Your notes will remain accessible without any re-encryption needed.
+                            For password changes, please use the "Forgot Password" link on the login page. Your notes will remain accessible without any re-encryption needed.
                         </p>
                     </div>
                 </section>
@@ -176,29 +175,7 @@ scripts:
             </div>
         </main>
 
-        <!-- Change Password Modal -->
-        <div class="modal hidden" id="changePasswordModal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Change Password</h3>
-                    <button class="modal-close" id="closePasswordModal">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
-                        We'll send you a secure password reset link to your email address. This ensures maximum security for your account.
-                    </p>
-                    <form id="changePasswordForm">
-                        <div class="input-group">
-                            <input type="email" id="changePasswordEmail" placeholder="Your Email Address" required readonly>
-                        </div>
-                        <div class="modal-actions">
-                            <button type="button" id="cancelPasswordChange" class="btn-secondary">Cancel</button>
-                            <button type="submit" class="btn-primary">Send Reset Link</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+
 
         <!-- Subscription Modal -->
         <div class="modal hidden" id="subscriptionModal">
