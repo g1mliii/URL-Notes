@@ -237,11 +237,16 @@
 - [ ] 15. Consolidate subscription management interface
   - Replace separate "Manage Subscription" and "Billing History" buttons with single "Manage subscription"
   - Update button to open unified Stripe customer portal with url https://billing.stripe.com/p/login/7sY7sN0nf3Vl3IY6gW3oA00
+  - remove in data manamgment export all data button and back end of tha tbutton if any at all and leave the text that says For account deletion, please contact our support team at info@anchored.site.
+  - spacing between the account sections on mobile is too litte each box is touching each other
   - _Requirements: Simplified user experience_
 
-
-- [x] 20. remove account area passwor reset module entirely and all associated code/styling for it 
-
+- [x] 16. maybe update subscription-api to use stripe creted subscritpion produt instead of creting one in checkout session in index.ts
 
 
-  - _Requirements: Consistent password management_
+
+
+
+  - determine compatibiliyt with using a strip product with product id instead of creting a checkout sessoin manually in api is better and compatible with our current setup for updating subscritpiion status and upgradgin account and storing of information of customer.
+  - assess which is the correct path going forward and what info would be needed in stripe subscritpion version and if it is worh migrating
+

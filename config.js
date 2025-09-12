@@ -20,6 +20,16 @@ window.urlNotesConfig = {
     httpsOnly: false
   },
 
+  // Stripe configuration
+  stripe: {
+    // Predefined Stripe product and price IDs (public-safe identifiers)
+    productId: 'prod_T2kES07o4K6Gzk',
+    premiumPriceId: 'price_1S6ek9AmZvKSDgI488vHQ0Tq',
+    productName: 'Anchored Premium',
+    monthlyPrice: 2.49,
+    currency: 'usd'
+  },
+
   // Get current environment configuration
   getCurrentConfig() {
     const hostname = window.location.hostname;
