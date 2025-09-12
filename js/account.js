@@ -259,6 +259,22 @@ class Account {
       changePasswordBtn.addEventListener('click', () => this.showChangePasswordModal());
     }
 
+    // Change password modal form submission
+    const changePasswordForm = document.getElementById('changePasswordForm');
+    if (changePasswordForm) {
+      changePasswordForm.addEventListener('submit', (e) => this.handleChangePassword(e));
+    }
+
+    // Change password modal close buttons
+    const closePasswordModal = document.getElementById('closePasswordModal');
+    const cancelPasswordChange = document.getElementById('cancelPasswordChange');
+    if (closePasswordModal) {
+      closePasswordModal.addEventListener('click', () => this.hideChangePasswordModal());
+    }
+    if (cancelPasswordChange) {
+      cancelPasswordChange.addEventListener('click', () => this.hideChangePasswordModal());
+    }
+
     // Subscription management
     const upgradeBtn = document.getElementById('upgradeBtn');
     if (upgradeBtn) {
@@ -382,7 +398,206 @@ class Account {
   }
 
   showChangePasswordModal() {
+    // Pre-fill the email field with current user's email
+    const emailInput = document.getElementById('changePasswordEmail');
+    if (emailInput && window.api && window.api.currentUser) {
+      emailInput.value = window.api.currentUser.email || '';
+    }
+
     window.app.showModal('changePasswordModal');
+  }
+
+  hideChangePasswordModal() {
+    window.app.hideModal('changePasswordModal');
+  }
+
+  async handleChangePassword(event) {
+    event.preventDefault();
+
+    // Reuse the forgot password logic from auth.js
+    if (!window.auth) {
+      this.showNotification('Authentication service not available', 'error');
+      return;
+    }
+
+    const emailInput = document.getElementById('changePasswordEmail');
+    const email = emailInput?.value?.trim();
+    const submitBtn = document.querySelector('#changePasswordForm button[type="submit"]');
+
+    // Clear previous error states
+    if (emailInput) {
+      emailInput.style.borderColor = '';
+    }
+
+    if (!email) {
+      this.showNotification('Email address is required', 'error');
+      if (emailInput) {
+        emailInput.style.borderColor = 'var(--error-color)';
+        emailInput.focus();
+      }
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      this.showNotification('Please enter a valid email address', 'error');
+      if (emailInput) {
+        emailInput.style.borderColor = 'var(--error-color)';
+        emailInput.focus();
+      }
+      return;
+    }
+
+    if (!window.api || !window.api.supabaseClient) {
+      this.showNotification('Authentication service not available', 'error');
+      return;
+    }
+
+    try {
+      // Update button state
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('loading');
+        submitBtn.textContent = 'Sending...';
+      }
+
+      // Use the same resetPassword method as the forgot password functionality
+      await window.api.supabaseClient.resetPassword(email);
+
+      // Success state
+      if (submitBtn) {
+        submitBtn.classList.remove('loading');
+        submitBtn.textContent = 'Email Sent!';
+        submitBtn.style.background = 'var(--success-color)';
+      }
+
+      this.showNotification('Password reset email sent. Check your inbox and spam folder.', 'success');
+
+      // Hide modal after delay
+      setTimeout(() => {
+        this.hideChangePasswordModal();
+
+        // Reset button state
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.classList.remove('loading');
+          submitBtn.textContent = 'Send Reset Link';
+          submitBtn.style.background = '';
+        }
+      }, 3000);
+
+    } catch (error) {
+      // Handle password reset error using the same logic as auth.js
+      const userMessage = this.handlePasswordResetError(error);
+      this.showNotification(userMessage, 'error');
+
+      // Reset button state
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('loading');
+        submitBtn.textContent = 'Send Reset Link';
+      }
+
+      // Focus back to email input
+      if (emailInput) {
+        emailInput.focus();
+      }
+    }
+  }
+
+  // Reuse the same error handling logic from auth.js
+  handlePasswordResetError(error) {
+    let userMessage = 'Password reset failed. Please try again.';
+
+    if (error.message) {
+      const errorMsg = error.message.toLowerCase();
+
+      if (errorMsg.includes('expired') || errorMsg.includes('invalid')) {
+        userMessage = 'Password reset link has expired. Please request a new one.';
+      } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+        userMessage = 'Network error. Please check your connection and try again.';
+      } else if (errorMsg.includes('weak') || errorMsg.includes('password')) {
+        userMessage = 'Password is too weak. Please choose a stronger password.';
+      } else if (errorMsg.includes('rate limit') || errorMsg.includes('too many')) {
+        userMessage = 'Too many attempts. Please wait a few minutes before trying again.';
+      } else if (errorMsg.includes('user not found') || errorMsg.includes('email')) {
+        userMessage = 'Email address not found. Please check your email or create a new account.';
+      }
+    }
+
+    return userMessage;
+  }
+
+  // Reuse the notification system from auth.js
+  showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+
+    // Add icon based on type
+    let icon = 'ℹ';
+    if (type === 'success') icon = '✓';
+    if (type === 'error') icon = '⚠';
+
+    notification.innerHTML = `
+      <span class="notification-icon">${icon}</span>
+      <span class="notification-message">${message}</span>
+    `;
+
+    // Apply glassmorphism styling to match extension design
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      color: var(--text-primary, #333);
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 10000;
+      max-width: 300px;
+      word-wrap: break-word;
+      background: var(--glass-bg, rgba(255, 255, 255, 0.1));
+      border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.2));
+      box-shadow: var(--glass-inset, inset 0 1px 0 rgba(255, 255, 255, 0.1)), var(--glass-shadow, 0 8px 32px rgba(0, 0, 0, 0.1));
+      backdrop-filter: blur(var(--backdrop-blur, 10px));
+      -webkit-backdrop-filter: blur(var(--backdrop-blur, 10px));
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    `;
+
+    // Apply type-specific styling
+    if (type === 'success') {
+      notification.style.background = 'color-mix(in oklab, var(--accent-primary, #007aff) 20%, var(--glass-bg, rgba(255, 255, 255, 0.1)) 80%)';
+      notification.style.borderColor = 'color-mix(in oklab, var(--accent-primary, #007aff) 40%, var(--glass-border, rgba(255, 255, 255, 0.2)) 60%)';
+    } else if (type === 'error') {
+      notification.style.background = 'color-mix(in oklab, #ff3b30 20%, var(--glass-bg, rgba(255, 255, 255, 0.1)) 80%)';
+      notification.style.borderColor = 'color-mix(in oklab, #ff3b30 40%, var(--glass-border, rgba(255, 255, 255, 0.2)) 60%)';
+    } else if (type === 'info') {
+      notification.style.background = 'color-mix(in oklab, #007aff 20%, var(--glass-bg, rgba(255, 255, 255, 0.1)) 80%)';
+      notification.style.borderColor = 'color-mix(in oklab, #007aff 40%, var(--glass-border, rgba(255, 255, 255, 0.2)) 60%)';
+    }
+
+    document.body.appendChild(notification);
+
+    // Animate in
+    setTimeout(() => {
+      notification.style.transform = 'translateX(0)';
+    }, 10);
+
+    // Remove after delay
+    setTimeout(() => {
+      notification.style.transform = 'translateX(100%)';
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      }, 300);
+    }, 3000);
   }
 
   showSubscriptionModal() {

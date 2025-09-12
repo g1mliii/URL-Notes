@@ -158,7 +158,7 @@ scripts:
                     <div class="security-settings">
                         <button id="changePasswordBtn" class="btn-secondary">Change Password</button>
                         <p class="security-note">
-                            Changing your password will re-encrypt all your notes with new encryption keys.
+                            Change your password using our secure reset process. Your notes will remain accessible without any re-encryption needed.
                         </p>
                     </div>
                 </section>
@@ -184,19 +184,16 @@ scripts:
                     <button class="modal-close" id="closePasswordModal">&times;</button>
                 </div>
                 <div class="modal-body">
+                    <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+                        We'll send you a secure password reset link to your email address. This ensures maximum security for your account.
+                    </p>
                     <form id="changePasswordForm">
                         <div class="input-group">
-                            <input type="password" id="currentPassword" placeholder="Current Password" required>
-                        </div>
-                        <div class="input-group">
-                            <input type="password" id="newPassword" placeholder="New Password" required>
-                        </div>
-                        <div class="input-group">
-                            <input type="password" id="confirmNewPassword" placeholder="Confirm New Password" required>
+                            <input type="email" id="changePasswordEmail" placeholder="Your Email Address" required readonly>
                         </div>
                         <div class="modal-actions">
                             <button type="button" id="cancelPasswordChange" class="btn-secondary">Cancel</button>
-                            <button type="submit" class="btn-primary">Change Password</button>
+                            <button type="submit" class="btn-primary">Send Reset Link</button>
                         </div>
                     </form>
                 </div>
