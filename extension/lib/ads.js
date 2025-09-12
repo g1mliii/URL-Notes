@@ -1,4 +1,4 @@
-// URL Notes Extension - CodeFuel Ads Integration
+// URL Notes Extension - Static Ads Integration
 // Handles ad loading and display for free tier users
 
 class AdManager {
@@ -6,8 +6,6 @@ class AdManager {
     this.adContainer = null;
     this.adLoaded = false;
     this.adConfig = {
-      publisherId: 'YOUR_CODEFUEL_PUBLISHER_ID', // Replace with actual ID
-      adUnitId: 'url-notes-popup-banner',
       maxAdsPerHour: 5,
       cooldownMs: 12 * 60 * 1000, // 12 minutes between ads
     };
@@ -20,7 +18,6 @@ class AdManager {
   async init() {
     this.adContainer = document.getElementById('adContainer');
     if (!this.adContainer) {
-      console.warn('Ad container not found');
       return;
     }
 
@@ -30,9 +27,6 @@ class AdManager {
       this.hideAdContainer();
       return;
     }
-
-    // Load CodeFuel SDK
-    await this.loadCodeFuelSDK();
 
     // Show first ad after a delay
     setTimeout(() => this.showAd(), 2000);
@@ -65,21 +59,11 @@ class AdManager {
       // Only show ads to free users who haven't disabled them
       return !isPremium && settings.showAds !== false;
     } catch (error) {
-      console.error('Error checking ad settings:', error);
       return true; // Default to showing ads for free users
     }
   }
 
-  // Load CodeFuel SDK dynamically (currently disabled)
-  async loadCodeFuelSDK() {
-    return new Promise((resolve) => {
-      // Skip CodeFuel SDK loading for now to prevent CSP errors
-      // This will be enabled when CodeFuel is properly configured
-      console.log('CodeFuel SDK loading skipped - using fallback ads');
-      window.__cf_sdk_failed = true;
-      resolve();
-    });
-  }
+
 
   // Show an ad
   async showAd() {
@@ -107,11 +91,7 @@ class AdManager {
       this.lastAdTime = Date.now();
       this.adsShownThisHour++;
 
-      // Track ad impression - disabled (using NordVPN analytics)
-      // this.trackAdImpression();
-
     } catch (error) {
-      console.error('Error showing ad:', error);
       this.showFallbackAd();
     }
   }
@@ -139,77 +119,13 @@ class AdManager {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    // For now, skip CodeFuel integration and go directly to fallback
-    // This prevents errors when CodeFuel isn't implemented
-    try {
-      // CodeFuel integration (disabled until properly configured)
-      if (window.CodeFuel && this.adConfig.publisherId !== 'YOUR_CODEFUEL_PUBLISHER_ID') {
-        window.CodeFuel.display({
-          containerId: 'adContent',
-          publisherId: this.adConfig.publisherId,
-          adUnitId: this.adConfig.adUnitId,
-          size: '300x50',
-          targeting: await this.getTargetingData()
-        });
-      } else {
-        // Use our custom ad system (NordVPN + upgrade ads)
-        this.showFallbackAd();
-      }
-    } catch (error) {
-      console.warn('Error loading external ads, using fallback:', error);
-      this.showFallbackAd();
-    }
+    // Use our static ad system (NordVPN + upgrade ads)
+    this.showFallbackAd();
   }
 
-  // Get targeting data for contextual ads
-  async getTargetingData() {
-    try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab) return {};
 
-      const url = new URL(tab.url);
-      return {
-        domain: url.hostname,
-        category: this.categorizeWebsite(url.hostname),
-        language: navigator.language || 'en',
-        timestamp: Date.now()
-      };
-    } catch (error) {
-      console.error('Error getting targeting data:', error);
-      return {};
-    }
-  }
 
-  // Categorize website for better ad targeting
-  categorizeWebsite(domain) {
-    const categories = {
-      'github.com': 'technology',
-      'stackoverflow.com': 'technology',
-      'reddit.com': 'social',
-      'youtube.com': 'entertainment',
-      'netflix.com': 'entertainment',
-      'amazon.com': 'shopping',
-      'ebay.com': 'shopping',
-      'news.ycombinator.com': 'technology',
-      'medium.com': 'content',
-      'dev.to': 'technology'
-    };
-
-    // Check for exact matches
-    if (categories[domain]) {
-      return categories[domain];
-    }
-
-    // Check for partial matches
-    if (domain.includes('shop') || domain.includes('store')) return 'shopping';
-    if (domain.includes('news')) return 'news';
-    if (domain.includes('blog')) return 'content';
-    if (domain.includes('tech') || domain.includes('dev')) return 'technology';
-
-    return 'general';
-  }
-
-  // Show fallback ad when CodeFuel fails
+  // Show fallback ad
   showFallbackAd() {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
@@ -228,8 +144,6 @@ class AdManager {
       adType = 'vrbo';
       this.showVrboAd();
     }
-
-    console.log('Showing ad type:', adType);
   }
 
   // Show NordVPN affiliate ad
@@ -445,7 +359,6 @@ class AdManager {
         action: 'trackAdImpression',
         data: {
           timestamp: Date.now(),
-          adUnit: this.adConfig.adUnitId,
           domain: window.location?.hostname || 'unknown'
         }
       }).catch(() => {
@@ -453,7 +366,6 @@ class AdManager {
       });
     } catch (error) {
       // Silently ignore tracking errors to prevent breaking ad display
-      console.warn('Ad impression tracking failed:', error);
     }
   }
 
@@ -468,14 +380,12 @@ class AdManager {
         targetUrl = 'https://anchored.site/account';
       }
     } catch (error) {
-      console.warn('Error checking authentication status for upgrade redirect:', error);
       // Fall back to main page if there's an error
     }
 
     chrome.tabs.create({
       url: targetUrl
     });
-    // this.trackAdClick('upgrade'); // Disabled - using NordVPN analytics
   }
 
   // Handle NordVPN affiliate click
@@ -483,7 +393,6 @@ class AdManager {
     chrome.tabs.create({
       url: 'https://go.nordvpn.net/aff_c?offer_id=15&aff_id=130711&url_id=902'
     });
-    // this.trackAdClick('nordvpn'); // Disabled - using NordVPN analytics
   }
 
   // Handle Vrbo affiliate click
@@ -491,12 +400,11 @@ class AdManager {
     chrome.tabs.create({
       url: 'https://www.jdoqocy.com/click-101532226-13820699'
     });
-    // this.trackAdClick('vrbo'); // Disabled - using affiliate analytics
   }
 
   // Handle ad click
   onAdClick(adType = 'unknown') {
-    // this.trackAdClick(adType); // Disabled - using NordVPN analytics
+    // No tracking needed for static ads
   }
 
   // Track ad click
@@ -507,7 +415,6 @@ class AdManager {
         action: 'trackAdClick',
         data: {
           timestamp: Date.now(),
-          adUnit: this.adConfig.adUnitId,
           adType: adType
         }
       }).catch(() => {
@@ -515,7 +422,6 @@ class AdManager {
       });
     } catch (error) {
       // Silently ignore tracking errors to prevent breaking ad functionality
-      console.warn('Ad click tracking failed:', error);
     }
   }
 

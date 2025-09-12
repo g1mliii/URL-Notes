@@ -231,7 +231,13 @@
   - Update button to open unified Stripe customer portal with url https://billing.stripe.com/p/login/7sY7sN0nf3Vl3IY6gW3oA00
   - _Requirements: Simplified user experience_
 
-- [ ] 17. 
+- [-] 17. removal of console logs in extrension for webs store submission, removal of unused code fuel code in ads section of extension
+
+
+
+  - removal of all console logs that should not be present in chrome web store for extension code.
+  - removal of unused code fuel logic for ad display that we are not using as we are using static banner ads currenly and dont plan to implement code fuel at this time or any other type of ads in extension .
+  - _Requirements: Get extension ready for public use and remove unecessary ads that may impact chrome store acceptance
 
   
 
