@@ -221,14 +221,14 @@
 
 - [ ] 14. Transition Stripe integration to live production keys
   - Replace test Stripe API keys with live production keys
-  - Update customer portal links to use live Stripe environment
-  - Test live payment processing and webhook handling
-  - Verify production billing and subscription management
+  - Update customer portal links to use live Stripe environment https://billing.stripe.com/p/login/7sY7sN0nf3Vl3IY6gW3oA00
+  - Test live payment processing
+  - Verify production and subscription management
   - _Requirements: Production payment processing_
 
 - [ ] 15. Consolidate subscription management interface
   - Replace separate "Manage Subscription" and "Billing History" buttons with single "Manage subscription"
-  - Update button to open unified Stripe customer portal with url 
+  - Update button to open unified Stripe customer portal with url https://billing.stripe.com/p/login/7sY7sN0nf3Vl3IY6gW3oA00
   - _Requirements: Simplified user experience_
 
 - [ ] 17. Fix extension settings UI z-index issues
@@ -243,38 +243,3 @@
   - Reuse existing password reset modal and validation logic
   - Ensure consistent password change experience across platform
   - _Requirements: Consistent password management_
-
-- [ ] 21. Implement removal of logs for production/publis ready code for webpage
--Configuration loaded for environment: production config.js?v=20250904c:92 
-monitoring.js?v=20250904c:43 🔍 Application monitoring initialized
-api.js?v=20250904c:831 Using direct database access for notes
-api.js?v=20250904c:832 Current user ID: 7debb055-6dda-4135-84c0-b66f6cace577
-api.js?v=20250904c:1030 Starting cleanup of old deleted notes...
-api.js?v=20250904c:1040 No old deleted notes found for cleanup
-monitoring.js?v=20250904c:175 📄 Page view tracked: {url: 'https://anchored.site/dashboard/', referrer: 'https://anchored.site/', timestamp: '2025-09-12T00:35:09.859Z', sessionId: 'session_1757637307858_8j3e8exkf', userAgent: 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA…like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36', …}
-monitoring.js?v=20250904c:338 🔐 Supabase client not available for auth monitoring
-storage.js?v=20250904c:80 Starting cleanup of soft deleted notes...
-storage.js?v=20250904c:108 No old deleted notes found for cleanup
-monitoring.js?v=20250904c:306 🖱️ User interaction: {element: 'BUTTON', class: 'panel-close', text: '×', timestamp: '2025-09-12T00:35:21.585Z'}
-monitoring.js?v=20250904c:306 🖱️ User interaction: {element: 'A', class: 'nav-link', text: 'Account', timestamp: '2025-09-12T00:35:22.924Z'}
-Navigated to https://anchored.site/account/
-config.js?v=20250904c:92 Configuration loaded for environment: production
-account.js?v=20250904c:325 Loading account data...
-monitoring.js?v=20250904c:43 🔍 Application monitoring initialized
-account.js?v=20250904c:367 Loaded user data: {email: 'subaigsuri1@gmail.com', created_at: '2025-09-09T19:27:57.783394+00:00', subscription_tier: 'premium'}
-account.js?v=20250904c:26 🔍 Checking payment success: {success: null, canceled: null, sessionId: null, fullUrl: 'https://anchored.site/account/'}
-monitoring.js?v=20250904c:175 📄 Page view tracked: {url: 'https://anchored.site/account/', referrer: 'https://anchored.site/dashboard/', timestamp: '2025-09-12T00:35:25.149Z', sessionId: 'session_1757637323144_t2n9yzb18', userAgent: 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA…like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36', …}
-monitoring.js?v=20250904c:338 🔐 Supabase client not available for auth monitoring
-monitoring.js?v=20250904c:306 🖱️ User interaction: {element: 'A', class: 'nav-link', text: 'Dashboard', timestamp: '2025-09-12T00:35:25.150Z'}
-Navigated to https://anchored.site/dashboard/
-config.js?v=20250904c:92 Configuration loaded for environment: production
-monitoring.js?v=20250904c:43 🔍 Application monitoring initialized
-api.js?v=20250904c:831 Using direct database access for notes
-api.js?v=20250904c:832 Current user ID: 7debb055-6dda-4135-84c0-b66f6cace577
-api.js?v=20250904c:1030 Starting cleanup of old deleted notes...
-api.js?v=20250904c:1040 No old deleted notes found for cleanup
-monitoring.js?v=20250904c:175 📄 Page view tracked: {url: 'https://anchored.site/dashboard/', referrer: 'https://anchored.site/account/', timestamp: '2025-09-12T00:35:27.221Z', sessionId: 'session_1757637325219_byulohx3n', userAgent: 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA…like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36', …}
-monitoring.js?v=20250904c:338 🔐 Supabase client not available for auth monitoring
-storage.js?v=20250904c:80 Starting cleanup of soft deleted notes...
-storage.js?v=20250904c:108 No old deleted notes found for cleanup
-

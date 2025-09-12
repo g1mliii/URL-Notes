@@ -40,9 +40,9 @@ class ApplicationMonitor {
         this.startMonitoring();
       }, 2000);
 
-      console.log('🔍 Application monitoring initialized');
+      // Application monitoring initialized
     } catch (error) {
-      console.error('Failed to initialize monitoring:', error);
+      // Failed to initialize monitoring
     }
   }
 
@@ -136,7 +136,7 @@ class ApplicationMonitor {
     this.errors.push(error);
     this.metrics.errors++;
 
-    console.error('Application Error:', error);
+    // Application Error tracked
 
     // Send error to monitoring service (in production)
     if (this.config?.environment === 'production') {
@@ -154,7 +154,7 @@ class ApplicationMonitor {
       sessionId: this.sessionId
     };
 
-    // console.log(`📊 Performance metric: ${metric}`, data);
+    // Performance metric tracked
   }
 
   trackPageView() {
@@ -172,7 +172,7 @@ class ApplicationMonitor {
       }
     };
 
-    console.log('📄 Page view tracked:', pageView);
+    // Page view tracked
   }
 
   async performHealthCheck() {
@@ -189,14 +189,14 @@ class ApplicationMonitor {
         performance: this.getCurrentPerformanceMetrics()
       };
 
-      console.log('💚 Health check completed:', healthCheck);
+      // Health check completed
 
       // Store health check result
       this.storeHealthCheck(healthCheck);
 
       return healthCheck;
     } catch (error) {
-      console.error('Health check failed:', error);
+      // Health check failed
       this.trackError({
         type: 'health_check',
         message: error.message,
@@ -303,21 +303,13 @@ class ApplicationMonitor {
       const target = event.target;
 
       if (target.matches('button, .btn-primary, .btn-secondary, .nav-link')) {
-        console.log('🖱️ User interaction:', {
-          element: target.tagName,
-          class: target.className,
-          text: target.textContent?.trim(),
-          timestamp: new Date().toISOString()
-        });
+        // User interaction tracked
       }
     });
 
     // Track form submissions
     document.addEventListener('submit', (event) => {
-      console.log('📝 Form submission:', {
-        form: event.target.id || event.target.className,
-        timestamp: new Date().toISOString()
-      });
+      // Form submission tracked
     });
   }
 
@@ -327,18 +319,14 @@ class ApplicationMonitor {
       try {
         if (window.supabaseClient && window.supabaseClient.auth && typeof window.supabaseClient.auth.onAuthStateChange === 'function') {
           window.supabaseClient.auth.onAuthStateChange((event, session) => {
-            console.log('🔐 Auth state change:', {
-              event,
-              authenticated: !!session,
-              timestamp: new Date().toISOString()
-            });
+            // Auth state change tracked
           });
-          console.log('🔐 Auth monitoring setup successful');
+          // Auth monitoring setup successful
         } else {
-          console.log('🔐 Supabase client not available for auth monitoring');
+          // Supabase client not available for auth monitoring
         }
       } catch (error) {
-        console.log('🔐 Auth monitoring setup failed:', error.message);
+        // Auth monitoring setup failed
       }
     };
 
@@ -400,11 +388,7 @@ class ApplicationMonitor {
     const observer = new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
         if (entry.duration > 1000) { // Resources taking more than 1 second
-          console.warn('🐌 Slow resource:', {
-            name: entry.name,
-            duration: entry.duration,
-            size: entry.transferSize
-          });
+          // Slow resource detected
         }
       }
     });
@@ -424,7 +408,7 @@ class ApplicationMonitor {
 
       localStorage.setItem('anchored_errors', JSON.stringify(errors));
     } catch (e) {
-      console.error('Failed to store error locally:', e);
+      // Failed to store error locally
     }
   }
 
@@ -440,14 +424,14 @@ class ApplicationMonitor {
 
       localStorage.setItem('anchored_health_checks', JSON.stringify(checks));
     } catch (e) {
-      console.error('Failed to store health check locally:', e);
+      // Failed to store health check locally
     }
   }
 
   async sendErrorReport(error) {
     // In a real production environment, you would send this to a monitoring service
     // like Sentry, LogRocket, or a custom endpoint
-    console.log('📤 Would send error report to monitoring service:', error);
+    // Error report would be sent to monitoring service
   }
 
   async sendMetrics() {
@@ -459,7 +443,7 @@ class ApplicationMonitor {
       ...this.metrics
     };
 
-    // console.log('📊 Metrics report:', metrics);
+    // Metrics report generated
 
     // In production, send to analytics service
     if (this.config?.environment === 'production') {
@@ -485,7 +469,7 @@ class ApplicationMonitor {
 
   // Public API for custom metrics
   reportMetric(name, value, tags = {}) {
-    console.log(`📈 Custom metric: ${name} = ${value}`, tags);
+    // Custom metric reported
   }
 
   // Get monitoring dashboard data

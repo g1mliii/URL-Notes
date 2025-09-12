@@ -72,12 +72,12 @@ class WebStorage {
   // Clean up soft deleted notes that have been synced to cloud
   async cleanupSyncedDeletedNotes() {
     if (!window.supabaseClient) {
-      console.warn('Supabase client not available for cleanup');
+      // Supabase client not available for cleanup
       return;
     }
 
     try {
-      console.log('Starting cleanup of soft deleted notes...');
+      // Starting cleanup of soft deleted notes
       
       // Get all notes marked for deletion that are older than 24 hours
       const cutoffTime = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
@@ -90,7 +90,7 @@ class WebStorage {
       );
 
       if (deletedNotes && deletedNotes.length > 0) {
-        console.log(`Found ${deletedNotes.length} old deleted notes to clean up`);
+        // Found old deleted notes to clean up
         
         // Permanently delete these notes from the database
         for (const note of deletedNotes) {
@@ -103,12 +103,12 @@ class WebStorage {
         // Also remove from local cache
         this.cleanupDeletedNotesFromCache(deletedNotes.map(n => n.id));
         
-        console.log(`Cleaned up ${deletedNotes.length} old deleted notes`);
+        // Cleaned up old deleted notes
       } else {
-        console.log('No old deleted notes found for cleanup');
+        // No old deleted notes found for cleanup
       }
     } catch (error) {
-      console.warn('Failed to cleanup soft deleted notes:', error);
+      // Failed to cleanup soft deleted notes
     }
   }
 
@@ -134,7 +134,7 @@ class WebStorage {
         }
       }
     } catch (error) {
-      console.warn('Failed to cleanup deleted notes from cache:', error);
+      // Failed to cleanup deleted notes from cache
     }
   }
 
@@ -167,7 +167,7 @@ class WebStorage {
       // API fetch will happen in background if expired
       return notes || [];
     } catch (error) {
-      console.warn('Failed to load notes from cache:', error);
+      // Failed to load notes from cache
       return null;
     }
   }
@@ -181,7 +181,7 @@ class WebStorage {
       };
       localStorage.setItem(this.getAllNotesKey(), JSON.stringify(cacheData));
     } catch (error) {
-      console.warn('Failed to save notes to cache:', error);
+      // Failed to save notes to cache
     }
   }
 
@@ -194,7 +194,7 @@ class WebStorage {
       const { note, timestamp } = JSON.parse(cacheData);
       return note;
     } catch (error) {
-      console.warn('Failed to load note from cache:', error);
+      // Failed to load note from cache
       return null;
     }
   }
@@ -211,7 +211,7 @@ class WebStorage {
       // Also update the note in the all notes cache
       this.updateNoteInAllNotesCache(note);
     } catch (error) {
-      console.warn('Failed to save note to cache:', error);
+      // Failed to save note to cache
     }
   }
 
@@ -239,7 +239,7 @@ class WebStorage {
       };
       localStorage.setItem(this.getAllNotesKey(), JSON.stringify(newCacheData));
     } catch (error) {
-      console.warn('Failed to update note in all notes cache:', error);
+      // Failed to update note in all notes cache
     }
   }
 
@@ -263,7 +263,7 @@ class WebStorage {
         }
       }
     } catch (error) {
-      console.warn('Failed to remove note from cache:', error);
+      // Failed to remove note from cache
     }
   }
 
@@ -293,7 +293,7 @@ class WebStorage {
       // Check if we should sync now
       this.checkAndSync();
     } catch (error) {
-      console.warn('Failed to add note to sync queue:', error);
+      // Failed to add note to sync queue
     }
   }
 
@@ -335,7 +335,7 @@ class WebStorage {
           localStorage.setItem(this.changeCountKey, '0');
         }
       } catch (error) {
-        console.warn('Emergency sync failed:', error);
+        // Emergency sync failed
       }
     }
   }
@@ -343,7 +343,7 @@ class WebStorage {
   // Process sync queue - batch API operations
   async processSyncQueue() {
     if (!window.supabaseClient) {
-      console.warn('Supabase client not available for sync');
+      // Supabase client not available for sync
       return;
     }
 
@@ -351,7 +351,7 @@ class WebStorage {
       const queue = JSON.parse(localStorage.getItem(this.syncQueueKey) || '[]');
       if (queue.length === 0) return;
 
-      console.log(`Processing sync queue with ${queue.length} items`);
+      // Processing sync queue
       
       // Group operations by type
       const updates = queue.filter(item => item.operation === 'update');
@@ -366,7 +366,7 @@ class WebStorage {
           await this.batchUpdateNotes(updates.map(item => item.note));
           successCount += updates.length;
         } catch (error) {
-          console.warn('Batch update failed:', error);
+          // Batch update failed
           failedItems.push(...updates);
         }
       }
@@ -377,7 +377,7 @@ class WebStorage {
           await this.batchDeleteNotes(deletions.map(item => item.noteId));
           successCount += deletions.length;
         } catch (error) {
-          console.warn('Batch delete failed:', error);
+          // Batch delete failed
           failedItems.push(...deletions);
         }
       }
@@ -391,9 +391,9 @@ class WebStorage {
       localStorage.setItem(this.changeCountKey, retryQueue.length.toString());
       localStorage.setItem(this.lastSyncKey, Date.now().toString());
 
-      console.log(`Sync completed: ${successCount} successful, ${retryQueue.length} retries pending`);
+      // Sync completed
     } catch (error) {
-      console.error('Sync queue processing failed:', error);
+      // Sync queue processing failed
     }
   }
 
@@ -455,7 +455,7 @@ class WebStorage {
       // Fetch from API in background if needed
       if (shouldFetchFromAPI) {
         this.fetchNotesFromAPI().catch(error => {
-          console.warn('Background API fetch failed:', error);
+          // Background API fetch failed
         });
       }
       return cachedNotes;
@@ -466,7 +466,7 @@ class WebStorage {
       try {
         return await this.fetchNotesFromAPI();
       } catch (error) {
-        console.warn('API fetch failed, returning empty array:', error);
+        // API fetch failed, returning empty array
         return [];
       }
     }
@@ -512,7 +512,7 @@ class WebStorage {
             decryptedNotes.push(note); // Add unencrypted note
           }
         } catch (error) {
-          console.warn('Failed to decrypt note:', error);
+          // Failed to decrypt note
           decryptedNotes.push(note); // Add as-is on decrypt failure
         }
       }
@@ -523,7 +523,7 @@ class WebStorage {
 
       return decryptedNotes;
     } catch (error) {
-      console.error('Failed to fetch notes from API:', error);
+      // Failed to fetch notes from API
       throw error;
     }
   }
@@ -546,7 +546,7 @@ class WebStorage {
         return note;
       }
     } catch (error) {
-      console.warn('Failed to fetch note from API:', error);
+      // Failed to fetch note from API
     }
 
     return null;

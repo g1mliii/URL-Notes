@@ -23,12 +23,7 @@ class Account {
     const canceled = urlParams.get('canceled');
     const sessionId = urlParams.get('session_id');
 
-    console.log('🔍 Checking payment success:', {
-      success,
-      canceled,
-      sessionId,
-      fullUrl: window.location.href
-    });
+    // Checking payment success silently
 
     if (success === 'true' && sessionId) {
       this.handlePaymentSuccess(sessionId);
@@ -38,7 +33,7 @@ class Account {
   }
 
   async handlePaymentSuccess(sessionId) {
-    console.log('Payment successful, upgrading user to premium');
+    // Payment successful, upgrading user to premium
 
     try {
       // Show success message
@@ -51,7 +46,6 @@ class Account {
       }
 
       // Wait a bit for the page to fully load
-      console.log('⏳ Waiting for page to fully load before upgrade...');
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       // Sync subscription status from Stripe
@@ -69,33 +63,31 @@ class Account {
       window.history.replaceState({}, document.title, url.pathname);
 
     } catch (error) {
-      console.error('Error handling payment success:', error);
+      // Error handling payment success
     }
   }
 
   async upgradeUserToPremium(sessionId) {
     try {
-      console.log('🔄 Starting premium upgrade for user:', window.api?.currentUser?.id);
-      console.log('🔄 Session ID:', sessionId);
+      // Starting premium upgrade for user
 
       // Wait for API and user to be available
       let attempts = 0;
       while ((!window.api || !window.api.currentUser) && attempts < 10) {
-        console.log(`⏳ Waiting for API/user... attempt ${attempts + 1}`);
+        // Waiting for API/user
         await new Promise(resolve => setTimeout(resolve, 500));
         attempts++;
       }
 
       // Check if we have the user and API available
       if (!window.api || !window.api.currentUser) {
-        console.error('❌ API or user still not available after waiting');
+        // API or user still not available after waiting
         throw new Error('API or user not available after waiting');
       }
 
-      console.log('✅ API and user are now available:', window.api.currentUser.id);
+      // API and user are now available
 
       // Update user subscription status directly using the API pattern
-      console.log('🔄 Updating profile to premium...');
 
       // For manual testing, we need to get the customer ID from Stripe
       // In a real scenario, this would come from the checkout session
@@ -105,7 +97,6 @@ class Account {
       if (sessionId && sessionId !== 'manual-test') {
         // This would be a real Stripe session - we'd need to fetch the customer ID
         // For now, we'll leave it null for manual testing
-        console.log('Real session ID detected:', sessionId);
       }
 
       const updateData = {
@@ -128,11 +119,9 @@ class Account {
         }
       );
 
-      console.log('📊 Profile update result:', profileResponse);
-      console.log('✅ Profile updated successfully');
+      // Profile updated successfully
 
       // Update AI usage limits by calling the RPC function
-      console.log('🔄 Updating AI usage limits...');
 
       try {
         const aiUsageResponse = await window.api._request(
@@ -147,25 +136,24 @@ class Account {
           }
         );
 
-        console.log('📊 AI usage update result:', aiUsageResponse);
-        console.log('✅ AI usage limits updated');
+        // AI usage limits updated
       } catch (aiError) {
-        console.error('⚠️ Error updating AI usage limits:', aiError);
+        // Error updating AI usage limits
         // Don't throw here - profile update succeeded, AI update is secondary
       }
 
-      console.log('🎉 User successfully upgraded to premium with 500 AI tokens per month');
+      // User successfully upgraded to premium with 500 AI tokens per month
 
       // Force refresh the subscription status display
       setTimeout(() => {
         if (window.subscriptionManager) {
-          console.log('🔄 Refreshing subscription display...');
+          // Refreshing subscription display
           window.subscriptionManager.loadSubscriptionStatus();
         }
       }, 1000);
 
     } catch (error) {
-      console.error('❌ Failed to upgrade user:', error);
+      // Failed to upgrade user
       alert('Failed to upgrade account. Please contact support with session ID: ' + sessionId);
       throw error;
     }
@@ -173,12 +161,12 @@ class Account {
 
   async syncSubscriptionStatus() {
     try {
-      console.log('🔄 Syncing subscription status from Stripe...');
+      // Syncing subscription status from Stripe
 
       // Wait for API to be available
       let attempts = 0;
       while ((!window.api || !window.api.currentUser) && attempts < 10) {
-        console.log(`⏳ Waiting for API/user... attempt ${attempts + 1}`);
+        // Waiting for API/user
         await new Promise(resolve => setTimeout(resolve, 500));
         attempts++;
       }
@@ -199,11 +187,11 @@ class Account {
         action: 'sync_subscription_status'
       });
 
-      console.log('✅ Sync result:', result);
+      // Sync result obtained
 
       // Show success message
       if (result.updated) {
-        console.log(`🎉 Subscription updated: ${result.message}`);
+        // Subscription updated
 
         // Show a temporary success message
         const successMessage = document.createElement('div');
@@ -216,7 +204,7 @@ class Account {
           document.body.removeChild(successMessage);
         }, 5000);
       } else {
-        console.log(`ℹ️ No update needed: ${result.message}`);
+        // No update needed
       }
 
       // Force refresh the subscription status display
@@ -225,7 +213,7 @@ class Account {
       }
 
     } catch (error) {
-      console.error('❌ Failed to sync subscription status:', error);
+      // Failed to sync subscription status
 
       // Show error message
       const errorMessage = document.createElement('div');
@@ -292,7 +280,7 @@ class Account {
     const refreshStatusBtn = document.getElementById('refreshStatusBtn');
     if (refreshStatusBtn) {
       refreshStatusBtn.addEventListener('click', () => {
-        console.log('🔄 Manual refresh requested');
+        // Manual refresh requested
         if (window.subscriptionManager) {
           window.subscriptionManager.loadSubscriptionStatus();
         }
@@ -304,7 +292,7 @@ class Account {
     const syncSubscriptionBtn = document.getElementById('syncSubscriptionBtn');
     if (syncSubscriptionBtn) {
       syncSubscriptionBtn.addEventListener('click', () => {
-        console.log('🔄 Sync subscription status triggered');
+        // Sync subscription status triggered
         this.syncSubscriptionStatus();
       });
     }
@@ -322,18 +310,18 @@ class Account {
 
   async loadAccountData() {
     try {
-      console.log('Loading account data...');
+      // Loading account data
 
       // Wait for API to be available
       if (!window.api) {
-        console.warn('API not available yet, retrying...');
+        // API not available yet, retrying
         setTimeout(() => this.loadAccountData(), 500);
         return;
       }
 
       // Check if user is authenticated
       if (!window.api.isAuthenticated()) {
-        console.warn('User not authenticated');
+        // User not authenticated
         // Redirect to login or show error
         window.location.href = '/';
         return;
@@ -342,7 +330,7 @@ class Account {
       // Get current user data
       const currentUser = window.api.currentUser;
       if (!currentUser) {
-        console.warn('No current user data');
+        // No current user data
         return;
       }
 
@@ -354,7 +342,7 @@ class Account {
           profileData = response[0];
         }
       } catch (error) {
-        console.warn('Could not load profile data:', error);
+        // Could not load profile data
       }
 
       // Combine user data with profile data
@@ -364,11 +352,11 @@ class Account {
         subscription_tier: profileData?.subscription_tier || 'free'
       };
 
-      console.log('Loaded user data:', userData);
+      // Loaded user data
       this.updateAccountUI(userData);
 
     } catch (error) {
-      console.error('Error loading account data:', error);
+      // Error loading account data
       // Show placeholder data if loading fails
       this.updateAccountUI({
         email: 'Error loading email',
@@ -423,7 +411,7 @@ class Account {
 
 
   exportAllData() {
-    console.log('Export all data - will be implemented in task 6');
+    // Export all data - will be implemented in task 6
   }
 
 

@@ -52,7 +52,7 @@ class App {
     }
 
     if (!window.auth) {
-      console.warn('⚠️ Auth module not available after timeout');
+      // Auth module not available after timeout
     }
   }
 
@@ -133,7 +133,7 @@ class App {
         this.isAuthenticated = false;
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
+      // Auth check failed silently
       this.isAuthenticated = false;
 
       // On error, redirect protected pages to login
@@ -383,7 +383,7 @@ class App {
 
       return await response.json();
     } catch (error) {
-      console.error('API call failed:', error);
+      // API call failed silently
       throw error;
     }
   }

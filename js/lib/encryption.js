@@ -58,7 +58,7 @@ class NoteEncryption {
         algorithm: this.algorithm
       };
     } catch (error) {
-      console.error('Encryption failed:', error);
+      // Encryption failed
       throw new Error('Failed to encrypt note content');
     }
   }
@@ -77,7 +77,7 @@ class NoteEncryption {
       const decoder = new TextDecoder();
       return decoder.decode(decrypted);
     } catch (error) {
-      console.error('Decryption failed:', error);
+      // Decryption failed
       throw new Error('Failed to decrypt note content');
     }
   }
@@ -142,7 +142,7 @@ class NoteEncryption {
         const tagsJson = await this.decryptNote(encryptedNote.tags_encrypted, userKey);
         decryptedTags = JSON.parse(tagsJson);
       } catch (error) {
-        console.warn('Failed to decrypt tags:', error);
+        // Failed to decrypt tags
         decryptedTags = [];
       }
     }

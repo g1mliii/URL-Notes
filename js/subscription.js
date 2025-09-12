@@ -24,14 +24,14 @@ class SubscriptionManager {
       });
 
       if (response.error) {
-        console.error('Failed to load subscription status:', response.error);
+        // Failed to load subscription status
         return;
       }
 
       this.currentSubscription = response;
       this.updateSubscriptionUI();
     } catch (error) {
-      console.error('Error loading subscription status:', error);
+      // Error loading subscription status
     }
   }
 
@@ -178,7 +178,7 @@ class SubscriptionManager {
         aiUsageInfo.textContent = 'Unable to load usage info';
       }
     } catch (error) {
-      console.error('Error loading AI usage info:', error);
+      // Error loading AI usage info
       const aiUsageInfo = document.getElementById('aiUsageInfo');
       if (aiUsageInfo) {
         aiUsageInfo.textContent = 'Error loading usage';
@@ -207,7 +207,7 @@ class SubscriptionManager {
       // Redirect to Stripe Checkout
       window.location.href = response.url;
     } catch (error) {
-      console.error('Error creating checkout session:', error);
+      // Error creating checkout session
       this.showError('Failed to start subscription process. Please try again.');
       
       // Reset button state
@@ -240,7 +240,7 @@ class SubscriptionManager {
       // Redirect to Stripe Customer Portal
       window.location.href = response.url;
     } catch (error) {
-      console.error('Error creating portal session:', error);
+      // Error creating portal session
       
       // Show specific error message if it's the "no Stripe subscription" issue
       if (error.message.includes('No Stripe subscription found')) {

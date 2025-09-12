@@ -24,14 +24,14 @@ class Auth {
       this.supabaseClient = window.supabaseClient;
       await this.supabaseClient.init();
     } else {
-      console.error('❌ Supabase client not available');
+      // Supabase client not available
     }
     
     // Initialize encryption library
     if (window.noteEncryption) {
       this.encryption = window.noteEncryption;
     } else {
-      console.warn('⚠️ Encryption library not available');
+      // Encryption library not available
     }
     
     // Initialize auth form elements
@@ -46,24 +46,24 @@ class Auth {
       this.handleOAuthCallback().then(() => {
         // OAuth callback completed
       }).catch((error) => {
-        console.error('🔐 Error in handleOAuthCallback:', error);
+        // Error in handleOAuthCallback
       });
     } catch (error) {
-      console.error('🔐 Error calling handleOAuthCallback:', error);
+      // Error calling handleOAuthCallback
     }
     
     // Update auth UI based on current state
     try {
       await this.updateAuthUI();
     } catch (error) {
-      console.error('🔐 Error in updateAuthUI:', error);
+      // Error in updateAuthUI
     }
     
     // Set up authentication state monitoring
     try {
       this.setupAuthStateMonitoring();
     } catch (error) {
-      console.error('🔐 Error in setupAuthStateMonitoring:', error);
+      // Error in setupAuthStateMonitoring
     }
   }
 
@@ -288,7 +288,7 @@ class Auth {
       }, 3000);
       
     } catch (error) {
-      console.error('Password reset error:', error);
+      // Password reset error
       const userMessage = this.handlePasswordResetError(error);
       this.showNotification(userMessage, 'error');
       
@@ -322,7 +322,7 @@ class Auth {
       try {
         this.showNotification('Signed out', 'success');
       } catch (notifError) {
-        console.warn('Notification error:', notifError);
+        // Notification error
       }
       
       // Redirect after short delay
@@ -331,12 +331,12 @@ class Auth {
       }, 500);
       
     } catch (error) {
-      console.error('Sign out error:', error);
+      // Sign out error
       
       try {
         this.showNotification(`Sign out failed: ${error.message || error}`, 'error');
       } catch (notifError) {
-        console.warn('Notification error during error handling:', notifError);
+        // Notification error during error handling
       }
       
       // Force redirect even if sign out fails
@@ -347,7 +347,7 @@ class Auth {
       try {
         this.setAuthBusy(false);
       } catch (finallyError) {
-        console.warn('Error in finally block:', finallyError);
+        // Error in finally block
       }
     }
   }
@@ -395,7 +395,7 @@ class Auth {
         }
       }
     } catch (e) {
-      console.warn('updateAuthUI failed:', e);
+      // updateAuthUI failed
     }
   }
 
@@ -512,7 +512,7 @@ class Auth {
       const sessionData = localStorage.getItem('supabase_session');
       return sessionData ? JSON.parse(sessionData) : null;
     } catch (error) {
-      console.error('Error getting session:', error);
+      // Error getting session
       return null;
     }
   }
@@ -521,7 +521,7 @@ class Auth {
     try {
       localStorage.setItem('supabase_session', JSON.stringify(sessionData));
     } catch (error) {
-      console.error('Error setting session:', error);
+      // Error setting session
     }
   }
 
@@ -537,7 +537,7 @@ class Auth {
       localStorage.removeItem('cachedKeyMaterial');
       localStorage.removeItem('cachedSalt');
     } catch (error) {
-      console.error('Error clearing session:', error);
+      // Error clearing session
     }
   }
 
@@ -579,7 +579,7 @@ class Auth {
         return '/dashboard';
       }
     } catch (error) {
-      console.error('Error handling authentication success:', error);
+      // Error handling authentication success
       return '/dashboard'; // Default fallback
     }
   }
@@ -601,13 +601,13 @@ class Auth {
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Token verification failed:', error);
+        // Token verification failed
         return false;
       }
 
       return true;
     } catch (error) {
-      console.error('Token verification error:', error);
+      // Token verification error
       return false;
     }
   }
@@ -674,7 +674,7 @@ class Auth {
       return userData.user;
       
     } catch (error) {
-      console.error('Password reset error:', error);
+      // Password reset error
       throw error;
     }
   }
@@ -682,7 +682,7 @@ class Auth {
   // Encryption key migration for password changes (reuses extension logic)
   async migrateEncryptionKeys(user, newPassword) {
     if (!this.encryption || !this.supabaseClient) {
-      console.warn('Encryption or Supabase client not available for key migration');
+      // Encryption or Supabase client not available for key migration
       return;
     }
 
@@ -704,12 +704,12 @@ class Auth {
         );
         salt = profile?.[0]?.salt;
       } catch (error) {
-        console.warn('Could not fetch salt for key migration:', error);
+        // Could not fetch salt for key migration
         return; // Skip migration if we can't get salt
       }
 
       if (!salt) {
-        console.warn('No salt found for key migration');
+        // No salt found for key migration
         return;
       }
 
@@ -730,7 +730,7 @@ class Auth {
           const reencryptedNote = await this.encryption.encryptNoteForCloud(note, newKey);
           migratedNotes.push(reencryptedNote);
         } catch (error) {
-          console.error('Failed to migrate note:', note.id, error);
+          // Failed to migrate note
           // Continue with other notes
         }
       }
@@ -756,7 +756,7 @@ class Auth {
       ]);
       
     } catch (error) {
-      console.error('Encryption key migration failed:', error);
+      // Encryption key migration failed
       // Don't throw - password change should still succeed even if migration fails
       this.showNotification('Password updated, but note encryption migration failed. Some notes may be inaccessible.', 'error');
     }
@@ -794,7 +794,7 @@ class Auth {
         }
         
       } catch (error) {
-        console.error('OAuth callback error:', error);
+        // OAuth callback error
         this.showNotification('Authentication failed. Please try again.', 'error');
         
         // Clean up URL and redirect to login
@@ -832,7 +832,7 @@ class Auth {
     
     // Handle errors from Supabase
     if (error) {
-      console.error('Password reset callback error:', error, errorDescription);
+      // Password reset callback error
       
       let userMessage = 'Password reset failed. Please try again.';
       if (errorDescription) {
@@ -881,13 +881,13 @@ class Auth {
         try {
           this.showPasswordResetForm(accessToken, refreshToken);
         } catch (error) {
-          console.error('Error showing password reset form:', error);
+          // Error showing password reset form
           this.showNotification('Error showing password reset form. Please try again.', 'error');
         }
       }, 1000);
       
     } catch (error) {
-      console.error('Password reset callback error:', error);
+      // Password reset callback error
       
       let userMessage = 'Password reset link expired or invalid. Please request a new one.';
       if (error.message && error.message.includes('network')) {
@@ -1019,7 +1019,7 @@ class Auth {
         }, 1000);
         
       } catch (error) {
-        console.error('Password update error:', error);
+        // Password update error
         
         // Reset button state
         submitBtn.disabled = false;
@@ -1122,7 +1122,7 @@ class Auth {
         }
       }
     } catch (error) {
-      console.error('Error handling session change:', error);
+      // Error handling session change
     }
   }
 
@@ -1152,7 +1152,7 @@ class Auth {
       
       return true;
     } catch (error) {
-      console.error('Auth status check failed:', error);
+      // Auth status check failed
       await this.clearSession();
       return false;
     }
@@ -1167,7 +1167,7 @@ class Auth {
     try {
       return await this.supabaseClient.getSubscriptionStatus();
     } catch (error) {
-      console.error('Error getting subscription status:', error);
+      // Error getting subscription status
       return { active: false, tier: 'free' };
     }
   }
@@ -1201,7 +1201,7 @@ class Auth {
       }
       
     } catch (error) {
-      console.error('Sign in error:', error);
+      // Sign in error
       let errorMessage = `Sign in failed: ${error.message || error}`;
       
       if (error.message.includes('Invalid login credentials')) {
@@ -1242,7 +1242,7 @@ class Auth {
       }
       
     } catch (error) {
-      console.error('Sign up error:', error);
+      // Sign up error
       let errorMessage = `Sign up failed: ${error.message || error}`;
       
       if (error.message.includes('already registered')) {
@@ -1269,7 +1269,7 @@ class Auth {
         // Redirect to dashboard after successful OAuth
         window.location.href = '/dashboard';
       } catch (error) {
-        console.error('OAuth callback error:', error);
+        // OAuth callback error
         window.app.showMessage('Authentication failed. Please try again.', 'error');
         // Redirect to login page
         window.location.href = '/';
@@ -1287,7 +1287,7 @@ class Auth {
     try {
       await this.supabaseClient.signInWithOAuth('google');
     } catch (error) {
-      console.error('Google sign in error:', error);
+      // Google sign in error
       window.app.showMessage('Google sign in failed. Please try again.', 'error');
     }
   }
@@ -1301,7 +1301,7 @@ class Auth {
     try {
       await this.supabaseClient.signInWithOAuth('github');
     } catch (error) {
-      console.error('GitHub sign in error:', error);
+      // GitHub sign in error
       window.app.showMessage('GitHub sign in failed. Please try again.', 'error');
     }
   }
@@ -1309,7 +1309,7 @@ class Auth {
   // Test function for encryption integration (Task 2.1)
   async testEncryption() {
     if (!this.encryption) {
-      console.error('❌ Encryption library not available');
+      // Encryption library not available
       return false;
     }
 
@@ -1345,12 +1345,12 @@ class Auth {
 
         return true;
       } else {
-        console.error('❌ Decrypted data does not match original');
+        // Decrypted data does not match original
         return false;
       }
       
     } catch (error) {
-      console.error('❌ Encryption integration test failed:', error);
+      // Encryption integration test failed
       return false;
     }
   }

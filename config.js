@@ -50,7 +50,6 @@ window.urlNotesConfig = {
 
     // Validate HTTPS in production
     if (config.httpsOnly && window.location.protocol === 'http:') {
-      console.warn('HTTPS required in production environment');
       // Redirect to HTTPS
       window.location.href = window.location.href.replace('http:', 'https:');
       return;
@@ -89,8 +88,8 @@ window.urlNotesConfig = {
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     const config = await window.urlNotesConfig.loadConfig();
-    console.log('Configuration loaded for environment:', config.environment);
+    // Configuration loaded silently for production
   } catch (error) {
-    console.error('Failed to load configuration:', error);
+    // Configuration load failed silently for production
   }
 });

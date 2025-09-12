@@ -104,7 +104,7 @@ class SupabaseClient {
           this.authUrl = `${this.supabaseUrl}/auth/v1`;
         }
       } catch (e) {
-        console.warn('Config load failed, using defaults:', e);
+        // Config load failed, using defaults
       }
 
       // Check for stored session
@@ -120,7 +120,7 @@ class SupabaseClient {
           try {
             await this.refreshSession();
           } catch (e) {
-            console.warn('Token refresh on init failed, signing out:', e);
+            // Token refresh on init failed, signing out
             await this.signOut();
           }
         }
@@ -147,12 +147,12 @@ class SupabaseClient {
               } catch (_) { }
             }
           } catch (e) {
-            console.warn('Failed to handle profile on init:', e);
+            // Failed to handle profile on init
           }
         }
       }
     } catch (error) {
-      console.error('Error initializing Supabase client:', error);
+      // Error initializing Supabase client
     }
   }
 
@@ -269,7 +269,7 @@ class SupabaseClient {
       await this.handleAuthSuccess(data);
       return data;
     } catch (error) {
-      console.error('Sign in error:', error);
+      // Sign in error
       throw error;
     }
   }
@@ -287,7 +287,7 @@ class SupabaseClient {
       }
       return data;
     } catch (error) {
-      console.error('Sign up error:', error);
+      // Sign up error
       throw error;
     }
   }
@@ -309,7 +309,7 @@ class SupabaseClient {
       // Redirect to OAuth provider
       window.location.href = authUrl;
     } catch (error) {
-      console.error('OAuth sign in error:', error);
+      // OAuth sign in error
       throw error;
     }
   }
@@ -365,7 +365,7 @@ class SupabaseClient {
       await this.handleAuthSuccess(data);
       return data;
     } catch (error) {
-      console.error('OAuth callback error:', error);
+      // OAuth callback error
       throw error;
     }
   }
@@ -405,7 +405,7 @@ class SupabaseClient {
         });
       }
     } catch (error) {
-      console.error('Sign out error:', error);
+      // Sign out error
     } finally {
       // Clear local session
       this.accessToken = null;
@@ -466,7 +466,7 @@ class SupabaseClient {
 
       return true;
     } catch (error) {
-      console.error('Password reset error:', error);
+      // Password reset error
       throw error;
     }
   }
@@ -534,7 +534,7 @@ class SupabaseClient {
       await this.handleAuthSuccess(data);
       return true;
     } catch (error) {
-      console.error('refreshSession error:', error);
+      // refreshSession error
       throw error;
     }
   }
@@ -547,7 +547,7 @@ class SupabaseClient {
         const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${user.id}&select=salt,subscription_tier,subscription_expires_at`, { auth: true });
         if (Array.isArray(arr) && arr[0]) profile = arr[0];
       } catch (error) {
-        console.warn('upsertProfile: Error checking profile existence:', error);
+        // upsertProfile: Error checking profile existence
       }
 
       // Only create profile if it doesn't exist
@@ -565,7 +565,7 @@ class SupabaseClient {
           const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${user.id}&select=salt,subscription_tier,subscription_expires_at`, { auth: true });
           if (Array.isArray(arr) && arr[0]) profile = arr[0];
         } catch (error) {
-          console.warn('upsertProfile: Error fetching newly created profile:', error);
+          // upsertProfile: Error fetching newly created profile
         }
       }
 
@@ -616,16 +616,13 @@ class SupabaseClient {
         } catch (_) { }
       }
     } catch (error) {
-      console.error('Error upserting profile:', error);
+      // Error upserting profile
     }
   }
 
   // Sync notes to cloud using Edge Function
   async syncNotes(syncPayload) {
-    console.log('syncNotes called with payload:', {
-      operation: syncPayload.operation,
-      noteCount: syncPayload.notes?.length || 0
-    });
+    // syncNotes called
 
     if (!this.isAuthenticated()) {
       throw new Error('User not authenticated');
@@ -633,19 +630,18 @@ class SupabaseClient {
 
     // Ensure encryption module is available
     if (!window.noteEncryption) {
-      console.error('NoteEncryption module not available');
+      // NoteEncryption module not available
       throw new Error('NoteEncryption module not available');
     }
 
     try {
       // Ensure encryption key is available
-      console.log('Getting encryption key...');
       const encryptionKey = await this.getUserEncryptionKey();
       if (!encryptionKey) {
-        console.error('Encryption key not available');
+        // Encryption key not available
         throw new Error('Encryption key not available');
       }
-      console.log('Encryption key obtained successfully');
+      // Encryption key obtained successfully
 
       const encryptedNotes = [];
 
@@ -654,29 +650,17 @@ class SupabaseClient {
         for (const note of syncPayload.notes) {
           // Skip notes without title or content
           if (!note.content || !note.title) {
-            console.warn('Skipping note without title or content:', note.id);
+            // Skipping note without title or content
             continue;
           }
 
-          console.log('Encrypting note:', {
-            id: note.id,
-            titleLength: note.title?.length || 0,
-            contentLength: note.content?.length || 0,
-            hasEncryptionKey: !!encryptionKey
-          });
-
+          // Encrypting note
           const encryptedNote = await window.noteEncryption.encryptNoteForCloud(
             note,
             encryptionKey
           );
 
-          console.log('Note encrypted successfully:', {
-            id: encryptedNote.id,
-            hasTitleEncrypted: !!encryptedNote.title_encrypted,
-            hasContentEncrypted: !!encryptedNote.content_encrypted,
-            titleEncryptedType: typeof encryptedNote.title_encrypted,
-            contentEncryptedType: typeof encryptedNote.content_encrypted
-          });
+          // Note encrypted successfully
 
           encryptedNotes.push(encryptedNote);
         }
@@ -691,29 +675,7 @@ class SupabaseClient {
         timestamp: syncPayload.timestamp
       };
 
-      // Debug: Log edge function payload structure
-      console.log('Edge function payload structure:', {
-        operation: edgeFunctionPayload.operation,
-        noteCount: edgeFunctionPayload.notes.length,
-        encryptedNoteSample: edgeFunctionPayload.notes.length > 0 ? {
-          id: edgeFunctionPayload.notes[0].id,
-          hasTitleEncrypted: !!edgeFunctionPayload.notes[0].title_encrypted,
-          hasContentEncrypted: !!edgeFunctionPayload.notes[0].content_encrypted,
-          titleEncryptedType: typeof edgeFunctionPayload.notes[0].title_encrypted,
-          contentEncryptedType: typeof edgeFunctionPayload.notes[0].content_encrypted
-        } : null,
-        deletionCount: edgeFunctionPayload.deletions.length
-      });
-
-      // Log the final payload being sent
-      console.log('Final payload being sent to edge function:', {
-        operation: edgeFunctionPayload.operation,
-        notesCount: edgeFunctionPayload.notes.length,
-        firstNoteEncrypted: edgeFunctionPayload.notes[0] ? {
-          hasTitleEncrypted: !!edgeFunctionPayload.notes[0].title_encrypted,
-          hasContentEncrypted: !!edgeFunctionPayload.notes[0].content_encrypted
-        } : null
-      });
+      // Edge function payload prepared
 
       // Use Edge Function for sync
       const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-notes`, {
@@ -728,7 +690,7 @@ class SupabaseClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Sync error response:', errorText);
+        // Sync error response
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -738,7 +700,7 @@ class SupabaseClient {
 
         // If it's an "Invalid operation" error, try direct database access as fallback
         if (errorData.error === 'Invalid operation') {
-          console.log('Edge function failed with "Invalid operation", trying direct database access...');
+          // Edge function failed, trying direct database access
           return await this.syncNotesDirectly(encryptedNotes, syncPayload.deletions || []);
         }
 
@@ -748,14 +710,14 @@ class SupabaseClient {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Sync error:', error);
+      // Sync error
       throw error;
     }
   }
 
   // Fallback sync method using direct database access
   async syncNotesDirectly(encryptedNotes, deletions = []) {
-    console.log('Using direct database sync fallback');
+    // Using direct database sync fallback
 
     try {
       // Process deletions first
@@ -815,7 +777,7 @@ class SupabaseClient {
         processedDeletions: deletions
       };
     } catch (error) {
-      console.error('Direct database sync failed:', error);
+      // Direct database sync failed
       throw error;
     }
   }
@@ -828,8 +790,7 @@ class SupabaseClient {
 
     // Use direct database access for fetching notes (more efficient for read-only operations)
     try {
-      console.log('Using direct database access for notes');
-      console.log('Current user ID:', this.currentUser?.id);
+      // Using direct database access for notes
       const query = lastSyncTime
         ? `${this.apiUrl}/notes?user_id=eq.${this.currentUser.id}&updated_at=gte.${lastSyncTime}&is_deleted=eq.false&order=updated_at.desc`
         : `${this.apiUrl}/notes?user_id=eq.${this.currentUser.id}&is_deleted=eq.false&order=updated_at.desc`;
@@ -842,7 +803,7 @@ class SupabaseClient {
 
       return await this.decryptNotes(encryptedNotes);
     } catch (error) {
-      console.error('API: Fetch error:', error);
+      // API: Fetch error
       throw error;
     }
   }
@@ -898,7 +859,7 @@ class SupabaseClient {
 
         decryptedNotes.push(normalizedNote);
       } catch (error) {
-        console.error('Failed to process note:', encryptedNote.id, error);
+        // Failed to process note
         // Try to use the note as-is if decryption fails
         if (encryptedNote.title && encryptedNote.content) {
           const fallbackNote = {
@@ -939,7 +900,7 @@ class SupabaseClient {
       });
       return true;
     } catch (error) {
-      console.error('Delete error:', error);
+      // Delete error
       throw error;
     }
   }
@@ -949,7 +910,7 @@ class SupabaseClient {
   // Get user's encryption key (with caching to prevent multiple API calls)
   async getUserEncryptionKey() {
     if (!this.currentUser) {
-      console.log('getUserEncryptionKey: No authenticated user');
+      // getUserEncryptionKey: No authenticated user
       throw new Error('No authenticated user');
     }
 
@@ -974,7 +935,7 @@ class SupabaseClient {
         salt = cachedSubscription.salt;
       }
     } catch (error) {
-      console.warn('getUserEncryptionKey: Error checking cached subscription:', error);
+      // getUserEncryptionKey: Error checking cached subscription
     }
 
     // If no cached salt, fetch from API
@@ -983,7 +944,7 @@ class SupabaseClient {
         const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=salt`, { auth: true });
         salt = arr?.[0]?.salt || null;
       } catch (error) {
-        console.warn('getUserEncryptionKey: Error fetching salt from API:', error);
+        // getUserEncryptionKey: Error fetching salt from API
       }
     }
 
@@ -1022,12 +983,12 @@ class SupabaseClient {
   // Clean up old soft deleted notes (24+ hours old)
   async cleanupOldDeletedNotes() {
     if (!this.isAuthenticated()) {
-      console.log('User not authenticated, skipping cleanup');
+      // User not authenticated, skipping cleanup
       return { cleaned: 0 };
     }
 
     try {
-      console.log('Starting cleanup of old deleted notes...');
+      // Starting cleanup of old deleted notes
 
       // Get notes that are deleted and older than 24 hours
       const cutoffTime = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
@@ -1037,11 +998,11 @@ class SupabaseClient {
       const oldDeletedNotes = await this._request(query, { auth: true });
 
       if (!oldDeletedNotes || oldDeletedNotes.length === 0) {
-        console.log('No old deleted notes found for cleanup');
+        // No old deleted notes found for cleanup
         return { cleaned: 0 };
       }
 
-      console.log(`Found ${oldDeletedNotes.length} old deleted notes to permanently delete`);
+      // Found old deleted notes to permanently delete
 
       // Permanently delete these notes from the database
       let cleanedCount = 0;
@@ -1053,14 +1014,14 @@ class SupabaseClient {
           });
           cleanedCount++;
         } catch (error) {
-          console.warn(`Failed to delete note ${note.id}:`, error);
+          // Failed to delete note
         }
       }
 
-      console.log(`Successfully cleaned up ${cleanedCount} old deleted notes`);
+      // Successfully cleaned up old deleted notes
       return { cleaned: cleanedCount, total: oldDeletedNotes.length };
     } catch (error) {
-      console.error('Failed to cleanup old deleted notes:', error);
+      // Failed to cleanup old deleted notes
       throw error;
     }
   }
@@ -1083,7 +1044,7 @@ class SupabaseClient {
       }
       return null;
     } catch (e) {
-      console.warn('getSession error:', e);
+      // getSession error
       return null;
     }
   }
@@ -1091,7 +1052,7 @@ class SupabaseClient {
   // Check subscription status (with caching to prevent multiple API calls)
   async getSubscriptionStatus() {
     if (!this.isAuthenticated()) {
-      console.log('getSubscriptionStatus: User not authenticated, returning free tier');
+      // getSubscriptionStatus: User not authenticated, returning free tier
       return { tier: 'free', active: false };
     }
 
@@ -1136,7 +1097,7 @@ class SupabaseClient {
 
       return result;
     } catch (error) {
-      console.error('Error checking subscription:', error);
+      // Error checking subscription
       return { tier: 'free', active: false };
     }
   }
@@ -1164,7 +1125,7 @@ class SupabaseClient {
 
       return true;
     } catch (error) {
-      console.error('Subscription update error:', error);
+      // Subscription update error
       throw error;
     }
   }
@@ -1172,7 +1133,7 @@ class SupabaseClient {
   // Get storage usage
   async getStorageUsage() {
     if (!this.isAuthenticated()) {
-      console.log('getStorageUsage: User not authenticated, returning 0 usage');
+      // getStorageUsage: User not authenticated, returning 0 usage
       return { used: 0, limit: 0 };
     }
 
@@ -1182,7 +1143,7 @@ class SupabaseClient {
       const profile = profiles?.[0];
 
       if (!profile) {
-        console.log('getStorageUsage: No profile found, returning 0 usage');
+        // getStorageUsage: No profile found, returning 0 usage
         return { used: 0, limit: 0 };
       }
 
@@ -1202,7 +1163,7 @@ class SupabaseClient {
 
       return result;
     } catch (error) {
-      console.error('getStorageUsage: Error getting storage usage:', error);
+      // getStorageUsage: Error getting storage usage
       return { used: 0, limit: 0 };
     }
   }
@@ -1232,7 +1193,7 @@ class SupabaseClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Conflict resolution error response:', errorText);
+        // Conflict resolution error response
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -1245,7 +1206,7 @@ class SupabaseClient {
       const data = await response.json();
       return { success: true, data };
     } catch (error) {
-      console.error('Conflict resolution error:', error);
+      // Conflict resolution error
       return { success: false, error: error.message };
     }
   }
@@ -1273,7 +1234,7 @@ class SupabaseClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Version sync error response:', errorText);
+        // Version sync error response
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -1286,7 +1247,7 @@ class SupabaseClient {
       const data = await response.json();
       return { success: true, data };
     } catch (error) {
-      console.error('Version sync error:', error);
+      // Version sync error
       return { success: false, error: error.message };
     }
   }
@@ -1310,7 +1271,7 @@ class SupabaseClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`RPC ${functionName} error response:`, errorText);
+        // RPC error response
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -1323,7 +1284,7 @@ class SupabaseClient {
       const data = await response.json();
       return { data, error: null };
     } catch (error) {
-      console.error(`RPC ${functionName} error:`, error);
+      // RPC error
       return { data: null, error: error.message };
     }
   }
@@ -1347,7 +1308,7 @@ class SupabaseClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`Function ${functionName} error response:`, errorText);
+        // Function error response
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -1360,7 +1321,7 @@ class SupabaseClient {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error(`Function ${functionName} error:`, error);
+      // Function error
       throw error;
     }
   }

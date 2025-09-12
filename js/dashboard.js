@@ -33,7 +33,7 @@ class Dashboard {
     }
 
     if (!window.storage) {
-      console.warn('Storage not available, using fallback');
+      // Storage not available, using fallback
       // Create a simple fallback storage
       window.storage = {
         init: async () => { },
@@ -44,12 +44,12 @@ class Dashboard {
     }
 
     if (!window.api) {
-      console.error('API client not available');
+      // API client not available
       throw new Error('API client not available');
     }
 
     if (!window.noteEncryption) {
-      console.error('Encryption module not available');
+      // Encryption module not available
       throw new Error('Encryption module not available');
     }
 
@@ -57,7 +57,7 @@ class Dashboard {
     try {
       await window.api.init();
     } catch (error) {
-      console.warn('API client initialization failed:', error);
+      // API client initialization failed
     }
 
     // Initialize storage if it has an init method
@@ -65,7 +65,7 @@ class Dashboard {
       try {
         await window.storage.init();
       } catch (error) {
-        console.warn('Storage initialization failed:', error);
+        // Storage initialization failed
       }
     }
   }
@@ -355,7 +355,7 @@ class Dashboard {
       this.applyFilters();
 
     } catch (error) {
-      console.error('Auto-save failed:', error);
+      // Auto-save failed
       // Don't show error notification for auto-save failures
     }
   }
@@ -416,7 +416,7 @@ class Dashboard {
       this.cleanupOldDeletedNotes();
 
     } catch (error) {
-      console.error('Error loading notes:', error);
+      // Error loading notes
       this.showErrorState(error.message);
     } finally {
       this.isLoading = false;
@@ -459,7 +459,7 @@ class Dashboard {
         this.showNotification('No old deleted notes found to clean up', 'info');
       }
     } catch (error) {
-      console.error('Manual cleanup failed:', error);
+      // Manual cleanup failed
       this.showNotification('Failed to clean up deleted notes. Please try again.', 'error');
     } finally {
       // Restore button state
@@ -874,7 +874,7 @@ class Dashboard {
 
     // Check if elements exist
     if (!panel || !noteView || !noteEdit) {
-      console.error('Note panel elements not found');
+      // Note panel elements not found
       return;
     }
 
@@ -1031,7 +1031,7 @@ class Dashboard {
     const noteEdit = document.getElementById('noteEdit');
 
     if (!panel || !noteView || !noteEdit) {
-      console.error('Note panel elements not found');
+      // Note panel elements not found
       return;
     }
 
@@ -1217,7 +1217,7 @@ class Dashboard {
       try {
         await this.syncNoteToCloud(noteData);
       } catch (syncError) {
-        console.warn('Cloud sync failed, but note saved locally:', syncError);
+        // Cloud sync failed, but note saved locally
         // Note is still saved locally, so we can continue
       }
 
@@ -1240,7 +1240,7 @@ class Dashboard {
       this.showNotification('Note saved successfully!', 'success');
 
     } catch (error) {
-      console.error('Error saving note:', error);
+      // Error saving note
       this.showNotification('Failed to save note. Please try again.', 'error');
     } finally {
       this.setSaveButtonState(false);
@@ -1286,7 +1286,7 @@ class Dashboard {
       this.showNotification('Note deleted successfully!', 'success');
 
     } catch (error) {
-      console.error('Error deleting note:', error);
+      // Error deleting note
       this.showNotification('Failed to delete note. Please try again.', 'error');
     } finally {
       this.setDeleteButtonState(false);
@@ -1323,7 +1323,7 @@ class Dashboard {
       await window.api.syncNotes(syncPayload);
 
     } catch (error) {
-      console.error('Cloud sync failed:', error);
+      // Cloud sync failed
       // Don't throw error - note is saved locally
       this.showNotification('Note saved locally. Cloud sync will retry later.', 'warning');
       throw error; // Re-throw so the caller knows sync failed
@@ -1490,7 +1490,7 @@ class Dashboard {
       this.showNotification(`${selectedCount} note${selectedCount > 1 ? 's' : ''} deleted successfully!`, 'success');
 
     } catch (error) {
-      console.error('Error deleting notes:', error);
+      // Error deleting notes
       this.showNotification('Failed to delete some notes. Please try again.', 'error');
     } finally {
       // Reset button state
@@ -1530,7 +1530,7 @@ class Dashboard {
       this.showNotification(`${selectedNotes.length} notes exported successfully!`, 'success');
 
     } catch (error) {
-      console.error('Error exporting notes:', error);
+      // Error exporting notes
       this.showNotification('Failed to export notes. Please try again.', 'error');
     }
   }
@@ -1559,7 +1559,7 @@ class Dashboard {
         this.handleUpgradeBanner(response);
       }
     } catch (error) {
-      console.error('Error checking subscription status:', error);
+      // Error checking subscription status
       // Show upgrade banner by default if we can't determine status
       this.showUpgradeBanner();
     }
