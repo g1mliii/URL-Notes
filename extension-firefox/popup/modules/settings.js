@@ -8,6 +8,7 @@ class SettingsManager {
     this.settingsBtn = document.getElementById('settingsBtn');
     this.settingsBackBtn = document.getElementById('settingsBackBtn');
     this.openOnboardingBtn = document.getElementById('openOnboardingBtn');
+    this.adDisclaimerBtn = document.getElementById('adDisclaimerBtn');
     this.fontSelector = document.getElementById('fontSelector');
     this.fontSizeSlider = document.getElementById('fontSizeSlider');
     this.fontSizeValue = document.getElementById('fontSizeValue');
@@ -331,6 +332,16 @@ class SettingsManager {
     // Open onboarding
     this.openOnboardingBtn?.addEventListener('click', () => this.openOnboarding());
 
+    // Open advertising disclosure
+    this.adDisclaimerBtn?.addEventListener('click', () => this.openAdDisclosure());
+
+    // Ad disclaimer link in ad container
+    const adDisclaimerLink = document.getElementById('adDisclaimerLink');
+    adDisclaimerLink?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.openAdDisclosure();
+    });
+
     // React to global auth and tier changes
     try {
       window.eventBus?.on('auth:changed', () => this.updateAuthUI());
@@ -530,6 +541,37 @@ class SettingsManager {
       }
     } catch (_) {
       try { window.open('onboarding.html', '_blank'); } catch (__) { }
+    }
+  }
+
+  // Open advertising disclosure dialog
+  openAdDisclosure() {
+    const dialog = document.getElementById('adDisclosureDialog');
+    if (dialog) {
+      dialog.style.display = 'block';
+      
+      // Setup close button handlers
+      const closeBtn = document.getElementById('adDisclosureCloseBtn');
+      const okBtn = document.getElementById('adDisclosureOkBtn');
+      
+      const closeDialog = () => {
+        dialog.style.display = 'none';
+      };
+      
+      if (closeBtn) {
+        closeBtn.onclick = closeDialog;
+      }
+      
+      if (okBtn) {
+        okBtn.onclick = closeDialog;
+      }
+      
+      // Close on outside click
+      dialog.onclick = (e) => {
+        if (e.target === dialog) {
+          closeDialog();
+        }
+      };
     }
   }
 

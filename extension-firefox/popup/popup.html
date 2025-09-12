@@ -419,6 +419,42 @@
       </div>
     </div>
 
+    <!-- Advertising Disclosure Dialog (Hidden by default) -->
+    <div class="ai-rewrite-dialog" id="adDisclosureDialog" style="display: none;">
+      <div class="dialog-header">
+        <h3>Advertising Disclosure</h3>
+        <button class="close-btn" id="adDisclosureCloseBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="dialog-content">
+        <div style="padding: 16px; line-height: 1.5;">
+          <h4 style="margin: 0 0 12px 0; font-size: 14px;">Affiliate-Based Advertising</h4>
+          <p style="margin: 0 0 12px 0; font-size: 13px; opacity: 0.9;">
+            URL Notes displays affiliate-based advertisements to support the development and maintenance of this free extension. 
+            We may earn commissions from purchases made through these advertisements.
+          </p>
+          <h4 style="margin: 16px 0 8px 0; font-size: 14px;">Transparency & Independence</h4>
+          <p style="margin: 0 0 12px 0; font-size: 13px; opacity: 0.9;">
+            • All advertising partnerships are clearly marked as "Advertisement"<br>
+            • Ads do not influence the functionality, privacy, or security of your notes<br>
+            • Your note data remains private and encrypted regardless of advertising<br>
+            • Premium users enjoy a completely ad-free experience
+          </p>
+          <h4 style="margin: 16px 0 8px 0; font-size: 14px;">Chrome Web Store Compliance</h4>
+          <p style="margin: 0 0 12px 0; font-size: 13px; opacity: 0.9;">
+            This disclosure is provided in accordance with Chrome Web Store policies regarding affiliate marketing and advertising transparency.
+          </p>
+          <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <button class="btn-primary" id="adDisclosureOkBtn" style="width: 100%;">I Understand</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Settings Panel (Hidden by default) -->
     <div class="settings-panel" id="settingsPanel" style="display: none;">
       <div class="editor-header">
@@ -567,6 +603,14 @@
             </svg>
             <span>Open Onboarding</span>
           </button>
+          <button class="settings-btn-full" id="adDisclaimerBtn" title="View advertising disclosure">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 16v-4"/>
+              <path d="M12 8h.01"/>
+            </svg>
+            <span>Advertising Disclosure</span>
+          </button>
         </div>
       </div>
     </div>
@@ -581,6 +625,9 @@
         <div class="ad-placeholder">
           <span>Ad space</span>
         </div>
+      </div>
+      <div class="ad-disclaimer" style="font-size: 10px; opacity: 0.6; text-align: center; padding: 4px 8px; border-top: 1px solid rgba(255,255,255,0.1);">
+        Affiliate ads support this free extension • <a href="#" id="adDisclaimerLink" style="color: inherit; text-decoration: underline;">Learn more</a>
       </div>
     </div>
     <!-- Toast Notification -->

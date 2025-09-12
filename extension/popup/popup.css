@@ -564,7 +564,7 @@ html, body {
   width: 100%;
   height: 100%;
   background: var(--bg-primary); /* Less transparent */
-  z-index: 100;
+  z-index: 5000;
   display: none; /* Hidden by default */
   flex-direction: column;
   border: 1px solid var(--border-color);
@@ -1767,7 +1767,7 @@ html[data-view="all_notes"] details.domain-group[open]:focus-within > .domain-ac
   background: var(--bg-primary);
   border-top: 1px solid var(--border-color);
   box-shadow: 0 -8px 16px var(--shadow-dark), inset 0 1px 0 var(--shadow-light);
-  z-index: 50;
+  z-index: 1000;
 }
 
 .ad-label {

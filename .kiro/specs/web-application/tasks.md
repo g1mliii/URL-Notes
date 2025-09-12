@@ -231,11 +231,8 @@
   - Update button to open unified Stripe customer portal with url https://billing.stripe.com/p/login/7sY7sN0nf3Vl3IY6gW3oA00
   - _Requirements: Simplified user experience_
 
-- [ ] 17. Fix extension settings UI z-index issues
-  - Resolve ads appearing above settings area blocking help and onboarding buttons
-  - Adjust z-index values to ensure proper layering
-  - Test settings accessibility on all screen sizes
-  - _Requirements: Accessible settings interface_
+- [ ] 17. 
+
   
 
 - [ ] 20. Implement password change using existing reset logic
