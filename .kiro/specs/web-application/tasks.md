@@ -220,7 +220,7 @@
     - _Requirements: All requirements validation_
 
 - [ ] 14. Transition Stripe integration to live production keys
-  - Replace test Stripe API keys with live production keys
+  - Replace test Stripe API keys with live production keys i think they are only used in supabased index just check as im not sure where i need to replace any keys for live versions
   - Update customer portal links to use live Stripe environment https://billing.stripe.com/p/login/7sY7sN0nf3Vl3IY6gW3oA00
   - Test live payment processing
   - Verify production and subscription management
@@ -231,15 +231,6 @@
   - Update button to open unified Stripe customer portal with url https://billing.stripe.com/p/login/7sY7sN0nf3Vl3IY6gW3oA00
   - _Requirements: Simplified user experience_
 
-- [-] 17. removal of console logs in extrension for webs store submission, removal of unused code fuel code in ads section of extension
-
-
-
-  - removal of all console logs that should not be present in chrome web store for extension code.
-  - removal of unused code fuel logic for ad display that we are not using as we are using static banner ads currenly and dont plan to implement code fuel at this time or any other type of ads in extension .
-  - _Requirements: Get extension ready for public use and remove unecessary ads that may impact chrome store acceptance
-
-  
 
 - [ ] 20. Implement password change using existing reset logic
   - Replace current change password section in account area with forgot password implmentation keeping the ui the same but reusing the same logic with the same listeners as forgot password so we dont run into issues of not detecting/oppening modal.

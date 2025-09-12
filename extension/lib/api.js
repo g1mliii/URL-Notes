@@ -47,7 +47,7 @@ class SupabaseClient {
           this.authUrl = `${this.supabaseUrl}/auth/v1`;
         }
       } catch (e) {
-        console.warn('Config load failed, using defaults:', e);
+        // Config load failed, using defaults - silently handled
       }
 
       // Check for stored session
@@ -62,7 +62,6 @@ class SupabaseClient {
           try {
             await this.refreshSession();
           } catch (e) {
-            console.warn('Token refresh on init failed, signing out:', e);
             await this.signOut();
           }
         }
@@ -94,12 +93,12 @@ class SupabaseClient {
               }
             }
           } catch (e) {
-            console.warn('Failed to handle profile on init:', e);
+            // Failed to handle profile on init - silently handled
           }
         }
       }
     } catch (error) {
-      console.error('Error initializing Supabase client:', error);
+      // Error initializing Supabase client - silently handled
     }
   }
 
@@ -216,7 +215,6 @@ class SupabaseClient {
       await this.handleAuthSuccess(data);
       return data;
     } catch (error) {
-      console.error('Sign in error:', error);
       throw error;
     }
   }
@@ -234,7 +232,6 @@ class SupabaseClient {
       }
       return data;
     } catch (error) {
-      console.error('Sign up error:', error);
       throw error;
     }
   }
@@ -261,8 +258,6 @@ class SupabaseClient {
 
       const urlObj = new URL(responseUrl);
       const code = urlObj.searchParams.get('code');
-      console.debug('[OAuth] authorize url:', authUrl);
-      console.debug('[OAuth] redirected to:', responseUrl);
       if (!code) {
         const errParam = urlObj.searchParams.get('error');
         const errDesc = urlObj.searchParams.get('error_description');
@@ -340,7 +335,6 @@ class SupabaseClient {
       await this.handleAuthSuccess(data);
       return data;
     } catch (error) {
-      console.error('OAuth sign in error:', error);
       throw error;
     }
   }
@@ -378,7 +372,7 @@ class SupabaseClient {
         });
       }
     } catch (error) {
-      console.error('Sign out error:', error);
+      // Sign out error - silently handled
     } finally {
       // Clear local session
       this.accessToken = null;
@@ -418,7 +412,6 @@ class SupabaseClient {
 
       return true;
     } catch (error) {
-      console.error('Password reset error:', error);
       throw error;
     }
   }
@@ -481,7 +474,6 @@ class SupabaseClient {
       await this.handleAuthSuccess(data);
       return true;
     } catch (error) {
-      console.error('refreshSession error:', error);
       throw error;
     }
   }
@@ -495,7 +487,7 @@ class SupabaseClient {
         const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${user.id}&select=salt,subscription_tier,subscription_expires_at`, { auth: true });
         if (Array.isArray(arr) && arr[0]) profile = arr[0];
       } catch (error) {
-        console.warn('upsertProfile: Error checking profile existence:', error);
+        // upsertProfile: Error checking profile existence - silently handled
       }
 
       // Only create profile if it doesn't exist
@@ -513,7 +505,7 @@ class SupabaseClient {
           const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${user.id}&select=salt,subscription_tier,subscription_expires_at`, { auth: true });
           if (Array.isArray(arr) && arr[0]) profile = arr[0];
         } catch (error) {
-          console.warn('upsertProfile: Error fetching newly created profile:', error);
+          // upsertProfile: Error fetching newly created profile - silently handled
         }
       }
 
@@ -565,7 +557,7 @@ class SupabaseClient {
         }
       }
     } catch (error) {
-      console.error('Error upserting profile:', error);
+      // Error upserting profile - silently handled
     }
   }
 
@@ -594,29 +586,13 @@ class SupabaseClient {
         for (const note of syncPayload.notes) {
           // Skip notes without title or content
           if (!note.content || !note.title) {
-            console.warn('Skipping note without title or content:', note.id);
             continue;
           }
-          
-          console.log('Encrypting note:', {
-            id: note.id,
-            titleLength: note.title?.length || 0,
-            contentLength: note.content?.length || 0,
-            hasEncryptionKey: !!encryptionKey
-          });
           
           const encryptedNote = await window.noteEncryption.encryptNoteForCloud(
             note, 
             encryptionKey
           );
-          
-          console.log('Note encrypted successfully:', {
-            id: encryptedNote.id,
-            hasTitleEncrypted: !!encryptedNote.title_encrypted,
-            hasContentEncrypted: !!encryptedNote.content_encrypted,
-            titleEncryptedType: typeof encryptedNote.title_encrypted,
-            contentEncryptedType: typeof encryptedNote.content_encrypted
-          });
           
           encryptedNotes.push(encryptedNote);
         }
@@ -631,19 +607,7 @@ class SupabaseClient {
         timestamp: syncPayload.timestamp
       };
 
-      // Debug: Log edge function payload structure
-      console.log('Edge function payload structure:', {
-        operation: edgeFunctionPayload.operation,
-        noteCount: edgeFunctionPayload.notes.length,
-        encryptedNoteSample: edgeFunctionPayload.notes.length > 0 ? {
-          id: edgeFunctionPayload.notes[0].id,
-          hasTitleEncrypted: !!edgeFunctionPayload.notes[0].title_encrypted,
-          hasContentEncrypted: !!edgeFunctionPayload.notes[0].content_encrypted,
-          titleEncryptedType: typeof edgeFunctionPayload.notes[0].title_encrypted,
-          contentEncryptedType: typeof edgeFunctionPayload.notes[0].content_encrypted
-        } : null,
-        deletionCount: edgeFunctionPayload.deletions.length
-      });
+
 
       // Use Edge Function for sync
       const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-notes`, {
@@ -658,7 +622,6 @@ class SupabaseClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Sync error response:', errorText);
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -671,7 +634,6 @@ class SupabaseClient {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Sync error:', error);
       throw error;
     }
   }
@@ -699,7 +661,6 @@ class SupabaseClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Fetch error response:', errorText);
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -746,7 +707,6 @@ class SupabaseClient {
           
           decryptedNotes.push(decryptedNote);
         } catch (error) {
-          console.error('Failed to process note:', encryptedNote.id, error);
           // Try to use the note as-is if decryption fails
           if (encryptedNote.title && encryptedNote.content) {
             decryptedNotes.push({
@@ -760,7 +720,6 @@ class SupabaseClient {
 
       return decryptedNotes;
     } catch (error) {
-      console.error('API: Fetch error:', error);
       throw error;
     }
   }
@@ -779,7 +738,6 @@ class SupabaseClient {
       });
       return true;
     } catch (error) {
-      console.error('Delete error:', error);
       throw error;
     }
   }
@@ -787,7 +745,6 @@ class SupabaseClient {
   // Get user's encryption key (with caching to prevent multiple API calls)
   async getUserEncryptionKey() {
     if (!this.currentUser) {
-      console.log('getUserEncryptionKey: No authenticated user');
       throw new Error('No authenticated user');
     }
 
@@ -812,7 +769,7 @@ class SupabaseClient {
         salt = cachedSubscription.salt;
       }
     } catch (error) {
-      console.warn('getUserEncryptionKey: Error checking cached subscription:', error);
+      // getUserEncryptionKey: Error checking cached subscription - silently handled
     }
 
     // If no cached salt, fetch from API
@@ -821,7 +778,7 @@ class SupabaseClient {
         const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=salt`, { auth: true });
         salt = arr?.[0]?.salt || null;
       } catch (error) {
-        console.warn('getUserEncryptionKey: Error fetching salt from API:', error);
+        // getUserEncryptionKey: Error fetching salt from API - silently handled
       }
     }
 
@@ -875,7 +832,6 @@ class SupabaseClient {
       }
       return null;
     } catch (e) {
-      console.warn('getSession error:', e);
       return null;
     }
   }
@@ -883,7 +839,6 @@ class SupabaseClient {
   // Check subscription status (with caching to prevent multiple API calls)
   async getSubscriptionStatus() {
     if (!this.isAuthenticated()) {
-      console.log('getSubscriptionStatus: User not authenticated, returning free tier');
       return { tier: 'free', active: false };
     }
 
@@ -928,7 +883,6 @@ class SupabaseClient {
 
       return result;
     } catch (error) {
-      console.error('Error checking subscription:', error);
       return { tier: 'free', active: false };
     }
   }
@@ -956,7 +910,6 @@ class SupabaseClient {
 
       return true;
     } catch (error) {
-      console.error('Subscription update error:', error);
       throw error;
     }
   }
@@ -964,7 +917,6 @@ class SupabaseClient {
   // Get storage usage
   async getStorageUsage() {
     if (!this.isAuthenticated()) {
-      console.log('getStorageUsage: User not authenticated, returning 0 usage');
       return { used: 0, limit: 0 };
     }
 
@@ -974,7 +926,6 @@ class SupabaseClient {
       const profile = profiles?.[0];
       
       if (!profile) {
-        console.log('getStorageUsage: No profile found, returning 0 usage');
         return { used: 0, limit: 0 };
       }
 
@@ -994,7 +945,6 @@ class SupabaseClient {
 
       return result;
     } catch (error) {
-      console.error('getStorageUsage: Error getting storage usage:', error);
       return { used: 0, limit: 0 };
     }
   }
@@ -1024,7 +974,6 @@ class SupabaseClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Conflict resolution error response:', errorText);
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -1037,7 +986,6 @@ class SupabaseClient {
       const data = await response.json();
       return { success: true, data };
     } catch (error) {
-      console.error('Conflict resolution error:', error);
       return { success: false, error: error.message };
     }
   }
@@ -1065,7 +1013,6 @@ class SupabaseClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Version sync error response:', errorText);
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -1078,7 +1025,6 @@ class SupabaseClient {
       const data = await response.json();
       return { success: true, data };
     } catch (error) {
-      console.error('Version sync error:', error);
       return { success: false, error: error.message };
     }
   }
@@ -1102,7 +1048,6 @@ class SupabaseClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`RPC ${functionName} error response:`, errorText);
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -1115,7 +1060,6 @@ class SupabaseClient {
       const data = await response.json();
       return { data, error: null };
     } catch (error) {
-      console.error(`RPC ${functionName} error:`, error);
       return { data: null, error: error.message };
     }
   }

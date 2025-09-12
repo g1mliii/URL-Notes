@@ -97,7 +97,7 @@ function setupContextMenus() {
         contexts: ['selection', 'page']
       }, () => {
         if (chrome.runtime.lastError) {
-          console.warn('Parent menu create error:', chrome.runtime.lastError.message);
+          // Parent menu create error - silently handled
         }
       });
 
@@ -109,7 +109,7 @@ function setupContextMenus() {
         parentId: 'urlNotesParent'
       }, () => {
         if (chrome.runtime.lastError) {
-          console.warn('Context menu create error:', chrome.runtime.lastError.message);
+          // Context menu create error - silently handled
         }
       });
 
@@ -121,7 +121,7 @@ function setupContextMenus() {
         parentId: 'urlNotesParent'
       }, () => {
         if (chrome.runtime.lastError) {
-          console.warn('Existing-note menu create error:', chrome.runtime.lastError.message);
+          // Existing-note menu create error - silently handled
         }
       });
 
@@ -133,7 +133,7 @@ function setupContextMenus() {
         parentId: 'urlNotesParent'
       }, () => {
         if (chrome.runtime.lastError) {
-          console.warn('Separator create error:', chrome.runtime.lastError.message);
+          // Separator create error - silently handled
         }
       });
 
@@ -145,12 +145,12 @@ function setupContextMenus() {
         parentId: 'urlNotesParent'
       }, () => {
         if (chrome.runtime.lastError) {
-          console.warn('Multi-highlight menu create error:', chrome.runtime.lastError.message);
+          // Multi-highlight menu create error - silently handled
         }
       });
     });
   } catch (e) {
-    console.warn('setupContextMenus failed:', e);
+    // setupContextMenus failed - silently handled
   }
 }
 
@@ -164,13 +164,11 @@ async function addSelectionToNewNote(info, tab) {
 
   // Validate that we have a proper URL and domain
   if (!pageUrl || !pageUrl.startsWith('http')) {
-    console.error('Context menu: Invalid pageUrl:', pageUrl);
     return;
   }
 
   const domain = new URL(pageUrl).hostname;
   if (!domain || domain === 'localhost') {
-    console.error('Context menu: Invalid domain:', domain);
     return;
   }
 
@@ -218,7 +216,7 @@ async function addSelectionToNewNote(info, tab) {
     openExtensionUi();
 
   } catch (error) {
-    console.error('Failed to save new note from selection:', error);
+    // Failed to save new note from selection - silently handled
   }
 }
 
@@ -228,13 +226,11 @@ async function addSelectionToExistingNote(info, tab) {
 
   // Validate that we have a proper URL and domain
   if (!pageUrl || !pageUrl.startsWith('http')) {
-    console.error('Context menu: Invalid pageUrl:', pageUrl);
     return;
   }
 
   const domain = new URL(pageUrl).hostname;
   if (!domain || domain === 'localhost') {
-    console.error('Context menu: Invalid domain:', domain);
     return;
   }
 
@@ -281,7 +277,7 @@ async function addSelectionToExistingNote(info, tab) {
         notes.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
         targetNote = notes[0];
       } catch (error) {
-        console.error('Context menu: Failed to get notes from storage, creating new note:', error);
+        // Context menu: Failed to get notes from storage, creating new note
         return addSelectionToNewNote(info, tab);
       }
     }
@@ -350,7 +346,7 @@ async function addSelectionToExistingNote(info, tab) {
       openExtensionUi();
     }
   } catch (e) {
-    console.error('Failed to append to existing note:', e);
+    // Failed to append to existing note - silently handled
   }
 }
 
@@ -418,7 +414,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           sendResponse({ success: true });
         })
         .catch(error => {
-          console.error('Error in addHighlightsToNote:', error);
           sendResponse({ success: false, error: error.message });
         });
       return true; // Keep message channel open for async response
@@ -451,7 +446,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       resetSyncTimer().then(() => {
         sendResponse({ success: true });
       }).catch(error => {
-        console.error('🕐 Background: Error in reset-sync-timer:', error);
         sendResponse({ success: false, error: error.message });
       });
       return true; // Keep message channel open for async response
@@ -461,7 +455,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       forceResetSyncTimer().then(() => {
         sendResponse({ success: true });
       }).catch(error => {
-        console.error('🕐 Background: Error in force-reset-sync-timer:', error);
         sendResponse({ success: false, error: error.message });
       });
       return true; // Keep message channel open for async response
@@ -515,7 +508,7 @@ async function performCleanup() {
       await chrome.storage.session.remove(keysToRemove);
     }
   } catch (error) {
-    console.error('Error during cleanup:', error);
+    // Error during cleanup - silently handled
   }
 }
 
@@ -553,7 +546,7 @@ async function updateUninstallUrl() {
     const uninstallUrl = `https://anchored.site?${params.toString()}`;
     chrome.runtime.setUninstallURL(uninstallUrl);
   } catch (e) {
-    console.warn('Failed to set uninstall URL:', e);
+    // Failed to set uninstall URL - silently handled
   }
 }
 
@@ -567,12 +560,10 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
 
   // Validate that we have a proper URL and domain
   if (!url || !url.startsWith('http')) {
-    console.error('Invalid pageUrl:', url);
     return;
   }
 
   if (!domain || domain === 'localhost') {
-    console.error('Invalid domain:', domain);
     return;
   }
 
@@ -622,7 +613,7 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
           targetNote = notes[0];
         }
       } catch (error) {
-        console.error('Multi-highlight: Failed to get notes from storage:', error);
+        // Multi-highlight: Failed to get notes from storage - silently handled
       }
     }
 
@@ -691,7 +682,7 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
       }
     }
   } catch (error) {
-    console.error('Multi-highlight: Failed to append to existing note, will create new note instead:', error);
+    // Multi-highlight: Failed to append to existing note, will create new note instead
   }
 
   // If we couldn't append to existing note, create a new one
@@ -738,7 +729,7 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
     openExtensionUi();
 
   } catch (error) {
-    console.error('Failed to save multi-highlight note:', error);
+    // Failed to save multi-highlight note - silently handled
   }
 }
 
@@ -752,14 +743,13 @@ function updateExtensionBadge(text, color) {
       chrome.action.setBadgeBackgroundColor({ color: color });
     }
   } catch (error) {
-    console.warn('Failed to update badge:', error);
+    // Failed to update badge - silently handled
   }
 }
 
 // Function to toggle multi-highlight mode from context menu
 async function toggleMultiHighlightModeFromContextMenu(tab) {
   if (!tab || !tab.url || !tab.url.startsWith('http')) {
-    console.error('Invalid tab for multi-highlight toggle');
     return;
   }
 
@@ -808,7 +798,7 @@ async function toggleMultiHighlightModeFromContextMenu(tab) {
         contentScriptReady = true;
 
       } catch (injectError) {
-        console.error('Failed to inject content script for context menu:', injectError);
+        // Failed to inject content script for context menu
         // Show error notification in the tab
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
@@ -912,7 +902,7 @@ async function toggleMultiHighlightModeFromContextMenu(tab) {
       });
     }
   } catch (error) {
-    console.error('Failed to toggle multi-highlight mode from context menu:', error);
+    // Failed to toggle multi-highlight mode from context menu - silently handled
   }
 }
 
@@ -963,7 +953,7 @@ async function saveLastSyncTime() {
   try {
     await chrome.storage.local.set({ lastSyncTime: lastSyncTime });
   } catch (error) {
-    console.error('🕐 Background: Error saving lastSyncTime:', error);
+    // Error saving lastSyncTime - silently handled
   }
 }
 
@@ -980,7 +970,7 @@ async function resetSyncTimer() {
     // Restart timer
     startSyncTimer();
   } catch (error) {
-    console.error('🕐 Background: Error resetting sync timer:', error);
+    // Error resetting sync timer - silently handled
   }
 }
 
@@ -997,7 +987,7 @@ async function forceResetSyncTimer() {
     // Restart timer
     startSyncTimer();
   } catch (error) {
-    console.error('🕐 Background: Error in force reset:', error);
+    // Error in force reset - silently handled
   }
 }
 
@@ -1045,8 +1035,7 @@ setTimeout(() => {
       startSyncTimer();
     }
   }).catch(error => {
-    console.error('🕐 Background: Error in loadLastSyncTime:', error);
-    // Fallback: start timer anyway
+    // Error in loadLastSyncTime - fallback: start timer anyway
     startSyncTimer();
   });
 }, 100);

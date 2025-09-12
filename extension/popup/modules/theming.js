@@ -20,7 +20,6 @@ class ThemeManager {
         await this.setCachedAccent(domain, accent);
       }
     } catch (e) {
-      console.warn('Accent derivation failed, leaving existing colors:', e);
       // No-op on failure to avoid any flash or unwanted fallback
     }
   }

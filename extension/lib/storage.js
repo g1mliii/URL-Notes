@@ -47,11 +47,9 @@ class NotesStorage {
             };
             
             deleteRequest.onerror = () => {
-              console.error('Storage: Failed to delete database:', deleteRequest.error);
               reject(deleteRequest.error);
             };
           }).catch(error => {
-            console.error('Storage: Failed to backup data:', error);
             reject(error);
           });
           
@@ -120,12 +118,7 @@ class NotesStorage {
   async saveNote(note) {
     if (!this.db) await this.init();
   
-          // Debug: Log note structure when saving
-      console.log('Storage: Saving note:', {
-        id: note.id,
-        hasUrl: !!note.url,
-        hasDomain: !!note.domain
-      });
+
   
     // 1. ENCRYPTION (only for premium users)
     let userKey = null;
@@ -152,7 +145,6 @@ class NotesStorage {
               note.tags_encrypted = decryptedNote.tags_encrypted;
               note.content_hash = decryptedNote.content_hash;
             } catch (decryptError) {
-              console.warn('Failed to decrypt server note, using fallback content:', decryptError);
               // Fallback: provide readable content for notes that can't be decrypted
               note.title = note.title || 'Note from Server (Encrypted)';
               note.content = note.content || 'This note was synced from the server but could not be decrypted. The URL and domain information should still be visible.';
@@ -200,7 +192,6 @@ class NotesStorage {
         }
       }
     } catch (error) {
-      console.warn('Encryption/decryption error in saveNote:', error);
       // Provide fallback content for any notes that fail encryption/decryption
       note.title = note.title || 'Note (Error)';
       note.content = note.content || 'This note encountered an error during processing. The URL and domain information should still be visible.';
@@ -306,12 +297,10 @@ class NotesStorage {
               resolve(storedNote); // Fallback
             }
           } catch (error) {
-            console.warn('Failed to decrypt note, returning encrypted version:', error);
             resolve(storedNote);
           }
         } else {
           // Note is NOT encrypted - return as-is (this is the current case)
-          console.log('Note not encrypted, returning unencrypted version:', storedNote.id);
           resolve(storedNote);
         }
       };
@@ -358,7 +347,6 @@ class NotesStorage {
               resolve();
             };
             deletionRequest.onerror = () => {
-              console.error('Failed to track deletion:', deletionRequest.error);
               // Still resolve since the note was deleted
               resolve();
             };

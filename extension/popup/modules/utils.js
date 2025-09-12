@@ -256,7 +256,7 @@ class EventBus {
     const set = this._events[event];
     if (!set) return;
     for (const handler of Array.from(set)) {
-      try { handler(payload); } catch (e) { console.error(`[EventBus] handler error for ${event}:`, e); }
+      try { handler(payload); } catch (e) { /* handler error silently handled */ }
     }
   }
 }

@@ -45,18 +45,15 @@
   // Listen for messages from popup
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     try {
-      console.log('Content script received message:', request.action);
       
     if (request.action === 'getPageInfo') {
         const pageInfo = getCurrentPageInfo();
-        console.log('Sending page info:', pageInfo);
         sendResponse(pageInfo);
         return false; // No async response needed
       }
       
       // Check if content script is ready
       if (request.action === 'ping') {
-        console.log('Ping received, responding with pong');
         sendResponse({ status: 'ready', timestamp: Date.now() });
         return false; // No async response needed
       }
@@ -73,13 +70,10 @@
       // Toggle multi-highlight mode
       if (request.action === 'toggleMultiHighlight') {
         try {
-          console.log('Toggling multi-highlight mode');
           toggleMultiHighlightMode();
           const response = { enabled: multiHighlightMode };
-          console.log('Sending toggle response:', response);
           sendResponse(response);
         } catch (error) {
-          console.error('Error toggling multi-highlight mode:', error);
           sendResponse({ enabled: false, error: error.message });
         }
         return true; // Keep message channel open for async response
@@ -92,10 +86,8 @@
             enabled: multiHighlightMode, 
             highlightCount: highlights.length 
           };
-          console.log('Sending state response:', response);
           sendResponse(response);
         } catch (error) {
-          console.error('Error getting multi-highlight state:', error);
           sendResponse({ enabled: false, highlightCount: 0, error: error.message });
         }
         return false; // No async response needed
@@ -105,21 +97,17 @@
       if (request.action === 'extractPageContent') {
         try {
           const content = extractPageContent();
-          console.log('Extracted page content, length:', content.length);
           sendResponse({ success: true, content });
         } catch (error) {
-          console.error('Error extracting page content:', error);
           sendResponse({ success: false, error: error.message });
         }
         return true; // Keep message channel open for async response
       }
       
       // Unknown action
-      console.warn('Unknown action:', request.action);
       sendResponse({ error: 'Unknown action' });
       return false;
     } catch (error) {
-      console.error('Error in message handler:', error);
       sendResponse({ error: error.message });
       return false;
     }
@@ -153,8 +141,6 @@
     
     // Show floating toolbar
     showHighlightToolbar();
-    
-    console.log('Multi-highlight mode enabled');
   }
 
   // Disable multi-highlight mode
@@ -171,8 +157,6 @@
     
     // Hide floating toolbar
     hideHighlightToolbar();
-    
-    console.log('Multi-highlight mode disabled');
   }
 
   // Handle mouse down for text selection
@@ -207,13 +191,11 @@
           // Check if range is valid and contains text nodes
           const contents = range.cloneContents();
           if (!contents.textContent || contents.textContent.trim().length === 0) {
-            console.warn('Range contains no text content');
             return;
           }
           
           // Check if range boundaries are valid
           if (!range.startContainer || !range.endContainer) {
-            console.warn('Invalid range boundaries');
             return;
           }
           
@@ -228,20 +210,18 @@
               rangeContainer.tagName === tag || rangeContainer.querySelector(tag)
             );
             if (hasProblematicElements) {
-              console.warn('Range contains non-content elements, skipping selection');
               return;
             }
           }
           
           // Additional safety check: ensure we have meaningful text content
           if (selectedText.length < 2) {
-            console.warn('Selected text too short, skipping');
             return;
           }
           
           addHighlight(range, selectedText);
         } catch (error) {
-          console.warn('Invalid range for highlighting:', error);
+          // Invalid range for highlighting - silently handled
         }
       }
     }
@@ -317,13 +297,11 @@
         
         return false;
       } catch (error) {
-        console.warn('Error checking range overlap:', error);
         return false;
       }
     });
     
     if (existingIndex !== -1) {
-      console.log('Duplicate highlight detected at same location, skipping');
       return;
     }
     
@@ -335,13 +313,11 @@
       // Check if we're trying to highlight within an existing highlight
       if (startNode.nodeType === Node.ELEMENT_NODE && 
           startNode.hasAttribute('data-url-notes-highlight')) {
-        console.warn('Cannot highlight within existing highlight');
         return;
       }
       
       if (endNode.nodeType === Node.ELEMENT_NODE && 
           endNode.hasAttribute('data-url-notes-highlight')) {
-        console.warn('Cannot highlight within existing highlight');
         return;
       }
       
@@ -349,7 +325,6 @@
       let parent = startNode.parentNode;
       while (parent && parent !== document.body) {
         if (parent.hasAttribute && parent.hasAttribute('data-url-notes-highlight')) {
-          console.warn('Cannot highlight within existing highlight');
           return;
         }
         parent = parent.parentNode;
@@ -365,7 +340,6 @@
           // If highlights are very close to each other (within 5px), skip this one
           if (Math.abs(existingRect.left - selectionRect.left) < 5 && 
               Math.abs(existingRect.top - selectionRect.top) < 5) {
-            console.warn('Selection too close to existing highlight, skipping');
             return;
           }
         } catch (error) {
@@ -373,7 +347,6 @@
         }
       }
     } catch (error) {
-      console.warn('Error checking highlight boundaries:', error);
       return;
     }
     
@@ -392,7 +365,6 @@
     try {
       // Check if range is valid and can be wrapped
       if (!range || range.collapsed) {
-        console.warn('Invalid range for highlighting');
         return;
       }
 
@@ -423,18 +395,16 @@
           // Simple case: same text node, can wrap safely
           range.surroundContents(mark);
           highlightElement = mark;
-          console.log('Standard highlight created successfully');
         } else {
           // Complex case: range crosses element boundaries
           throw new Error('Range crosses element boundaries');
         }
         
       } catch (wrapError) {
-        console.warn('Standard wrap failed, trying alternative approach:', wrapError);
+        // Standard wrap failed, trying alternative approach
         
         // For complex selections, use a simpler approach that doesn't manipulate the original content
         try {
-          console.log('Using non-destructive highlighting approach for complex selection');
           
           // Create a simple span element with the text content
           const span = document.createElement('span');
@@ -458,10 +428,8 @@
           range.insertNode(span);
           
           highlightElement = span;
-          console.log('Non-destructive highlight created successfully');
           
         } catch (simpleError) {
-          console.error('Non-destructive highlighting also failed:', simpleError);
           return; // Give up on this highlight
         }
       }
@@ -471,11 +439,9 @@
         highlight.element = highlightElement;
         highlights.push(highlight);
         updateHighlightToolbar();
-        console.log('Added highlight:', text.substring(0, 50) + '...', 'Total highlights:', highlights.length);
       }
       
     } catch (error) {
-      console.error('Failed to add highlight:', error);
       // Don't add to highlights array if visual creation failed
     }
   }
@@ -501,8 +467,6 @@
     
     // Update toolbar
     updateHighlightToolbar();
-    
-    console.log('Removed highlight, remaining:', highlights.length, 'Highlight text was:', highlight.text.substring(0, 50) + '...');
   }
 
   // Clear all highlights
@@ -521,7 +485,6 @@
     
     highlights = [];
     updateHighlightToolbar();
-    console.log('Cleared all highlights, was clearing', count, 'highlights');
   }
 
   // Show floating toolbar
@@ -591,7 +554,6 @@
     
     exitBtn.addEventListener('click', toggleMultiHighlightMode);
     addBtn.addEventListener('click', () => {
-      console.log('Add to Note button clicked');
       addAllHighlightsToNote();
     });
     clearBtn.addEventListener('click', clearAllHighlights);
@@ -605,14 +567,10 @@
 
   // Add all highlights to a note
   function addAllHighlightsToNote() {
-    console.log('addAllHighlightsToNote function called');
     
     if (highlights.length === 0) {
-      console.log('No highlights to add');
       return;
     }
-    
-    console.log('Adding', highlights.length, 'highlights to note');
     
     const pageInfo = getCurrentPageInfo();
     const highlightData = highlights.map(h => ({
@@ -620,24 +578,17 @@
       timestamp: h.timestamp
     }));
     
-    console.log('Page info:', pageInfo);
-    console.log('Highlight data:', highlightData);
-    
     // Send message to background script to create note
-    console.log('Sending addHighlightsToNote message to background script');
     
     // First check if background script is responsive
     chrome.runtime.sendMessage({ action: 'ping' }, (pingResponse) => {
       if (chrome.runtime.lastError) {
-        console.error('Background script not responding to ping:', chrome.runtime.lastError);
         return;
       }
       
-      console.log('Background script ping successful, sending addHighlightsToNote message');
-      
       // Add a timeout to the message sending
       const messageTimeout = setTimeout(() => {
-        console.error('Message timeout - background script may not be responding');
+        // Message timeout - background script may not be responding
       }, 5000);
       
       chrome.runtime.sendMessage({
@@ -649,20 +600,14 @@
         
         // Handle response using callback to avoid message channel issues
         if (chrome.runtime.lastError) {
-          console.error('Runtime error:', chrome.runtime.lastError);
           return;
         }
         
-        console.log('Received response from background:', response);
-        
         if (response && response.success) {
-          console.log('Successfully added highlights to note, clearing highlights and exiting mode');
           // Clear highlights after adding to note
           clearAllHighlights();
           // Exit multi-highlight mode
           toggleMultiHighlightMode();
-        } else {
-          console.error('Failed to add highlights to note:', response?.error || 'Unknown error');
         }
       });
     });
@@ -677,7 +622,7 @@
         color: '#3498db'
       }, () => {
         if (chrome.runtime.lastError) {
-          console.warn('Badge update error:', chrome.runtime.lastError);
+          // Badge update error - silently handled
         }
       });
     } else {
@@ -687,7 +632,7 @@
         color: ''
       }, () => {
         if (chrome.runtime.lastError) {
-          console.warn('Badge update error:', chrome.runtime.lastError);
+          // Badge update error - silently handled
         }
       });
     }
@@ -752,7 +697,6 @@
   });
 
   // Also notify that we're ready for multi-highlight messages
-  console.log('Content script initialized and ready for multi-highlight messages');
 
   // Monitor for URL changes (for SPAs)
   let currentUrl = window.location.href;

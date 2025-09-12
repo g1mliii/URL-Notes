@@ -46,7 +46,6 @@ class StorageManager {
       this.allNotes = allNotes;
       return this.allNotes;
     } catch (error) {
-      console.error('Error loading notes:', error);
       this.allNotes = [];
       return this.allNotes;
     }
@@ -156,7 +155,6 @@ class StorageManager {
 
       return notesData;
     } catch (error) {
-      console.error('Error exporting notes:', error);
       throw error;
     }
   }
@@ -225,7 +223,6 @@ class StorageManager {
         total: notesImportedCount + notesUpdatedCount
       };
     } catch (error) {
-      console.error('Error importing notes:', error);
       return {
         success: false,
         error: error.message || 'Unknown import error',
