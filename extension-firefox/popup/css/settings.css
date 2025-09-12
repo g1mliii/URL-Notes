@@ -1,0 +1,420 @@
+/* Settings Panel Styles */
+
+.settings-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-primary);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.settings-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden; /* prevent horizontal scrollbar */
+  padding: 12px; /* condensed */
+}
+
+.settings-section {
+  margin-bottom: 16px; /* condensed */
+}
+
+.settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.settings-section h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 8px 0; /* tighter spacing */
+}
+
+/* Generic settings text input */
+.settings-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color .2s ease, box-shadow .2s ease;
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+}
+
+.settings-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.settings-input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.10);
+}
+
+/* Auth section layout */
+.auth-section .setting-item {
+  align-items: stretch;
+}
+
+.auth-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.auth-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* Ensure auth grid buttons look identical and don’t wrap */
+.auth-actions .settings-btn-full {
+  margin-bottom: 0; /* no extra spacing inside grid */
+  width: 100%;
+}
+.auth-actions .settings-btn-full span {
+  white-space: nowrap; /* avoid multi-line labels causing height mismatch */
+}
+
+.auth-status {
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+/* Data Management Grid Layout */
+.settings-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 8px;
+}
+
+/* Export controls styling - spans full width for dropdown */
+.export-controls {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: row; /* Changed from column to row */
+  align-items: center; /* Align items vertically in the center */
+  gap: 8px;
+}
+
+.export-controls .settings-select {
+  flex: 1; /* Allow select to grow and shrink */
+  width: auto; /* Override default 100% width if present */
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color .2s ease, box-shadow .2s ease;
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+}
+
+.export-controls .settings-select:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.10);
+}
+
+.export-controls .settings-btn-full {
+  flex: 1; /* Make button take equal space as dropdown */
+  width: auto; /* Override the default 100% width from .settings-btn-full */
+  min-width: 0; /* Allow button to shrink */
+  margin-bottom: 0; /* Remove extra margin from general .settings-btn-full rule */
+}
+
+/* Import controls styling - left column */
+.import-controls {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.import-controls .settings-btn-full {
+  width: 100%; /* Ensure full width within grid column */
+  margin-bottom: 0;
+}
+
+/* Sync controls styling - right column */
+.sync-controls {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sync-controls .settings-btn-full {
+  width: 100%; /* Ensure full width within grid column */
+  margin-bottom: 0;
+}
+
+.settings-actions .settings-btn-full {
+  margin-bottom: 0; /* avoid extra vertical space in grid */
+}
+
+.settings-btn-full {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px; /* condensed */
+  border: 1px solid var(--border-color);
+  border-radius: 10px; /* slightly tighter */
+  background: var(--bg-secondary);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  color: var(--text-primary);
+  font-size: 13px; /* condensed */
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 8px;
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+}
+
+.settings-btn-full:hover {
+  background: var(--bg-tertiary);
+  transform: translateY(-1px);
+  box-shadow: 
+    0 2px 8px var(--shadow-dark),
+    inset 0 1px 0 var(--shadow-light);
+}
+
+.settings-btn-full:active {
+  transform: translateY(0);
+}
+
+.settings-btn-full:last-child {
+  margin-bottom: 0;
+}
+
+.settings-btn-full svg {
+  width: 16px;
+  height: 16px;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px; /* tighter spacing */
+}
+
+.setting-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Compact shortcuts row */
+.shortcut-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.shortcut-inline .label {
+  opacity: 0.8;
+}
+
+.shortcut-inline .kbd {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.shortcut-inline .sep {
+  opacity: 0.4;
+}
+
+/* Compact button for settings items */
+.settings-btn-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+}
+
+.settings-btn-compact:hover {
+  background: var(--bg-tertiary);
+}
+
+.setting-item span {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.settings-select {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+.settings-select:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.settings-select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* Font inline row */
+.font-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0; /* allow children to shrink within container */
+  overflow: hidden; /* clip any thumb overflow */
+}
+
+.font-inline .sep {
+  opacity: 0.4;
+}
+
+/* Font Size Slider */
+.font-size-slider {
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border-color);
+  outline: none;
+  flex: 1;
+  margin: 0 8px;
+  cursor: pointer;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0; /* prevent horizontal overflow in some browsers */
+}
+
+.font-size-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  border: none;
+  box-shadow: 0 1px 2px var(--shadow-dark), inset 0 1px 0 var(--shadow-light);
+  cursor: pointer;
+}
+
+.font-size-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  border: none;
+  box-shadow: 0 1px 2px var(--shadow-dark), inset 0 1px 0 var(--shadow-light);
+  cursor: pointer;
+}
+
+.font-size-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.font-size-label.large {
+  font-size: 16px;
+}
+
+.font-size-value {
+  min-width: 40px;
+  text-align: right;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+/* Font Preview */
+.font-preview {
+  margin-top: 16px;
+}
+
+.font-preview-box {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  box-shadow: inset 0 1px 0 var(--shadow-light);
+}
+
+.font-preview-text {
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+/* Settings Panel Animations */
+.settings-panel.slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+.settings-panel.slide-out {
+  animation: slideOut 0.3s ease-in;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* Import file input (hidden) */
+input[type="file"] {
+  display: none;
+}

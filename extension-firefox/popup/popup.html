@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en" data-compact="1">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URL Notes</title>
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/editor.css">
+  <link rel="stylesheet" href="css/settings.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="dialog.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <div class="site-info">
+          <div class="site-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              <polyline points="3.27,6.96 12,12.01 20.73,6.96"></polyline>
+              <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+          </div>
+          <div class="site-details">
+            <div class="site-domain" id="siteDomain">Loading...</div>
+            <div class="site-url" id="siteUrl">Loading...</div>
+            <div class="sync-status" id="syncStatus" style="display: none; font-size: 11px; opacity: 0.7; margin-top: 2px;"></div>
+          </div>
+        </div>
+        <div class="header-actions">
+          <div id="shortcutHints" style="opacity:.7; font-size:11px; margin-right:8px; display:flex; flex-direction:column; gap:2px; text-align:right;">
+            <div><span style="opacity:.85;">Open:</span> <span id="shortcutOpenValue" style="font-weight:600;"></span></div>
+            <div><span style="opacity:.85;">New note:</span> <span id="shortcutNewValue" style="font-weight:600;"></span></div>
+          </div>
+          <button class="icon-btn multi-highlight-btn" id="multiHighlightBtn" title="Toggle Multi-Highlight Mode">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 11l3 3l8 -8"/>
+              <path d="M21 12v7a2 2 0 0 1 -2 2H5a2 2 0 0 1 -2 -2V5a2 2 0 0 1 2 -2h11"/>
+            </svg>
+          </button>
+          <button class="icon-btn settings-btn" id="settingsBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+      </div>
+      
+    </header>
+
+    <!-- Conflict Banner (Hidden by default) -->
+    <div class="conflict-banner" id="conflictBanner" style="display: none; background: var(--warning-color, #f59e0b); color: white; padding: 8px 12px; font-size: 12px; text-align: center;">
+      <span id="conflictMessage">Sync conflict detected</span>
+      <div class="conflict-actions" style="margin-top: 6px; display: flex; gap: 8px; justify-content: center;">
+        <button class="conflict-btn" id="keepMineBtn" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;">Keep Mine</button>
+        <button class="conflict-btn" id="useServerBtn" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;">Use Server</button>
+      </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="search-container">
+      <div class="search-wrapper">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+        </svg>
+        <input type="text" class="search-input" placeholder="Search notes..." id="searchInput">
+        <button class="search-clear" id="searchClear" style="display: none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      
+      <!-- Page Filter moved here -->
+      <div class="filter-container">
+        <div class="filter-wrapper">
+          <button class="filter-option filter-btn" id="showPageBtn" data-filter="page">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+            <span>This Page</span>
+          </button>
+          <button class="filter-option active filter-btn" id="showAllBtn" data-filter="site">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="m4.93 4.93 4.24 4.24"></path>
+              <path d="m14.83 9.17 4.24-4.24"></path>
+              <path d="m14.83 14.83 4.24 4.24"></path>
+              <path d="m9.17 14.83-4.24 4.24"></path>
+            </svg>
+            <span>This Site</span>
+          </button>
+          <button class="filter-option filter-btn" id="showAllNotesBtn" data-filter="all_notes">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+              <polyline points="2 17 12 22 22 17"></polyline>
+              <polyline points="2 12 12 17 22 12"></polyline>
+            </svg>
+            <span>All Notes</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notes List -->
+    <div class="notes-container">
+      <div class="notes-header">
+        <h3 class="notes-title" id="notesTitle">Notes</h3>
+        <div class="notes-actions">
+          <div class="ai-dropdown-container">
+            <button class="icon-btn ai-summary-btn ai-dropdown-trigger" id="aiSummaryBtn" title="Summarize Site Notes">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 3v18h18"></path>
+                <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
+              </svg>
+              <div class="dropdown-indicator">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6,9 12,15 18,9"></polyline>
+                </svg>
+              </div>
+            </button>
+            
+
+          </div>
+          
+          <button class="add-note-btn" id="addNoteBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>New Note</span>
+          </button>
+        </div>
+      </div>
+      
+      <div class="notes-list" id="notesList">
+        <!-- Notes will be dynamically inserted here -->
+        <!-- Note template - will be replaced by JS -->
+      </div>
+      
+      <!-- Notes Counter -->
+      <div class="notes-counter" id="notesCounter">
+        <span class="counter-number" id="counterNumber">0</span>
+        <span class="counter-label">notes</span>
+      </div>
+    </div>
+
+    <!-- Note Editor (Hidden by default) -->
+    <div class="note-editor" id="noteEditor" style="display: none;">
+      <div class="editor-header">
+        <button class="back-btn" id="backBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+        <input type="text" class="note-title-header" placeholder="Note title..." id="noteTitleHeader">
+        <div class="editor-actions">
+          <div class="ai-dropdown-container">
+            <button class="icon-btn ai-rewrite-btn ai-dropdown-trigger" id="aiRewriteBtn" title="Rewrite with AI">
+              <span class="btn-text">A.I.</span>
+              <div class="dropdown-indicator">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6,9 12,15 18,9"></polyline>
+                </svg>
+              </div>
+            </button>
+            
+            <div class="ai-dropdown-menu" id="aiDropdownMenu">
+              <div class="dropdown-header">
+                <h4>AI Rewrite</h4>
+                <div class="usage-badge" id="usageBadge">
+                  <span id="remainingCalls">0</span> remaining
+                </div>
+              </div>
+              
+              <div class="user-context-section">
+                <h5>Custom Instructions (Optional):</h5>
+                <div class="context-input-container">
+                  <textarea 
+                    id="userContextInput" 
+                    class="context-input" 
+                    placeholder="Add specific instructions (e.g., 'make this more technical', 'rewrite for social media', 'emphasize key points')"
+                    maxlength="300"
+                    rows="3"
+                  ></textarea>
+                  <div class="char-counter">
+                    <span id="charCount">0</span>/300
+                  </div>
+                </div>
+              </div>
+              
+              <div class="style-selection">
+                <h5>Choose Style:</h5>
+                <div class="style-grid">
+                  <button class="style-option" data-style="formal">
+                    <span class="style-icon">🎩</span>
+                    <span class="style-name">Formal</span>
+                  </button>
+                  <button class="style-option" data-style="casual">
+                    <span class="style-icon">😊</span>
+                    <span class="style-name">Casual</span>
+                  </button>
+                  <button class="style-option" data-style="professional">
+                    <span class="style-icon">💼</span>
+                    <span class="style-name">Professional</span>
+                  </button>
+                  <button class="style-option" data-style="creative">
+                    <span class="style-icon">✨</span>
+                    <span class="style-name">Creative</span>
+                  </button>
+                  <button class="style-option" data-style="concise">
+                    <span class="style-icon">⚡</span>
+                    <span class="style-name">Concise</span>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="context-preview" id="contextPreview">
+                <h5>Context:</h5>
+                <div class="context-tags">
+                  <span class="context-tag" id="contextDomain">🌐 general</span>
+                  <span class="context-tag" id="contextIntent">🎯 General Note</span>
+                  <span class="context-tag" id="contextStyle">✍️ Neutral</span>
+                </div>
+              </div>
+              
+              <div class="dropdown-actions">
+                <button class="btn-primary" id="executeAIRewrite">Rewrite Note</button>
+              </div>
+            </div>
+          </div>
+
+          <button class="icon-btn export-btn" id="exportNoteBtn" title="Export Note">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </button>
+
+          <button class="icon-btn delete-btn" id="deleteNoteBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="m19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+          <button class="save-btn" id="saveNoteBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17,21 17,13 7,13 7,21"></polyline>
+              <polyline points="7,3 7,8 15,8"></polyline>
+            </svg>
+            <span>Save</span>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Formatting Toolbar -->
+      <div class="formatting-toolbar" id="formattingToolbar">
+        <div class="format-group">
+          <button class="format-btn" id="boldBtn" title="Bold" data-command="bold">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
+              <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
+            </svg>
+          </button>
+          <button class="format-btn" id="underlineBtn" title="Underline" data-command="underline">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"></path>
+              <line x1="4" y1="21" x2="20" y2="21"></line>
+            </svg>
+          </button>
+          <button class="format-btn" id="strikethroughBtn" title="Strikethrough" data-command="strikethrough">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M6 16c0 2.2 1.8 4 4 4s4-1.8 4-4"></path>
+              <path d="M6 8c0-2.2 1.8-4 4-4s4 1.8 4 4"></path>
+              <line x1="4" y1="12" x2="20" y2="12"></line>
+            </svg>
+          </button>
+          <div class="color-picker-container">
+            <button class="format-btn color-btn" id="colorBtn" title="Text Color">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 3l8 8-8 8H4V11z"></path>
+                <rect x="2" y="19" width="20" height="2" fill="currentColor"></rect>
+              </svg>
+              <div class="color-indicator" id="colorIndicator" style="background-color: #000000;"></div>
+            </button>
+            <div class="color-wheel-popup" id="colorWheelPopup" style="display: none;">
+              <div class="color-preset-row">
+                <div class="color-preset" data-color="#000000" style="background-color: #000000;" title="Black"></div>
+                <div class="color-preset" data-color="#ffffff" style="background-color: #ffffff;" title="White"></div>
+                <div class="color-preset" data-color="#ff4444" style="background-color: #ff4444;" title="Red"></div>
+                <div class="color-preset" data-color="#44ff44" style="background-color: #44ff44;" title="Green"></div>
+                <div class="color-preset" data-color="#4444ff" style="background-color: #4444ff;" title="Blue"></div>
+                <div class="color-preset" data-color="#ffff44" style="background-color: #ffff44;" title="Yellow"></div>
+                <div class="color-preset" data-color="#ff44ff" style="background-color: #ff44ff;" title="Magenta"></div>
+                <div class="color-preset" data-color="#44ffff" style="background-color: #44ffff;" title="Cyan"></div>
+              </div>
+              <div class="color-preset-row">
+                <div class="color-preset" data-color="#666666" style="background-color: #666666;" title="Gray"></div>
+                <div class="color-preset" data-color="#ff8800" style="background-color: #ff8800;" title="Orange"></div>
+                <div class="color-preset" data-color="#88ff88" style="background-color: #88ff88;" title="Light Green"></div>
+                <div class="color-preset" data-color="#8888ff" style="background-color: #8888ff;" title="Light Blue"></div>
+                <div class="color-preset" data-color="#ffaa44" style="background-color: #ffaa44;" title="Light Orange"></div>
+                <div class="color-preset" data-color="#ff88ff" style="background-color: #ff88ff;" title="Light Pink"></div>
+                <div class="color-preset" data-color="#88ffff" style="background-color: #88ffff;" title="Light Cyan"></div>
+                <div class="color-preset" data-color="#aa88ff" style="background-color: #aa88ff;" title="Purple"></div>
+              </div>
+              <div class="custom-color-section">
+                <label for="customColorInput">Custom:</label>
+                <input type="color" id="customColorInput" value="#000000" title="Pick custom color">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="format-group">
+          <button class="format-btn" id="listBtn" title="Create List" data-command="list">
+            <span class="btn-text">• List</span>
+          </button>
+          <div class="citation-container">
+            <button class="format-btn citation-btn" id="citationBtn" title="Add Citation">
+              <span class="btn-text">Citation</span>
+              <div class="dropdown-indicator">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6,9 12,15 18,9"></polyline>
+                </svg>
+              </div>
+            </button>
+            <div class="citation-dropdown" id="citationDropdown" style="display: none;">
+              <div class="citation-header">
+                <h5>Generate Citation</h5>
+              </div>
+              <div class="citation-formats">
+                <button class="citation-format-btn" data-format="apa">APA Style</button>
+                <button class="citation-format-btn" data-format="mla">MLA Style</button>
+                <button class="citation-format-btn" data-format="chicago">Chicago Style</button>
+                <button class="citation-format-btn" data-format="harvard">Harvard Style</button>
+                <button class="citation-format-btn" data-format="ieee">IEEE Style</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="editor-content">
+        <div id="noteContentInput" class="note-content-input" contenteditable="true" aria-label="Note content (rich text)"></div>
+        <div class="note-content-preview" id="noteContentPreview" aria-live="polite" style="display:none;">
+          <!-- Preview hidden: editor is now rich text -->
+        </div>
+        
+        <div class="note-meta">
+          <div class="note-tags">
+            <input type="text" class="tags-input" placeholder="Add tags (comma separated)" id="tagsInput">
+          </div>
+          <div class="note-info">
+            <span class="note-date" id="noteDate"></span>
+            <span class="note-chars" id="noteChars">0 characters</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    
+
+    <!-- AI Rewrite Dialog (Hidden by default) -->
+    <div class="ai-rewrite-dialog" id="aiRewriteDialog" style="display: none;">
+      <div class="dialog-header">
+        <h3>AI Rewrite</h3>
+        <button class="close-btn" id="aiRewriteCloseBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="dialog-content">
+        <div class="rewrite-options" id="rewriteOptions">
+          <div class="usage-info" id="usageInfo" style="display: none;">
+            <p class="usage-text">You have <span id="remainingCalls">0</span> AI rewrites remaining this month</p>
+            <p class="usage-reset">Resets on <span id="resetDate">-</span></p>
+          </div>
+          <div class="context-info" id="contextInfo" style="display: none;">
+            <h5>Context for AI:</h5>
+            <div class="context-details">
+              <span class="context-item" id="contextDomain"></span>
+              <span class="context-item" id="contextIntent"></span>
+              <span class="context-item" id="contextStyle"></span>
+            </div>
+          </div>
+          <h4>Choose rewrite style:</h4>
+          <div class="rewrite-style-buttons">
+            <button class="rewrite-style-btn" data-style="formal">Formal</button>
+            <button class="rewrite-style-btn" data-style="casual">Casual</button>
+            <button class="rewrite-style-btn" data-style="professional">Professional</button>
+            <button class="rewrite-style-btn" data-style="creative">Creative</button>
+            <button class="rewrite-style-btn" data-style="concise">Concise</button>
+          </div>
+        </div>
+        <div class="rewrite-preview" id="rewritePreview" style="display: none;">
+          <h4>Preview:</h4>
+          <div class="preview-content" id="previewContent"></div>
+          <div class="preview-actions">
+            <button class="btn-secondary" id="tryAnotherStyleBtn">Try Another Style</button>
+            <button class="btn-primary" id="applyRewriteBtn">Apply Rewrite</button>
+          </div>
+        </div>
+        <div class="rewrite-loading" id="rewriteLoading" style="display: none;">
+          <div class="loading-spinner"></div>
+          <p>AI is rewriting your note...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Panel (Hidden by default) -->
+    <div class="settings-panel" id="settingsPanel" style="display: none;">
+      <div class="editor-header">
+        <button class="back-btn" id="settingsBackBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+        <h3 class="settings-title">Settings</h3>
+      </div>
+      <div class="settings-content">
+        <div class="settings-section auth-section">
+          <h4>Account</h4>
+          <div class="setting-item" style="flex-direction:column; gap:10px;">
+            <input id="authEmailInput" type="email" class="settings-input" placeholder="Email" autocomplete="email">
+            <div class="auth-row">
+              <input id="authPasswordInput" type="password" class="settings-input" placeholder="Password" autocomplete="current-password" style="flex:1;">
+              <button id="authTogglePwBtn" class="settings-btn-compact" title="Show/Hide password">Show</button>
+            </div>
+            <div id="authActions" class="auth-actions">
+              <button id="authSignUpBtn" class="settings-btn-full">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 5v14"/>
+                  <path d="M5 12h14"/>
+                </svg>
+                <span>Sign Up</span>
+              </button>
+              <button id="authSignInBtn" class="settings-btn-full">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 12h14"/>
+                  <path d="M12 5l7 7-7 7"/>
+                </svg>
+                <span>Sign In</span>
+              </button>
+              <button id="authForgotPwBtn" class="settings-btn-compact" style="display:none;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 12l2 2 4-4"/>
+                  <path d="M21 12c-1 0-2-1-2-2s1-2 2-2 2 1 2 2-1 2-2 2z"/>
+                  <path d="M3 12c1 0 2-1 2-2s-1-2-2-2-2 1-2 2 1 2 2 2z"/>
+                </svg>
+                <span>Forgot Password?</span>
+              </button>
+              <button id="authSignOutBtn" class="settings-btn-full" style="display:none;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M16 17l5-5-5-5"/>
+                  <path d="M21 12H9"/>
+                  <path d="M4 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/>
+                </svg>
+                <span>Sign Out</span>
+              </button>
+            </div>
+            <div id="authStatusText" class="auth-status"></div>
+          </div>
+        </div>
+        <div class="settings-section">
+          <h4>Data Management</h4>
+          <div class="settings-actions">
+            <div class="export-controls">
+              <select id="exportFormatSelect" class="settings-select" style="margin-bottom: 8px;">
+                <option value="json">JSON Backup</option>
+                <option value="markdown">Markdown</option>
+                <option value="obsidian">Obsidian</option>
+                <option value="txt">Plain Text</option>
+                <option value="notion">Notion</option>
+                <option value="docx">Google Docs</option>
+              </select>
+              <button class="settings-btn-full" id="exportNotesBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <span>Export All Notes</span>
+              </button>
+            </div>
+            <div class="import-controls">
+              <button class="settings-btn-full" id="importNotesBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span>Import Notes</span>
+              </button>
+            </div>
+            <!-- Cloud Sync (Premium only) -->
+            <div class="sync-controls" id="syncManagement" style="display: none;">
+              <button class="settings-btn-full" id="manualSyncBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                  <path d="M12 3v9l3 3"/>
+                </svg>
+                <span>Sync Now</span>
+              </button>
+              <div class="sync-status-text" id="syncStatusText" style="font-size: 12px; opacity: 0.7; margin-top: 8px; text-align: center;"></div>
+            </div>
+          </div>
+          <input type="file" id="importNotesInput" accept=".json" style="display: none;">
+        </div>
+        <div class="settings-section">
+          <h4>Keyboard Shortcuts</h4>
+          <div class="setting-item">
+            <div class="shortcut-inline">
+              <span class="label">Open</span>
+              <span id="shortcutValue" class="kbd">Loading…</span>
+              <span class="sep" aria-hidden="true">•</span>
+              <span class="label">New</span>
+              <span id="newNoteShortcutValue" class="kbd">Loading…</span>
+            </div>
+            <button class="settings-btn-compact" id="changeShortcutBtn" title="Change keyboard shortcuts in Chrome">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14"/>
+                <path d="M5 12h14"/>
+              </svg>
+              <span>Change</span>
+            </button>
+          </div>
+          <div style="opacity:.7; font-size:12px; margin-top:6px;">Customize in Chrome's extension shortcuts page.</div>
+        </div>
+        <div class="settings-section">
+          <h4>Font Settings</h4>
+          <div class="setting-item font-inline">
+            <span>Font</span>
+            <select id="fontSelector" class="settings-select" title="Select font">
+              <option value="Default">Default</option>
+              <option value="Arial">Arial</option>
+              <option value="Verdana">Verdana</option>
+              <option value="Georgia">Georgia</option>
+              <option value="Courier New">Courier</option>
+            </select>
+            <span class="sep" aria-hidden="true">•</span>
+            <span>Size</span>
+            <span class="font-size-label">A</span>
+            <input type="range" id="fontSizeSlider" min="8" max="18" step="1" value="12" class="font-size-slider" title="Adjust font size">
+            <span class="font-size-label large">A</span>
+            <span id="fontSizeValue" class="font-size-value" aria-live="polite" style="margin-left:6px;opacity:.8;">12px</span>
+          </div>
+        </div>
+        <div class="settings-section">
+          <h4>Help & Onboarding</h4>
+          <button class="settings-btn-full" id="openOnboardingBtn" title="Open the onboarding guide">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9.09 9a3 3 0 1 1 5.83 1c0 2-3 2-3 4"/>
+              <line x1="12" y1="17" x2="12" y2="17"/>
+            </svg>
+            <span>Open Onboarding</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- CodeFuel Ad Container -->
+    <div class="ad-container" id="adContainer">
+      <div class="ad-label">Advertisement</div>
+      <div class="ad-content" id="adContent">
+        <!-- CodeFuel ad will be inserted here -->
+        <div class="ad-placeholder">
+          <span>Ad space</span>
+        </div>
+      </div>
+    </div>
+    <!-- Toast Notification -->
+    <div id="toast" class="toast" aria-live="polite" role="status"></div>
+
+    <!-- Ad Container for Free Users -->
+    <div id="adContainer" class="ad-container" style="display: none;">
+      <div id="adContent" class="ad-content">
+        <!-- Ad content will be loaded here -->
+      </div>
+    </div>
+  </div>
+
+  <script src="../lib/premium.js"></script>
+  <script src="../lib/ads.js"></script>
+  <!-- Ensure encryption and Supabase client are available in popup context -->
+  <script src="../lib/encryption.js"></script>
+  <script src="../lib/api.js"></script>
+  <script src="../lib/sync.js"></script>
+  <script src="../lib/storage.js"></script>
+  <script src="modules/dialog.js"></script>
+  <script src="modules/theming.js"></script>
+  <script src="modules/storage.js"></script>
+  <script src="modules/utils.js"></script>
+  <script src="modules/export-formats.js"></script>
+  <script src="modules/editor.js"></script>
+  <script src="modules/settings.js"></script>
+  <script src="modules/notes.js"></script>
+  <script src="popup.js"></script>
+
+    <!-- Custom Confirmation Dialog -->
+    <div id="custom-dialog-overlay" class="dialog-overlay">
+        <div class="dialog-box">
+            <p id="dialog-message">Are you sure?</p>
+            <div class="dialog-buttons">
+                <button id="dialog-confirm-btn" class="dialog-confirm-btn">Confirm</button>
+                <button id="dialog-cancel-btn" class="dialog-cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Summary Modal -->
+    <div id="ai-summary-modal" class="ai-summary-modal">
+        <div class="ai-summary-content">
+            <div class="ai-summary-header">
+                <h3>Generate Site Summary</h3>
+                <button class="ai-summary-close" id="aiSummaryCloseBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="ai-summary-body">
+                <div class="ai-summary-info">
+                    <p>Select a domain to generate a summary of all notes for that site:</p>
+                    <div class="usage-info" id="summaryUsageInfo">
+                        <span class="usage-text">Usage: <span id="summaryUsageCount">0</span>/<span id="summaryUsageLimit">500</span></span>
+                    </div>
+                </div>
+                <div class="domain-selection">
+                    <label for="summaryDomainSelect">Domain:</label>
+                    <select id="summaryDomainSelect" class="summary-domain-select">
+                        <option value="">Select a domain...</option>
+                    </select>
+                </div>
+                <div class="domain-info" id="summaryDomainInfo" style="display: none;">
+                    <p>Notes found: <span id="summaryNoteCount">0</span></p>
+                </div>
+                <div class="ai-summary-actions">
+                    <button class="ai-summary-generate" id="aiSummaryGenerateBtn" disabled>
+                        Generate Summary
+                    </button>
+                    <button class="ai-summary-generate secondary" id="siteContentSummaryBtn" disabled>
+                        Summarize Current Page
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

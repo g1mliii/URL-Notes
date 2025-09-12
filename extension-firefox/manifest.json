@@ -1,0 +1,66 @@
+{
+  "manifest_version": 3,
+  "name": "URL Notes",
+  "version": "1.1.0",
+  "description": "Take notes on any website with beautiful glassmorphism design",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs",
+    "alarms",
+    "contextMenus",
+    "identity",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_title": "URL Notes",
+    "default_popup": "popup/popup.html"
+  },
+  "side_panel": {
+    "default_path": "popup/popup.html"
+  },
+  "background": {
+    "service_worker": "background/background.js"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+O"
+      },
+      "description": "Open URL Notes"
+    },
+    "create_new_note": {
+      "suggested_key": {
+        "default": "Alt+N"
+      },
+      "description": "Create a new note"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content/content.js"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co https://kqjcorjjvunmyrnzvqgr.supabase.co/auth/v1 https://kqjcorjjvunmyrnzvqgr.supabase.co/rest/v1; img-src 'self' data: https:; style-src 'self' 'unsafe-inline';"
+  }
+}
