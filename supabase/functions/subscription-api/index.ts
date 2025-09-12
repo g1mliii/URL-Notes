@@ -119,23 +119,13 @@ async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: 
       console.log('🆕 Created new Stripe customer:', customerId, 'for user:', user.email)
     }
 
-    // Create checkout session for $2.50/month subscription
+    // Create checkout session using predefined Stripe product
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
       line_items: [
         {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: 'Anchored Premium',
-              description: 'Cloud sync, web app access, unlimited exports, and 500 AI tokens per month',
-            },
-            unit_amount: 250, // $2.50 in cents
-            recurring: {
-              interval: 'month',
-            },
-          },
+          price: Deno.env.get('STRIPE_PREMIUM_PRICE_ID') || 'price_1S6ek9AmZvKSDgI488vHQ0Tq',
           quantity: 1,
         },
       ],
@@ -159,6 +149,8 @@ async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: 
     console.log('Session ID:', session.id)
     console.log('Customer ID:', customerId)
     console.log('User:', user.email, '(', user.id, ')')
+    console.log('Product: Anchored Premium (predefined Stripe product)')
+    console.log('Price ID:', Deno.env.get('STRIPE_PREMIUM_PRICE_ID') || 'price_1S6ek9AmZvKSDgI488vHQ0Tq')
     console.log('Checkout URL:', session.url)
     console.log('Success URL will be:', `${data.origin}/account?session_id=${session.id}&success=true`)
 
