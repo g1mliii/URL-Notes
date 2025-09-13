@@ -8,7 +8,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -41,21 +41,18 @@ serve(async (req) => {
       )
     }
 
-    console.log('🔄 Syncing subscription for user:', user.email, '(', user.id, ')')
-
     // Get user's profile with Stripe customer ID
     const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
       .select('id, stripe_customer_id, subscription_tier, subscription_expires_at')
       .eq('id', user.id)
-      .single()
+      .single() as { data: ProfileData | null, error: any }
 
     if (profileError) {
       throw profileError
     }
 
     if (!profile?.stripe_customer_id) {
-      console.log('❌ No Stripe customer ID found for user')
       return new Response(
         JSON.stringify({
           error: 'No Stripe subscription found',
@@ -73,8 +70,6 @@ serve(async (req) => {
       apiVersion: '2023-10-16',
     })
 
-    console.log('🔍 Checking Stripe subscriptions for customer:', profile.stripe_customer_id)
-
     // Get customer's subscriptions from Stripe
     const subscriptions = await stripe.subscriptions.list({
       customer: profile.stripe_customer_id,
@@ -83,18 +78,31 @@ serve(async (req) => {
     })
 
     // Find active subscription
-    const activeSubscription = subscriptions.data.find(sub =>
+    const activeSubscription = subscriptions.data.find((sub: any) =>
       sub.status === 'active' || sub.status === 'trialing'
     )
 
-    let updateData: any = {}
+    interface UpdateData {
+      subscription_tier?: string;
+      subscription_expires_at?: string;
+      updated_at?: string;
+    }
+
+    interface ProfileData {
+      id: string;
+      stripe_customer_id: string;
+      subscription_tier: string;
+      subscription_expires_at: string;
+    }
+
+    let updateData: UpdateData = {}
     let shouldUpdate = false
     let statusMessage = ''
 
     if (activeSubscription) {
       // User has active subscription - set expiration to current period end
       const expiresAt = new Date(activeSubscription.current_period_end * 1000).toISOString()
-      
+
       if (profile.subscription_tier !== 'premium' || profile.subscription_expires_at !== expiresAt) {
         updateData = {
           subscription_tier: 'premium',
@@ -103,21 +111,19 @@ serve(async (req) => {
         }
         shouldUpdate = true
         statusMessage = `Set premium with expiry ${new Date(expiresAt).toLocaleDateString()} (was ${profile.subscription_tier}, expires: ${profile.subscription_expires_at})`
-        console.log('✅ User has active subscription - setting premium with correct expiry date')
       } else {
         statusMessage = `Premium subscription already active with correct expiry: ${new Date(expiresAt).toLocaleDateString()}`
-        console.log('✅ User already has premium status with correct expiry')
       }
     } else {
       // Check for canceled subscription that's still in current period
-      const canceledSubscription = subscriptions.data.find(sub =>
+      const canceledSubscription = subscriptions.data.find((sub: any) =>
         sub.status === 'canceled' && sub.current_period_end > Math.floor(Date.now() / 1000)
       )
 
       if (canceledSubscription) {
         // Canceled but still active until period end
         const expiresAt = new Date(canceledSubscription.current_period_end * 1000).toISOString()
-        
+
         // Only update if the expiration date has changed or user isn't premium
         if (profile.subscription_tier !== 'premium' || profile.subscription_expires_at !== expiresAt) {
           updateData = {
@@ -126,11 +132,9 @@ serve(async (req) => {
             updated_at: new Date().toISOString()
           }
           shouldUpdate = true
-          statusMessage = `Premium subscription canceled, expires ${new Date(expiresAt).toLocaleDateString()} (was: ${profile.subscription_expires_at})`
-          console.log('⏰ User has canceled subscription, setting/updating expiry date')
+          statusMessage = `Subscription expires ${new Date(expiresAt).toLocaleDateString()} - recurring billing canceled`
         } else {
-          statusMessage = `Premium subscription canceled, expires ${new Date(expiresAt).toLocaleDateString()} (already set correctly)`
-          console.log('⏰ User canceled subscription expiry already correct')
+          statusMessage = `Subscription expires ${new Date(expiresAt).toLocaleDateString()} - recurring billing canceled`
         }
       } else {
         // No active subscription - should be free
@@ -142,10 +146,8 @@ serve(async (req) => {
           }
           shouldUpdate = true
           statusMessage = `Downgraded to free tier (was ${profile.subscription_tier})`
-          console.log('❌ No active subscription found - downgrading to free')
         } else {
           statusMessage = 'No active subscription found - already on free tier'
-          console.log('➡️ User already on free tier')
         }
       }
     }
@@ -161,15 +163,19 @@ serve(async (req) => {
         throw updateError
       }
 
-      console.log('✅ Updated user subscription status')
+
     }
+
+    // Determine final subscription values
+    const finalSubscriptionTier = updateData.subscription_tier ?? profile.subscription_tier
+    const finalSubscriptionExpiresAt = updateData.subscription_expires_at ?? profile.subscription_expires_at
 
     return new Response(
       JSON.stringify({
         success: true,
         updated: shouldUpdate,
-        subscription_tier: updateData.subscription_tier || profile.subscription_tier,
-        subscription_expires_at: updateData.subscription_expires_at || profile.subscription_expires_at,
+        subscription_tier: finalSubscriptionTier,
+        subscription_expires_at: finalSubscriptionExpiresAt,
         message: statusMessage,
         timestamp: new Date().toISOString()
       }),

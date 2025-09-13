@@ -159,7 +159,7 @@ class Account {
     }
   }
 
-  async syncSubscriptionStatus() {
+  async syncSubscriptionStatus(silent = false) {
     try {
       // Syncing subscription status from Stripe
 
@@ -175,9 +175,9 @@ class Account {
         throw new Error('API or user not available');
       }
 
-      // Show loading state
+      // Show loading state (only if not silent)
       const syncBtn = document.getElementById('syncSubscriptionBtn');
-      if (syncBtn) {
+      if (syncBtn && !silent) {
         syncBtn.disabled = true;
         syncBtn.textContent = 'Syncing...';
       }
@@ -189,22 +189,47 @@ class Account {
 
       // Sync result obtained
 
-      // Show success message
-      if (result.updated) {
-        // Subscription updated
+      // Show messages only if not in silent mode
+      if (!silent) {
+        if (result.updated) {
+          // Subscription updated
+          let displayMessage = result.message;
+          
+          // Improve the message for canceled subscriptions
+          if (result.message && result.message.includes('premium subscrition cancelled expired at')) {
+            // Extract the date and reformat the message
+            const dateMatch = result.message.match(/expired at (.+?)(?:\s|$)/);
+            if (dateMatch) {
+              const expiryDate = new Date(dateMatch[1]).toLocaleDateString();
+              displayMessage = `Subscription expires ${expiryDate} - recurring billing canceled`;
+            }
+          } else if (result.message && result.message.includes('Premium subscription canceled, expires')) {
+            // Already in good format, just use it
+            displayMessage = result.message.replace('Premium subscription canceled, expires', 'Subscription expires') + ' - recurring billing canceled';
+          }
 
-        // Show a temporary success message
-        const successMessage = document.createElement('div');
-        successMessage.className = 'alert alert-success';
-        successMessage.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 1000; padding: 15px; border-radius: 5px; background: #d4edda; border: 1px solid #c3e6cb; color: #155724;';
-        successMessage.textContent = result.message;
-        document.body.appendChild(successMessage);
+          // Show a temporary success message
+          const successMessage = document.createElement('div');
+          successMessage.className = 'alert alert-success';
+          successMessage.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 1000; padding: 15px; border-radius: 5px; background: #d4edda; border: 1px solid #c3e6cb; color: #155724;';
+          successMessage.textContent = displayMessage;
+          document.body.appendChild(successMessage);
 
-        setTimeout(() => {
-          document.body.removeChild(successMessage);
-        }, 5000);
-      } else {
-        // No update needed
+          setTimeout(() => {
+            document.body.removeChild(successMessage);
+          }, 5000);
+        } else {
+          // No update needed - but still show a message for user feedback
+          const infoMessage = document.createElement('div');
+          infoMessage.className = 'alert alert-info';
+          infoMessage.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 1000; padding: 15px; border-radius: 5px; background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460;';
+          infoMessage.textContent = result.message || 'Subscription status is up to date';
+          document.body.appendChild(infoMessage);
+
+          setTimeout(() => {
+            document.body.removeChild(infoMessage);
+          }, 3000);
+        }
       }
 
       // Force refresh the subscription status display
@@ -212,25 +237,31 @@ class Account {
         await window.subscriptionManager.loadSubscriptionStatus();
       }
 
+      return result; // Return result for silent mode handling
+
     } catch (error) {
       // Failed to sync subscription status
 
-      // Show error message
-      const errorMessage = document.createElement('div');
-      errorMessage.className = 'alert alert-error';
-      errorMessage.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 1000; padding: 15px; border-radius: 5px; background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24;';
-      errorMessage.textContent = `Failed to sync subscription: ${error.message}`;
-      document.body.appendChild(errorMessage);
+      // Show error message only if not silent
+      if (!silent) {
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'alert alert-error';
+        errorMessage.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 1000; padding: 15px; border-radius: 5px; background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24;';
+        errorMessage.textContent = `Failed to sync subscription: ${error.message}`;
+        document.body.appendChild(errorMessage);
 
-      setTimeout(() => {
-        if (document.body.contains(errorMessage)) {
-          document.body.removeChild(errorMessage);
-        }
-      }, 5000);
+        setTimeout(() => {
+          if (document.body.contains(errorMessage)) {
+            document.body.removeChild(errorMessage);
+          }
+        }, 5000);
+      }
+
+      throw error; // Re-throw for silent mode error handling
     } finally {
-      // Reset button state
+      // Reset button state (only if not silent)
       const syncBtn = document.getElementById('syncSubscriptionBtn');
-      if (syncBtn) {
+      if (syncBtn && !silent) {
         syncBtn.disabled = false;
         syncBtn.textContent = 'Sync Subscription Status';
       }
@@ -288,7 +319,7 @@ class Account {
     if (syncSubscriptionBtn) {
       syncSubscriptionBtn.addEventListener('click', () => {
         // Sync subscription status triggered
-        this.syncSubscriptionStatus();
+        this.syncSubscriptionStatus(false); // Explicit false for manual sync with messages
       });
     }
 
@@ -349,6 +380,17 @@ class Account {
 
       // Loaded user data
       this.updateAccountUI(userData);
+
+      // Auto-sync subscription status when account page loads (silently)
+      // This ensures users always see the latest subscription status
+      if (profileData?.stripe_customer_id) {
+        try {
+          await this.syncSubscriptionStatus(true); // Pass true for silent mode
+        } catch (error) {
+          // Silent sync failed, but don't show error to user
+          console.log('Silent subscription sync failed:', error);
+        }
+      }
 
     } catch (error) {
       // Error loading account data

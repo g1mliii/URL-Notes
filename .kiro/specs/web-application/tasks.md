@@ -208,8 +208,16 @@
     - Display import preview before processing
     - _Requirements: 8.1, 8.2_
 
+
+
+
+
+
+
+
+
 - [ ] 12. Testing and quality assurance
-  - [ ] 12.1 Implement unit tests for core functionality
+  - [ ] 12.1 qa and testing and cleaning up for release
     - remove logging in webpage for public use, as well as any logging that is send from edge functions to console
     - immplement performacne optimizations without changing style or design of webpage and mobile page
     - fix dashboard notes not showing up when creating a new note and requirind a refresh of the page to be visible
@@ -218,30 +226,49 @@
     - _Requirements: All requirements validation_
 
   - [ ] 12.2 Perform integration and end-to-end testing
-    - Test complete user registration and onboarding flow
-    - Validate note synchronization between web app and extension.
     - Test subscription management and payment processing
-    - Verify export/import functionality.
-    - Test complete forgot password → reset → login flow
     - _Requirements: All requirements validation_
 
-- [ ] 14. Transition Stripe integration to live production keys
-  - if not already trigger sync subscriptin status when opening account section so that users dont have to do it manually. and so that when we redirect bck to account from stripe it works properluy.
-  - make sure sync subscription buttons functionality with edge function sync user subscritpiont sitll works with stripe migration implmentation where we changed from checkout session to product with product id
-  - make sure sync all subscriptions compatibiliy also still works with strupe migratoin implmentation as well again where we changed checkout seesiont to product with product id.
-  - update toast notification for sync subscription status to reword premium subscrition cancelled expired at wahtever date to be less confusing should be subscription expires at date subscritopn recurring billing cancelled something like that but shorter and more precise less confusing to user.
-  - Replace test Stripe API keys with live production keys i think they are only used in supabase so i can do that just tell me what need to be changed. just check as im not sure where i need to replace any keys for live versions
-  - Update customer portal links to use live Stripe environment https://billing.stripe.com/p/login/7sY7sN0nf3Vl3IY6gW3oA00
+- [x] 14. stripe sanity check task 16 compatibilty with edge functions and our webpage code.
+
+
+
+
+
+  - cleanup unused edge funcitons i believe the edge function in supabase are as follows sync notes, ai-rewrite, subscription-api, sync-all-subscriptions, sync-user subscriptions
+  - make sure sync subscription buttons functionality with edge function sync user subscritpiont sitll works with stripe migration implmentation where we changed from checkout session to product with product id, this wa done in task 16
+  - make sure sync all subscriptions compatibiliy also still works with strupe migratoin implmentation as well again where we changed checkout seesiont to product with product id. Which was also done in task 16
+  - update toast notification for sync subscription status to reword premium subscrition cancelled expired at wahtever date to be less confusing should be subscription expires at date subscritopn recurring billing cancelled something like that but shorter and more precise less confusing to user. and determine why this toast notification shows up for certain cancelled accounts and not others for example toast notification shows up for account that was created with old checkout system and older subsdcription that has cancelled date while newere subscription with task 16 version doesnt show toast, may be a differnce in implmentation in task 16 or some other issue with logic should be same so we should get same outcome unless there are some differnces in check.
+  
+  - _Requirements: strip task 16 sanity check and making sure everything is compatible
+
+- [ ] 15. stripe live transition and setup
+  -if not already trigger sync subscriptin status when opening account section so that users dont have to do it manually. and so that when we redirect bck to account from stripe it works properluy.
+  - Replace separate "Manage Subscription" and "Billing History" buttons with single "Manage subscription"
+  - Replace test Stripe API keys with live production keys i think they are only used in supabase 2 keys and product id and price id might need to be updated to live version as well as customer portal link for manage subscription button.
   - Test live payment processing
   - Verify production and subscription management
-  - _Requirements: Production payment processing_
-
-- [ ] 15. Consolidate subscription management interface
-  - Replace separate "Manage Subscription" and "Billing History" buttons with single "Manage subscription"
-  - Update button to open unified Stripe customer portal with url https://billing.stripe.com/p/login/7sY7sN0nf3Vl3IY6gW3oA00
   - remove in data manamgment export all data button and back end of tha tbutton if any at all and leave the text that says For account deletion, please contact our support team at info@anchored.site.
   - spacing between the account sections on mobile is too litte each box is touching each other
-  - _Requirements: Simplified user experience_
+  - _Requirements: Stripe live transition
+
+
+- [x] fix issue in supabase edge function sync-user subscritpin
+
+
+
+
+
+Property 'subscription_tier' does not exist on type '{}'.(2339)
+and subscription expiers in this code snippet     return new Response(JSON.stringify({
+      success: true,
+      updated: shouldUpdate,
+      subscription_tier: updateData.subscription_tier ?? profile.subscription_tier,
+      subscription_expires_at: updateData.subscription_expires_at ?? profile.subscription_expires_at,
+      message: statusMessage,
+      timestamp: new Date().toISOString()
+
+
 
 - [x] 16. implement planned migraton in stripe migration plan and produt analysis 
 

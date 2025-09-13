@@ -156,9 +156,9 @@ serve(async (req) => {
                                 updated_at: new Date().toISOString()
                             }
                             shouldUpdate = true
-                            console.log(`⏰ User ${profile.id}: Canceled, setting/updating expiry to ${expiresAt} (was: ${profile.subscription_expires_at})`)
+                            console.log(`⏰ User ${profile.id}: Subscription expires ${new Date(expiresAt).toLocaleDateString()} - recurring billing canceled (was: ${profile.subscription_expires_at})`)
                         } else {
-                            console.log(`⏰ User ${profile.id}: Canceled subscription expiry already correct (${expiresAt})`)
+                            console.log(`⏰ User ${profile.id}: Subscription expires ${new Date(expiresAt).toLocaleDateString()} - recurring billing canceled (already set correctly)`)
                         }
                     } else {
                         // No active subscription - should be free

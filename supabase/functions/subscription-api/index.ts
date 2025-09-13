@@ -85,7 +85,7 @@ serve(async (req) => {
 
 async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: any, data: any) {
   try {
-    console.log('Creating checkout session for user:', user.id, user.email)
+
 
     // Get or create customer
     let customerId = null
@@ -99,7 +99,7 @@ async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: 
 
     if (profile?.stripe_customer_id) {
       customerId = profile.stripe_customer_id
-      console.log('🔄 Using existing Stripe customer:', customerId)
+
     } else {
       // Create new Stripe customer
       const customer = await stripe.customers.create({
@@ -116,7 +116,7 @@ async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: 
         .update({ stripe_customer_id: customerId })
         .eq('id', user.id)
 
-      console.log('🆕 Created new Stripe customer:', customerId, 'for user:', user.email)
+
     }
 
     // Create checkout session using predefined Stripe product
@@ -145,14 +145,7 @@ async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: 
       },
     })
 
-    console.log('✅ CHECKOUT SESSION CREATED SUCCESSFULLY')
-    console.log('Session ID:', session.id)
-    console.log('Customer ID:', customerId)
-    console.log('User:', user.email, '(', user.id, ')')
-    console.log('Product: Anchored Premium (predefined Stripe product)')
-    console.log('Price ID:', Deno.env.get('STRIPE_PREMIUM_PRICE_ID') || 'price_1S6ek9AmZvKSDgI488vHQ0Tq')
-    console.log('Checkout URL:', session.url)
-    console.log('Success URL will be:', `${data.origin}/account?session_id=${session.id}&success=true`)
+
 
     return new Response(
       JSON.stringify({ sessionId: session.id, url: session.url }),
@@ -204,10 +197,7 @@ async function createPortalSession(stripe: Stripe, supabaseClient: any, user: an
       return_url: `${data.origin}/account`,
     })
 
-    console.log('✅ BILLING PORTAL SESSION CREATED SUCCESSFULLY')
-    console.log('Customer ID:', profile.stripe_customer_id)
-    console.log('User:', user.email, '(', user.id, ')')
-    console.log('Portal URL:', session.url)
+
 
     return new Response(
       JSON.stringify({ url: session.url }),
@@ -252,15 +242,7 @@ async function getSubscriptionStatus(supabaseClient: any, user: any) {
       ai_usage: aiUsage || null,
     }
 
-    console.log('📊 SUBSCRIPTION STATUS RETRIEVED')
-    console.log('User:', user.email, '(', user.id, ')')
-    console.log('Tier:', responseData.subscription_tier)
-    console.log('Expires:', responseData.subscription_expires_at)
-    console.log('Has Stripe Customer:', responseData.has_stripe_customer)
 
-    if (responseData.subscription_tier === 'premium') {
-      console.log('✅ USER HAS ACTIVE PREMIUM SUBSCRIPTION')
-    }
 
     return new Response(
       JSON.stringify(responseData),
@@ -283,8 +265,6 @@ async function getSubscriptionStatus(supabaseClient: any, user: any) {
 
 async function syncSubscriptionStatus(stripe: Stripe, supabaseClient: any, user: any) {
   try {
-    console.log('🔄 Syncing subscription for user:', user.email, '(', user.id, ')')
-
     // Get user's profile with Stripe customer ID
     const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
@@ -297,7 +277,6 @@ async function syncSubscriptionStatus(stripe: Stripe, supabaseClient: any, user:
     }
 
     if (!profile?.stripe_customer_id) {
-      console.log('❌ No Stripe customer ID found for user')
       return new Response(
         JSON.stringify({
           error: 'No Stripe subscription found',
@@ -358,7 +337,7 @@ async function syncSubscriptionStatus(stripe: Stripe, supabaseClient: any, user:
           updated_at: new Date().toISOString()
         }
         shouldUpdate = true
-        statusMessage = `Premium subscription canceled, expires ${new Date(expiresAt).toLocaleDateString()}`
+        statusMessage = `Subscription expires ${new Date(expiresAt).toLocaleDateString()} - recurring billing canceled`
         console.log('⏰ User has canceled subscription, setting expiry date')
       } else {
         // No active subscription - should be free
