@@ -34,6 +34,63 @@
   width: 60px;
   height: 60px;
   object-fit: contain;
+  /* Use high-resolution image and scale down for crisp display */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  /* Add subtle drop shadow for better contrast on mobile */
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+/* High-DPI display optimization */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .logo-icon {
+    /* Enhanced rendering for retina displays */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: optimize-contrast;
+    image-rendering: auto;
+  }
+}
+
+/* Enhanced mobile logo visibility */
+@media (max-width: 768px) {
+  .logo-icon {
+    /* Stronger contrast and shadow for mobile */
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2)) 
+            drop-shadow(0 1px 2px rgba(255, 255, 255, 0.1));
+    /* Ensure crisp rendering on mobile devices */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: optimize-contrast;
+    image-rendering: crisp-edges;
+    /* Slight size increase for better mobile visibility */
+    width: 64px;
+    height: 64px;
+  }
+  
+  /* Add background contrast for logo on mobile */
+  .logo {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.5rem;
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Dark mode specific logo enhancements */
+@media (prefers-color-scheme: dark) {
+  .logo-icon {
+    /* Enhanced contrast for dark mode */
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3)) 
+            drop-shadow(0 1px 1px rgba(255, 255, 255, 0.1));
+  }
+  
+  @media (max-width: 768px) {
+    .logo {
+      background: rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+  }
 }
 
 .logo h1 {
