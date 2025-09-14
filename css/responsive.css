@@ -13,6 +13,21 @@
     overflow: hidden;
   }
 
+  /* Additional mobile spacing fixes for very small screens */
+  .account-section {
+    margin-bottom: 1.75rem;
+    padding: 1rem;
+  }
+
+  /* Ensure note editor has proper spacing on small screens */
+  .note-panel .input-group {
+    margin-bottom: 1.75rem;
+  }
+
+  .note-panel-content {
+    padding: 0.75rem;
+  }
+
   body {
     background-attachment: scroll !important;
     -webkit-overflow-scrolling: touch;
@@ -594,6 +609,27 @@
     padding: 1rem;
   }
 
+  /* Fix mobile note editor spacing - add proper spacing between input groups */
+  .note-panel .input-group {
+    margin-bottom: 1.5rem; /* Increased spacing between input fields */
+  }
+
+  .note-panel .input-group:last-of-type {
+    margin-bottom: 1.5rem; /* Ensure last input group also has spacing */
+  }
+
+  /* Specific spacing for note editor form elements */
+  .note-edit .input-group {
+    margin-bottom: 1.5rem;
+  }
+
+  /* Add spacing for edit actions */
+  .edit-actions {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+  }
+
   /* Notifications on mobile */
   .notification {
     top: 10px;
@@ -698,7 +734,24 @@
   }
 
   .account-section {
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem; /* Increased from 1.5rem to 2rem for better spacing */
+    padding: 1.25rem; /* Reduced padding slightly for mobile */
+  }
+
+  /* Add proper spacing between sections */
+  .account-section:not(:last-child) {
+    margin-bottom: 2rem;
+  }
+
+  /* Ensure proper spacing for section content */
+  .account-section h3 {
+    margin-bottom: 1.25rem;
+  }
+
+  /* Fix subscription details spacing on mobile */
+  .subscription-details {
+    margin: 1.5rem 0;
+    padding: 1.25rem;
   }
 
   .subscription-actions {
@@ -725,6 +778,13 @@
 
   .premium-features li {
     margin-bottom: 0.5rem;
+  }
+
+  /* Add spacing for data management section */
+  .data-note {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
   }
 }
 

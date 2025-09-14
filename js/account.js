@@ -296,11 +296,7 @@ class Account {
       manageSubscriptionBtn.addEventListener('click', () => this.manageSubscription());
     }
 
-    // Data management
-    const exportAllBtn = document.getElementById('exportAllBtn');
-    if (exportAllBtn) {
-      exportAllBtn.addEventListener('click', () => this.exportAllData());
-    }
+    // Data management - Export All Data button removed as requested
 
     // Refresh status button
     const refreshStatusBtn = document.getElementById('refreshStatusBtn');
@@ -530,9 +526,7 @@ class Account {
 
 
 
-  exportAllData() {
-    // Export all data - will be implemented in task 6
-  }
+  // exportAllData method removed as Export All Data button was removed per task requirements
 
 
 }

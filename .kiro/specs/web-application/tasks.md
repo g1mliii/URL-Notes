@@ -209,18 +209,15 @@
     - _Requirements: 8.1, 8.2_
 
 
-- [x] 11.2 fix mobile spacing issues 
+- [x] 11.2 fix mobile spacing issues currently in site on account page and editor area
 
 
 
 
 
-
-
-
-
-
-
+    - in mobile view the section classes boxes are touching each other and dont have proper spacing/ padding between sections, 
+    - secondly remove in data manamgment export all data button and back end of tha tbutton if any at all and leave the text that says For account deletion, please contact our support team at info@anchored.site.
+    - thirdly when opening the note in mobile view the boxes there are also touching such as title box, urlbox, text box and tag box, they are all touching each other so incorrcet spacing here as well
 
 
 
@@ -243,8 +240,6 @@
   - Replace test Stripe API keys with live production keys i think they are only used in supabase 2 keys and product id and price id might need to be updated to live version as well as customer portal link for manage subscription button.
   - Test live payment processing
   - Verify production and subscription management
-  - remove in data manamgment export all data button and back end of tha tbutton if any at all and leave the text that says For account deletion, please contact our support team at info@anchored.site.
-  - spacing between the account sections on mobile is too litte each box is touching each other
   - _Requirements: Stripe live transition
 
 

@@ -186,6 +186,15 @@
   margin-bottom: 1.75rem;
 }
 
+/* Note editor specific spacing - ensure proper spacing between form elements */
+.note-edit .input-group {
+  margin-bottom: 1.25rem;
+}
+
+.note-edit .input-group:last-of-type {
+  margin-bottom: 1.25rem; /* Maintain spacing for last input group */
+}
+
 .input-group label {
   display: block;
   margin-bottom: 0.5rem;
