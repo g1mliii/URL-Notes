@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Auth Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Authentication Race Condition Fix Test</h1>
+    
+    <div class="test-section info">
+        <h3>Test Scenario</h3>
+        <p>This test simulates the race condition where clicking "Account" from dashboard causes redirect to main page and back.</p>
+    </div>
+
+    <div class="test-section">
+        <h3>Simulate Authentication State</h3>
+        <button onclick="setAuthenticatedState()">Set Authenticated State</button>
+        <button onclick="clearAuthenticatedState()">Clear Authenticated State</button>
+        <button onclick="simulateRaceCondition()">Simulate Race Condition</button>
+    </div>
+
+    <div class="test-section">
+        <h3>Test Navigation</h3>
+        <button onclick="testAccountNavigation()">Test Account Navigation</button>
+        <button onclick="testDashboardNavigation()">Test Dashboard Navigation</button>
+    </div>
+
+    <div class="test-section">
+        <h3>Results</h3>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // Mock localStorage for testing
+        function setAuthenticatedState() {
+            const mockSession = {
+                access_token: 'mock_token_' + Date.now(),
+                user: {
+                    id: 'test-user-id',
+                    email: 'test@example.com',
+                    created_at: new Date().toISOString()
+                },
+                expires_at: Math.floor(Date.now() / 1000) + 3600 // 1 hour from now
+            };
+            localStorage.setItem('supabase_session', JSON.stringify(mockSession));
+            logResult('✅ Set authenticated state with mock session', 'success');
+        }
+
+        function clearAuthenticatedState() {
+            localStorage.removeItem('supabase_session');
+            logResult('❌ Cleared authenticated state', 'error');
+        }
+
+        function simulateRaceCondition() {
+            // Simulate the race condition by temporarily clearing and restoring auth state
+            const originalSession = localStorage.getItem('supabase_session');
+            
+            logResult('🔄 Simulating race condition...', 'info');
+            
+            // Clear auth state temporarily
+            localStorage.removeItem('supabase_session');
+            
+            setTimeout(() => {
+                // Restore auth state after delay (simulating async initialization)
+                if (originalSession) {
+                    localStorage.setItem('supabase_session', originalSession);
+                    logResult('🔄 Race condition simulation complete - auth state restored', 'info');
+                }
+            }, 500);
+        }
+
+        function testAccountNavigation() {
+            const hasSession = localStorage.getItem('supabase_session');
+            if (hasSession) {
+                try {
+                    const sessionData = JSON.parse(hasSession);
+                    const expiresAt = sessionData.expires_at || 0;
+                    const now = Date.now() / 1000;
+                    
+                    if (sessionData.access_token && sessionData.user && expiresAt > now) {
+                        logResult('✅ Account navigation would succeed - valid session found', 'success');
+                        logResult(`   User: ${sessionData.user.email}`, 'info');
+                        logResult(`   Token expires: ${new Date(expiresAt * 1000).toLocaleString()}`, 'info');
+                    } else {
+                        logResult('❌ Account navigation would fail - invalid/expired session', 'error');
+                    }
+                } catch (e) {
+                    logResult('❌ Account navigation would fail - corrupted session data', 'error');
+                }
+            } else {
+                logResult('❌ Account navigation would fail - no session found', 'error');
+            }
+        }
+
+        function testDashboardNavigation() {
+            const hasSession = localStorage.getItem('supabase_session');
+            if (hasSession) {
+                try {
+                    const sessionData = JSON.parse(hasSession);
+                    const expiresAt = sessionData.expires_at || 0;
+                    const now = Date.now() / 1000;
+                    
+                    if (sessionData.access_token && sessionData.user && expiresAt > now) {
+                        logResult('✅ Dashboard navigation would succeed - valid session found', 'success');
+                        logResult(`   User: ${sessionData.user.email}`, 'info');
+                        logResult(`   Token expires: ${new Date(expiresAt * 1000).toLocaleString()}`, 'info');
+                    } else {
+                        logResult('❌ Dashboard navigation would fail - invalid/expired session', 'error');
+                    }
+                } catch (e) {
+                    logResult('❌ Dashboard navigation would fail - corrupted session data', 'error');
+                }
+            } else {
+                logResult('❌ Dashboard navigation would fail - no session found', 'error');
+            }
+        }
+
+        function logResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-section ${type}`;
+            div.innerHTML = `<p>${message}</p>`;
+            results.appendChild(div);
+            
+            // Auto-scroll to bottom
+            results.scrollTop = results.scrollHeight;
+        }
+
+        // Initialize test
+        logResult('🚀 Authentication fix test initialized', 'info');
+        logResult('Current session state: ' + (localStorage.getItem('supabase_session') ? 'Present' : 'Not found'), 'info');
+    </script>
+</body>
+</html>

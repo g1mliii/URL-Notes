@@ -209,6 +209,14 @@
     - _Requirements: 8.1, 8.2_
 
 
+- [x] 11.2 remove uncessary authentication checks once in dashboard, we dont need to check for is authenticated for actions, since we are required to be authenticated to be in dashboard same with account page.
+
+
+
+
+
+
+
 
 
 
@@ -225,10 +233,6 @@
     - Verify data model validation and sanitization
     - _Requirements: All requirements validation_
 
-  - [x] 12.2 when swapping between account and dashboard there are mutiple <other> logs without output im assuming mutiple auth checks tha are uncessary since we are already authenticated at this point lets try to fix this
-
-
-
 
 
 
@@ -242,6 +246,23 @@
   - remove in data manamgment export all data button and back end of tha tbutton if any at all and leave the text that says For account deletion, please contact our support team at info@anchored.site.
   - spacing between the account sections on mobile is too litte each box is touching each other
   - _Requirements: Stripe live transition
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

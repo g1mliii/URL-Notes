@@ -336,14 +336,16 @@ class Account {
 
   async loadAccountData() {
     try {
-      // Use cached auth status from app.js to avoid redundant checks
-      if (!window.app || !window.app.isAuthenticated) {
-        // User not authenticated - redirect to login
-        window.location.href = '/';
-        return;
-      }
+      // No auth check needed - we're already authenticated on account page
+      // Just wait for API to be available
 
       // Wait for API to be available
+      let apiAttempts = 0;
+      while (!window.api && apiAttempts < 20) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        apiAttempts++;
+      }
+      
       if (!window.api) {
         setTimeout(() => this.loadAccountData(), 500);
         return;
@@ -352,7 +354,28 @@ class Account {
       // Get current user data
       const currentUser = window.api.currentUser;
       if (!currentUser) {
-        // No current user data
+        // Try to get user from cached session
+        if (cachedSession) {
+          try {
+            const sessionData = JSON.parse(cachedSession);
+            if (sessionData.user) {
+              // Use cached user data temporarily
+              this.updateAccountUI({
+                email: sessionData.user.email || 'Loading...',
+                created_at: sessionData.user.created_at || new Date().toISOString(),
+                subscription_tier: 'free' // Will be updated when API loads
+              });
+              
+              // Retry loading after API is ready
+              setTimeout(() => this.loadAccountData(), 1000);
+              return;
+            }
+          } catch (e) {
+            // Invalid cached session
+          }
+        }
+        
+        // No current user data and no cached session
         return;
       }
 
