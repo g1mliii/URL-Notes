@@ -24,11 +24,24 @@
   justify-content: space-between;
 }
 
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
 .logo h1 {
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--text-strong);
   letter-spacing: -0.02em;
+  margin: 0;
 }
 
 .nav-links {

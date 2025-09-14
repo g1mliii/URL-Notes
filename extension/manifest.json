@@ -15,9 +15,21 @@
   "host_permissions": [
     "<all_urls>"
   ],
+  "icons": {
+    "16": "assets/icons/icon16x16.png",
+    "32": "assets/icons/icon32x32.png",
+    "48": "assets/icons/icon48x48.png",
+    "128": "assets/icons/icon128x128.png"
+  },
   "action": {
     "default_title": "URL Notes",
-    "default_popup": "popup/popup.html"
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "assets/icons/icon16x16.png",
+      "32": "assets/icons/icon32x32.png",
+      "48": "assets/icons/icon48x48.png",
+      "128": "assets/icons/icon128x128.png"
+    }
   },
   "side_panel": {
     "default_path": "popup/popup.html"

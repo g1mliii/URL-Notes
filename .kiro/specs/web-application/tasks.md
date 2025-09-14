@@ -7,23 +7,18 @@
   - Implement responsive breakpoints for mobile-first design
   - Apply dark blue ocean anchor theme throughout the application
   - _Requirements: 9.1, 9.2, 9.3_
-
 - [ ] 2. Adapt core libraries from extension for web environment
   - [x] 2.1 Port encryption.js library for web application
     - Copy encryption.js from extension and adapt for web environment (remove Chrome APIs)
     - Test encryption/decryption functionality in browser environment
     - Ensure compatibility with existing extension encryption format
     - _Requirements: 11.1, 10.1_
-
   - [x] 2.2 Adapt api.js for web application authentication
     - Copy and modify api.js to work without Chrome extension APIs
     - Implement web-based localStorage/sessionStorage instead of chrome.storage.local
     - Adapt authentication methods for web environment
     - _Requirements: 11.3, 1.2, 2.2_
-
   - [x] 2.3 Create simplified storage adapter for web
-
-
     - Create ultra-aggressive caching storage adapter (cache-first, API-minimal)
     - Implement localStorage-based caching with 24+ hour cache duration
     - Batch API saves: only sync after 10+ changes, 30+ minutes, or tab close
@@ -31,81 +26,52 @@
     - Load from cache immediately, fetch from API only once per day
     - No IndexedDB complexity - just localStorage cache + smart cloud sync
     - _Requirements: 11.2_
-
   - [x] 2.4 Port export-formats.js for web downloads
     - Copy export-formats.js and adapt for web file downloads
     - Implement browser-based file download functionality
     - Test all export formats (JSON, Markdown, Obsidian, Notion, Plain Text, Google Docs)
     - _Requirements: 11.5, 7.1_
-
 - [x] 3. Adapt existing authentication system for web
-
-
-
-
   - [x] 3.1 Port authentication UI from extension
-
     - Copy authentication forms and validation from extension settings.js
-
     - Adapt handleSignUp(), handleSignIn(), and handleForgotPassword() methods for web
     - Reuse existing Supabase Auth integration from api.js
     - Ensure encryption key generation works the same as extension
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3, 2.4_
-
-
   - [x] 3.2 Implement web-specific authentication flow
-
     - Adapt session management for web environment (localStorage instead of chrome.storage)
     - Handle authentication success and redirect to dashboard
     - Implement password reset flow with existing resetPassword() method
     - Add encryption key migration for password changes (reuse extension logic)
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 10.1, 10.2_
-
 - [x] 4. Build notes dashboard interface
-
-
-
-
   - [x] 4.1 Create notes display and organization system
-
-
     - Build notes dashboard layout with domain/URL organization
     - Implement note cards with preview functionality (read-only focus)
     - Add domain and URL filtering capabilities
     - Create search functionality across note content
     - Focus on note management, viewing, and organization rather than intensive editing
     - _Requirements: 6.1, 6.2, 11.4_
-
   - [x] 4.2 Implement simplified note editing functionality
-
-
     - Create basic note editor interface with auto-save on blur/close
     - Integrate with encryption for secure note storage
     - Implement direct cloud sync (no local storage complexity)
     - Add note deletion functionality with confirmation
     - Focus on note management rather than full editing experience
     - _Requirements: 6.3, 6.4, 6.5_
-
 - [ ] 5. Deploy website to production
   - [x] 5.1 Configure production environment and GitHub Pages hosting
-
-
-
-
 
     - Set up automated deployment from main branch
     - Configure environment variables and build process if needed
     - Ensure HTTPS is enabled through GitHub Pages
     - _Requirements: Security and performance requirements_
-
   - [x] 5.2 Deploy and monitor application
-
     - ✅ Deploy application to production environment
     - ✅ Update Supabase configuration for production domain
     - ✅ Set up monitoring and error tracking
     - ✅ Configure backup and disaster recovery
     - ✅ Perform final production testing and validation
-    
     **Completion Summary:**
     - ✅ Production deployment live at https://anchored.site
     - ✅ Direct GitHub Pages deployment from URL-Notes repository
@@ -116,23 +82,14 @@
     - ✅ Backup and disaster recovery plan documented
     - ✅ HTTPS enforced with valid SSL certificate
     - ✅ Simplified deployment process (no cross-repository complexity)
-    
     **Deployment Method:**
     - Direct GitHub Pages from main branch, root folder
     - Custom domain: anchored.site
     - Instant updates on push to main branch
     - Drag-and-drop file editing supported
     - _Requirements: All requirements in production environment_
-
 - [x] 6. Implement subscription management system
-
-
-
-
-
   - [x] 6.1 Create subscription upgrade interface
-
-
     - Build premium plan selection interface with $2.50/month pricing
     - Integrate Stripe  payment processing for monthly subscriptions
     - Create edge function for subscription status updates
@@ -140,36 +97,26 @@
     - Handle successful payment and account activation
     - Display clear free vs premium feature comparison
     - _Requirements: 4.1, 4.2, 4.3, 4.4_
-
   - [x] 6.2 Build subscription management dashboard
-
-
     - Display current subscription status and details using stripe integraion
     - Implement payment method update functionality using strip integration
     - Add subscription cancellation with expiration handling using stripe integration 
     - Create billing history and invoice access using stripe integration
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
-
 - [x] 8. ~~Standardize encryption~~ (COMPLETE - Both platforms already use identical encryption)
   - [x] 8.1 ~~Update web app encryption~~ (COMPLETE - Already uses `user.id:user.email + salt`)
   - [x] 8.2 ~~Verify extension encryption~~ (COMPLETE - Already uses `user.id:user.email + salt`)
   - **Status**: Both extension and web app use identical key derivation: `PBKDF2(user.id:user.email, salt, 100000 iterations)`
   - **Verified**: Same encryption logic, same salt storage, full compatibility
   - _Requirements: 10.1, 11.1, 3.4, 10.2 - All satisfied_
-
 - [x] 9. Complete password reset functionality implementation 
-
-
   - [x] 9.1 Configure password reset redirect and callback handling
-
-
     - Configure Supabase Auth redirect URL to point to anchored.site password reset page
     - Create password reset callback handler to process email link parameters
     - Build password reset form interface for entering new password
     - Implement Supabase Auth password update using access token from email link
     - Test complete forgot password → email → reset → login flow
     - _Requirements: 3.1, 3.2, 3.3, 3.4_
-
   - [x] 9.2 Handle password reset edge cases and user experience
     - Add proper error handling for invalid/expired reset tokens
     - Add user feedback for successful reset email sending
@@ -177,30 +124,20 @@
     - Add loading states and success/error messages
     - Note: No encryption migration needed with email-based keys
     - _Requirements: 3.5_
-
 - [x] 10. Implement export functionality build from same code as extension export since they should behave the same way
-
   - [x] 10.1 Create export interface with note selection build from same code as extension export since they should behave the same way mostly with some additiona features in webpage
-
-
-
-
-
     - Build export modal with format selection dropdown
     - Implement individual note selection with checkboxes
     - Add bulk selection options by domain/URL
     - Create progress indicators for export processing
     - also fix the domain and datefilter from looking differnet in dashboard for mac os safari webpage not mobile, verion style is not the same as other browsers.
     - _Requirements: 7.1, 7.2, 7.4_
-
   - [x] 10.2 Implement export processing and download
-
     - implement actual export functionality similir to extension export since file structur should be similar,
     - Generate export files using adapted export-formats.js
     - Implement browser file download functionality
     - Handle export errors with retry options
     - _Requirements: 7.3, 7.5_
-    
 - [x] 11 Implement import functionality i dont think our extension encrypts on import so we can just import normal and when syncs it should encrypt just like extenion unless our wepbage behaves differntl
     - Build file upload interface with format validation
     - Support JSON imports rename export and import from json to anchored so user doenst get confused.
@@ -209,8 +146,24 @@
     - _Requirements: 8.1, 8.2_
 
 
+- [x] 11.5 implement logo and favicon for webpage and extension
 
 
+
+
+
+
+
+
+
+    - for favicon and webstie i have added logos in different sizes in in root folder
+    - i think chrome webpage uses, 16x16, 32x32, 48x48, 96x96, and 192x192 pixels 
+    - androind web should use 512x512 192x192 pixel 
+    - and ios 180x180  60x60 76x76 167x167 
+    - these could be wrong but i think these may be required for the webpage diff platforms not sure you can verify and add more if need be
+    -for chrome extension here is C:\Users\subai\Documents\Anchored\URL-Notes\extension\assets\icons ive attached these icons seperatley here since we have to submit them and this way you dont have to move them from root foler
+    - i think webstore uses 128x128, 32x32, 48x48 16x16
+    - also maybe we can add logo to header of webpage main area, or replace the a in anchored in header with the logo if possible
 
 
 
@@ -225,12 +178,6 @@
   - Test live payment processing
   - Verify production and subscription management
   - _Requirements: Stripe live transition
-
-
-
-
-
-
 
 
 
