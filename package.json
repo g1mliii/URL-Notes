@@ -1,5 +1,35 @@
 {
+  "name": "anchored",
+  "version": "1.0.0",
+  "description": "Smart note-taking for the web - anchor your ideas to specific web locations",
+  "homepage": "https://anchored.site",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/anchored.git"
+  },
+  "keywords": [
+    "notes",
+    "browser-extension",
+    "web-app",
+    "productivity",
+    "note-taking",
+    "encryption",
+    "privacy"
+  ],
+  "author": "Anchored Team",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "dev": "supabase start",
+    "deploy": "supabase functions deploy",
+    "db:reset": "supabase db reset",
+    "db:push": "supabase db push",
+    "types": "supabase gen types typescript --local > types/database.ts"
+  },
   "devDependencies": {
     "supabase": "^2.34.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

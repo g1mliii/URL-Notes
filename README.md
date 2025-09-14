@@ -1,104 +1,129 @@
-# Anchored Web Application
+# Anchored - Smart Note-Taking for the Web
 
-A companion web platform for the Anchored browser extension, providing premium users with comprehensive account management, note synchronization, and advanced note management capabilities.
+**Anchored** is a comprehensive note-taking solution that lets you anchor your ideas to specific web locations. Available as both a browser extension and web application, Anchored provides secure, encrypted note storage with intelligent organization and AI-powered features.
 
-## Brand Identity
+🌊 **Live Web App**: [anchored.site](https://anchored.site)  
+🔗 **Browser Extension**: Available for Chrome, Brave, and Edge
 
-**Anchored** represents the concept of anchoring your ideas and notes to specific web locations. The application features a dark blue ocean anchor theme with glassmorphism design elements, creating a cohesive nautical-inspired brand experience.
+## ⚓ What is Anchored?
 
-## Project Structure
+Anchored represents the concept of anchoring your thoughts and insights to specific web locations. Whether you're researching, learning, or working, Anchored helps you capture and organize notes contextually with the websites you visit.
 
-```
-anchored/
-├── index.html              # Landing/login page
-├── dashboard.html          # Main notes dashboard  
-├── account.html           # Account management
-├── privacy.html           # Privacy policy
-├── terms.html             # Terms of service
-├── css/                   # Stylesheets
-│   ├── main.css           # Core styles with glassmorphism design
-│   ├── components.css     # Reusable UI components
-│   └── responsive.css     # Mobile-first responsive breakpoints
-├── js/                    # JavaScript modules
-│   ├── app.js            # Main application orchestrator
-│   ├── auth.js           # Authentication management
-│   ├── dashboard.js      # Notes dashboard functionality
-│   ├── account.js        # Account management
-│   └── lib/              # Shared libraries
-│       ├── api.js        # Supabase API client
-│       └── monitoring.js # Error tracking and analytics
-├── extension/             # Browser extension code
-│   ├── manifest.json     # Extension manifest
-│   ├── popup/            # Extension popup UI
-│   └── lib/              # Extension libraries
-├── supabase/             # Database and Edge Functions
-│   ├── migrations/       # Database schema
-│   └── functions/        # Edge Functions (sync, AI)
-├── guide files/          # Documentation and guides
-├── scripts/              # Deployment and utility scripts
-└── _layouts/             # Jekyll layouts for GitHub Pages
-```
+### Key Features
 
-## Features
+✨ **Smart Organization**: Notes automatically organized by domain and URL  
+🔒 **Zero-Knowledge Encryption**: Your notes are encrypted client-side before cloud storage  
+🌊 **Ocean-Themed Design**: Beautiful glassmorphism UI with nautical-inspired aesthetics  
+📱 **Cross-Platform**: Browser extension + responsive web application  
+🤖 **AI-Powered**: Intelligent summarization and content extraction  
+💰 **Affordable Premium**: Full-featured premium tier for just $2.50/month  
 
-- **Ocean-Themed Glassmorphism**: Modern glass-like surfaces with ocean-blue backdrop blur effects
-- **Responsive Layout**: Mobile-first design with breakpoints for tablet and desktop
-- **Authentication System**: User registration, login, and password reset (to be implemented)
-- **Notes Dashboard**: View, search, and manage synced notes (to be implemented)
-- **AI-Powered Summarization**: 
-  - **Domain Summary**: Summarize all notes from a specific domain
-  - **Site Content Summary**: Extract and summarize content from the current webpage
-- **Subscription Management**: $2.50/month premium tier with Stripe integration (to be implemented)
-- **Export/Import**: Note data portability with multiple formats (to be implemented)
+## 🚀 Getting Started
 
-## Pricing
+### Browser Extension
+1. Install from Chrome Web Store (coming soon)
+2. Click the Anchored icon in your browser toolbar
+3. Start taking notes on any website
+4. Notes are automatically organized by domain/URL
 
-- **Free Tier**: Browser extension with local storage
-- **Premium Tier**: $2.50/month for cloud sync, web access, and advanced features
+### Web Application
+1. Visit [anchored.site](https://anchored.site)
+2. Create your account or sign in
+3. Access your synced notes from any device
+4. Manage your subscription and export your data
 
-## Design Tokens
+## 💎 Pricing
 
-The application uses CSS custom properties for consistent ocean-themed styling:
+### Free Tier
+- ✅ Browser extension with local storage
+- ✅ Unlimited notes on your device
+- ✅ Domain/URL organization
+- ✅ Basic export functionality
+- ✅ AI summarization (5 uses/month)
 
-### Ocean Anchor Theme
-- **Primary Colors**: Deep ocean blues (#1B4F72, #2E86AB) representing depth and stability
-- **Secondary Colors**: Lighter ocean tones (#A8DADC, #457B9D) for accents and highlights
-- **Background**: Ocean gradient from light aqua to deep navy
-- **Typography**: Apple system font stack with ocean-blue text colors
-- **Glassmorphism**: Translucent panels with ocean-blue tinted backgrounds
-- **Shadows**: Layered shadows with ocean-inspired color overlays
-- **Future Branding**: Anchor logo integration planned for navigation and loading states
+### Premium Tier - $2.50/month
+- ✅ Everything in Free tier
+- ✅ **Cloud synchronization** across all devices
+- ✅ **Web application access**
+- ✅ **Unlimited AI features**
+- ✅ **Advanced search** across all notes
+- ✅ **Full export/import** (JSON, Markdown, Obsidian, Notion, Plain Text, Google Docs)
+- ✅ **Version history** and note recovery
+- ✅ **Priority support**
 
-### Responsive Design
-- **Mobile-First**: Base styles for 320px+ with progressive enhancement
-- **Breakpoints**: Tablet (768px+) and Desktop (1024px+) optimizations
-- **Touch-Friendly**: 44px minimum touch targets for mobile interactions
-- **Accessibility**: WCAG compliant contrast ratios with ocean color palette
+## 🎨 Design Philosophy
 
-## Development Status
+Anchored features a distinctive **ocean anchor theme** with modern glassmorphism design:
 
-Extension Complete
+- **Deep Ocean Blues**: Primary colors (#1B4F72, #2E86AB) representing depth and stability
+- **Aqua Accents**: Lighter ocean tones (#A8DADC, #457B9D) for highlights
+- **Glass Surfaces**: Translucent panels with ocean-blue backdrop blur effects
+- **Responsive Design**: Mobile-first approach with seamless desktop experience
 
-Webpage status live but incomplete
+## 🏗️ Architecture
 
-Left to do:
+### Browser Extension
+- **Manifest V3** compliant
+- **Local-first** architecture with IndexedDB
+- **Zero-knowledge encryption** using AES-256-GCM
+- **Offline-capable** with background sync
 
-import and export features testing/implementation
-- stripe live billing activation
-- additional small ui fixes
+### Web Application
+- **Static hosting** on GitHub Pages
+- **Supabase backend** for authentication and data sync
+- **Client-side encryption** maintains zero-knowledge architecture
+- **Progressive Web App** capabilities
 
-## Browser Support
+### Security & Privacy
+- 🔐 **Client-side encryption**: Notes encrypted before leaving your device
+- 🔑 **Password-derived keys**: Encryption keys derived from your password + salt
+- 🚫 **Zero-knowledge**: Server never sees your unencrypted notes
+- 🛡️ **Row-level security**: Database policies enforce strict data isolation
 
-- Chrome 90+
-- Firefox 88+
-- Safari 14+
-- Edge 90+
+## 🛠️ Technology Stack
 
-## Accessibility
+### Frontend
+- **Vanilla JavaScript**: No build system, direct browser compatibility
+- **CSS3**: Modern features with glassmorphism effects
+- **Responsive Design**: Mobile-first with progressive enhancement
 
-- Semantic HTML structure
-- ARIA labels and roles
-- Keyboard navigation support
-- Focus management
-- Color contrast compliance
-- Reduced motion support
+### Backend
+- **Supabase**: PostgreSQL database with real-time capabilities
+- **Edge Functions**: TypeScript serverless functions for sync and AI
+- **Stripe Integration**: Secure payment processing for premium subscriptions
+
+### Browser Extension
+- **Manifest V3**: Modern extension architecture
+- **IndexedDB**: Local storage for offline capability
+- **Service Workers**: Background sync and processing
+
+## 📱 Browser Support
+
+- **Chrome** 90+ (Primary)
+- **Brave** (Chromium-based)
+- **Microsoft Edge** 90+ (Chromium-based)
+- **Firefox** support planned
+
+## 🌐 Accessibility
+
+Anchored is built with accessibility in mind:
+
+- ♿ **WCAG 2.1 AA** compliant
+- ⌨️ **Keyboard navigation** support
+- 🎯 **Focus management** for screen readers
+- 🎨 **High contrast** color ratios
+- 📱 **Touch-friendly** interface (44px minimum targets)
+
+## 📄 License
+
+This project is proprietary software. All rights reserved.
+
+## 🤝 Support
+
+- 📧 **Email**: support@anchored.site
+- 🌐 **Website**: [anchored.site](https://anchored.site)
+- 📚 **Documentation**: Available in the web app
+
+---
+
+**Anchor your ideas to the web with Anchored** ⚓

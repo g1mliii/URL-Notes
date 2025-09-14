@@ -147,10 +147,7 @@
 
 
 
-- [x] 11.6 site logo near header on mobile and website is quite blurry lets make it higher resolution and scale down instead of using the corrct size image, also blends into background too much on mobile headerm i think because colors are similar 
-
-
-
+- [-] do i need a license for my github repo and for my project currenly i dont think we have one
 
 
 

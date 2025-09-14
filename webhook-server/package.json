@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "description": "Simple webhook server for Stripe events",
   "main": "api/stripe-webhook.js",
+  "license": "UNLICENSED",
+  "private": true,
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0"
   },

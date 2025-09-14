@@ -70,3 +70,17 @@ _site/
 
 # GitHub Pages
 .github/workflows/pages-deploy.yml.bak
+
+# Development and internal files (keep local, hide from public repo)
+.kiro/
+guide files/
+scripts/
+supabase/migrations/
+webhook-server/
+
+# Keep essential files visible in public repo:
+# - Core web app files (HTML, CSS, JS)
+# - Extension files
+# - README.md, package.json, etc.
+# - Supabase functions (but not migrations)
+# - Basic config files
