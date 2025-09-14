@@ -15,61 +15,74 @@ class Dashboard {
   }
 
   async init() {
+    // Listen for auth state changes instead of doing separate auth check
+    window.eventBus.on('auth:stateChanged', (authData) => {
+      if (authData.isAuthenticated && authData.currentUser) {
+        // Auth state confirmed, proceed with initialization
+        this.initializeAfterAuth();
+      }
+    });
 
+    // Check if auth state is already available
+    if (window.authState?.isAuthenticated || (window.app?.isAuthenticated && window.app?.currentUser)) {
+      this.initializeAfterAuth();
+    }
+  }
+
+  async initializeAfterAuth() {
     // Initialize storage first
     await this.initializeStorage();
 
     this.setupEventListeners();
     await this.loadNotes();
-    await this.checkSubscriptionStatus();
+
+    // Use centralized subscription check instead of separate call
+    this.listenForSubscriptionUpdates();
   }
 
   async initializeStorage() {
-    // Wait for all required modules to be ready
-    let attempts = 0;
-    while ((!window.storage || !window.api || !window.noteEncryption) && attempts < 50) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      attempts++;
-    }
+    // Use Promise.all for parallel module waiting instead of sequential polling
+    const modulePromises = [
+      this.waitForModule('storage'),
+      this.waitForModule('api'),
+      this.waitForModule('noteEncryption')
+    ];
 
-    if (!window.storage) {
-      // Storage not available, using fallback
-      // Create a simple fallback storage
-      window.storage = {
-        init: async () => { },
-        getAllNotes: async () => [],
-        saveNote: async (note) => note,
-        deleteNote: async (id) => true
-      };
-    }
+    try {
+      const [storage, api, encryption] = await Promise.all(modulePromises);
 
-    if (!window.api) {
-      // API client not available
-      throw new Error('API client not available');
-    }
-
-    if (!window.noteEncryption) {
-      // Encryption module not available
-      throw new Error('Encryption module not available');
-    }
-
-    // Skip API initialization if already done by app.js auth check
-    if (!window.api.accessToken) {
-      try {
+      // Modules are ready, skip redundant initialization since app.js already handled it
+      if (!window.api.accessToken && window.api.init) {
         await window.api.init();
-      } catch (error) {
-        // API client initialization failed
       }
-    }
 
-    // Initialize storage if it has an init method
-    if (window.storage.init) {
-      try {
+      if (window.storage.init && !window.storage._initialized) {
         await window.storage.init();
-      } catch (error) {
-        // Storage initialization failed
+        window.storage._initialized = true; // Prevent duplicate initialization
       }
+    } catch (error) {
+      // Module initialization failed
+      throw new Error('Required modules not available');
     }
+  }
+
+  // Helper method to wait for a specific module with timeout
+  async waitForModule(moduleName, timeout = 2000) {
+    return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+
+      const checkModule = () => {
+        if (window[moduleName]) {
+          resolve(window[moduleName]);
+        } else if (Date.now() - startTime > timeout) {
+          reject(new Error(`${moduleName} module not available after ${timeout}ms`));
+        } else {
+          setTimeout(checkModule, 50);
+        }
+      };
+
+      checkModule();
+    });
   }
 
   setupEventListeners() {
@@ -91,6 +104,12 @@ class Dashboard {
     const newNoteBtn = document.getElementById('newNoteBtn');
     if (newNoteBtn) {
       newNoteBtn.addEventListener('click', () => this.showNoteEditor());
+    }
+
+    // Refresh notes button
+    const refreshNotesBtn = document.getElementById('refreshNotesBtn');
+    if (refreshNotesBtn) {
+      refreshNotesBtn.addEventListener('click', () => this.handleRefreshNotes());
     }
 
     // Cleanup button
@@ -414,6 +433,45 @@ class Dashboard {
       this.showErrorState(error.message);
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  // Handle refresh notes button click
+  async handleRefreshNotes() {
+    const refreshBtn = document.getElementById('refreshNotesBtn');
+    const refreshIcon = refreshBtn?.querySelector('.refresh-icon');
+
+    // Add spinning animation
+    if (refreshIcon) {
+      refreshIcon.style.animation = 'spin 1s linear infinite';
+    }
+
+    if (refreshBtn) {
+      refreshBtn.disabled = true;
+    }
+
+    try {
+      // Clear any cached data to force fresh fetch
+      if (window.storage && window.storage.clearCache) {
+        await window.storage.clearCache();
+      }
+
+      // Reload notes
+      await this.loadNotes();
+
+      // Show success feedback
+      this.showNotification('Notes refreshed successfully', 'success');
+    } catch (error) {
+      this.showNotification('Failed to refresh notes', 'error');
+    } finally {
+      // Remove spinning animation and re-enable button
+      if (refreshIcon) {
+        refreshIcon.style.animation = '';
+      }
+
+      if (refreshBtn) {
+        refreshBtn.disabled = false;
+      }
     }
   }
 
@@ -1212,7 +1270,7 @@ class Dashboard {
       // Refresh display to show the new/updated note
       this.populateDomainFilter();
       this.applyFilters();
-      
+
       // Force a UI refresh to ensure the new note appears
       this.renderNotes();
 
@@ -1409,7 +1467,7 @@ class Dashboard {
   showImportModal() {
     // Reset modal state
     this.resetImportModal();
-    
+
     // Show modal
     window.app.showModal('importModal');
   }
@@ -1475,7 +1533,7 @@ class Dashboard {
   handleFileDrop(e) {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const fileUploadArea = document.getElementById('fileUploadArea');
     if (fileUploadArea) {
       fileUploadArea.classList.remove('dragover');
@@ -1556,7 +1614,7 @@ class Dashboard {
 
     } catch (error) {
       this.showNotification(`Failed to process file: ${error.message}`, 'error');
-      
+
       // Update status
       const importStatusText = document.getElementById('importStatusText');
       if (importStatusText) {
@@ -1787,7 +1845,7 @@ class Dashboard {
 
               // Check if note already exists
               const existingNote = this.notes.find(n => n.id === noteData.id);
-              
+
               if (existingNote) {
                 // Update existing note
                 await window.api.saveNote(noteData);
@@ -1799,7 +1857,7 @@ class Dashboard {
               }
 
               processedNotes++;
-              
+
               // Update progress
               const progress = 20 + (processedNotes / totalNotes) * 70;
               this.updateImportProgress(progress, `Importing notes... ${processedNotes}/${totalNotes}`);
@@ -1845,7 +1903,7 @@ class Dashboard {
     } catch (error) {
       console.error('Import failed:', error);
       this.showNotification(`Import failed: ${error.message}`, 'error');
-      
+
       // Reset button state
       const startImportBtn = document.getElementById('startImportBtn');
       if (startImportBtn) {
@@ -1907,7 +1965,7 @@ class Dashboard {
 
     // Create note items for selection
     const fragment = document.createDocumentFragment();
-    
+
     this.filteredNotes.forEach(note => {
       const noteItem = this.createExportNoteItem(note);
       fragment.appendChild(noteItem);
@@ -1980,12 +2038,12 @@ class Dashboard {
     // Select/Deselect all buttons
     const selectAllExportBtn = document.getElementById('selectAllExportBtn');
     const deselectAllExportBtn = document.getElementById('deselectAllExportBtn');
-    
+
     if (selectAllExportBtn) {
       this.selectAllExportHandler = () => this.selectAllExportNotes();
       selectAllExportBtn.addEventListener('click', this.selectAllExportHandler);
     }
-    
+
     if (deselectAllExportBtn) {
       this.deselectAllExportHandler = () => this.deselectAllExportNotes();
       deselectAllExportBtn.addEventListener('click', this.deselectAllExportHandler);
@@ -2099,11 +2157,11 @@ class Dashboard {
   updateExportNoteItemUI(noteId) {
     const noteItem = document.querySelector(`[data-note-id="${noteId}"]`);
     const checkbox = noteItem?.querySelector('.export-note-checkbox');
-    
+
     if (noteItem && checkbox) {
       const isSelected = this.selectedExportNotes.has(noteId);
       checkbox.checked = isSelected;
-      
+
       if (isSelected) {
         noteItem.classList.add('selected');
       } else {
@@ -2134,7 +2192,7 @@ class Dashboard {
       .forEach(note => {
         this.selectedExportNotes.add(note.id);
       });
-    
+
     this.updateAllExportNoteItemsUI();
     this.updateExportSelectedCount();
     this.updateExportButtonState();
@@ -2161,7 +2219,7 @@ class Dashboard {
         return;
     }
 
-    const notesToSelect = cutoffDate 
+    const notesToSelect = cutoffDate
       ? this.filteredNotes.filter(note => new Date(note.updatedAt) >= cutoffDate)
       : this.filteredNotes;
 
@@ -2182,11 +2240,11 @@ class Dashboard {
     noteItems.forEach(item => {
       const noteId = item.dataset.noteId;
       const checkbox = item.querySelector('.export-note-checkbox');
-      
+
       if (checkbox) {
         const isSelected = this.selectedExportNotes.has(noteId);
         checkbox.checked = isSelected;
-        
+
         if (isSelected) {
           item.classList.add('selected');
         } else {
@@ -2214,13 +2272,13 @@ class Dashboard {
   cancelExport() {
     // Reset export state
     this.selectedExportNotes = new Set();
-    
+
     // Reset form elements
     const selectByDomainCheckbox = document.getElementById('selectByDomainCheckbox');
     const selectByDateCheckbox = document.getElementById('selectByDateCheckbox');
     const domainBulkSelect = document.getElementById('domainBulkSelect');
     const dateBulkSelect = document.getElementById('dateBulkSelect');
-    
+
     if (selectByDomainCheckbox) selectByDomainCheckbox.checked = false;
     if (selectByDateCheckbox) selectByDateCheckbox.checked = false;
     if (domainBulkSelect) {
@@ -2234,7 +2292,7 @@ class Dashboard {
 
     // Hide progress
     this.hideExportProgress();
-    
+
     // Close modal
     window.app.hideModal('exportModal');
   }
@@ -2246,14 +2304,14 @@ class Dashboard {
     }
 
     const exportFormat = document.getElementById('exportFormat')?.value || 'json';
-    
+
     try {
       // Show progress
       this.showExportProgress();
       this.updateExportProgress(10, 'Preparing notes for export...');
 
       // Get selected notes data
-      const selectedNotes = this.filteredNotes.filter(note => 
+      const selectedNotes = this.filteredNotes.filter(note =>
         this.selectedExportNotes.has(note.id)
       );
 
@@ -2292,7 +2350,7 @@ class Dashboard {
       }
 
       const exportFormats = new window.ExportFormats();
-      
+
       this.updateExportProgress(80, 'Generating export file...');
 
       // Export and download with error handling
@@ -2574,7 +2632,7 @@ class Dashboard {
       }
 
       const exportFormats = new window.ExportFormats();
-      
+
       // Export as JSON by default for bulk export
       const isSingleNote = selectedNotes.length === 1;
       await exportFormats.exportAndDownload(notesData, 'json', isSingleNote);
@@ -2596,26 +2654,18 @@ class Dashboard {
     await this.loadNotes();
   }
 
-  // Subscription and upgrade banner management
-  async checkSubscriptionStatus() {
-    try {
-      // No auth check needed - we're already authenticated on dashboard
-      
-      // Check if subscription manager is available
-      if (window.subscriptionManager) {
-        await window.subscriptionManager.loadSubscriptionStatus();
-        this.handleUpgradeBanner(window.subscriptionManager.currentSubscription);
-      } else {
-        // Fallback: try to get subscription status directly
-        const response = await window.api.callFunction('subscription-api', {
-          action: 'get_subscription_status'
-        });
-        this.handleUpgradeBanner(response);
-      }
-    } catch (error) {
-      // Error checking subscription status
-      // Show upgrade banner by default if we can't determine status
-      this.showUpgradeBanner();
+  // Listen for subscription updates instead of making separate API calls
+  listenForSubscriptionUpdates() {
+    window.eventBus.on('subscription:updated', (subscriptionData) => {
+      // Update UI based on subscription changes
+      this.handleUpgradeBanner(subscriptionData);
+    });
+
+    // Check if subscription data is already cached in app
+    if (window.app?.subscriptionData) {
+      this.handleUpgradeBanner(window.app.subscriptionData);
+    } else if (window.subscriptionManager?.currentSubscription) {
+      this.handleUpgradeBanner(window.subscriptionManager.currentSubscription);
     }
   }
 
@@ -2626,7 +2676,7 @@ class Dashboard {
     }
 
     const isPremium = subscriptionData.subscription_tier === 'premium';
-    
+
     if (isPremium) {
       this.hideUpgradeBanner();
     } else {
@@ -2634,7 +2684,7 @@ class Dashboard {
       const dismissed = localStorage.getItem('upgradeBannerDismissed');
       const dismissedTime = dismissed ? parseInt(dismissed) : 0;
       const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
-      
+
       if (dismissedTime < oneDayAgo) {
         this.showUpgradeBanner();
       }
@@ -2645,23 +2695,21 @@ class Dashboard {
     const banner = document.getElementById('upgradeBanner');
     if (banner) {
       banner.classList.remove('hidden');
-      
-      // Set up event listeners if not already set
+
       const upgradeBtn = document.getElementById('upgradeFromBannerBtn');
       const dismissBtn = document.getElementById('dismissBannerBtn');
-      
+
       if (upgradeBtn && !upgradeBtn.hasAttribute('data-listener')) {
         upgradeBtn.setAttribute('data-listener', 'true');
         upgradeBtn.addEventListener('click', () => {
           if (window.subscriptionManager) {
             window.subscriptionManager.createCheckoutSession();
           } else {
-            // Fallback: redirect to account page
             window.location.href = '/account';
           }
         });
       }
-      
+
       if (dismissBtn && !dismissBtn.hasAttribute('data-listener')) {
         dismissBtn.setAttribute('data-listener', 'true');
         dismissBtn.addEventListener('click', () => {

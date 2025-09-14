@@ -2556,4 +2556,21 @@ port Modal Styles */
     width: 100%;
     margin-bottom: 0.5rem;
   }
+}/* R
+efresh button animation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.refresh-icon {
+  transition: transform 0.2s ease;
+}
+
+.refresh-icon:hover {
+  transform: rotate(15deg);
 }

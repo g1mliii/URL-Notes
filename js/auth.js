@@ -19,10 +19,18 @@ class Auth {
   }
 
   async init() {
+    // Skip initialization if already done by app.js
+    if (this.supabaseClient && this._initialized) {
+      return;
+    }
+
     // Initialize Supabase client from global instance
     if (window.supabaseClient) {
       this.supabaseClient = window.supabaseClient;
-      await this.supabaseClient.init();
+      // Skip init if already initialized by app.js
+      if (!this.supabaseClient._initialized) {
+        await this.supabaseClient.init();
+      }
     }
     
     // Initialize encryption library
@@ -36,31 +44,20 @@ class Auth {
     // Set up form listeners
     this.setupFormListeners();
     
-    // Check for OAuth callback and password reset
-    try {
-      // Don't await - call it without blocking
-      this.handleOAuthCallback().then(() => {
-        // OAuth callback completed
-      }).catch((error) => {
-        // Error in handleOAuthCallback
-      });
-    } catch (error) {
-      // Error calling handleOAuthCallback
-    }
+    // Check for OAuth callback and password reset (non-blocking)
+    this.handleOAuthCallback().catch(() => {
+      // OAuth callback error handled silently
+    });
     
     // Update auth UI based on current state
-    try {
-      await this.updateAuthUI();
-    } catch (error) {
-      // Error in updateAuthUI
-    }
+    this.updateAuthUI().catch(() => {
+      // Auth UI update error handled silently
+    });
     
     // Set up authentication state monitoring
-    try {
-      this.setupAuthStateMonitoring();
-    } catch (error) {
-      // Error in setupAuthStateMonitoring
-    }
+    this.setupAuthStateMonitoring();
+    
+    this._initialized = true;
   }
 
   // Initialize auth form elements (adapted from extension settings.js)

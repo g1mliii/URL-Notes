@@ -17,6 +17,11 @@ class ApplicationMonitor {
       errors: 0,
       performance: {}
     };
+    
+    // Production-ready logging configuration
+    this.isProduction = window.location.hostname === 'anchored.site' || 
+                       window.location.hostname.includes('anchored.site');
+    this.debugMode = !this.isProduction && localStorage.getItem('anchored_debug') === 'true';
 
     this.init();
   }
@@ -40,9 +45,9 @@ class ApplicationMonitor {
         this.startMonitoring();
       }, 2000);
 
-      // Application monitoring initialized
+      this.log('Application monitoring initialized');
     } catch (error) {
-      // Failed to initialize monitoring
+      this.log('Failed to initialize monitoring', error);
     }
   }
 
@@ -142,7 +147,7 @@ class ApplicationMonitor {
     this.errors.push(error);
     this.metrics.errors++;
 
-    // Application Error tracked
+    this.log('Application Error tracked', error.type);
 
     // Send error to monitoring service (in production)
     if (this.config?.environment === 'production') {
@@ -160,7 +165,7 @@ class ApplicationMonitor {
       sessionId: this.sessionId
     };
 
-    // Performance metric tracked
+    this.log(`Performance metric tracked: ${metric}`);
   }
 
   trackPageView() {
@@ -178,7 +183,7 @@ class ApplicationMonitor {
       }
     };
 
-    // Page view tracked
+    this.log('Page view tracked', pageView.url);
   }
 
   async performHealthCheck() {
@@ -195,14 +200,14 @@ class ApplicationMonitor {
         performance: this.getCurrentPerformanceMetrics()
       };
 
-      // Health check completed
+      this.log('Health check completed', healthCheck.supabase?.status);
 
       // Store health check result
       this.storeHealthCheck(healthCheck);
 
       return healthCheck;
     } catch (error) {
-      // Health check failed
+      this.logError('Health check failed', error);
       this.trackError({
         type: 'health_check',
         message: error.message,
@@ -308,13 +313,13 @@ class ApplicationMonitor {
       const target = event.target;
 
       if (target.matches('button, .btn-primary, .btn-secondary, .nav-link')) {
-        // User interaction tracked
+        this.log('User interaction tracked', target.tagName);
       }
     });
 
     // Track form submissions
     document.addEventListener('submit', (event) => {
-      // Form submission tracked
+      this.log('Form submission tracked');
     });
   }
 
@@ -325,11 +330,11 @@ class ApplicationMonitor {
         // Listen to auth events from the main auth module instead of direct Supabase client
         if (window.eventBus) {
           window.eventBus.on('auth:changed', (data) => {
-            // Auth state change tracked via event bus
+            this.log('Auth state change tracked via event bus');
           });
         }
       } catch (error) {
-        // Auth monitoring setup failed silently
+        this.log('Auth monitoring setup failed silently', error.message);
       }
     };
 
@@ -386,7 +391,7 @@ class ApplicationMonitor {
     const observer = new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
         if (entry.duration > 1000) { // Resources taking more than 1 second
-          // Slow resource detected
+          this.log(`Slow resource detected: ${entry.name} (${entry.duration}ms)`);
         }
       }
     });
@@ -406,7 +411,7 @@ class ApplicationMonitor {
 
       localStorage.setItem('anchored_errors', JSON.stringify(errors));
     } catch (e) {
-      // Failed to store error locally
+      this.log('Failed to store error locally', e.message);
     }
   }
 
@@ -422,14 +427,14 @@ class ApplicationMonitor {
 
       localStorage.setItem('anchored_health_checks', JSON.stringify(checks));
     } catch (e) {
-      // Failed to store health check locally
+      this.log('Failed to store health check locally', e.message);
     }
   }
 
   async sendErrorReport(error) {
     // In a real production environment, you would send this to a monitoring service
     // like Sentry, LogRocket, or a custom endpoint
-    // Error report would be sent to monitoring service
+    this.log('Error report would be sent to monitoring service');
   }
 
   async sendMetrics() {
@@ -441,7 +446,7 @@ class ApplicationMonitor {
       ...this.metrics
     };
 
-    // Metrics report generated
+    this.log('Metrics report generated', metrics.sessionId);
 
     // In production, send to analytics service
     if (this.config?.environment === 'production') {
@@ -452,6 +457,28 @@ class ApplicationMonitor {
 
   generateSessionId() {
     return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  }
+
+  // Production-ready logging method
+  log(message, data = null) {
+    if (this.debugMode) {
+      if (data) {
+        console.log(`[Anchored Monitor] ${message}`, data);
+      } else {
+        console.log(`[Anchored Monitor] ${message}`);
+      }
+    }
+    // In production, only log errors to avoid console clutter
+    // All monitoring data is stored locally and can be sent to monitoring service
+  }
+
+  // Error logging (always enabled for debugging)
+  logError(message, error = null) {
+    if (error) {
+      console.error(`[Anchored Monitor] ${message}`, error);
+    } else {
+      console.error(`[Anchored Monitor] ${message}`);
+    }
   }
 
   // Public API for manual error reporting
@@ -467,7 +494,7 @@ class ApplicationMonitor {
 
   // Public API for custom metrics
   reportMetric(name, value, tags = {}) {
-    // Custom metric reported
+    this.log(`Custom metric reported: ${name} = ${value}`);
   }
 
   // Get monitoring dashboard data

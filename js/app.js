@@ -1,3 +1,38 @@
+// Simple Event Bus for centralized state management
+class EventBus {
+  constructor() {
+    this.events = {};
+  }
+
+  emit(eventName, data) {
+    if (this.events[eventName]) {
+      this.events[eventName].forEach(callback => {
+        try {
+          callback(data);
+        } catch (error) {
+          // Event callback error
+        }
+      });
+    }
+  }
+
+  on(eventName, callback) {
+    if (!this.events[eventName]) {
+      this.events[eventName] = [];
+    }
+    this.events[eventName].push(callback);
+  }
+
+  off(eventName, callback) {
+    if (this.events[eventName]) {
+      this.events[eventName] = this.events[eventName].filter(cb => cb !== callback);
+    }
+  }
+}
+
+// Initialize global event bus
+window.eventBus = new EventBus();
+
 // Main Application Orchestrator
 class App {
   constructor() {
@@ -5,6 +40,8 @@ class App {
     this.isAuthenticated = false;
     this.authCheckInProgress = false;
     this.authCheckPromise = null;
+    this.subscriptionData = null; // Cache subscription data
+    this.subscriptionCheckInProgress = false;
     this.init();
   }
 
@@ -39,6 +76,11 @@ class App {
     // Check authentication status
     await this.checkAuthStatus();
 
+    // If authenticated, load subscription status once for all modules
+    if (this.isAuthenticated) {
+      await this.loadSubscriptionStatusOnce();
+    }
+
     // Initialize page-specific functionality
     this.initPageHandlers();
 
@@ -47,6 +89,58 @@ class App {
 
     // Hide loading state
     this.hideLoadingState();
+  }
+
+  // Centralized subscription status loading to avoid multiple API calls
+  async loadSubscriptionStatusOnce() {
+    if (this.subscriptionCheckInProgress) {
+      return;
+    }
+
+    this.subscriptionCheckInProgress = true;
+    
+    try {
+      // Check cache first
+      const cachedData = localStorage.getItem('cachedSubscription');
+      const cacheTime = localStorage.getItem('subscriptionCacheTime');
+      
+      if (cachedData && cacheTime) {
+        const age = Date.now() - parseInt(cacheTime);
+        if (age < 5 * 60 * 1000) { // 5 minutes cache
+          this.subscriptionData = JSON.parse(cachedData);
+          this.emitSubscriptionStateChange();
+          return;
+        }
+      }
+
+      // Load fresh data if not cached or expired
+      if (window.api) {
+        const response = await window.api.callFunction('subscription-api', {
+          action: 'get_subscription_status'
+        });
+
+        if (!response.error) {
+          this.subscriptionData = response;
+          
+          // Cache the response
+          localStorage.setItem('cachedSubscription', JSON.stringify(response));
+          localStorage.setItem('subscriptionCacheTime', Date.now().toString());
+          
+          this.emitSubscriptionStateChange();
+        }
+      }
+    } catch (error) {
+      // Subscription loading failed silently
+    } finally {
+      this.subscriptionCheckInProgress = false;
+    }
+  }
+
+  // Emit subscription state change event
+  emitSubscriptionStateChange() {
+    if (window.eventBus && this.subscriptionData) {
+      window.eventBus.emit('subscription:updated', this.subscriptionData);
+    }
   }
 
   // Show loading state for protected pages to prevent redirect flashing
@@ -93,19 +187,29 @@ class App {
     }
   }
 
-  // Wait for auth module to initialize
+  // Wait for auth module to initialize - optimized with Promise.all
   async waitForAuthModule() {
-    let attempts = 0;
-    const maxAttempts = 50; // 5 seconds max wait
+    // Use Promise.race for timeout instead of polling loop
+    const authModulePromise = new Promise((resolve) => {
+      const checkAuth = () => {
+        if (window.auth) {
+          resolve(window.auth);
+        } else {
+          setTimeout(checkAuth, 50); // Reduced polling interval
+        }
+      };
+      checkAuth();
+    });
 
-    while (!window.auth && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      attempts++;
-    }
+    const timeoutPromise = new Promise((resolve) => {
+      setTimeout(() => resolve(null), 3000); // Reduced timeout to 3 seconds
+    });
 
-    if (!window.auth) {
+    const result = await Promise.race([authModulePromise, timeoutPromise]);
+    if (!result) {
       // Auth module not available after timeout
     }
+    return result;
   }
 
   initTheme() {
@@ -139,10 +243,29 @@ class App {
     this.authCheckPromise = this._performAuthCheck();
     
     try {
-      await this.authCheckPromise;
+      const result = await this.authCheckPromise;
+      // Emit auth state change event for other modules to listen
+      this.emitAuthStateChange();
+      return result;
     } finally {
       this.authCheckInProgress = false;
       this.authCheckPromise = null;
+    }
+  }
+
+  // Emit auth state change event for centralized state management
+  emitAuthStateChange() {
+    const authData = {
+      isAuthenticated: this.isAuthenticated,
+      currentUser: this.currentUser
+    };
+    
+    // Use custom event system for auth state sharing
+    if (window.eventBus) {
+      window.eventBus.emit('auth:stateChanged', authData);
+    } else {
+      // Fallback: store in global state
+      window.authState = authData;
     }
   }
 

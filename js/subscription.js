@@ -7,18 +7,45 @@ class SubscriptionManager {
   }
 
   async init() {
-    // Wait for API to be available
+    // Wait for API to be available with timeout
+    let attempts = 0;
+    while (!window.api && attempts < 20) { // Reduced from infinite polling
+      await new Promise(resolve => setTimeout(resolve, 100));
+      attempts++;
+    }
+
     if (window.api) {
       this.api = window.api;
-      await this.loadSubscriptionStatus();
-    } else {
-      // Wait for API to initialize
-      setTimeout(() => this.init(), 100);
+      
+      // Check if subscription data is already cached in app
+      if (window.app?.subscriptionData) {
+        this.currentSubscription = window.app.subscriptionData;
+        this.updateSubscriptionUI();
+      } else {
+        // Only load if not cached
+        await this.loadSubscriptionStatus();
+      }
     }
   }
 
   async loadSubscriptionStatus() {
     try {
+      // Check if data is already cached and recent (within 5 minutes)
+      const cachedData = localStorage.getItem('cachedSubscription');
+      const cacheTime = localStorage.getItem('subscriptionCacheTime');
+      
+      if (cachedData && cacheTime) {
+        const age = Date.now() - parseInt(cacheTime);
+        if (age < 5 * 60 * 1000) { // 5 minutes cache
+          this.currentSubscription = JSON.parse(cachedData);
+          this.updateSubscriptionUI();
+          
+          // Emit cached data to other modules
+          window.eventBus.emit('subscription:updated', this.currentSubscription);
+          return;
+        }
+      }
+
       const response = await this.api.callFunction('subscription-api', {
         action: 'get_subscription_status'
       });
@@ -29,7 +56,20 @@ class SubscriptionManager {
       }
 
       this.currentSubscription = response;
+      
+      // Cache the response
+      localStorage.setItem('cachedSubscription', JSON.stringify(response));
+      localStorage.setItem('subscriptionCacheTime', Date.now().toString());
+      
+      // Store in app for other modules
+      if (window.app) {
+        window.app.subscriptionData = response;
+      }
+      
       this.updateSubscriptionUI();
+      
+      // Emit to other modules
+      window.eventBus.emit('subscription:updated', response);
     } catch (error) {
       // Error loading subscription status
     }

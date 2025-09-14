@@ -7,14 +7,41 @@ class Account {
   }
 
   init() {
+    // Listen for auth state changes instead of doing separate auth check
+    window.eventBus.on('auth:stateChanged', (authData) => {
+      if (authData.isAuthenticated && authData.currentUser) {
+        this.user = authData.currentUser;
+        this.updateAccountUI({
+          email: authData.currentUser.email || 'Unknown',
+          created_at: authData.currentUser.created_at || new Date().toISOString(),
+          subscription_tier: 'free' // Will be updated by subscription manager
+        });
+      }
+    });
+
+    // Check if auth state is already available
+    if (window.authState?.isAuthenticated || (window.app?.isAuthenticated && window.app?.currentUser)) {
+      this.user = window.app?.currentUser || window.authState?.currentUser;
+      if (this.user) {
+        this.updateAccountUI({
+          email: this.user.email || 'Unknown',
+          created_at: this.user.created_at || new Date().toISOString(),
+          subscription_tier: 'free'
+        });
+      }
+    }
 
     // Add a small delay to ensure page is fully loaded
     setTimeout(() => {
       this.checkPaymentSuccess();
-    }, 1000);
+    }, 500); // Reduced delay
 
     this.setupEventListeners();
-    this.loadAccountData();
+    
+    // Load account data only if we don't have user from auth state
+    if (!this.user) {
+      this.loadAccountData();
+    }
   }
 
   checkPaymentSuccess() {

@@ -209,19 +209,6 @@
     - _Requirements: 8.1, 8.2_
 
 
-- [ ] 
-
-
-
-
-
-
-- [ ] 12. Testing and quality assurance
-  - [ ] 12.1 qa and testing and cleaning up for release
-    - add note refresh button to dashboard. as refresh arrow that spins in circle like other sites.
-    - make sure monitoring.js loggin and errors are ready so that we are publish and user ready for public. making sure we dont show console logs if that is industry standard for this not sure
-    - Verify data model validation and sanitization
-    - _Requirements: All requirements validation_
 
 
 
@@ -238,7 +225,6 @@
   - Test live payment processing
   - Verify production and subscription management
   - _Requirements: Stripe live transition
-
 
 
 
