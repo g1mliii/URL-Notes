@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "URL Notes",
+  "name": "Anchored – Notes & Highlights for Websites",
   "version": "1.1.0",
-  "description": "Take notes on any website with beautiful glassmorphism design",
+  "description": "Anchored helps you take contextual notes tied to websites and URLs while you browse. Highlight text, attach references, and save notes directly linked to the pages you visit, so you can remember what you read, organize your research, and keep track of important content. Key Features: Take notes directly on any website or URL, Highlight text for quick reference, Attach contextual references to your notes, Notes are anchored to domains or pages for easy organization, Lightweight, fast, and designed for safe browsing. Perfect for: students, researchers, web enthusiasts, and anyone who wants organized, contextual web notes.",
   "permissions": [
     "storage",
     "activeTab",
@@ -22,7 +22,7 @@
     "128": "assets/icons/icon128x128.png"
   },
   "action": {
-    "default_title": "URL Notes",
+    "default_title": "Anchored – Notes & Highlights for Websites",
     "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "assets/icons/icon16x16.png",
@@ -42,7 +42,7 @@
       "suggested_key": {
         "default": "Alt+O"
       },
-      "description": "Open URL Notes"
+      "description": "Open Anchored"
     },
     "create_new_note": {
       "suggested_key": {

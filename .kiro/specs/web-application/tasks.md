@@ -146,11 +146,8 @@
     - _Requirements: 8.1, 8.2_
 
 
-- [x] 11.5 logo icon for logo beside header is too small i think the 32x32 is to small maybe use the 60x60
 
-
-
-
+- [-] 11.6 site logo near header on mobile and website is quite blurry lets make it higher resolution and scale down instead of using the corrct size image, also blends into background too much on mobile headerm i think because colors are similar 
 
 
 
@@ -165,13 +162,6 @@
   - Test live payment processing
   - Verify production and subscription management
   - _Requirements: Stripe live transition
-
-
-
-
-
-
-
 
 
 
