@@ -23,15 +23,11 @@ class Auth {
     if (window.supabaseClient) {
       this.supabaseClient = window.supabaseClient;
       await this.supabaseClient.init();
-    } else {
-      // Supabase client not available
     }
     
     // Initialize encryption library
     if (window.noteEncryption) {
       this.encryption = window.noteEncryption;
-    } else {
-      // Encryption library not available
     }
     
     // Initialize auth form elements

@@ -53,11 +53,13 @@ class Dashboard {
       throw new Error('Encryption module not available');
     }
 
-    // Initialize API client
-    try {
-      await window.api.init();
-    } catch (error) {
-      // API client initialization failed
+    // Skip API initialization if already done by app.js auth check
+    if (!window.api.accessToken) {
+      try {
+        await window.api.init();
+      } catch (error) {
+        // API client initialization failed
+      }
     }
 
     // Initialize storage if it has an init method
@@ -409,7 +411,6 @@ class Dashboard {
       this.cleanupOldDeletedNotes();
 
     } catch (error) {
-      // Error loading notes
       this.showErrorState(error.message);
     } finally {
       this.isLoading = false;
@@ -419,7 +420,6 @@ class Dashboard {
   // Clean up old deleted notes (runs in background)
   async cleanupOldDeletedNotes() {
     try {
-      // No auth check needed - we're already authenticated on dashboard
       if (window.api) {
         await window.api.cleanupOldDeletedNotes();
       }
@@ -430,7 +430,6 @@ class Dashboard {
 
   // Handle manual cleanup button click
   async handleManualCleanup() {
-    // No auth check needed - we're already authenticated on dashboard
     const confirmed = confirm('This will permanently delete notes that were deleted more than 24 hours ago. This action cannot be undone. Continue?');
     if (!confirmed) return;
 
@@ -449,7 +448,6 @@ class Dashboard {
         this.showNotification('No old deleted notes found to clean up', 'info');
       }
     } catch (error) {
-      // Manual cleanup failed
       this.showNotification('Failed to clean up deleted notes. Please try again.', 'error');
     } finally {
       // Restore button state

@@ -336,9 +336,6 @@ class Account {
 
   async loadAccountData() {
     try {
-      // No auth check needed - we're already authenticated on account page
-      // Just wait for API to be available
-
       // Wait for API to be available
       let apiAttempts = 0;
       while (!window.api && apiAttempts < 20) {
@@ -355,6 +352,7 @@ class Account {
       const currentUser = window.api.currentUser;
       if (!currentUser) {
         // Try to get user from cached session
+        const cachedSession = localStorage.getItem('supabase_session');
         if (cachedSession) {
           try {
             const sessionData = JSON.parse(cachedSession);
@@ -397,7 +395,6 @@ class Account {
         subscription_tier: profileData?.subscription_tier || 'free'
       };
 
-      // Loaded user data
       this.updateAccountUI(userData);
 
       // Auto-sync subscription status when account page loads (silently)
@@ -411,7 +408,6 @@ class Account {
       }
 
     } catch (error) {
-      // Error loading account data
       // Show placeholder data if loading fails
       this.updateAccountUI({
         email: 'Error loading email',

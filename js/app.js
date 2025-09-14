@@ -3,6 +3,8 @@ class App {
   constructor() {
     this.currentUser = null;
     this.isAuthenticated = false;
+    this.authCheckInProgress = false;
+    this.authCheckPromise = null;
     this.init();
   }
 
@@ -128,6 +130,23 @@ class App {
   }
 
   async checkAuthStatus() {
+    // Prevent multiple simultaneous auth checks
+    if (this.authCheckInProgress) {
+      return this.authCheckPromise;
+    }
+
+    this.authCheckInProgress = true;
+    this.authCheckPromise = this._performAuthCheck();
+    
+    try {
+      await this.authCheckPromise;
+    } finally {
+      this.authCheckInProgress = false;
+      this.authCheckPromise = null;
+    }
+  }
+
+  async _performAuthCheck() {
     try {
       // Skip redirects for search engine crawlers
       if (this.isSearchEngineCrawler()) {
@@ -194,7 +213,6 @@ class App {
           if (currentPath.includes('/dashboard') || currentPath.includes('/account')) {
             // Only redirect if we're sure the user is not authenticated (not during initialization)
             if (attempts < maxAttempts) {
-              console.log('🚫 Redirecting to login: User not authenticated on protected page', currentPath);
               // Show a message and redirect after a short delay
               if (window.auth && window.auth.showNotification) {
                 window.auth.showNotification('Please sign in to access this page', 'info');
@@ -203,8 +221,6 @@ class App {
                 window.location.href = '/?redirect=' + encodeURIComponent(currentPath);
               }, 1500);
               return;
-            } else {
-              console.log('⚠️ Auth module timeout: Staying on page with cached session fallback');
             }
           }
           this.isAuthenticated = false;
@@ -343,7 +359,6 @@ class App {
     accountLinks.forEach(link => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
-        console.log('🔗 Account link clicked');
         this.handleAccountAccess();
       });
     });
@@ -353,7 +368,6 @@ class App {
     dashboardLinks.forEach(link => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
-        console.log('🔗 Dashboard link clicked');
         this.handleDashboardAccess();
       });
     });
@@ -409,9 +423,13 @@ class App {
 
   // Helper method to check authentication for navigation with cached session fallback
   checkAuthenticationForNavigation() {
+    // Use cached authentication state from main auth check to avoid redundant checks
+    if (this.isAuthenticated && this.currentUser) {
+      return true;
+    }
+
     // First check if auth module is available and user is authenticated
     if (window.auth && window.auth.isAuthenticated()) {
-      console.log('🔐 Auth check: Authenticated via auth module');
       return true;
     }
 
@@ -426,22 +444,14 @@ class App {
           const now = Date.now() / 1000; // Convert to seconds
           
           if (expiresAt > now) {
-            console.log('🔐 Auth check: Authenticated via cached session');
             return true; // Valid cached session
-          } else {
-            console.log('🔐 Auth check: Cached session expired');
           }
-        } else {
-          console.log('🔐 Auth check: Invalid cached session data');
         }
-      } else {
-        console.log('🔐 Auth check: No cached session found');
       }
     } catch (e) {
-      console.log('🔐 Auth check: Error checking cached session:', e);
+      // Error checking cached session
     }
 
-    console.log('🔐 Auth check: Not authenticated');
     return false;
   }
 

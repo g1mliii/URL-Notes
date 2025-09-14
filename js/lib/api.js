@@ -120,7 +120,6 @@ class SupabaseClient {
           try {
             await this.refreshSession();
           } catch (e) {
-            // Token refresh on init failed, signing out
             await this.signOut();
           }
         }
@@ -147,12 +146,12 @@ class SupabaseClient {
               } catch (_) { }
             }
           } catch (e) {
-            // Failed to handle profile on init
+            // Profile initialization failed
           }
         }
       }
     } catch (error) {
-      // Error initializing Supabase client
+      // Supabase client initialization error
     }
   }
 
