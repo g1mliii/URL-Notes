@@ -209,12 +209,7 @@
     - _Requirements: 8.1, 8.2_
 
 
-- [x] 11.2 when switching pages or refreshing we are checing auth 3 times in dashboard to account or refresh in general lets optimizes this, aslo there are 2 logs with no message showing up in console in app.js when we swirch from account to dashbord lets check what these are total of 5 logs with unknown origin when we refresh or switch from account to dashboard <other> no output so dont know what they are from might be from auth or edge funcitons not sure lets solve these issues.
-
-
-
-
-
+- [x] 11.2 fix mobile spacing issues 
 
 
 
