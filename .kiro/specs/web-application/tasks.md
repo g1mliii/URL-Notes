@@ -146,24 +146,11 @@
     - _Requirements: 8.1, 8.2_
 
 
-- [x] 11.5 implement logo and favicon for webpage and extension
+- [x] 11.5 logo icon for logo beside header is too small i think the 32x32 is to small maybe use the 60x60
 
 
 
 
-
-
-
-
-
-    - for favicon and webstie i have added logos in different sizes in in root folder
-    - i think chrome webpage uses, 16x16, 32x32, 48x48, 96x96, and 192x192 pixels 
-    - androind web should use 512x512 192x192 pixel 
-    - and ios 180x180  60x60 76x76 167x167 
-    - these could be wrong but i think these may be required for the webpage diff platforms not sure you can verify and add more if need be
-    -for chrome extension here is C:\Users\subai\Documents\Anchored\URL-Notes\extension\assets\icons ive attached these icons seperatley here since we have to submit them and this way you dont have to move them from root foler
-    - i think webstore uses 128x128, 32x32, 48x48 16x16
-    - also maybe we can add logo to header of webpage main area, or replace the a in anchored in header with the logo if possible
 
 
 
