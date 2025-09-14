@@ -15,17 +15,22 @@
 
   /* Additional mobile spacing fixes for very small screens */
   .account-section {
-    margin-bottom: 1.75rem;
-    padding: 1rem;
+    margin-bottom: 2.5rem !important;
+    padding: 1.5rem !important;
   }
 
   /* Ensure note editor has proper spacing on small screens */
   .note-panel .input-group {
-    margin-bottom: 1.75rem;
+    margin-bottom: 2.5rem !important;
   }
 
   .note-panel-content {
-    padding: 0.75rem;
+    padding: 1rem !important;
+  }
+
+  /* Force spacing for very small screens */
+  .note-edit .input-group {
+    margin-bottom: 2.5rem !important;
   }
 
   body {
@@ -609,25 +614,42 @@
     padding: 1rem;
   }
 
-  /* Fix mobile note editor spacing - add proper spacing between input groups */
+  /* Fix mobile note editor spacing - force proper spacing between input groups */
   .note-panel .input-group {
-    margin-bottom: 1.5rem; /* Increased spacing between input fields */
+    margin-bottom: 2rem !important; /* Force increased spacing with !important */
   }
 
   .note-panel .input-group:last-of-type {
-    margin-bottom: 1.5rem; /* Ensure last input group also has spacing */
+    margin-bottom: 2rem !important; /* Ensure last input group also has spacing */
   }
 
-  /* Specific spacing for note editor form elements */
+  /* Specific spacing for note editor form elements - force override */
   .note-edit .input-group {
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem !important;
+    padding: 0 !important; /* Remove any conflicting padding */
+  }
+
+  /* Force spacing for note editor inputs */
+  .note-edit input,
+  .note-edit textarea,
+  .note-edit .note-content-input {
+    margin-bottom: 0.5rem !important;
   }
 
   /* Add spacing for edit actions */
   .edit-actions {
-    margin-top: 1.5rem;
-    padding-top: 1rem;
+    margin-top: 2rem !important;
+    padding-top: 1.5rem !important;
     border-top: 1px solid var(--border-color);
+  }
+
+  /* Fix note form spacing specifically */
+  #noteForm .input-group {
+    margin-bottom: 2rem !important;
+  }
+
+  #noteForm .input-group:last-of-type {
+    margin-bottom: 2rem !important;
   }
 
   /* Notifications on mobile */
@@ -733,30 +755,39 @@
     padding: 1rem;
   }
 
+  /* Force proper spacing between account sections on mobile */
   .account-section {
-    margin-bottom: 2rem; /* Increased from 1.5rem to 2rem for better spacing */
-    padding: 1.25rem; /* Reduced padding slightly for mobile */
+    margin-bottom: 2.5rem !important; /* Force spacing with !important */
+    padding: 1.5rem !important; /* Increase padding for better touch targets */
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 12px !important;
   }
 
-  /* Add proper spacing between sections */
-  .account-section:not(:last-child) {
-    margin-bottom: 2rem;
+  /* Ensure last section also has bottom margin */
+  .account-section:last-child {
+    margin-bottom: 2.5rem !important;
   }
 
-  /* Ensure proper spacing for section content */
+  /* Add extra spacing between section elements */
   .account-section h3 {
-    margin-bottom: 1.25rem;
+    margin-bottom: 1.5rem !important;
+  }
+
+  .account-section > * + * {
+    margin-top: 1.25rem !important;
   }
 
   /* Fix subscription details spacing on mobile */
   .subscription-details {
-    margin: 1.5rem 0;
-    padding: 1.25rem;
+    margin: 1.5rem 0 !important;
+    padding: 1.5rem !important;
   }
 
   .subscription-actions {
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 1rem !important;
+    margin-top: 1.5rem !important;
   }
 
   .subscription-actions button {
@@ -765,7 +796,7 @@
 
   .data-actions {
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 1rem !important;
   }
 
   .data-actions button {
@@ -777,14 +808,32 @@
   }
 
   .premium-features li {
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem !important;
   }
 
   /* Add spacing for data management section */
   .data-note {
-    margin-top: 1rem;
-    padding-top: 1rem;
+    margin-top: 1.5rem !important;
+    padding-top: 1.5rem !important;
     border-top: 1px solid var(--border-color);
+  }
+
+  /* Fix info items spacing */
+  .info-item {
+    margin-bottom: 1rem !important;
+  }
+
+  .info-item:last-child {
+    margin-bottom: 0 !important;
+  }
+
+  /* Fix subscription info spacing */
+  .subscription-info > * {
+    margin-bottom: 1.5rem !important;
+  }
+
+  .subscription-info > *:last-child {
+    margin-bottom: 0 !important;
   }
 }
 
@@ -1490,5 +1539,147 @@ prehensive Mobile Safari White Bar Fix */
       overflow-y: scroll !important;
       -webkit-overflow-scrolling: touch !important;
     }
+  }
+}
+/* C
+RITICAL MOBILE SPACING FIXES - HIGHEST PRIORITY */
+/* These rules must override all other spacing rules on mobile */
+
+@media screen and (max-width: 767px) {
+  /* Account page section spacing - force override all other rules with higher specificity */
+  .app-container .account-main .account-container .account-section {
+    margin-bottom: 2.5rem !important;
+    padding: 1.5rem !important;
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 12px !important;
+  }
+
+  .app-container .account-main .account-container .account-section:last-child {
+    margin-bottom: 2.5rem !important;
+  }
+
+  .app-container .account-main .account-container .account-section h3 {
+    margin-bottom: 1.5rem !important;
+  }
+
+  /* Note editor input spacing - force override all other rules with higher specificity */
+  .app-container .dashboard-main .note-panel .note-panel-content .input-group,
+  .app-container .dashboard-main .note-panel .note-panel-content .note-edit .input-group,
+  .app-container .dashboard-main .note-panel .note-panel-content #noteForm .input-group {
+    margin-bottom: 2rem !important;
+    padding: 0 !important;
+  }
+
+  .app-container .dashboard-main .note-panel .note-panel-content .input-group:last-of-type,
+  .app-container .dashboard-main .note-panel .note-panel-content .note-edit .input-group:last-of-type,
+  .app-container .dashboard-main .note-panel .note-panel-content #noteForm .input-group:last-of-type {
+    margin-bottom: 2rem !important;
+  }
+
+  /* Edit actions spacing with higher specificity */
+  .app-container .dashboard-main .note-panel .note-panel-content .edit-actions {
+    margin-top: 2rem !important;
+    padding-top: 1.5rem !important;
+    border-top: 1px solid var(--border-color) !important;
+  }
+
+  /* Subscription actions spacing with higher specificity */
+  .app-container .account-main .account-container .subscription-actions {
+    margin-top: 1.5rem !important;
+    gap: 1rem !important;
+  }
+
+  /* Info items spacing with higher specificity */
+  .app-container .account-main .account-container .info-item {
+    margin-bottom: 1rem !important;
+  }
+
+  .app-container .account-main .account-container .info-item:last-child {
+    margin-bottom: 0 !important;
+  }
+
+  /* Additional specific overrides for stubborn elements */
+  .app-container .account-main .account-section .subscription-info,
+  .app-container .account-main .account-section .account-info,
+  .app-container .account-main .account-section .security-settings {
+    margin-bottom: 1.5rem !important;
+  }
+
+  .app-container .account-main .account-section .subscription-info:last-child,
+  .app-container .account-main .account-section .account-info:last-child,
+  .app-container .account-main .account-section .security-settings:last-child {
+    margin-bottom: 0 !important;
+  }
+}
+
+/* Extra small mobile devices - even more spacing */
+@media screen and (max-width: 480px) {
+  .app-container .account-main .account-container .account-section {
+    margin-bottom: 3rem !important;
+    padding: 1.75rem !important;
+  }
+
+  .app-container .dashboard-main .note-panel .note-panel-content .input-group,
+  .app-container .dashboard-main .note-panel .note-panel-content .note-edit .input-group,
+  .app-container .dashboard-main .note-panel .note-panel-content #noteForm .input-group {
+    margin-bottom: 2.5rem !important;
+  }
+
+  .app-container .dashboard-main .note-panel .note-panel-content .edit-actions {
+    margin-top: 2.5rem !important;
+    padding-top: 2rem !important;
+  }
+}
+/* FINAL M
+OBILE SPACING OVERRIDES - NUCLEAR OPTION */
+/* These are the most specific selectors possible to ensure spacing works */
+
+@media screen and (max-width: 767px) {
+  /* Force account section spacing with maximum specificity */
+  body .app-container .account-main .account-container section.account-section {
+    margin-bottom: 2.5rem !important;
+    padding: 1.5rem !important;
+  }
+
+  body .app-container .account-main .account-container section.account-section:last-of-type {
+    margin-bottom: 2.5rem !important;
+  }
+
+  /* Force note editor input spacing with maximum specificity */
+  body .app-container .dashboard-main div.note-panel div.note-panel-content div.input-group {
+    margin-bottom: 2rem !important;
+  }
+
+  body .app-container .dashboard-main div.note-panel div.note-panel-content div.note-edit div.input-group {
+    margin-bottom: 2rem !important;
+  }
+
+  body .app-container .dashboard-main div.note-panel div.note-panel-content form#noteForm div.input-group {
+    margin-bottom: 2rem !important;
+  }
+
+  /* Force edit actions spacing */
+  body .app-container .dashboard-main div.note-panel div.note-panel-content div.edit-actions {
+    margin-top: 2rem !important;
+    padding-top: 1.5rem !important;
+    border-top: 1px solid var(--border-color) !important;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  /* Extra spacing for very small screens */
+  body .app-container .account-main .account-container section.account-section {
+    margin-bottom: 3rem !important;
+    padding: 1.75rem !important;
+  }
+
+  body .app-container .dashboard-main div.note-panel div.note-panel-content div.input-group {
+    margin-bottom: 2.5rem !important;
+  }
+
+  body .app-container .dashboard-main div.note-panel div.note-panel-content div.edit-actions {
+    margin-top: 2.5rem !important;
+    padding-top: 2rem !important;
   }
 }

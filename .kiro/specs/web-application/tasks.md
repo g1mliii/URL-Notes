@@ -210,25 +210,32 @@
 
 
 - [x] 11.2 fix mobile spacing issues currently in site on account page and editor area
-
-
-
-
-
     - in mobile view the section classes boxes are touching each other and dont have proper spacing/ padding between sections, 
     - secondly remove in data manamgment export all data button and back end of tha tbutton if any at all and leave the text that says For account deletion, please contact our support team at info@anchored.site.
     - thirdly when opening the note in mobile view the boxes there are also touching such as title box, urlbox, text box and tag box, they are all touching each other so incorrcet spacing here as well
+
+- [x] 11.3 fixes imployed in task 11.2 to get mobile spacing to fix did not work the spacing in both areas is sitll not correct im assuming something may be overriding th spacing or something else is going wrong. Only employ fixes to mobile stiles desktop is fine
+
+
+
+
+
+
+
+
 
 
 
 - [ ] 12. Testing and quality assurance
   - [ ] 12.1 qa and testing and cleaning up for release
-    - remove logging in webpage for public use, as well as any logging that is send from edge functions to console
-    - immplement performacne optimizations without changing style or design of webpage and mobile page
-    - fix dashboard notes not showing up when creating a new note and requirind a refresh of the page to be visible
+    - add note refresh button to dashboard. as refresh arrow that spins in circle like other sites.
     - make sure monitoring.js loggin and errors are ready so that we are publish and user ready for public. making sure we dont show console logs if that is industry standard for this not sure
     - Verify data model validation and sanitization
     - _Requirements: All requirements validation_
+
+
+
+
 
 
 
