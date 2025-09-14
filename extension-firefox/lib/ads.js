@@ -214,14 +214,14 @@ class AdManager {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    // Rotate between three ads: Upgrade (50%), NordVPN (30%), Vrbo (20%)
+    // Rotate between three ads: Upgrade (65%), NordVPN (17.5%), Vrbo (17.5%)
     const random = Math.random();
     let adType;
 
-    if (random < 0.5) {
+    if (random < 0.65) {
       adType = 'upgrade';
       this.showUpgradeAd();
-    } else if (random < 0.8) {
+    } else if (random < 0.825) {
       adType = 'nordvpn';
       this.showNordVPNAd();
     } else {

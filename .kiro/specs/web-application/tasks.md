@@ -209,17 +209,7 @@
     - _Requirements: 8.1, 8.2_
 
 
-- [x] 11.2 fix mobile spacing issues currently in site on account page and editor area
-    - in mobile view the section classes boxes are touching each other and dont have proper spacing/ padding between sections, 
-    - secondly remove in data manamgment export all data button and back end of tha tbutton if any at all and leave the text that says For account deletion, please contact our support team at info@anchored.site.
-    - thirdly when opening the note in mobile view the boxes there are also touching such as title box, urlbox, text box and tag box, they are all touching each other so incorrcet spacing here as well
-
-- [x] 11.3 fixes imployed in task 11.2 to get mobile spacing to fix did not work the spacing in both areas is sitll not correct im assuming something may be overriding th spacing or something else is going wrong. Only employ fixes to mobile stiles desktop is fine
-
-
-
-
-
+- [ ] 
 
 
 
