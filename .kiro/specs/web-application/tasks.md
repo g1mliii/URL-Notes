@@ -225,22 +225,13 @@
     - Verify data model validation and sanitization
     - _Requirements: All requirements validation_
 
-  - [ ] 12.2 Perform integration and end-to-end testing
-    - Test subscription management and payment processing
-    - _Requirements: All requirements validation_
-
-- [x] 14. stripe sanity check task 16 compatibilty with edge functions and our webpage code.
+  - [x] 12.2 when swapping between account and dashboard there are mutiple <other> logs without output im assuming mutiple auth checks tha are uncessary since we are already authenticated at this point lets try to fix this
 
 
 
 
 
-  - cleanup unused edge funcitons i believe the edge function in supabase are as follows sync notes, ai-rewrite, subscription-api, sync-all-subscriptions, sync-user subscriptions
-  - make sure sync subscription buttons functionality with edge function sync user subscritpiont sitll works with stripe migration implmentation where we changed from checkout session to product with product id, this wa done in task 16
-  - make sure sync all subscriptions compatibiliy also still works with strupe migratoin implmentation as well again where we changed checkout seesiont to product with product id. Which was also done in task 16
-  - update toast notification for sync subscription status to reword premium subscrition cancelled expired at wahtever date to be less confusing should be subscription expires at date subscritopn recurring billing cancelled something like that but shorter and more precise less confusing to user. and determine why this toast notification shows up for certain cancelled accounts and not others for example toast notification shows up for account that was created with old checkout system and older subsdcription that has cancelled date while newere subscription with task 16 version doesnt show toast, may be a differnce in implmentation in task 16 or some other issue with logic should be same so we should get same outcome unless there are some differnces in check.
-  
-  - _Requirements: strip task 16 sanity check and making sure everything is compatible
+
 
 - [ ] 15. stripe live transition and setup
   -if not already trigger sync subscriptin status when opening account section so that users dont have to do it manually. and so that when we redirect bck to account from stripe it works properluy.
@@ -253,20 +244,6 @@
   - _Requirements: Stripe live transition
 
 
-- [x] fix issue in supabase edge function sync-user subscritpin
-
-
-
-
-
-Property 'subscription_tier' does not exist on type '{}'.(2339)
-and subscription expiers in this code snippet     return new Response(JSON.stringify({
-      success: true,
-      updated: shouldUpdate,
-      subscription_tier: updateData.subscription_tier ?? profile.subscription_tier,
-      subscription_expires_at: updateData.subscription_expires_at ?? profile.subscription_expires_at,
-      message: statusMessage,
-      timestamp: new Date().toISOString()
 
 
 

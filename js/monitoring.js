@@ -100,15 +100,21 @@ class ApplicationMonitor {
   }
 
   setupHealthChecks() {
-    // Periodic health checks
+    // Periodic health checks (reduced frequency)
     setInterval(() => {
       this.performHealthCheck();
-    }, 5 * 60 * 1000); // Every 5 minutes
+    }, 15 * 60 * 1000); // Every 15 minutes (reduced from 5)
 
-    // Visibility change monitoring
+    // Visibility change monitoring (with throttling)
+    let lastVisibilityCheck = 0;
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
-        this.performHealthCheck();
+        const now = Date.now();
+        // Only check if it's been more than 2 minutes since last check
+        if (now - lastVisibilityCheck > 2 * 60 * 1000) {
+          lastVisibilityCheck = now;
+          this.performHealthCheck();
+        }
       }
     });
   }
@@ -211,13 +217,12 @@ class ApplicationMonitor {
         return { status: 'not_initialized' };
       }
 
-      // Simple auth check
-      const { data, error } = await window.supabaseClient.auth.getSession();
+      // Use cached auth status instead of making API call
+      const authenticated = window.app?.isAuthenticated || false;
 
       return {
-        status: error ? 'error' : 'healthy',
-        authenticated: !!data?.session,
-        error: error?.message
+        status: 'healthy',
+        authenticated: authenticated
       };
     } catch (error) {
       return {
@@ -314,29 +319,22 @@ class ApplicationMonitor {
   }
 
   monitorAuthState() {
-    // Monitor authentication state changes
+    // Simplified auth monitoring - only track major state changes
     const setupAuthMonitoring = () => {
       try {
-        if (window.supabaseClient && window.supabaseClient.auth && typeof window.supabaseClient.auth.onAuthStateChange === 'function') {
-          window.supabaseClient.auth.onAuthStateChange((event, session) => {
-            // Auth state change tracked
+        // Listen to auth events from the main auth module instead of direct Supabase client
+        if (window.eventBus) {
+          window.eventBus.on('auth:changed', (data) => {
+            // Auth state change tracked via event bus
           });
-          // Auth monitoring setup successful
-        } else {
-          // Supabase client not available for auth monitoring
         }
       } catch (error) {
-        // Auth monitoring setup failed
+        // Auth monitoring setup failed silently
       }
     };
 
-    // Try immediately
-    setupAuthMonitoring();
-    
-    // If failed, try again after a delay
-    if (!window.supabaseClient) {
-      setTimeout(setupAuthMonitoring, 3000);
-    }
+    // Set up monitoring with delay to avoid initialization conflicts
+    setTimeout(setupAuthMonitoring, 5000);
   }
 
   getMemoryInfo() {

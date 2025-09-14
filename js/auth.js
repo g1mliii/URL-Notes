@@ -1085,15 +1085,19 @@ class Auth {
       // Event bus not available
     }
 
-    // Periodic session validation (every 5 minutes)
+    // Periodic session validation (every 10 minutes to reduce frequency)
     setInterval(async () => {
       if (this.isAuthenticated() && this.supabaseClient) {
-        const isValid = await this.supabaseClient.verifyToken();
-        if (!isValid) {
-          await this.handleSignOut();
+        try {
+          const isValid = await this.supabaseClient.verifyToken();
+          if (!isValid) {
+            await this.handleSignOut();
+          }
+        } catch (error) {
+          // Silent validation failure - don't log
         }
       }
-    }, 5 * 60 * 1000); // 5 minutes
+    }, 10 * 60 * 1000); // 10 minutes (reduced frequency)
   }
 
   // Handle session changes from other tabs

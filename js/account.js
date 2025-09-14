@@ -336,20 +336,16 @@ class Account {
 
   async loadAccountData() {
     try {
-      // Loading account data
-
-      // Wait for API to be available
-      if (!window.api) {
-        // API not available yet, retrying
-        setTimeout(() => this.loadAccountData(), 500);
+      // Use cached auth status from app.js to avoid redundant checks
+      if (!window.app || !window.app.isAuthenticated) {
+        // User not authenticated - redirect to login
+        window.location.href = '/';
         return;
       }
 
-      // Check if user is authenticated
-      if (!window.api.isAuthenticated()) {
-        // User not authenticated
-        // Redirect to login or show error
-        window.location.href = '/';
+      // Wait for API to be available
+      if (!window.api) {
+        setTimeout(() => this.loadAccountData(), 500);
         return;
       }
 
@@ -388,7 +384,6 @@ class Account {
           await this.syncSubscriptionStatus(true); // Pass true for silent mode
         } catch (error) {
           // Silent sync failed, but don't show error to user
-          console.log('Silent subscription sync failed:', error);
         }
       }
 

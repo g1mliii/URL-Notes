@@ -397,15 +397,8 @@ class Dashboard {
     this.showLoadingState();
 
     try {
-      // Wait for auth module to be ready
-      let attempts = 0;
-      while (!window.auth && attempts < 50) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
-      }
-
-      // Check if user is authenticated
-      if (!window.api || !window.api.isAuthenticated()) {
+      // Use cached auth status from app.js to avoid redundant checks
+      if (!window.app || !window.app.isAuthenticated) {
         this.notes = [];
         this.filteredNotes = [];
         this.showEmptyState();
@@ -434,7 +427,8 @@ class Dashboard {
   // Clean up old deleted notes (runs in background)
   async cleanupOldDeletedNotes() {
     try {
-      if (window.api && window.api.isAuthenticated()) {
+      // Use cached auth status to avoid redundant checks
+      if (window.app && window.app.isAuthenticated && window.api) {
         await window.api.cleanupOldDeletedNotes();
       }
     } catch (error) {
@@ -444,7 +438,7 @@ class Dashboard {
 
   // Handle manual cleanup button click
   async handleManualCleanup() {
-    if (!window.api || !window.api.isAuthenticated()) {
+    if (!window.app || !window.app.isAuthenticated) {
       this.showNotification('Please sign in to clean up deleted notes', 'warning');
       return;
     }
@@ -1266,7 +1260,7 @@ class Dashboard {
 
     try {
       // Use the same deletion method as extension - sync with deletions array
-      if (window.api && window.api.isAuthenticated()) {
+      if (window.app && window.app.isAuthenticated && window.api) {
         // Prepare deletion payload in the same format as extension
         const deletionPayload = {
           operation: 'sync',
@@ -1302,8 +1296,8 @@ class Dashboard {
   }
 
   async syncNoteToCloud(noteData) {
-    // Only sync if user is authenticated
-    if (!window.api || !window.api.isAuthenticated()) {
+    // Only sync if user is authenticated (use cached status)
+    if (!window.app || !window.app.isAuthenticated) {
       return;
     }
 
@@ -1773,8 +1767,8 @@ class Dashboard {
       // Update progress
       this.updateImportProgress(10, 'Preparing import...');
 
-      // Check authentication
-      if (!window.api || !window.api.isAuthenticated()) {
+      // Check authentication (use cached status)
+      if (!window.app || !window.app.isAuthenticated) {
         throw new Error('Please sign in to import notes');
       }
 
@@ -2522,7 +2516,7 @@ class Dashboard {
       }
 
       // Delete from cloud using the same method as single note delete
-      if (window.api && window.api.isAuthenticated()) {
+      if (window.app && window.app.isAuthenticated && window.api) {
         // Prepare deletion payload in the same format as single note delete
         const deletionPayload = {
           operation: 'sync',
@@ -2626,7 +2620,7 @@ class Dashboard {
   // Subscription and upgrade banner management
   async checkSubscriptionStatus() {
     try {
-      if (!window.api || !window.api.isAuthenticated()) {
+      if (!window.app || !window.app.isAuthenticated) {
         return;
       }
 

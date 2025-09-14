@@ -86,9 +86,9 @@ class App {
 
       // Wait for auth module to initialize
       if (window.auth && window.auth.supabaseClient) {
-        // Use enhanced authentication status check
-        const isAuthed = await window.auth.checkAuthenticationStatus();
-        const user = await window.auth.getCurrentUser();
+        // Use simple authentication status check to avoid redundant API calls
+        const isAuthed = window.auth.isAuthenticated();
+        const user = window.auth.getCurrentUser();
 
         this.isAuthenticated = isAuthed;
         this.currentUser = user;
