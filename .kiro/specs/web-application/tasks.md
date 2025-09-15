@@ -150,7 +150,6 @@
 
 
 
-
 - [ ] 15. stripe live transition and setup
   -if not already trigger sync subscriptin status when opening account section so that users dont have to do it manually. and so that when we redirect bck to account from stripe it works properluy.
   - Replace separate "Manage Subscription" and "Billing History" buttons with single "Manage subscription"
