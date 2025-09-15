@@ -147,8 +147,6 @@
 
 
 
-- [-] do i need a license for my github repo and for my project currenly i dont think we have one
-
 
 
 

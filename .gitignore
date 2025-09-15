@@ -5,6 +5,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Environment variables
+.md
 .env
 .env.local
 .env.development
@@ -77,6 +78,7 @@ guide files/
 scripts/
 supabase/migrations/
 webhook-server/
+specs/
 
 # Keep essential files visible in public repo:
 # - Core web app files (HTML, CSS, JS)
