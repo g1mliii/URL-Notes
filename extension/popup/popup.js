@@ -1218,6 +1218,7 @@ class URLNotesApp {
 
     const contentInput = document.getElementById('noteContentInput');
     contentInput.addEventListener('input', () => {
+      this.editorManager.updateCharCount();
       this.saveDraftDebounced();
     });
     // Paste sanitization: allow only text, links, and line breaks

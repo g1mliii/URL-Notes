@@ -146,8 +146,15 @@
     - _Requirements: 8.1, 8.2_
 
 
+- [-]  11.5 underline bold strikthrough are not saving in extensino editor they should behave the same way as text save and draft logic currenly they are not applying in extension they reset on save of note and draft restor dont change draft logic or save logic or anything else just make it so these thigns are also saved along with the text
 
 
+
+
+
+
+
+    - similiarry also add a italics button with the other in the same group as bold underline and strikethrough 
 
 
 - [ ] 15. stripe live transition and setup

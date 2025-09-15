@@ -203,6 +203,9 @@ class EditorManager {
       // Bold: **text** -> <b>text</b>
       text = text.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
       
+      // Italics: *text* -> <i>text</i> (process after bold to avoid conflicts)
+      text = text.replace(/\*([^*]+)\*/g, '<i>$1</i>');
+      
       // Underline: __text__ -> <u>text</u>
       text = text.replace(/__([^_]+)__/g, '<u>$1</u>');
       
@@ -250,7 +253,7 @@ class EditorManager {
     
     // Then unescape our allowed formatting tags
     escaped = escaped
-      .replace(/&lt;(\/?(?:b|u|s|span[^&]*))&gt;/gi, '<$1>')
+      .replace(/&lt;(\/?(?:b|i|u|s|span[^&]*))&gt;/gi, '<$1>')
       .replace(/&lt;span style=&quot;([^&]*)&quot;&gt;/gi, '<span style="$1">');
     
     return escaped;
@@ -262,7 +265,7 @@ class EditorManager {
     tmp.innerHTML = html || '';
     // Remove disallowed tags by unwrapping while preserving line breaks.
     // For block elements, insert <br> boundaries to reflect visual line breaks.
-    const allowed = new Set(['A', 'BR', 'B', 'STRONG', 'U', 'S', 'STRIKE', 'SPAN']);
+    const allowed = new Set(['A', 'BR', 'B', 'STRONG', 'I', 'EM', 'U', 'S', 'STRIKE', 'SPAN']);
     const blockTags = new Set(['DIV', 'P', 'PRE', 'LI', 'UL', 'OL', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
     const walker = document.createTreeWalker(tmp, NodeFilter.SHOW_ELEMENT, null);
     const toRemove = [];
@@ -298,6 +301,13 @@ class EditorManager {
     tmp.querySelectorAll('b, strong').forEach(el => {
       const text = el.textContent;
       const md = document.createTextNode(`**${text}**`);
+      el.replaceWith(md);
+    });
+
+    // Italics tags
+    tmp.querySelectorAll('i, em').forEach(el => {
+      const text = el.textContent;
+      const md = document.createTextNode(`*${text}*`);
       el.replaceWith(md);
     });
 
@@ -1174,6 +1184,12 @@ class EditorManager {
       boldBtn.addEventListener('click', () => this.toggleFormat('bold'));
     }
 
+    // Italics button
+    const italicsBtn = document.getElementById('italicsBtn');
+    if (italicsBtn) {
+      italicsBtn.addEventListener('click', () => this.toggleFormat('italic'));
+    }
+
     // Underline button  
     const underlineBtn = document.getElementById('underlineBtn');
     if (underlineBtn) {
@@ -1353,11 +1369,15 @@ class EditorManager {
   updateFormatButtonStates() {
     try {
       const boldBtn = document.getElementById('boldBtn');
+      const italicsBtn = document.getElementById('italicsBtn');
       const underlineBtn = document.getElementById('underlineBtn');  
       const strikethroughBtn = document.getElementById('strikethroughBtn');
       
       if (boldBtn) {
         boldBtn.classList.toggle('active', document.queryCommandState('bold'));
+      }
+      if (italicsBtn) {
+        italicsBtn.classList.toggle('active', document.queryCommandState('italic'));
       }
       if (underlineBtn) {
         underlineBtn.classList.toggle('active', document.queryCommandState('underline'));
