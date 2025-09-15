@@ -6,6 +6,7 @@
   "domain": "anchored.site",
   "repository": "https://github.com/g1mliii/Anchored",
   "timestamp": "2025-01-21T12:00:00Z",
+  "cache_version": "20250115103000",
   "deployment": {
     "method": "github-pages",
     "branch": "main",
@@ -65,6 +66,13 @@
     "target_load_time": "3s",
     "target_api_response": "2s",
     "monitoring_interval": "1m"
+  },
+  "cache_info": {
+    "css_cache": "24h",
+    "js_cache": "24h", 
+    "html_cache": "no-cache",
+    "last_cache_bust": "2025-01-15T10:30:00Z",
+    "cache_strategy": "dynamic_versioning"
   },
   "backup": {
     "frequency": "daily",

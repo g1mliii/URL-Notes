@@ -7,13 +7,27 @@
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://kqjcorjjvunmyrnzvqgr.supabase.co; style-src 'self' 'unsafe-inline'; connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co wss://kqjcorjjvunmyrnzvqgr.supabase.co; img-src 'self' data: https:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 
-# Cache control for static assets
+# Cache control for static assets - reduced cache time for easier updates
 /css/*
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, max-age=86400, must-revalidate
 
 /js/*
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, max-age=86400, must-revalidate
+
+# Images can be cached longer
+/*.png
+  Cache-Control: public, max-age=604800
+
+/*.jpg
+  Cache-Control: public, max-age=604800
+
+/*.svg
+  Cache-Control: public, max-age=604800
 
 # HTML files should not be cached
 /*.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# JSON files should not be cached
+/*.json
   Cache-Control: no-cache, no-store, must-revalidate

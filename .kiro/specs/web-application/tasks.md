@@ -146,7 +146,7 @@
     - _Requirements: 8.1, 8.2_
 
 
-- [x]  11.5 underline bold strikthrough are not saving in extensino editor they should behave the same way as text save and draft logic currenly they are not applying in extension they reset on save of note and draft restor dont change draft logic or save logic or anything else just make it so these thigns are also saved along with the text
+-  [x] 11.5 current cache busting implmentation and impact on note local storage and retrieval i want to make sure our cahce busting doesnt affect the notes storage and delteomn and other logic we have for it
 
 
 
@@ -156,7 +156,6 @@
 
 
 
-    - similiarry also add a italics button with the other in the same group as bold underline and strikethrough 
 
 
 - [ ] 15. stripe live transition and setup

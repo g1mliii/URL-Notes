@@ -17,6 +17,9 @@
     <meta http-equiv="X-XSS-Protection" content="1; mode=block">
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
     
+    <!-- Cache busting meta tag -->
+    <meta name="cache-version" content="{{ site.time | date: '%Y%m%d%H%M%S' }}">
+    
     <title>{% if page.title %}{{ page.title }} - {{ site.title }}{% else %}{{ site.title }}{% endif %}</title>
     
     <!-- Favicon and App Icons -->
@@ -38,16 +41,19 @@
     <!-- Web App Manifest -->
     <link rel="manifest" href="{{ '/manifest.json' | relative_url }}">
     
-    <link rel="stylesheet" href="{{ '/css/main.css' | relative_url }}?v=20250904t">
-    <link rel="stylesheet" href="{{ '/css/components.css' | relative_url }}?v=20250904t">
-    <link rel="stylesheet" href="{{ '/css/responsive.css' | relative_url }}?v=20250904t">
+    <link rel="stylesheet" href="{{ '/css/main.css' | relative_url }}?v={{ site.time | date: '%Y%m%d%H%M%S' }}">
+    <link rel="stylesheet" href="{{ '/css/components.css' | relative_url }}?v={{ site.time | date: '%Y%m%d%H%M%S' }}">
+    <link rel="stylesheet" href="{{ '/css/responsive.css' | relative_url }}?v={{ site.time | date: '%Y%m%d%H%M%S' }}">
 </head>
 <body>
     {{ content }}
     
+    <!-- Cache busting utility (load first) -->
+    <script src="{{ '/js/cache-buster.js' | relative_url }}?v={{ site.time | date: '%Y%m%d%H%M%S' }}"></script>
+    
     {% if page.scripts %}
         {% for script in page.scripts %}
-            <script src="{{ script | relative_url }}?v=20250904c"></script>
+            <script src="{{ script | relative_url }}?v={{ site.time | date: '%Y%m%d%H%M%S' }}"></script>
         {% endfor %}
     {% endif %}
 </body>

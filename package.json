@@ -24,7 +24,11 @@
     "deploy": "supabase functions deploy",
     "db:reset": "supabase db reset",
     "db:push": "supabase db push",
-    "types": "supabase gen types typescript --local > types/database.ts"
+    "types": "supabase gen types typescript --local > types/database.ts",
+    "cache:bust": "node scripts/update-cache-version.js",
+    "cache:deploy": "node scripts/deploy-with-cache-bust.js",
+    "cache:deploy:commit": "node scripts/deploy-with-cache-bust.js --commit",
+    "cache:test": "node scripts/test-cache-busting.js"
   },
   "devDependencies": {
     "supabase": "^2.34.3"

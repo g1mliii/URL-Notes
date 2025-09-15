@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Anchored – Notes & Highlights for Websites",
   "version": "1.1.0",
-  "description": "Anchored helps you take contextual notes tied to websites and URLs while you browse. Highlight text, attach references, and save notes directly linked to the pages you visit, so you can remember what you read, organize your research, and keep track of important content. Key Features: Take notes directly on any website or URL, Highlight text for quick reference, Attach contextual references to your notes, Notes are anchored to domains or pages for easy organization, Lightweight, fast, and designed for safe browsing. Perfect for: students, researchers, web enthusiasts, and anyone who wants organized, contextual web notes.",
+  "description": "Anchored helps take contextual notes tied to websites while you browse. Highlight text, and save notes linked pages you visit.",
   "permissions": [
     "storage",
     "activeTab",
