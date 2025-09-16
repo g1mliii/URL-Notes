@@ -3131,7 +3131,7 @@ class URLNotesApp {
 
     // Check if user is authenticated (required for usage tracking)
     if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
-      Utils.showToast('Please create an account to use AI Rewrite. Free users get 5 rewrites/month!', 'info');
+      Utils.showToast('Please create an account to use AI Rewrite. Free users get 30 rewrites/month!', 'info');
       // Optionally open settings to guide them to sign up
       setTimeout(() => {
         this.showSettings();
@@ -3327,12 +3327,12 @@ class URLNotesApp {
 
       // Get the current user and access token from custom client
       if (!window.supabaseClient.isAuthenticated()) {
-        throw new Error('Please create an account to use AI Rewrite. Free users get 5 rewrites/month!');
+        throw new Error('Please create an account to use AI Rewrite. Free users get 30 rewrites/month!');
       }
 
       const user = window.supabaseClient.getCurrentUser();
       if (!user) {
-        throw new Error('Please create an account to use AI Rewrite. Free users get 5 rewrites/month!');
+        throw new Error('Please create an account to use AI Rewrite. Free users get 30 rewrites/month!');
       }
 
       // Call our Edge Function which handles Gemini API
@@ -3908,7 +3908,7 @@ class URLNotesApp {
 
     // Check if user is authenticated (same pattern as AI summary)
     if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
-      Utils.showToast('Please create an account to use AI Rewrite. Free users get 5 rewrites/month!', 'info');
+      Utils.showToast('Please create an account to use AI Rewrite. Free users get 30 rewrites/month!', 'info');
       return;
     }
 
@@ -3951,7 +3951,7 @@ class URLNotesApp {
   async executeAISummary() {
     // Check if user is authenticated (same pattern as AI rewrite)
     if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
-      Utils.showToast('Please create an account to use AI Summary. Free users get 5 summaries/month!', 'info');
+      Utils.showToast('Please create an account to use AI Summary. Free users get 30 summaries/month!', 'info');
       return;
     }
 
@@ -4137,7 +4137,7 @@ class URLNotesApp {
   async executeSiteContentSummary() {
     // Check if user is authenticated
     if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
-      Utils.showToast('Please create an account to use AI Summary. Free users get 5 summaries/month!', 'info');
+      Utils.showToast('Please create an account to use AI Summary. Free users get 30 summaries/month!', 'info');
       return;
     }
 
@@ -4383,7 +4383,7 @@ class URLNotesApp {
           if (isPremium) {
             remainingCalls.textContent = '500/month';
           } else {
-            remainingCalls.textContent = '5/month';
+            remainingCalls.textContent = '30/month';
           }
         }
 

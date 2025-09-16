@@ -55,7 +55,7 @@ serve(async (req) => {
                 throw bulkUpdateError
             }
 
-            // Update AI usage limits for downgraded users (5 calls for free tier)
+            // Update AI usage limits for downgraded users (30 calls for free tier)
             for (const profile of expiredProfiles) {
                 try {
                     await supabaseClient.rpc('check_ai_usage', {
@@ -68,7 +68,7 @@ serve(async (req) => {
             }
 
             expiredCount = expiredProfiles.length
-            console.log(`✅ Downgraded ${expiredCount} expired users to free with 5 AI calls/month`)
+            console.log(`✅ Downgraded ${expiredCount} expired users to free with 30 AI calls/month`)
         }
 
         // Get users with Stripe customer IDs that need Stripe API checks

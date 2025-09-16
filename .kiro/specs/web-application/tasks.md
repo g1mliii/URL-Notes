@@ -146,7 +146,7 @@
     - _Requirements: 8.1, 8.2_
 
 
-
+- [ ] 11.7 check if there is any flaw in our logic for updating user ai usage, when buying premium, and 
 
 
 

@@ -174,7 +174,7 @@ class SubscriptionManager {
       if (this.currentSubscription?.ai_usage) {
         const usage = this.currentSubscription.ai_usage;
         const remaining = usage.remainingCalls || 0;
-        const limit = usage.monthlyLimit || 5;
+        const limit = usage.monthlyLimit || 30;
         const used = limit - remaining;
         
         aiUsageInfo.textContent = `${used}/${limit} used this month`;
@@ -200,7 +200,7 @@ class SubscriptionManager {
       if (response.data) {
         const usage = response.data;
         const remaining = usage.remainingCalls || 0;
-        const limit = usage.monthlyLimit || 5;
+        const limit = usage.monthlyLimit || 30;
         const used = limit - remaining;
         
         aiUsageInfo.textContent = `${used}/${limit} used this month`;

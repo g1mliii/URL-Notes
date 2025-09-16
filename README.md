@@ -39,7 +39,7 @@ Anchored represents the concept of anchoring your thoughts and insights to speci
 - ✅ Unlimited notes on your device
 - ✅ Domain/URL organization
 - ✅ Basic export functionality
-- ✅ AI summarization (5 uses/month)
+- ✅ AI summarization (30 uses/month)
 
 ### Premium Tier - $2.50/month
 - ✅ Everything in Free tier
