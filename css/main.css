@@ -1068,3 +1068,276 @@ nt Success/Error Messages */
   margin: 0;
   opacity: 0.9;
 }
+
+/* PayPal Donation Button Styling */
+.donation-section {
+  text-align: center;
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(var(--backdrop-blur));
+}
+
+.donation-section h4 {
+  margin: 0 0 1rem 0;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+.paypal-donation-form {
+  display: inline-block;
+  margin: 1rem 0;
+}
+
+.donation-note {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 1rem 0 0 0;
+  font-style: italic;
+}
+
+/* Footer PayPal Donation Styling */
+.footer-donation {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.footer-paypal-form {
+  display: inline-block;
+}
+
+.footer-paypal-form input[type="image"] {
+  transition: opacity 0.2s ease;
+}
+
+.footer-paypal-form input[type="image"]:hover {
+  opacity: 0.8;
+}
+
+/* Help Page Specific Styling */
+.help-main {
+  padding: 2rem 0;
+  min-height: calc(100vh - 200px);
+}
+
+.help-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.help-intro {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.help-section {
+  margin-bottom: 3rem;
+}
+
+.help-section h3 {
+  color: var(--text-primary);
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  border-bottom: 2px solid var(--accent-primary);
+  padding-bottom: 0.5rem;
+}
+
+.help-content {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.help-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  backdrop-filter: blur(var(--backdrop-blur));
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.help-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px var(--shadow-dark);
+}
+
+.help-card h4 {
+  color: var(--text-primary);
+  margin: 0 0 1rem 0;
+  font-size: 1.2rem;
+}
+
+.help-card p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0.5rem 0;
+}
+
+.help-card ul {
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.help-card li {
+  margin: 0.5rem 0;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.premium-card {
+  border: 2px solid var(--accent-primary);
+  position: relative;
+}
+
+.premium-card::before {
+  content: "RECOMMENDED";
+  position: absolute;
+  top: -10px;
+  right: 20px;
+  background: var(--accent-primary);
+  color: var(--text-invert);
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+.shortcuts-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.shortcut-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.shortcut-keys {
+  display: flex;
+  gap: 0.5rem;
+  min-width: 120px;
+}
+
+.shortcut-keys kbd {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.shortcut-description {
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.help-note {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 1rem;
+}
+
+.faq-list {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.faq-item {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.5rem;
+  backdrop-filter: blur(var(--backdrop-blur));
+}
+
+.faq-item h4 {
+  color: var(--text-primary);
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+}
+
+.faq-item p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.contact-info {
+  text-align: center;
+  padding: 2rem;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(var(--backdrop-blur));
+}
+
+.contact-methods {
+  margin-top: 1.5rem;
+}
+
+.thanks-section {
+  background: var(--gradient-bg);
+  border-radius: 16px;
+  padding: 2rem;
+  text-align: center;
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(var(--backdrop-blur));
+}
+
+.thanks-content p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 1rem 0;
+  font-size: 1.05rem;
+}
+
+/* Responsive Design for Help Page */
+@media (max-width: 768px) {
+  .help-container {
+    padding: 0 1rem;
+  }
+  
+  .comparison-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .shortcut-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .shortcut-keys {
+    min-width: auto;
+  }
+  
+  .thanks-section {
+    padding: 1.5rem;
+  }
+}

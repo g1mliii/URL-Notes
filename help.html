@@ -1,0 +1,243 @@
+---
+layout: default
+title: "Help & Getting Started"
+permalink: /help/
+scripts:
+  - config.js
+  - js/app.js
+  - js/auth.js
+  - js/monitoring.js
+---
+    <div class="app-container">
+        <!-- Navigation Header -->
+        <header class="nav-header">
+            <div class="nav-content">
+                <div class="logo">
+                    <img src="/anchore wout background 512x512.png" alt="Anchored" class="logo-icon">
+                    <h1>Anchored</h1>
+                </div>
+                <nav class="nav-links">
+                    <a href="/" class="nav-link">Home</a>
+                    <a href="/dashboard" class="nav-link">Dashboard</a>
+                    <a href="/account" class="nav-link">Account</a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Help Content -->
+        <main class="help-main">
+            <div class="help-container">
+                <h2>Help & Getting Started</h2>
+                <p class="help-intro">Welcome to Anchored! Here's everything you need to know to get started with taking notes on any website.</p>
+
+                <!-- Getting Started Section -->
+                <section class="help-section">
+                    <h3>Getting Started</h3>
+                    <div class="help-content">
+                        <div class="help-card">
+                            <h4>1. Install the Browser Extension</h4>
+                            <p>Download and install the Anchored browser extension from the Chrome Web Store to start taking notes on any website.</p>
+                            <a href="https://chrome.google.com/webstore" class="btn-secondary" target="_blank">Get Extension</a>
+                        </div>
+                        
+                        <div class="help-card">
+                            <h4>2. Create Your Account</h4>
+                            <p>Sign up for a free account to sync your notes across devices and access premium features.</p>
+                        </div>
+                        
+                        <div class="help-card">
+                            <h4>3. Start Taking Notes</h4>
+                            <p>Use keyboard shortcuts (Alt+E to open popup, Alt+N for new note) or right-click context menu to create notes on any webpage.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Features Section -->
+                <section class="help-section">
+                    <h3>Key Features</h3>
+                    <div class="help-content">
+                        <div class="feature-grid">
+                            <div class="help-card">
+                                <h4>Smart Organization</h4>
+                                <p>Notes are automatically organized by website domain and specific pages for easy retrieval.</p>
+                            </div>
+                            
+                            <div class="help-card">
+                                <h4>Rich Text Editor</h4>
+                                <p>Format your notes with bold, italic, colors, lists, and more using our intuitive editor.</p>
+                            </div>
+                            
+                            <div class="help-card">
+                                <h4>Multi-Highlight Mode</h4>
+                                <p>Select multiple text snippets from a webpage and add them all to a single note at once.</p>
+                            </div>
+                            
+                            <div class="help-card">
+                                <h4>Context Menu Integration</h4>
+                                <p>Right-click on selected text to quickly add it to a new note or append to an existing one.</p>
+                            </div>
+                            
+                            <div class="help-card">
+                                <h4>Cloud Sync (Premium)</h4>
+                                <p>Sync your notes across all devices with end-to-end encryption for $2.50/month.</p>
+                            </div>
+                            
+                            <div class="help-card">
+                                <h4>AI Features (Premium)</h4>
+                                <p>Rewrite notes, generate summaries, and get AI assistance with 500 tokens per month.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Keyboard Shortcuts Section -->
+                <section class="help-section">
+                    <h3>Keyboard Shortcuts</h3>
+                    <div class="help-content">
+                        <div class="shortcuts-list">
+                            <div class="shortcut-item">
+                                <span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>E</kbd></span>
+                                <span class="shortcut-description">Open the Anchored popup</span>
+                            </div>
+                            <div class="shortcut-item">
+                                <span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>N</kbd></span>
+                                <span class="shortcut-description">Open popup directly in New Note mode</span>
+                            </div>
+                        </div>
+                        <p class="help-note">You can customize these shortcuts in Chrome's Extensions → Keyboard shortcuts page.</p>
+                    </div>
+                </section>
+
+                <!-- Free vs Premium Section -->
+                <section class="help-section">
+                    <h3>Free vs Premium</h3>
+                    <div class="help-content">
+                        <div class="comparison-grid">
+                            <div class="help-card">
+                                <h4>Free Features</h4>
+                                <ul>
+                                    <li>Unlimited local notes</li>
+                                    <li>Rich text editing</li>
+                                    <li>Context menu clipping</li>
+                                    <li>Multi-highlight mode</li>
+                                    <li>Basic export options</li>
+                                    <li>Last 5 versions per note</li>
+                                    <li>30 AI tokens per month</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="help-card premium-card">
+                                <h4>Premium Features ($2.50/month)</h4>
+                                <ul>
+                                    <li>Cloud sync with encryption</li>
+                                    <li>Web application access</li>
+                                    <li>Unlimited version history</li>
+                                    <li>500 AI tokens per month</li>
+                                    <li>Advanced export formats</li>
+                                    <li>Import functionality</li>
+                                    <li>Ad-free experience</li>
+                                    <li>Priority support</li>
+                                </ul>
+                                <a href="/account" class="btn-primary">Upgrade to Premium</a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- FAQ Section -->
+                <section class="help-section">
+                    <h3>Frequently Asked Questions</h3>
+                    <div class="help-content">
+                        <div class="faq-list">
+                            <div class="faq-item">
+                                <h4>How secure are my notes?</h4>
+                                <p>All your notes are encrypted with AES-256 encryption before being stored. We use a zero-knowledge architecture, meaning we never have access to your unencrypted notes.</p>
+                            </div>
+                            
+                            <div class="faq-item">
+                                <h4>Can I export my notes?</h4>
+                                <p>Yes! Free users can export to plain text, while Premium users have access to all formats including JSON, Markdown, Obsidian, Notion, and Google Docs.</p>
+                            </div>
+                            
+                            <div class="faq-item">
+                                <h4>What happens if I cancel my Premium subscription?</h4>
+                                <p>You'll retain access to Premium features until your current billing period ends. After that, you'll be moved to the free plan but keep all your notes.</p>
+                            </div>
+                            
+                            <div class="faq-item">
+                                <h4>How do I change my password?</h4>
+                                <p>Use the "Forgot Password" link on the login page. Your notes will remain accessible without any re-encryption needed.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Contact Section -->
+                <section class="help-section">
+                    <h3>Need More Help?</h3>
+                    <div class="help-content">
+                        <div class="contact-info">
+                            <p>If you can't find what you're looking for, we're here to help!</p>
+                            <div class="contact-methods">
+                                <a href="mailto:info@anchored.site" class="btn-secondary">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                        <polyline points="22,6 12,13 2,6"></polyline>
+                                    </svg>
+                                    Contact Support
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Thanks Section with PayPal Donation -->
+                <section class="help-section thanks-section">
+                    <h3>Thanks for Using Anchored!</h3>
+                    <div class="help-content">
+                        <div class="thanks-content">
+                            <p>We're grateful that you've chosen Anchored for your note-taking needs. Your support helps us continue developing and improving the platform.</p>
+                            
+                            <p>If Anchored has been helpful to you and you'd like to support our development, consider making a small donation. Every contribution helps us keep the lights on and continue building great features!</p>
+                            
+                            <!-- PayPal Donation Button -->
+                            <div class="donation-section">
+                                <h4>Support Our Development</h4>
+                                <form action="https://www.paypal.com/donate" method="post" target="_top" class="paypal-donation-form">
+                                    <input type="hidden" name="hosted_button_id" value="MY59EPX5WVVQU" />
+                                    <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" />
+                                    <img alt="" border="0" src="https://www.paypal.com/en_CA/i/scr/pixel.gif" width="1" height="1" />
+                                </form>
+                                <p class="donation-note">Thank you for considering a donation to support Anchored's development! ❤️</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="site-footer">
+            <div class="container">
+                <div class="footer-content">
+                    <div class="footer-links">
+                        <a href="/privacy" class="footer-link">Privacy Policy</a>
+                        <a href="/terms" class="footer-link">Terms of Service</a>
+                        <a href="/help" class="footer-link">Help</a>
+                        <a href="mailto:info@anchored.site" class="footer-link">Contact</a>
+                    </div>
+                    <div class="footer-text">
+                        <p>&copy; 2025 Anchored. All rights reserved.</p>
+                    </div>
+                    <!-- PayPal Donation in Footer -->
+                    <div class="footer-donation">
+                        <form action="https://www.paypal.com/donate" method="post" target="_top" class="footer-paypal-form">
+                            <input type="hidden" name="hosted_button_id" value="MY59EPX5WVVQU" />
+                            <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="Support Anchored development" alt="Donate with PayPal button" style="height: 32px; width: auto;" />
+                            <img alt="" border="0" src="https://www.paypal.com/en_CA/i/scr/pixel.gif" width="1" height="1" />
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
