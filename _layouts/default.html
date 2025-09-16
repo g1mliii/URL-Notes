@@ -22,12 +22,20 @@
     
     <title>{% if page.title %}{{ page.title }} - {{ site.title }}{% else %}{{ site.title }}{% endif %}</title>
     
-    <!-- Favicon and App Icons -->
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ '/anchore wout background 16x16.png' | relative_url }}">
+    <!-- Favicon and App Icons (optimized order for better browser selection) -->
+    <!-- Standard favicon (browsers will pick the best size) -->
     <link rel="icon" type="image/png" sizes="32x32" href="{{ '/anchore wout background 32x32.png' | relative_url }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ '/anchore wout background 16x16.png' | relative_url }}">
+    
+    <!-- Larger favicons for high-DPI displays and modern browsers -->
     <link rel="icon" type="image/png" sizes="48x48" href="{{ '/anchore wout background 48x48.png' | relative_url }}">
     <link rel="icon" type="image/png" sizes="96x96" href="{{ '/anchore wout background 96x96.png' | relative_url }}">
+    <link rel="icon" type="image/png" sizes="128x128" href="{{ '/anchore wout background 128x128.png' | relative_url }}">
     <link rel="icon" type="image/png" sizes="192x192" href="{{ '/anchore wout background 192x192.png' | relative_url }}">
+    
+    <!-- Fallback favicon.ico for older browsers -->
+    <link rel="shortcut icon" href="{{ '/favicon.ico' | relative_url }}" type="image/x-icon">
+    <link rel="icon" href="{{ '/favicon.ico' | relative_url }}" type="image/x-icon">
     
     <!-- Apple Touch Icons -->
     <link rel="apple-touch-icon" sizes="60x60" href="{{ '/anchore wout background 60x60.png' | relative_url }}">
