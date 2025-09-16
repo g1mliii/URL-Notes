@@ -147,10 +147,6 @@
 
 
 
-- [x] 11.9 in context menu dropdown for extension its still caled url notes not anchored
-
-
-
 
 
 

@@ -199,18 +199,18 @@ class EditorManager {
 
       let text = content || '';
       
-      // Convert formatting markers to HTML (process in order to avoid conflicts)
-      // Bold: **text** -> <b>text</b>
-      text = text.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+      // Convert formatting markers to HTML (process outermost first to handle nesting)
+      // Bold: **text** -> <b>text</b> (process first - outermost)
+      text = text.replace(/\*\*([^*]*(?:\*(?!\*)[^*]*)*)\*\*/g, '<b>$1</b>');
       
-      // Italics: *text* -> <i>text</i> (process after bold to avoid conflicts)
+      // Italics: *text* -> <i>text</i> (avoid conflict with bold)
       text = text.replace(/\*([^*]+)\*/g, '<i>$1</i>');
       
       // Underline: __text__ -> <u>text</u>
-      text = text.replace(/__([^_]+)__/g, '<u>$1</u>');
+      text = text.replace(/__([^_]*(?:_(?!_)[^_]*)*?)__/g, '<u>$1</u>');
       
-      // Strikethrough: ~~text~~ -> <s>text</s>
-      text = text.replace(/~~([^~]+)~~/g, '<s>$1</s>');
+      // Strikethrough: ~~text~~ -> <s>text</s> (process last - innermost)
+      text = text.replace(/~~([^~]*(?:~(?!~)[^~]*)*?)~~/g, '<s>$1</s>');
       
       // Color: {color:#ff0000}text{/color} -> <span style="color:#ff0000">text</span>
       text = text.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, '<span style="color:$1">$2</span>');
@@ -297,32 +297,52 @@ class EditorManager {
     toRemove.forEach(n => n.remove());
 
     // Convert formatting tags to markdown-style markers
-    // Bold tags
-    tmp.querySelectorAll('b, strong').forEach(el => {
-      const text = el.textContent;
-      const md = document.createTextNode(`**${text}**`);
-      el.replaceWith(md);
-    });
-
-    // Italics tags
-    tmp.querySelectorAll('i, em').forEach(el => {
-      const text = el.textContent;
-      const md = document.createTextNode(`*${text}*`);
-      el.replaceWith(md);
+    // Process innermost tags first to preserve nested formatting
+    // We need to process in reverse document order to handle nested tags correctly
+    
+    // Strikethrough tags (process first - innermost)
+    tmp.querySelectorAll('s, strike').forEach(el => {
+      const innerHTML = el.innerHTML;
+      const md = document.createElement('span');
+      md.innerHTML = `~~${innerHTML}~~`;
+      // Replace with the content, not a text node, to preserve nested HTML
+      while (md.firstChild) {
+        el.parentNode.insertBefore(md.firstChild, el);
+      }
+      el.remove();
     });
 
     // Underline tags
     tmp.querySelectorAll('u').forEach(el => {
-      const text = el.textContent;
-      const md = document.createTextNode(`__${text}__`);
-      el.replaceWith(md);
+      const innerHTML = el.innerHTML;
+      const md = document.createElement('span');
+      md.innerHTML = `__${innerHTML}__`;
+      while (md.firstChild) {
+        el.parentNode.insertBefore(md.firstChild, el);
+      }
+      el.remove();
     });
 
-    // Strikethrough tags  
-    tmp.querySelectorAll('s, strike').forEach(el => {
-      const text = el.textContent;
-      const md = document.createTextNode(`~~${text}~~`);
-      el.replaceWith(md);
+    // Italics tags
+    tmp.querySelectorAll('i, em').forEach(el => {
+      const innerHTML = el.innerHTML;
+      const md = document.createElement('span');
+      md.innerHTML = `*${innerHTML}*`;
+      while (md.firstChild) {
+        el.parentNode.insertBefore(md.firstChild, el);
+      }
+      el.remove();
+    });
+
+    // Bold tags (process last - outermost)
+    tmp.querySelectorAll('b, strong').forEach(el => {
+      const innerHTML = el.innerHTML;
+      const md = document.createElement('span');
+      md.innerHTML = `**${innerHTML}**`;
+      while (md.firstChild) {
+        el.parentNode.insertBefore(md.firstChild, el);
+      }
+      el.remove();
     });
 
     // Citation spans (preserve with special formatting) - process BEFORE color spans

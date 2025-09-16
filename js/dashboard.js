@@ -1858,11 +1858,11 @@ class Dashboard {
 
               if (existingNote) {
                 // Update existing note
-                await window.api.saveNote(noteData);
+                await window.storage.saveNote(noteData);
                 updatedCount++;
               } else {
                 // Import new note
-                await window.api.saveNote(noteData);
+                await window.storage.saveNote(noteData);
                 importedCount++;
               }
 

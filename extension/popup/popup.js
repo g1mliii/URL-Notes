@@ -1837,26 +1837,26 @@ class URLNotesApp {
         .replace(/>/g, '&gt;');
 
       let text = content || '';
-      
-      // Convert formatting markers to HTML (process in order to avoid conflicts)
-      // Bold: **text** -> <b>text</b>
-      text = text.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
-      
-      // Italics: *text* -> <i>text</i> (process after bold to avoid conflicts)
+
+      // Convert formatting markers to HTML (process outermost first to handle nesting)
+      // Bold: **text** -> <b>text</b> (process first - outermost)
+      text = text.replace(/\*\*([^*]*(?:\*(?!\*)[^*]*)*)\*\*/g, '<b>$1</b>');
+
+      // Italics: *text* -> <i>text</i> (avoid conflict with bold)
       text = text.replace(/\*([^*]+)\*/g, '<i>$1</i>');
-      
+
       // Underline: __text__ -> <u>text</u>
-      text = text.replace(/__([^_]+)__/g, '<u>$1</u>');
-      
-      // Strikethrough: ~~text~~ -> <s>text</s>
-      text = text.replace(/~~([^~]+)~~/g, '<s>$1</s>');
-      
+      text = text.replace(/__([^_]*(?:_(?!_)[^_]*)*?)__/g, '<u>$1</u>');
+
+      // Strikethrough: ~~text~~ -> <s>text</s> (process last - innermost)
+      text = text.replace(/~~([^~]*(?:~(?!~)[^~]*)*?)~~/g, '<s>$1</s>');
+
       // Color: {color:#ff0000}text{/color} -> <span style="color:#ff0000">text</span>
       text = text.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, '<span style="color:$1">$2</span>');
-      
+
       // Citation: {citation}text{/citation} -> <span style="font-style: italic; color: var(--text-secondary)">text</span>
       text = text.replace(/\{citation\}([^{]*)\{\/citation\}/g, '<span style="font-style: italic; color: var(--text-secondary)">$1</span>');
-      
+
       const lines = text.split(/\r?\n/);
       const mdLink = /\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g;
       const htmlLines = lines.map(line => {
@@ -1881,7 +1881,7 @@ class URLNotesApp {
       return (content || '').replace(/\n/g, '<br>');
     }
   }
-  
+
   // Helper method to escape HTML but preserve our formatting tags
   escapeHtmlExceptTags(text) {
     // First escape all HTML
@@ -1889,12 +1889,12 @@ class URLNotesApp {
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
-    
+
     // Then unescape our allowed formatting tags
     escaped = escaped
       .replace(/&lt;(\/?(?:b|i|u|s|span[^&]*))&gt;/gi, '<$1>')
       .replace(/&lt;span style=&quot;([^&]*)&quot;&gt;/gi, '<span style="$1">');
-    
+
     return escaped;
   }
 
@@ -1936,32 +1936,52 @@ class URLNotesApp {
     toRemove.forEach(n => n.remove());
 
     // Convert formatting tags to markdown-style markers
-    // Bold tags
-    tmp.querySelectorAll('b, strong').forEach(el => {
-      const text = el.textContent;
-      const md = document.createTextNode(`**${text}**`);
-      el.replaceWith(md);
-    });
+    // Process innermost tags first to preserve nested formatting
+    // We need to process in reverse document order to handle nested tags correctly
 
-    // Italics tags
-    tmp.querySelectorAll('i, em').forEach(el => {
-      const text = el.textContent;
-      const md = document.createTextNode(`*${text}*`);
-      el.replaceWith(md);
+    // Strikethrough tags (process first - innermost)
+    tmp.querySelectorAll('s, strike').forEach(el => {
+      const innerHTML = el.innerHTML;
+      const md = document.createElement('span');
+      md.innerHTML = `~~${innerHTML}~~`;
+      // Replace with the content, not a text node, to preserve nested HTML
+      while (md.firstChild) {
+        el.parentNode.insertBefore(md.firstChild, el);
+      }
+      el.remove();
     });
 
     // Underline tags
     tmp.querySelectorAll('u').forEach(el => {
-      const text = el.textContent;
-      const md = document.createTextNode(`__${text}__`);
-      el.replaceWith(md);
+      const innerHTML = el.innerHTML;
+      const md = document.createElement('span');
+      md.innerHTML = `__${innerHTML}__`;
+      while (md.firstChild) {
+        el.parentNode.insertBefore(md.firstChild, el);
+      }
+      el.remove();
     });
 
-    // Strikethrough tags  
-    tmp.querySelectorAll('s, strike').forEach(el => {
-      const text = el.textContent;
-      const md = document.createTextNode(`~~${text}~~`);
-      el.replaceWith(md);
+    // Italics tags
+    tmp.querySelectorAll('i, em').forEach(el => {
+      const innerHTML = el.innerHTML;
+      const md = document.createElement('span');
+      md.innerHTML = `*${innerHTML}*`;
+      while (md.firstChild) {
+        el.parentNode.insertBefore(md.firstChild, el);
+      }
+      el.remove();
+    });
+
+    // Bold tags (process last - outermost)
+    tmp.querySelectorAll('b, strong').forEach(el => {
+      const innerHTML = el.innerHTML;
+      const md = document.createElement('span');
+      md.innerHTML = `**${innerHTML}**`;
+      while (md.firstChild) {
+        el.parentNode.insertBefore(md.firstChild, el);
+      }
+      el.remove();
     });
 
     // Citation spans (preserve with special formatting) - process BEFORE color spans
@@ -1978,7 +1998,7 @@ class URLNotesApp {
         el.replaceWith(document.createTextNode(text));
       }
     });
-    
+
     // Color spans (process AFTER citation spans to avoid conflicts)
     tmp.querySelectorAll('span[style*="color"]').forEach(el => {
       const text = el.textContent;
