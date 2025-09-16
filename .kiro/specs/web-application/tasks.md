@@ -146,10 +146,6 @@
     - _Requirements: 8.1, 8.2_
 
 
--  [x] 11.5 current cache busting implmentation and impact on note local storage and retrieval i want to make sure our cahce busting doesnt affect the notes storage and delteomn and other logic we have for it
-
-
-
 
 
 
