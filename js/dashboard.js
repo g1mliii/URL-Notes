@@ -1933,18 +1933,27 @@ class Dashboard {
     }
   }
 
-  showExportModal() {
+  showExportModal(preSelectedNotes = null) {
+    // If preSelectedNotes is provided (from bulk export), use those
+    // Otherwise, start with empty selection
+    if (preSelectedNotes) {
+      this.selectedExportNotes = new Set(preSelectedNotes);
+    } else {
+      this.selectedExportNotes = new Set();
+    }
+
     this.initializeExportModal();
     window.app.showModal('exportModal');
   }
 
   initializeExportModal() {
     // Initialize export modal with current notes
-    this.selectedExportNotes = new Set();
+    // selectedExportNotes should already be set by showExportModal()
     this.populateExportNotesList();
     this.populateExportDomainFilter();
     this.setupExportEventListeners();
     this.updateExportSelectedCount();
+    this.updateExportButtonState();
   }
 
   populateExportNotesList() {
@@ -2602,51 +2611,8 @@ class Dashboard {
       return;
     }
 
-    const selectedNotes = this.notes.filter(note => this.selectedNotes.has(note.id));
-
-    try {
-      // Organize notes by domain (same format as extension and main export)
-      const notesData = {};
-      selectedNotes.forEach(note => {
-        if (!notesData[note.domain]) {
-          notesData[note.domain] = [];
-        }
-        // Clean the note data for export
-        const cleanNote = {
-          id: note.id,
-          title: note.title,
-          content: note.content,
-          url: note.url,
-          domain: note.domain,
-          tags: note.tags || [],
-          createdAt: note.createdAt,
-          updatedAt: note.updatedAt,
-          pageTitle: note.pageTitle || ''
-        };
-        notesData[note.domain].push(cleanNote);
-      });
-
-      // Use ExportFormats class for consistency
-      if (!window.ExportFormats) {
-        throw new Error('Export functionality not available. Please refresh the page and try again.');
-      }
-
-      const exportFormats = new window.ExportFormats();
-
-      // Export as JSON by default for bulk export
-      const isSingleNote = selectedNotes.length === 1;
-      await exportFormats.exportAndDownload(notesData, 'json', isSingleNote);
-
-      // Show success message
-      this.showNotification(`Successfully exported ${selectedNotes.length} note${selectedNotes.length !== 1 ? 's' : ''} as JSON`, 'success');
-
-      // Clear selection after successful export
-      this.deselectAllNotes();
-
-    } catch (error) {
-      console.error('Bulk export failed:', error);
-      this.showNotification(`Export failed: ${error.message}`, 'error');
-    }
+    // Show the export modal with the currently selected notes pre-selected
+    this.showExportModal(this.selectedNotes);
   }
 
   // Public method to refresh notes (can be called from other modules)
