@@ -28,7 +28,7 @@ try {
     }
   });
 } catch (_) { /* noop */ }
-// URL Notes Extension - Background Script (Service Worker)
+// Anchored Extension - Background Script (Service Worker)
 
 // --- Main Event Listeners ---
 
@@ -90,10 +90,10 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 function setupContextMenus() {
   try {
     chrome.contextMenus.removeAll(() => {
-      // Create a parent menu for URL Notes
+      // Create a parent menu for Anchored
       chrome.contextMenus.create({
         id: 'urlNotesParent',
-        title: 'URL Notes',
+        title: 'Anchored',
         contexts: ['selection', 'page']
       }, () => {
         if (chrome.runtime.lastError) {
