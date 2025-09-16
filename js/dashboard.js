@@ -993,6 +993,9 @@ class Dashboard {
       // Bold: **text** -> <b>text</b>
       text = text.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
 
+      // Italics: *text* -> <i>text</i> (process after bold to avoid conflicts)
+      text = text.replace(/\*([^*]+)\*/g, '<i>$1</i>');
+
       // Underline: __text__ -> <u>text</u>
       text = text.replace(/__([^_]+)__/g, '<u>$1</u>');
 
@@ -1040,7 +1043,7 @@ class Dashboard {
 
     // Then unescape our allowed formatting tags
     escaped = escaped
-      .replace(/&lt;(\/?(?:b|u|s|span[^&]*))&gt;/gi, '<$1>')
+      .replace(/&lt;(\/?(?:b|i|u|s|span[^&]*))&gt;/gi, '<$1>')
       .replace(/&lt;span style=&quot;([^&]*)&quot;&gt;/gi, '<span style="$1">');
 
     return escaped;
@@ -1136,6 +1139,13 @@ class Dashboard {
     tmp.querySelectorAll('b, strong').forEach(el => {
       const text = el.textContent;
       const md = document.createTextNode(`**${text}**`);
+      el.replaceWith(md);
+    });
+
+    // Italics tags
+    tmp.querySelectorAll('i, em').forEach(el => {
+      const text = el.textContent;
+      const md = document.createTextNode(`*${text}*`);
       el.replaceWith(md);
     });
 

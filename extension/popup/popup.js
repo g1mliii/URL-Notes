@@ -1836,26 +1836,66 @@ class URLNotesApp {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 
-      const lines = (content || '').split(/\r?\n/);
+      let text = content || '';
+      
+      // Convert formatting markers to HTML (process in order to avoid conflicts)
+      // Bold: **text** -> <b>text</b>
+      text = text.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+      
+      // Italics: *text* -> <i>text</i> (process after bold to avoid conflicts)
+      text = text.replace(/\*([^*]+)\*/g, '<i>$1</i>');
+      
+      // Underline: __text__ -> <u>text</u>
+      text = text.replace(/__([^_]+)__/g, '<u>$1</u>');
+      
+      // Strikethrough: ~~text~~ -> <s>text</s>
+      text = text.replace(/~~([^~]+)~~/g, '<s>$1</s>');
+      
+      // Color: {color:#ff0000}text{/color} -> <span style="color:#ff0000">text</span>
+      text = text.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, '<span style="color:$1">$2</span>');
+      
+      // Citation: {citation}text{/citation} -> <span style="font-style: italic; color: var(--text-secondary)">text</span>
+      text = text.replace(/\{citation\}([^{]*)\{\/citation\}/g, '<span style="font-style: italic; color: var(--text-secondary)">$1</span>');
+      
+      const lines = text.split(/\r?\n/);
       const mdLink = /\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g;
       const htmlLines = lines.map(line => {
         let out = '';
         let lastIndex = 0;
         let match;
         while ((match = mdLink.exec(line)) !== null) {
-          out += escapeHtml(line.slice(lastIndex, match.index));
+          // Don't escape the part that might contain our HTML tags
+          const beforeLink = line.slice(lastIndex, match.index);
+          out += this.escapeHtmlExceptTags(beforeLink);
           const text = escapeHtml(match[1]);
           const href = match[2];
           out += `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
           lastIndex = mdLink.lastIndex;
         }
-        out += escapeHtml(line.slice(lastIndex));
+        const afterLink = line.slice(lastIndex);
+        out += this.escapeHtmlExceptTags(afterLink);
         return out;
       });
       return htmlLines.join('<br>');
     } catch (e) {
       return (content || '').replace(/\n/g, '<br>');
     }
+  }
+  
+  // Helper method to escape HTML but preserve our formatting tags
+  escapeHtmlExceptTags(text) {
+    // First escape all HTML
+    let escaped = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    
+    // Then unescape our allowed formatting tags
+    escaped = escaped
+      .replace(/&lt;(\/?(?:b|i|u|s|span[^&]*))&gt;/gi, '<$1>')
+      .replace(/&lt;span style=&quot;([^&]*)&quot;&gt;/gi, '<span style="$1">');
+    
+    return escaped;
   }
 
   // Convert limited HTML back to markdown-like plain text for storage
@@ -1864,7 +1904,7 @@ class URLNotesApp {
     tmp.innerHTML = html || '';
     // Remove disallowed tags by unwrapping while preserving line breaks.
     // For block elements, insert <br> boundaries to reflect visual line breaks.
-    const allowed = new Set(['A', 'BR']);
+    const allowed = new Set(['A', 'BR', 'B', 'STRONG', 'I', 'EM', 'U', 'S', 'STRIKE', 'SPAN']);
     const blockTags = new Set(['DIV', 'P', 'PRE', 'LI', 'UL', 'OL', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
     const walker = document.createTreeWalker(tmp, NodeFilter.SHOW_ELEMENT, null);
     const toRemove = [];
@@ -1894,6 +1934,65 @@ class URLNotesApp {
       }
     }
     toRemove.forEach(n => n.remove());
+
+    // Convert formatting tags to markdown-style markers
+    // Bold tags
+    tmp.querySelectorAll('b, strong').forEach(el => {
+      const text = el.textContent;
+      const md = document.createTextNode(`**${text}**`);
+      el.replaceWith(md);
+    });
+
+    // Italics tags
+    tmp.querySelectorAll('i, em').forEach(el => {
+      const text = el.textContent;
+      const md = document.createTextNode(`*${text}*`);
+      el.replaceWith(md);
+    });
+
+    // Underline tags
+    tmp.querySelectorAll('u').forEach(el => {
+      const text = el.textContent;
+      const md = document.createTextNode(`__${text}__`);
+      el.replaceWith(md);
+    });
+
+    // Strikethrough tags  
+    tmp.querySelectorAll('s, strike').forEach(el => {
+      const text = el.textContent;
+      const md = document.createTextNode(`~~${text}~~`);
+      el.replaceWith(md);
+    });
+
+    // Citation spans (preserve with special formatting) - process BEFORE color spans
+    tmp.querySelectorAll('span[style*="font-style: italic"][style*="color"]').forEach(el => {
+      const text = el.textContent;
+      // Check if this looks like a citation (italic + secondary color)
+      const style = el.getAttribute('style');
+      if (style.includes('font-style: italic') && style.includes('var(--text-secondary)')) {
+        // Mark as citation with special syntax
+        const md = document.createTextNode(`{citation}${text}{/citation}`);
+        el.replaceWith(md);
+      } else {
+        // Just unwrap if not a citation
+        el.replaceWith(document.createTextNode(text));
+      }
+    });
+    
+    // Color spans (process AFTER citation spans to avoid conflicts)
+    tmp.querySelectorAll('span[style*="color"]').forEach(el => {
+      const text = el.textContent;
+      const style = el.getAttribute('style');
+      const colorMatch = style.match(/color:\s*([^;]+)/);
+      if (colorMatch) {
+        const color = colorMatch[1].trim();
+        const md = document.createTextNode(`{color:${color}}${text}{/color}`);
+        el.replaceWith(md);
+      } else {
+        // If no color found, just unwrap
+        el.replaceWith(document.createTextNode(text));
+      }
+    });
 
     // Replace anchors with [text](href)
     tmp.querySelectorAll('a[href]').forEach(a => {

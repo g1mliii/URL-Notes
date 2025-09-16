@@ -1455,8 +1455,23 @@ Dashboard Specific Styles - Google Drive-like Layout */
   color: var(--text-strong);
 }
 
+.note-content-display b,
+.note-content-display strong {
+  font-weight: bold;
+}
+
+.note-content-display i,
+.note-content-display em {
+  font-style: italic;
+}
+
 .note-content-display u {
   text-decoration: underline;
+}
+
+.note-content-display s,
+.note-content-display strike {
+  text-decoration: line-through;
 }
 
 .note-content-display s {
@@ -1573,8 +1588,23 @@ Dashboard Specific Styles - Google Drive-like Layout */
   font-weight: 600;
 }
 
+.note-content-input b,
+.note-content-input strong {
+  font-weight: bold;
+}
+
+.note-content-input i,
+.note-content-input em {
+  font-style: italic;
+}
+
 .note-content-input u {
   text-decoration: underline;
+}
+
+.note-content-input s,
+.note-content-input strike {
+  text-decoration: line-through;
 }
 
 .note-content-input s {
