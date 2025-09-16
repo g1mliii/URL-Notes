@@ -145,21 +145,10 @@
     - Display import preview before processing
     - _Requirements: 8.1, 8.2_
 
-- [x] 11.7 implement paypal donation button in help and onboarding with <form action="https://www.paypal.com/donate" method="post" target="_top">
 
 
 
 
-
-
-
-
-
-<input type="hidden" name="hosted_button_id" value="MY59EPX5WVVQU" />
-<input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" />
-<img alt="" border="0" src="https://www.paypal.com/en_CA/i/scr/pixel.gif" width="1" height="1" />
-</form>
-code given by paypal maybe at bottom near the thanks part of help and onboarding and maybe alos in bottom footer of site somwher if we can add it without messing up the footer. 
 
 - [ ] 15. stripe live transition and setup
   -if not already trigger i think we may have implmented this sync subscriptin status when opening account section so that users dont have to do it manually. and so that when we redirect bck to account from stripe it works properluy.
