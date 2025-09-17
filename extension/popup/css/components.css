@@ -2096,71 +2096,11 @@ html[data-compact="1"] .notes-list {
   font-size: 14px;
 }
 
-/* Notes Counter */
-.notes-counter {
-  position: absolute;
-  /* Use absolute positioning within the notes container */
-  bottom: 80px;
-  /* Position above ads space */
-  right: 16px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
-  box-shadow: var(--glass-inset), var(--glass-shadow);
-  backdrop-filter: blur(var(--backdrop-blur));
-  -webkit-backdrop-filter: blur(var(--backdrop-blur));
-  font-size: 11px;
+/* Notes Count (inline with title) */
+.notes-count {
+  font-weight: 400;
   color: var(--text-secondary);
-  z-index: 100;
-  /* Ensure it's above all content */
-  transition: opacity 0.2s ease, bottom 0.3s ease;
-  pointer-events: none;
-  /* Don't interfere with scrolling */
-}
-
-/* When ads are not present (premium mode or no ads), position counter at the very bottom */
-.ad-container:not(:has(.ad-content:not(.ad-placeholder)))~.notes-container .notes-counter,
-.ad-container:has(.ad-content:not(.ad-placeholder):empty)~.notes-container .notes-counter,
-.ad-container[style*="display: none"]~.notes-container .notes-counter {
-  bottom: 16px;
-}
-
-/* Alternative check for when ad container is hidden */
-body:not(:has(.ad-container:not([style*="display: none"]))) .notes-counter {
-  bottom: 16px;
-}
-
-.notes-counter .counter-number {
-  font-weight: 600;
-  color: var(--text-primary);
-  font-size: 12px;
-}
-
-.notes-counter .counter-label {
   opacity: 0.8;
-}
-
-/* Hide counter when no notes */
-.notes-counter.hidden {
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* Compact mode adjustments */
-html[data-compact="1"] .notes-counter {
-  bottom: 70px;
-  /* Adjust for compact mode */
-  right: 12px;
-  padding: 4px 8px;
-  font-size: 10px;
-}
-
-html[data-compact="1"] .notes-counter .counter-number {
-  font-size: 11px;
 }
 
 /* Delete buttons: match New Note accent glass with white icon (except confirm/danger) */
@@ -2298,7 +2238,7 @@ html[data-view="site"] .note-item:hover::after {
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(8px);
-  z-index: 1000;
+  z-index: 10000; /* Higher than settings panel (5000) and ad container (1000) */
   display: flex;
   align-items: center;
   justify-content: center;

@@ -34,6 +34,9 @@ class SettingsManager {
     // Sync elements
     this.manualSyncBtn = document.getElementById('manualSyncBtn');
 
+    // Website link button
+    this.websiteLinkBtn = document.getElementById('websiteLinkBtn');
+
     this.currentFont = 'Default';
     this.currentFontSize = 12;
 
@@ -335,6 +338,9 @@ class SettingsManager {
     // Open advertising disclosure
     this.adDisclaimerBtn?.addEventListener('click', () => this.openAdDisclosure());
 
+    // Website link button
+    this.websiteLinkBtn?.addEventListener('click', () => this.openWebsite());
+
     // Ad disclaimer link in ad container
     const adDisclaimerLink = document.getElementById('adDisclaimerLink');
     adDisclaimerLink?.addEventListener('click', (e) => {
@@ -541,6 +547,22 @@ class SettingsManager {
       }
     } catch (_) {
       try { window.open('onboarding.html', '_blank'); } catch (__) { }
+    }
+  }
+
+  // Open Anchored website in new tab
+  openWebsite() {
+    try {
+      const websiteUrl = 'https://anchored.site';
+      if (chrome?.tabs?.create) {
+        chrome.tabs.create({ url: websiteUrl }).catch(() => {
+          try { window.open(websiteUrl, '_blank'); } catch (_) { }
+        });
+      } else {
+        window.open(websiteUrl, '_blank');
+      }
+    } catch (_) {
+      try { window.open('https://anchored.site', '_blank'); } catch (__) { }
     }
   }
 

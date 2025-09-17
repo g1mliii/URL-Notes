@@ -808,7 +808,7 @@ gap: 8px;
     0 8px 32px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 var(--shadow-light);
   z-index: 9999999999;
-  min-width: 180px;
+  min-width: 140px;
   animation: popup-fade-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -823,47 +823,12 @@ gap: 8px;
   }
 }
 
-.color-preset-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
-  justify-content: center;
-}
-
-.color-preset-row:last-of-type {
-  margin-bottom: 16px;
-}
-
-.color-preset {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  cursor: pointer;
-  border: 2px solid color-mix(in srgb, var(--border-color) 40%, transparent);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-
-.color-preset:hover {
-  border-color: var(--accent-primary);
-  transform: scale(1.15);
-  box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.15),
-    0 0 0 2px color-mix(in srgb, var(--accent-primary) 30%, transparent);
-}
-
-.color-preset[data-color="#ffffff"] {
-  border-color: var(--text-tertiary);
-}
+/* Color preset styles removed - simplified to custom color picker only */
 
 .custom-color-section {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding-top: 12px;
-  border-top: 1px solid color-mix(in srgb, var(--border-color) 30%, transparent);
   justify-content: center;
 }
 

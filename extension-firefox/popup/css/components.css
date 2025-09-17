@@ -2298,7 +2298,7 @@ html[data-view="site"] .note-item:hover::after {
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(8px);
-  z-index: 1000;
+  z-index: 10000; /* Higher than settings panel (100) and ad container (50) */
   display: flex;
   align-items: center;
   justify-content: center;

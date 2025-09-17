@@ -11,7 +11,7 @@ class NotesManager {
     const { app } = this;
     const notesList = document.getElementById('notesList');
     const searchInput = document.getElementById('searchInput');
-    const notesCounter = document.getElementById('notesCounter');
+    const notesCount = document.getElementById('notesCount');
     if (!notesList) return;
 
     // Use DocumentFragment for smoother rendering
@@ -20,7 +20,7 @@ class NotesManager {
     // Show empty state if no notes exist
     if (!app.allNotes || app.allNotes.length === 0) {
       this.showEmptyState(notesList, 'No notes yet', 'Create your first note to get started!');
-      if (notesCounter) notesCounter.classList.add('hidden');
+      if (notesCount) notesCount.style.display = 'none';
       return;
     }
 
@@ -33,7 +33,7 @@ class NotesManager {
     if (!app.allNotes || !Array.isArray(app.allNotes)) {
       console.warn('NotesManager.render: app.allNotes is not available, showing empty state');
       this.showEmptyState(notesList, 'Loading notes...');
-      if (notesCounter) notesCounter.classList.add('hidden');
+      if (notesCount) notesCount.style.display = 'none';
       return;
     }
 
@@ -83,18 +83,14 @@ class NotesManager {
     // 3) Render list or empty state
     if (filteredNotes.length === 0) {
       this.showEmptyState(notesList, 'No notes found', 'Try a different filter or create a new note.');
-      if (notesCounter) notesCounter.classList.add('hidden');
+      if (notesCount) notesCount.style.display = 'none';
       return;
     }
 
-    // Show counter and position it correctly
-    if (notesCounter) {
-      notesCounter.classList.remove('hidden');
-      const counterNumber = notesCounter.querySelector('#counterNumber');
-      if (counterNumber) counterNumber.textContent = filteredNotes.length;
-
-      // Check if ads are present and position counter accordingly
-      this.updateCounterPosition(notesCounter);
+    // Show counter inline with notes title
+    if (notesCount) {
+      notesCount.style.display = 'inline';
+      notesCount.textContent = `(${filteredNotes.length})`;
     }
 
     // Don't clear again - already cleared at the beginning
@@ -124,20 +120,16 @@ class NotesManager {
   async renderGroupedNotes(notes, container) {
     if (!notes || !Array.isArray(notes) || notes.length === 0) {
       container.innerHTML = '<div class="empty-state">No notes found</div>';
-      const notesCounter = document.getElementById('notesCounter');
-      if (notesCounter) notesCounter.classList.add('hidden');
+      const notesCount = document.getElementById('notesCount');
+      if (notesCount) notesCount.style.display = 'none';
       return;
     }
 
     // Show counter for grouped notes
-    const notesCounter = document.getElementById('notesCounter');
-    if (notesCounter) {
-      notesCounter.classList.remove('hidden');
-      const counterNumber = notesCounter.querySelector('#counterNumber');
-      if (counterNumber) counterNumber.textContent = notes.length;
-
-      // Check if ads are present and position counter accordingly
-      this.updateCounterPosition(notesCounter);
+    const notesCount = document.getElementById('notesCount');
+    if (notesCount) {
+      notesCount.style.display = 'inline';
+      notesCount.textContent = `(${notes.length})`;
     }
 
     // Check premium status once for all notes using cached function
@@ -582,28 +574,7 @@ class NotesManager {
     } catch (_) { }
   }
 
-  // Update counter position based on ads visibility
-  updateCounterPosition(counter) {
-    if (!counter) return;
 
-    try {
-      const adContainer = document.getElementById('adContainer');
-      const isAdsVisible = adContainer &&
-        adContainer.style.display !== 'none' &&
-        !adContainer.hidden &&
-        adContainer.offsetHeight > 0;
-
-      if (isAdsVisible) {
-        counter.style.bottom = '80px'; // Above ads
-      } else {
-        counter.style.bottom = '16px'; // At bottom
-      }
-    } catch (error) {
-      console.warn('Failed to update counter position:', error);
-      // Fallback to default position
-      counter.style.bottom = '16px';
-    }
-  }
 
   // Delete domain notes individually (for simplified sync)
   async deleteDomainNotesIndividually(domainNotes) {

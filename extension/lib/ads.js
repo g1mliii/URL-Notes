@@ -8,10 +8,55 @@ class AdManager {
     this.adConfig = {
       maxAdsPerHour: 5,
       cooldownMs: 12 * 60 * 1000, // 12 minutes between ads
+      displayDurationMs: 6 * 1000, // 6 seconds display time
+      nextAdDelayMs: 30 * 1000, // 30 seconds until next ad
     };
     this.lastAdTime = 0;
     this.adsShownThisHour = 0;
     this.hourlyResetTime = Date.now() + (60 * 60 * 1000);
+    this.currentAdTimeout = null;
+    this.nextAdTimeout = null;
+    this.storageKey = 'adTrackingData';
+  }
+
+  // Load ad tracking data from storage
+  async loadAdTrackingData() {
+    try {
+      const result = await chrome.storage.local.get([this.storageKey]);
+      const data = result[this.storageKey];
+      
+      if (data) {
+        this.lastAdTime = data.lastAdTime || 0;
+        this.adsShownThisHour = data.adsShownThisHour || 0;
+        this.hourlyResetTime = data.hourlyResetTime || (Date.now() + (60 * 60 * 1000));
+        
+        // Check if we need to reset the hourly counter
+        const now = Date.now();
+        if (now > this.hourlyResetTime) {
+          this.adsShownThisHour = 0;
+          this.hourlyResetTime = now + (60 * 60 * 1000);
+          await this.saveAdTrackingData();
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load ad tracking data:', error);
+    }
+  }
+
+  // Save ad tracking data to storage
+  async saveAdTrackingData() {
+    try {
+      const data = {
+        lastAdTime: this.lastAdTime,
+        adsShownThisHour: this.adsShownThisHour,
+        hourlyResetTime: this.hourlyResetTime,
+        updatedAt: Date.now()
+      };
+      
+      await chrome.storage.local.set({ [this.storageKey]: data });
+    } catch (error) {
+      console.warn('Failed to save ad tracking data:', error);
+    }
   }
 
   // Initialize ad system
@@ -21,6 +66,9 @@ class AdManager {
       return;
     }
 
+    // Load persistent ad tracking data first
+    await this.loadAdTrackingData();
+
     // Check if user should see ads
     const shouldShowAds = await this.shouldShowAds();
     if (!shouldShowAds) {
@@ -29,7 +77,7 @@ class AdManager {
     }
 
     // Show first ad after a delay
-    setTimeout(() => this.showAd(), 2000);
+    setTimeout(() => this.showAd(), 3000); // 3 seconds initial delay
   }
 
   // Check if user should see ads (free tier, ads enabled)
@@ -73,9 +121,10 @@ class AdManager {
 
     try {
       // Reset hourly counter if needed
-      if (Date.now() > this.hourlyResetTime) {
+      const now = Date.now();
+      if (now > this.hourlyResetTime) {
         this.adsShownThisHour = 0;
-        this.hourlyResetTime = Date.now() + (60 * 60 * 1000);
+        this.hourlyResetTime = now + (60 * 60 * 1000);
       }
 
       // Show ad container with animation
@@ -88,11 +137,24 @@ class AdManager {
       await this.loadAd();
 
       // Update tracking
-      this.lastAdTime = Date.now();
+      this.lastAdTime = now;
       this.adsShownThisHour++;
+
+      // Save tracking data to persistent storage
+      await this.saveAdTrackingData();
+
+      // Schedule ad to hide after display duration
+      this.scheduleAdHide();
 
     } catch (error) {
       this.showFallbackAd();
+      // Still update tracking and save for fallback ads
+      const now = Date.now();
+      this.lastAdTime = now;
+      this.adsShownThisHour++;
+      await this.saveAdTrackingData();
+      // Still schedule hide even for fallback ads
+      this.scheduleAdHide();
     }
   }
 
@@ -100,8 +162,16 @@ class AdManager {
   async canShowAd() {
     const now = Date.now();
 
-    // Check cooldown
-    if (now - this.lastAdTime < this.adConfig.cooldownMs) {
+    // Check if we need to reset the hourly counter
+    if (now > this.hourlyResetTime) {
+      this.adsShownThisHour = 0;
+      this.hourlyResetTime = now + (60 * 60 * 1000);
+      await this.saveAdTrackingData();
+    }
+
+    // Check minimum cooldown (display duration + next ad delay)
+    const minCooldown = this.adConfig.displayDurationMs + this.adConfig.nextAdDelayMs;
+    if (now - this.lastAdTime < minCooldown) {
       return false;
     }
 
@@ -340,6 +410,44 @@ class AdManager {
     document.head.appendChild(style);
   }
 
+  // Schedule ad to hide after display duration
+  scheduleAdHide() {
+    // Clear any existing timeout
+    if (this.currentAdTimeout) {
+      clearTimeout(this.currentAdTimeout);
+    }
+
+    console.log(`[AdManager] Ad will hide in ${this.adConfig.displayDurationMs / 1000} seconds`);
+
+    // Schedule ad to hide after display duration
+    this.currentAdTimeout = setTimeout(() => {
+      console.log('[AdManager] Hiding ad and scheduling next one');
+      this.hideAdContainer();
+      // Schedule next ad
+      this.scheduleNextAd();
+    }, this.adConfig.displayDurationMs);
+  }
+
+  // Schedule next ad to show
+  scheduleNextAd() {
+    // Clear any existing timeout
+    if (this.nextAdTimeout) {
+      clearTimeout(this.nextAdTimeout);
+    }
+
+
+    // Schedule next ad after delay
+    this.nextAdTimeout = setTimeout(async () => {
+
+      // Check if we can still show ads
+      if (await this.canShowAd()) {
+        this.showAd();
+      } else {
+        console.log('[AdManager] Cannot show ad - conditions not met');
+      }
+    }, this.adConfig.nextAdDelayMs);
+  }
+
   // Hide ad container
   hideAdContainer() {
     if (this.adContainer) {
@@ -426,14 +534,37 @@ class AdManager {
   }
 
   // Refresh ad (called when popup is reopened)
-  refreshAd() {
-    if (this.canShowAd()) {
+  async refreshAd() {
+    // Clear any existing timeouts to avoid conflicts
+    if (this.currentAdTimeout) {
+      clearTimeout(this.currentAdTimeout);
+      this.currentAdTimeout = null;
+    }
+    if (this.nextAdTimeout) {
+      clearTimeout(this.nextAdTimeout);
+      this.nextAdTimeout = null;
+    }
+
+    // Load current tracking data
+    await this.loadAdTrackingData();
+
+    // Check if we can show an ad
+    if (await this.canShowAd()) {
       setTimeout(() => this.showAd(), 1000);
     }
   }
 
   // Clean up
   destroy() {
+    // Clear any scheduled timeouts
+    if (this.currentAdTimeout) {
+      clearTimeout(this.currentAdTimeout);
+      this.currentAdTimeout = null;
+    }
+    if (this.nextAdTimeout) {
+      clearTimeout(this.nextAdTimeout);
+      this.nextAdTimeout = null;
+    }
     this.hideAdContainer();
   }
 }

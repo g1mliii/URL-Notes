@@ -1247,8 +1247,8 @@ class EditorManager {
           
           // Position the popup relative to the button
           const buttonRect = colorBtn.getBoundingClientRect();
-          const popupWidth = 180;
-          const popupHeight = 200;
+          const popupWidth = 140;
+          const popupHeight = 80;
           
           // Calculate position (below and to the right of button, but keep on screen)
           let left = buttonRect.left;
@@ -1272,15 +1272,7 @@ class EditorManager {
         }
       });
 
-      // Color presets
-      colorWheelPopup.addEventListener('click', (e) => {
-        const preset = e.target.closest('.color-preset');
-        if (preset) {
-          const color = preset.dataset.color;
-          this.applyColor(color);
-          colorWheelPopup.style.display = 'none';
-        }
-      });
+      // No color presets - removed for simplified interface
 
       // Custom color picker
       const customColorInput = document.getElementById('customColorInput');
