@@ -650,6 +650,16 @@ class URLNotesApp {
     } catch (error) {
       console.warn('Failed to initialize ad manager:', error);
     }
+
+    // Initialize onboarding tooltips for new users
+    try {
+      if (window.OnboardingTooltips) {
+        this.onboardingTooltips = new window.OnboardingTooltips();
+        await this.onboardingTooltips.init();
+      }
+    } catch (error) {
+      console.warn('Failed to initialize onboarding tooltips:', error);
+    }
   }
 
   // NEW: Restore cached UI state immediately to prevent visual shifts
@@ -2504,6 +2514,8 @@ class URLNotesApp {
     editor.classList.add('open', 'slide-in', 'editor-fade-in');
     // Mark editor as open but don't save draft yet (wait for user changes)
     this.persistEditorOpen(true);
+
+
 
     // Only save draft if we didn't restore one (to avoid overwriting restored content)
     if (!draftWasRestored) {

@@ -24,12 +24,12 @@ class AdManager {
     try {
       const result = await chrome.storage.local.get([this.storageKey]);
       const data = result[this.storageKey];
-      
+
       if (data) {
         this.lastAdTime = data.lastAdTime || 0;
         this.adsShownThisHour = data.adsShownThisHour || 0;
         this.hourlyResetTime = data.hourlyResetTime || (Date.now() + (60 * 60 * 1000));
-        
+
         // Check if we need to reset the hourly counter
         const now = Date.now();
         if (now > this.hourlyResetTime) {
@@ -52,7 +52,7 @@ class AdManager {
         hourlyResetTime: this.hourlyResetTime,
         updatedAt: Date.now()
       };
-      
+
       await chrome.storage.local.set({ [this.storageKey]: data });
     } catch (error) {
       console.warn('Failed to save ad tracking data:', error);
@@ -200,19 +200,22 @@ class AdManager {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    // Rotate between three ads: Upgrade (65%), NordVPN (17.5%), Vrbo (17.5%)
+    // Rotate between four ads: Upgrade (50%), NordVPN (16.7%), Vrbo (16.7%), New Banner (16.6%)
     const random = Math.random();
     let adType;
 
-    if (random < 0.65) {
+    if (random < 0.50) {
       adType = 'upgrade';
       this.showUpgradeAd();
-    } else if (random < 0.825) {
+    } else if (random < 0.667) {
       adType = 'nordvpn';
       this.showNordVPNAd();
-    } else {
+    } else if (random < 0.834) {
       adType = 'vrbo';
       this.showVrboAd();
+    } else {
+      adType = 'newbanner';
+      this.showNewBannerAd();
     }
   }
 
@@ -264,6 +267,31 @@ class AdManager {
     }
 
     this.addVrboStyles();
+  }
+
+  // Show new banner affiliate ad
+  showNewBannerAd() {
+    const adContent = document.getElementById('adContent');
+    if (!adContent) return;
+
+    adContent.innerHTML = `
+      <div class="newbanner-ad" id="newBannerAdBanner">
+        <img src="../assets/15575447-1729241297568.png" 
+             alt="Special Offer - Click to Learn More" 
+             class="newbanner-banner"
+             loading="lazy">
+      </div>
+    `;
+
+    // Add click event listener (CSP compliant)
+    const newBannerAd = document.getElementById('newBannerAdBanner');
+    if (newBannerAd) {
+      newBannerAd.addEventListener('click', () => {
+        this.openNewBanner();
+      });
+    }
+
+    this.addNewBannerStyles();
   }
 
   // Show upgrade ad
@@ -352,6 +380,41 @@ class AdManager {
         border-color: rgba(255, 140, 0, 0.4);
       }
       .vrbo-banner {
+        width: 100%;
+        height: auto;
+        display: block;
+        max-height: 58px;
+        object-fit: contain;
+        object-position: center;
+        background: transparent;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Add new banner ad styles
+  addNewBannerStyles() {
+    if (document.getElementById('newbanner-ad-styles')) return;
+
+    const style = document.createElement('style');
+    style.id = 'newbanner-ad-styles';
+    style.textContent = `
+      .newbanner-ad {
+        display: block;
+        width: 100%;
+        cursor: pointer;
+        border-radius: 6px;
+        overflow: hidden;
+        transition: all 0.2s ease;
+        border: 1px solid rgba(34, 197, 94, 0.2);
+        box-shadow: 0 2px 8px rgba(34, 197, 94, 0.1);
+      }
+      .newbanner-ad:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+        border-color: rgba(34, 197, 94, 0.4);
+      }
+      .newbanner-banner {
         width: 100%;
         height: auto;
         display: block;
@@ -507,6 +570,13 @@ class AdManager {
   openVrbo() {
     chrome.tabs.create({
       url: 'https://www.jdoqocy.com/click-101532226-13820699'
+    });
+  }
+
+  // Handle new banner affiliate click
+  openNewBanner() {
+    chrome.tabs.create({
+      url: 'https://www.tkqlhce.com/click-101532226-15575456'
     });
   }
 

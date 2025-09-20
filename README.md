@@ -3,7 +3,8 @@
 **Anchored** is a comprehensive note-taking solution that lets you anchor your ideas to specific web locations. Available as both a browser extension and web application, Anchored provides secure, encrypted note storage with intelligent organization and AI-powered features.
 
 🌊 **Live Web App**: [anchored.site](https://anchored.site)  
-🔗 **Browser Extension**: Available for Chrome, Brave, and Edge
+🔗 **Chrome Extension**: [Get it on Chrome Web Store](https://chromewebstore.google.com/detail/anchored-%E2%80%93-notes-highligh/llkmfidpbpfgdgjlohgpomdjckcfkllg)  
+📱 **Also Available**: Chrome, Brave, and Edge browsers
 
 ## ⚓ What is Anchored?
 
@@ -21,7 +22,7 @@ Anchored represents the concept of anchoring your thoughts and insights to speci
 ## 🚀 Getting Started
 
 ### Browser Extension
-1. Install from Chrome Web Store (coming soon)
+1. **[Install from Chrome Web Store](https://chromewebstore.google.com/detail/anchored-%E2%80%93-notes-highligh/llkmfidpbpfgdgjlohgpomdjckcfkllg)** 
 2. Click the Anchored icon in your browser toolbar
 3. Start taking notes on any website
 4. Notes are automatically organized by domain/URL

@@ -470,3 +470,38 @@ input[type="file"] {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Website link button styling to match other settings buttons */
+.website-link-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  min-height: 36px;
+}
+
+.website-link-btn:hover {
+  background: var(--bg-tertiary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-color: var(--accent-primary);
+}
+
+.website-link-btn:active {
+  transform: translateY(0);
+}
+
+.website-link-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+}

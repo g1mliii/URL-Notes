@@ -153,11 +153,11 @@
 
 
 
+- [ ] 15 finishing up 
 
 
 
-
-- [ ] 15. stripe live transition and setup
+- [ ] 15.1 stripe live transition and setup
   -if not already trigger i think we may have implmented this sync subscriptin status when opening account section so that users dont have to do it manually. and so that when we redirect bck to account from stripe it works properluy.
   - Replace separate "Manage Subscription" and "Billing History" buttons with single "Manage subscription"
   - Replace test Stripe API keys with live production keys i think they are only used in supabase 2 keys and product id and price id might need to be updated to live version as well as customer portal link for manage subscription button.
@@ -167,12 +167,14 @@
   - product id for live is prod_SzJCRQMmohjH3D
   - price id for live is  price_1S7o87PEFS1nRTYDqozxz8We
   - for supabase we arent using webhok anymore correct so i dont need that secret the only one i need is what and where do i put it/name it, becasue i think we transitioned away from using webhook since my sandbox doesnt have any webhooks etup and we had issues with edge function authentication using webhook im im correct, could be wrong we have webhook file in our repo but not sure if we are using it at all, i dont thikn we are.
+  -finally we should test to see if it working properly it should be since we are just transitioning over and it was already working but lets just check 
   - _Requirements: Stripe live transition
 
 
-
-
-
+- [ ] 15.3 modify the chrome extenion readme and the wbeist links to the new one
+  - modify linkeding url
+  - modify github descrip url to new extenion as well
+  - modify project hub url as well 
 
 
 

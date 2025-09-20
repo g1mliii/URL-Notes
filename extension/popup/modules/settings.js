@@ -335,6 +335,12 @@ class SettingsManager {
     // Open onboarding
     this.openOnboardingBtn?.addEventListener('click', () => this.openOnboarding());
 
+    // Add manual trigger for onboarding tooltips (for testing/re-showing)
+    const showTooltipsBtn = document.getElementById('showTooltipsBtn');
+    if (showTooltipsBtn) {
+      showTooltipsBtn.addEventListener('click', () => this.showOnboardingTooltips());
+    }
+
     // Open advertising disclosure
     this.adDisclaimerBtn?.addEventListener('click', () => this.openAdDisclosure());
 
@@ -367,6 +373,8 @@ class SettingsManager {
     this.loadShortcutDisplay();
     // Refresh auth UI
     this.updateAuthUI();
+
+
   }
 
   // Close settings panel
@@ -571,29 +579,41 @@ class SettingsManager {
     const dialog = document.getElementById('adDisclosureDialog');
     if (dialog) {
       dialog.style.display = 'block';
-      
+
       // Setup close button handlers
       const closeBtn = document.getElementById('adDisclosureCloseBtn');
       const okBtn = document.getElementById('adDisclosureOkBtn');
-      
+
       const closeDialog = () => {
         dialog.style.display = 'none';
       };
-      
+
       if (closeBtn) {
         closeBtn.onclick = closeDialog;
       }
-      
+
       if (okBtn) {
         okBtn.onclick = closeDialog;
       }
-      
+
       // Close on outside click
       dialog.onclick = (e) => {
         if (e.target === dialog) {
           closeDialog();
         }
       };
+    }
+  }
+
+  // Show onboarding tooltips manually
+  showOnboardingTooltips() {
+    try {
+      if (window.urlNotesApp && window.urlNotesApp.onboardingTooltips) {
+        // Force show main tooltips
+        window.urlNotesApp.onboardingTooltips.forceShowTooltips();
+      }
+    } catch (error) {
+      console.warn('Failed to show onboarding tooltips:', error);
     }
   }
 
