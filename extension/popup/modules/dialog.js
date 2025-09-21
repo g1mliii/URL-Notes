@@ -19,7 +19,12 @@ class CustomDialog {
 
     // Flush draft immediately when popup is deactivating to capture last keystrokes
     const flushDraft = () => {
-      try { this.saveEditorDraft(); } catch (_) {}
+      try {
+        // Call the main app's saveEditorDraft method if available
+        if (window.urlNotesApp && window.urlNotesApp.saveEditorDraft) {
+          window.urlNotesApp.saveEditorDraft();
+        }
+      } catch (_) { }
     };
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') flushDraft();

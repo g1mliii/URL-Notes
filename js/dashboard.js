@@ -170,10 +170,11 @@ class Dashboard {
       noteForm.addEventListener('submit', (e) => this.handleNoteSave(e));
     }
 
-    // Handle clicks on links in note content
+    // Handle clicks on links in note content (both display and edit modes)
     document.addEventListener('click', (e) => {
-      if (e.target.matches('.note-content-display a')) {
+      if (e.target.matches('.note-content-display a, #noteContentInput a')) {
         e.preventDefault();
+        e.stopPropagation(); // Prevent contenteditable from handling the click
         const href = e.target.getAttribute('href');
         if (href) {
           window.open(href, '_blank', 'noopener,noreferrer');
@@ -198,6 +199,9 @@ class Dashboard {
     window.addEventListener('beforeunload', () => {
       this.handlePageUnload();
     });
+
+    // Setup contenteditable link handling
+    this.setupContentEditableLinkHandling();
 
     // Selection functionality
     this.setupSelectionListeners();
@@ -227,6 +231,69 @@ class Dashboard {
         }, { passive: true });
       }
     });
+  }
+
+  setupContentEditableLinkHandling() {
+    // Add specific handling for links in contenteditable areas
+    const noteContentInput = document.getElementById('noteContentInput');
+    if (noteContentInput) {
+      // Remove any existing listeners to prevent duplicates
+      if (noteContentInput._linkHandlersAdded) {
+        return;
+      }
+
+      // Prevent default link behavior in contenteditable and handle manually
+      const clickHandler = (e) => {
+        if (e.target.tagName === 'A' && e.target.href) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          // Open link in new tab
+          window.open(e.target.href, '_blank', 'noopener,noreferrer');
+
+          // Prevent cursor positioning in contenteditable
+          return false;
+        }
+      };
+
+      const mousedownHandler = (e) => {
+        if (e.target.tagName === 'A' && e.target.href) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+      };
+
+      noteContentInput.addEventListener('click', clickHandler, true);
+      noteContentInput.addEventListener('mousedown', mousedownHandler, true);
+
+      // Mark that handlers have been added
+      noteContentInput._linkHandlersAdded = true;
+    }
+  }
+
+  setupContentEditableLinksForCurrentContent() {
+    // This method ensures that any dynamically added links in the contenteditable area
+    // are properly handled. Since we're using event delegation on the parent element,
+    // this is mainly for ensuring the content is properly set up.
+    const noteContentInput = document.getElementById('noteContentInput');
+    if (noteContentInput) {
+      // Make sure all links have proper attributes for external opening
+      const links = noteContentInput.querySelectorAll('a[href]');
+      links.forEach(link => {
+        // Ensure links have proper target and rel attributes
+        if (!link.hasAttribute('target')) {
+          link.setAttribute('target', '_blank');
+        }
+        if (!link.hasAttribute('rel')) {
+          link.setAttribute('rel', 'noopener noreferrer');
+        }
+
+        // Add a visual indicator that these are clickable links
+        link.style.cursor = 'pointer';
+        link.title = `Click to open: ${link.href}`;
+      });
+    }
   }
 
   setupSelectionListeners() {
@@ -1020,7 +1087,7 @@ class Dashboard {
           out += this.escapeHtmlExceptTags(beforeLink);
           const text = escapeHtml(match[1]);
           const href = match[2];
-          out += `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+          out += `<a href="${href}" target="_blank" rel="noopener noreferrer" style="cursor: pointer;" title="Click to open: ${href}">${text}</a>`;
           lastIndex = mdLink.lastIndex;
         }
         const afterLink = line.slice(lastIndex);
@@ -1108,6 +1175,9 @@ class Dashboard {
       contentInput.innerHTML = this.buildContentHtml(this.currentNote.content || '');
       tagsInput.value = (this.currentNote.tags || []).join(', ');
     }
+
+    // Ensure link handling is set up for the contenteditable area
+    this.setupContentEditableLinksForCurrentContent();
 
     // Focus on title field
     setTimeout(() => titleInput.focus(), 100);

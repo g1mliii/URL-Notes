@@ -156,7 +156,6 @@
 - [ ] 15 finishing up 
 
 
-
 - [ ] 15.1 stripe live transition and setup
   -if not already trigger i think we may have implmented this sync subscriptin status when opening account section so that users dont have to do it manually. and so that when we redirect bck to account from stripe it works properluy.
   - Replace separate "Manage Subscription" and "Billing History" buttons with single "Manage subscription"
@@ -171,10 +170,15 @@
   - _Requirements: Stripe live transition
 
 
-- [ ] 15.3 modify the chrome extenion readme and the wbeist links to the new one
-  - modify linkeding url
-  - modify github descrip url to new extenion as well
-  - modify project hub url as well 
+- [x] 15.3 modify the chrome extenion readme and the wbeist links to the new one if not already on it https://chromewebstore.google.com/detail/anchored-%E2%80%93-notes-highligh/llkmfidpbpfgdgjlohgpomdjckcfkllg
+
+
+
+
+
+  - sign in auth section in mobile mode the box that holds the email and password box is not centered
+  - also just update the readme in general
+
 
 
 

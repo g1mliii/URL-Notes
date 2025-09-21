@@ -62,8 +62,12 @@
     if (request.action === 'highlightText') {
       const fragText = extractTextFragment(request.href || '');
       const text = (fragText || request.text || '').trim();
-      if (text) scheduleHighlightAttempts(text);
-      // No response needed
+      if (text) {
+        scheduleHighlightAttempts(text);
+        sendResponse({ success: true, text: text });
+      } else {
+        sendResponse({ success: false, error: 'No text to highlight' });
+      }
       return false;
     }
       
@@ -807,6 +811,23 @@
     if (tokens[0] && tokens[0].length <= 2) {
       out.add(tokens.slice(1).join(' '));
     }
+    
+    // Add partial matches for short text (like "Also present was a 38")
+    if (tokens.length >= 2) {
+      // Try different combinations for short phrases
+      out.add(tokens.slice(0, 2).join(' ')); // First 2 words
+      out.add(tokens.slice(0, 3).join(' ')); // First 3 words
+      if (tokens.length >= 4) {
+        out.add(tokens.slice(0, 4).join(' ')); // First 4 words
+      }
+    }
+    
+    // Add variations without numbers (in case numbers are formatted differently)
+    const withoutNumbers = collapsed.replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
+    if (withoutNumbers && withoutNumbers !== collapsed) {
+      out.add(withoutNumbers);
+    }
+    
     return Array.from(out).filter(Boolean);
   }
 
@@ -934,17 +955,42 @@
       const u = new URL(href, window.location.origin);
       const hash = u.hash || '';
       const marker = ':~:text=';
-      const idx = hash.indexOf(marker);
-      if (idx === -1) return '';
-      // Extract substring after ':~:text='
-      let val = hash.substring(idx + marker.length);
-      // Stop at next parameter separator (&) or end
-      const amp = val.indexOf('&');
-      if (amp >= 0) val = val.substring(0, amp);
-      // The value may have comma-separated quotes; take first segment
-      const first = (val || '').split(',')[0];
-      return decodeURIComponent(first || '');
-    } catch {
+      
+      // Handle multiple text fragments by finding all occurrences
+      const fragments = [];
+      let searchStart = 0;
+      let idx;
+      
+      while ((idx = hash.indexOf(marker, searchStart)) !== -1) {
+        // Extract substring after ':~:text='
+        let val = hash.substring(idx + marker.length);
+        // Stop at next text fragment or parameter separator
+        const nextFragment = val.indexOf('#:~:text=');
+        const amp = val.indexOf('&');
+        
+        let endIdx = val.length;
+        if (nextFragment !== -1) endIdx = Math.min(endIdx, nextFragment);
+        if (amp !== -1) endIdx = Math.min(endIdx, amp);
+        
+        val = val.substring(0, endIdx);
+        
+        // The value may have comma-separated quotes; take first segment
+        const first = (val || '').split(',')[0];
+        if (first) {
+          fragments.push(decodeURIComponent(first));
+        }
+        
+        searchStart = idx + marker.length;
+      }
+      
+      if (fragments.length === 0) {
+        return '';
+      }
+      
+      // Use the last (most specific) fragment
+      return fragments[fragments.length - 1];
+      
+    } catch (error) {
       return '';
     }
   }

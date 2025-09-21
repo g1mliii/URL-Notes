@@ -243,23 +243,23 @@ class URLNotesApp {
     // Listen for background sync timer messages
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.action === 'sync-timer-triggered') {
-        console.log('🕐 Popup: Received sync-timer-triggered message from background');
+
 
         // Background timer fired, trigger sync
         if (window.syncEngine && window.syncEngine.canSync()) {
-          console.log('🕐 Popup: Can sync, triggering manualSync()...');
+
 
           window.syncEngine.manualSync().then(() => {
-            console.log('🕐 Popup: Sync completed successfully, sending restart-sync-timer message...');
+
             // After sync completes, restart the background timer for next cycle
             chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
           }).catch(() => {
-            console.log('🕐 Popup: Sync failed, sending restart-sync-timer message...');
+
             // Even if sync fails, restart timer for next cycle
             chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
           });
         } else {
-          console.log('🕐 Popup: Cannot sync, sending restart-sync-timer message...');
+
           // Can't sync, restart timer anyway for next cycle
           chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
         }
@@ -270,33 +270,33 @@ class URLNotesApp {
     try {
       const response = await chrome.runtime.sendMessage({ action: 'popup-opened' });
       if (response && response.shouldSync) {
-        console.log('🕐 Popup: Sync overdue by', Math.round(response.timeSinceLastSync / 1000), 'seconds, triggering sync now...');
+
 
         if (window.syncEngine) {
           const canSyncResult = await window.syncEngine.canSync();
           if (canSyncResult && canSyncResult.canSync) {
-            console.log('🕐 Popup: Can sync, triggering manualSync() for overdue sync...');
+
 
             window.syncEngine.manualSync().then(() => {
-              console.log('🕐 Popup: Overdue sync completed, sending restart-sync-timer message...');
+
               chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
             }).catch(() => {
-              console.log('🕐 Popup: Overdue sync failed, sending restart-sync-timer message...');
+
               chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
             });
           } else {
-            console.log('🕐 Popup: Cannot sync (not authenticated or no premium), sending restart-sync-timer message...');
+
             chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
           }
         } else {
-          console.log('🕐 Popup: No sync engine, sending restart-sync-timer message...');
+
           chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
         }
       } else if (response) {
-        console.log('🕐 Popup: Sync not due yet,', Math.round(response.timeRemaining / 1000), 'seconds remaining');
+
       }
     } catch (error) {
-      console.log('🕐 Popup: Could not check sync status:', error);
+
     }
 
     // Listen for global auth/tier changes
@@ -594,13 +594,6 @@ class URLNotesApp {
       }
       // Priority 2: previously open editor with cached draft
       // Only auto-open if there's a draft and the editor was actually open when popup closed
-      console.log('🔍 Checking for draft restoration:', {
-        hasEditorState: !!editorState,
-        hasNoteDraft: !!(editorState && editorState.noteDraft),
-        wasEditorOpen: !!(editorState && editorState.wasEditorOpen),
-        draftId: editorState?.noteDraft?.id,
-        draftTitle: editorState?.noteDraft?.title
-      });
 
       if (editorState && editorState.noteDraft && editorState.wasEditorOpen) {
         // Check if the draft is recent enough to auto-open (10 minutes to be more forgiving)
@@ -631,9 +624,9 @@ class URLNotesApp {
           await chrome.storage.local.remove('editorState');
         }
       } else if (editorState && editorState.noteDraft) {
-        console.log('⚠️ Draft found but wasEditorOpen is false, not restoring');
+
       } else {
-        console.log('ℹ️ No draft to restore');
+
       }
     } catch (_) {
       // Fallback to default filter
@@ -1233,8 +1226,16 @@ class URLNotesApp {
     });
     // Paste sanitization: allow only text, links, and line breaks
     contentInput.addEventListener('paste', (e) => this.handleEditorPaste(e));
-    // Intercept link clicks inside the editor
-    contentInput.addEventListener('click', (e) => this.handleEditorLinkClick(e));
+    // Intercept link clicks inside the editor (use capture phase to handle before contenteditable)
+    contentInput.addEventListener('click', (e) => this.handleEditorLinkClick(e), true);
+    // Also handle mousedown to prevent selection issues with links
+    contentInput.addEventListener('mousedown', (e) => {
+      if (e.target.tagName === 'A') {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    }, true);
 
     // Handle Enter key for list creation
     contentInput.addEventListener('keydown', (e) => this.editorManager.handleEditorKeyDown(e));
@@ -1304,9 +1305,43 @@ class URLNotesApp {
       if (this.currentNote) {
         const updated = this.allNotes.find(n => n.id === this.currentNote.id);
         if (updated) {
-          this.currentNote = { ...updated };
           const editorEl = document.getElementById('noteEditor');
-          if (editorEl && editorEl.style.display !== 'none') {
+          const isEditorOpen = editorEl && editorEl.style.display !== 'none';
+
+          // Check if editor has unsaved changes before replacing currentNote
+          let hasUnsavedChanges = false;
+          if (isEditorOpen) {
+            const titleHeader = document.getElementById('noteTitleHeader');
+            const contentInput = document.getElementById('noteContentInput');
+            const tagsInput = document.getElementById('tagsInput');
+
+            // Check if current editor content differs from the updated note
+            const currentTitle = (titleHeader && titleHeader.value) || '';
+            const currentContent = this.htmlToMarkdown(contentInput ? contentInput.innerHTML : '');
+            const currentTags = (tagsInput && tagsInput.value
+              ? tagsInput.value.split(',').map(t => t.trim()).filter(Boolean)
+              : []);
+
+            hasUnsavedChanges = (
+              currentTitle !== (updated.title || '') ||
+              currentContent !== (updated.content || '') ||
+              JSON.stringify(currentTags.sort()) !== JSON.stringify((updated.tags || []).sort())
+            );
+          }
+
+          // Only replace currentNote if there are no unsaved changes OR if the note content actually changed in storage
+          // This allows legitimate updates (like context menu appends) to override unsaved changes
+          const noteContentChanged = (
+            (updated.title || '') !== (this.currentNote.title || '') ||
+            (updated.content || '') !== (this.currentNote.content || '') ||
+            JSON.stringify((updated.tags || []).sort()) !== JSON.stringify((this.currentNote.tags || []).sort())
+          );
+
+          if (!hasUnsavedChanges || noteContentChanged) {
+            this.currentNote = { ...updated };
+          }
+
+          if (isEditorOpen && (!hasUnsavedChanges || noteContentChanged)) {
             const titleHeader = document.getElementById('noteTitleHeader');
             const contentInput = document.getElementById('noteContentInput');
             const tagsInput = document.getElementById('tagsInput');
@@ -1335,8 +1370,6 @@ class URLNotesApp {
                 tagsInput.value = newTags;
               }
             }
-
-            // Note: These methods don't exist in editorManager
           }
         }
       }
@@ -2253,9 +2286,11 @@ class URLNotesApp {
     const target = e.target;
     if (target && target.tagName === 'A') {
       e.preventDefault();
+      e.stopPropagation(); // Prevent contenteditable from handling the click
       const href = target.getAttribute('href');
       const text = target.textContent || '';
       this.openLinkAndHighlight(href, text);
+      return false; // Additional prevention of event propagation
     }
   }
 
@@ -2297,52 +2332,44 @@ class URLNotesApp {
           const urlObj = new URL(u);
           const enc = encodeURIComponent(txt.trim()).slice(0, 500);
           const hash = urlObj.hash || '';
-          // If hash already contains :~:text, keep it
-          if (hash.includes(':~:text=')) return u;
+
+          // If hash already contains :~:text, don't add another one
+          if (hash.includes(':~:text=')) {
+            return u;
+          }
+
           // Compose new hash preserving existing hash if present
-          // If existing hash exists, append &; otherwise use #:~:text
           const baseHash = hash.replace(/^#/, '');
           const newHash = baseHash
-            ? `${baseHash}&:~:text=${enc}`
+            ? `${baseHash}#:~:text=${enc}`  // Text fragments use # separator
             : `:~:text=${enc}`;
           urlObj.hash = `#${newHash}`;
           return urlObj.toString();
-        } catch {
+        } catch (error) {
           return u;
         }
       };
 
-      // Helper: send message with retries in case content script isn't ready yet
-      const sendMessageWithRetry = (tabId, payload, attempts = [150, 300, 600, 1000, 1600]) => {
-        const tryOnce = (i) => {
-          setTimeout(() => {
-            try {
-              chrome.tabs.sendMessage(tabId, payload).catch(() => {
-                if (i + 1 < attempts.length) tryOnce(i + 1);
-              });
-            } catch {
-              if (i + 1 < attempts.length) tryOnce(i + 1);
-            }
-          }, attempts[i]);
-        };
-        tryOnce(0);
-      };
+
 
       if (!targetTab) {
         const urlToOpen = addTextFragment(absoluteHref, text);
         targetTab = await chrome.tabs.create({ url: urlToOpen, active: true });
         // Wait for content script to be ready, then highlight
         await this.awaitContentReady(targetTab.id, { timeoutMs: 4000, intervalMs: 200 });
-        sendMessageWithRetry(targetTab.id, { action: 'highlightText', href: urlToOpen, text }, [100, 300, 600, 1200]);
+        chrome.tabs.sendMessage(targetTab.id, { action: 'highlightText', href: urlToOpen, text }).catch(() => {});
       } else {
         // If already on the same page, do not reload the page. Just activate and request highlight.
         await chrome.tabs.update(targetTab.id, { active: true });
-        sendMessageWithRetry(targetTab.id, { action: 'highlightText', href: absoluteHref, text }, [50, 120, 250, 500]);
+        chrome.tabs.sendMessage(targetTab.id, { action: 'highlightText', href: absoluteHref, text }).catch(() => {});
       }
     } catch (err) {
-      console.warn('openLinkAndHighlight failed', err);
       // Fallback: open normally
-      window.open(href, '_blank', 'noopener,noreferrer');
+      try {
+        window.open(href, '_blank', 'noopener,noreferrer');
+      } catch (fallbackError) {
+        // Even fallback failed
+      }
     }
   }
 
@@ -2978,7 +3005,7 @@ class URLNotesApp {
 
       // Context 1: Auto-restore when no current note (popup just opened)
       if (!this.currentNote) {
-        console.log('Auto-restoring draft on popup open:', draft.id);
+
 
         // Set the draft as current note
         this.currentNote = { ...draft };
@@ -2997,7 +3024,7 @@ class URLNotesApp {
 
       // Context 2: Note switching - only restore if it's for the same note
       if (draft.id === this.currentNote.id) {
-        console.log('Restoring draft for same note:', draft.id);
+
 
         // Update currentNote with draft content
         this.currentNote = { ...draft };
@@ -3186,10 +3213,11 @@ class URLNotesApp {
     document.execCommand('insertText', false, sanitizedText);
   }
 
-  // Handle link clicks in editor
-  handleEditorLinkClick(e) {
+  // Handle link clicks in editor (legacy method - should use the main handleEditorLinkClick)
+  handleEditorLinkClick_legacy(e) {
     if (e.target.tagName === 'A') {
       e.preventDefault();
+      e.stopPropagation(); // Prevent contenteditable from handling the click
       const url = e.target.href;
 
       // Check if the URL is already open in a tab (flexible matching)
@@ -3220,6 +3248,7 @@ class URLNotesApp {
           chrome.tabs.create({ url: url });
         }
       });
+      return false; // Additional prevention of event propagation
     }
   }
 
@@ -3247,8 +3276,10 @@ class URLNotesApp {
     const noteContentInput = document.getElementById('noteContentInput');
     const noteTitleHeader = document.getElementById('noteTitleHeader');
 
-    const draftContent = noteContentInput?.value || noteContentInput?.textContent || '';
-    const draftTitle = noteTitleHeader?.value || noteTitleHeader?.textContent || '';
+    // Fix: For contenteditable elements, use innerHTML to preserve links and formatting
+    // This is important for maintaining clickable links generated from context menu
+    const draftContent = noteContentInput ? (noteContentInput.innerHTML || '') : '';
+    const draftTitle = noteTitleHeader ? (noteTitleHeader.value || '') : '';
 
     const hasContent = draftContent.trim() ||
       draftTitle.trim() ||
@@ -3651,9 +3682,8 @@ class URLNotesApp {
     const trigger = document.getElementById('aiRewriteBtn');
 
     if (dropdown && trigger) {
-      // Load usage and context info
+      // Load usage and context info (loadUsageInfo already calls displayContextInfo)
       await this.loadUsageInfo();
-      await this.displayContextInfo();
 
       // Position dropdown relative to trigger button with better boundary checking
       const triggerRect = trigger.getBoundingClientRect();
@@ -4478,8 +4508,10 @@ class URLNotesApp {
       const noteContentInput = document.getElementById('noteContentInput');
       const noteTitleHeader = document.getElementById('noteTitleHeader');
 
-      const draftContent = noteContentInput?.value || noteContentInput?.textContent || noteContentInput?.innerHTML || '';
-      const draftTitle = noteTitleHeader?.value || noteTitleHeader?.textContent || '';
+      // Fix: For contenteditable elements, use innerHTML to preserve links and formatting
+      // This is important for maintaining clickable links generated from context menu
+      const draftContent = noteContentInput ? (noteContentInput.innerHTML || '') : '';
+      const draftTitle = noteTitleHeader ? (noteTitleHeader.value || '') : '';
 
       const content = draftContent.trim() || this.currentNote.content || '';
       const title = draftTitle.trim() || this.currentNote.title || '';

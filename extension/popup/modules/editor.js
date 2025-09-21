@@ -570,12 +570,14 @@ class EditorManager {
     const target = e.target;
     if (target && target.tagName === 'A') {
       e.preventDefault();
+      e.stopPropagation(); // Prevent contenteditable from handling the click
       const href = target.getAttribute('href');
       const text = target.textContent || '';
       // Need to call the main app's openLinkAndHighlight method
       if (window.urlNotesApp && window.urlNotesApp.openLinkAndHighlight) {
         window.urlNotesApp.openLinkAndHighlight(href, text);
       }
+      return false; // Additional prevention of event propagation
     }
   }
 

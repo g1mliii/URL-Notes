@@ -632,6 +632,10 @@
 .auth-container {
   max-width: 400px;
   margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 1rem; /* Add padding for proper centering */
 }
 
 .auth-form {
@@ -644,6 +648,8 @@
   box-shadow:
     0 8px 32px var(--shadow-dark),
     inset 0 1px 0 var(--shadow-light);
+  width: 100%; /* Ensure form takes full container width */
+  margin: 0; /* Remove any default margins */
 }
 
 .auth-form h3 {
