@@ -1718,6 +1718,28 @@ Dashboard Specific Styles - Google Drive-like Layout */
   padding-bottom: 0.5rem;
 }
 
+.account-notice {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  backdrop-filter: blur(calc(var(--backdrop-blur) * 0.5));
+  -webkit-backdrop-filter: blur(calc(var(--backdrop-blur) * 0.5));
+}
+
+.account-notice p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.account-notice strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
 .account-info {
   display: flex;
   flex-direction: column;

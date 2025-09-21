@@ -125,7 +125,7 @@ async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: 
       payment_method_types: ['card'],
       line_items: [
         {
-          price: Deno.env.get('STRIPE_PREMIUM_PRICE_ID') || 'price_1S6ek9AmZvKSDgI488vHQ0Tq',
+          price: Deno.env.get('STRIPE_PREMIUM_PRICE_ID') || 'price_1S7o87PEFS1nRTYDqozxz8We',
           quantity: 1,
         },
       ],

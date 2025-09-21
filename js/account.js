@@ -348,11 +348,7 @@ class Account {
 
 
 
-    // View billing history button
-    const viewBillingBtn = document.getElementById('viewBillingBtn');
-    if (viewBillingBtn) {
-      viewBillingBtn.addEventListener('click', () => this.viewBillingHistory());
-    }
+
 
 
   }
@@ -542,13 +538,13 @@ class Account {
   }
 
   manageSubscription() {
-    // Direct link to Stripe customer portal
-    window.open('https://billing.stripe.com/p/login/test_28E00icerfLI4Ha6Kj9R600', '_blank');
-  }
-
-  viewBillingHistory() {
-    // Same Stripe portal link - users can view billing history there
-    window.open('https://billing.stripe.com/p/login/test_28E00icerfLI4Ha6Kj9R600', '_blank');
+    // Use subscription manager's portal session for better integration
+    if (window.subscriptionManager) {
+      window.subscriptionManager.createPortalSession();
+    } else {
+      // Fallback to direct link to live Stripe customer portal
+      window.open('https://billing.stripe.com/p/login/7sY7sN0nf3Vl3IY6gW3oA00', '_blank');
+    }
   }
 
 

@@ -22,11 +22,11 @@ window.urlNotesConfig = {
 
   // Stripe configuration
   stripe: {
-    // Predefined Stripe product and price IDs (public-safe identifiers)
-    productId: 'prod_T2kES07o4K6Gzk',
-    premiumPriceId: 'price_1S6ek9AmZvKSDgI488vHQ0Tq',
+    // Live Stripe product and price IDs (public-safe identifiers)
+    productId: 'prod_SzJCRQMmohjH3D',
+    premiumPriceId: 'price_1S7o87PEFS1nRTYDqozxz8We',
     productName: 'Anchored Premium',
-    monthlyPrice: 2.49,
+    monthlyPrice: 2.50,
     currency: 'usd'
   },
 

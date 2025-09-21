@@ -126,15 +126,13 @@ class SubscriptionManager {
     }
 
     // Show/hide buttons based on subscription status
-    if (upgradeBtn && manageSubscriptionBtn && viewBillingBtn) {
+    if (upgradeBtn && manageSubscriptionBtn) {
       if (isPremium && this.currentSubscription.has_stripe_customer) {
         upgradeBtn.classList.add('hidden');
         manageSubscriptionBtn.classList.remove('hidden');
-        viewBillingBtn.classList.remove('hidden');
       } else {
         upgradeBtn.classList.remove('hidden');
         manageSubscriptionBtn.classList.add('hidden');
-        viewBillingBtn.classList.add('hidden');
       }
     }
   }
@@ -393,12 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    const viewBillingBtn = document.getElementById('viewBillingBtn');
-    if (viewBillingBtn) {
-      viewBillingBtn.addEventListener('click', () => {
-        window.subscriptionManager.createPortalSession();
-      });
-    }
+
   }
 });
 
