@@ -295,6 +295,9 @@ class SettingsManager {
       try {
         const userTier = status.active ? status.tier : 'free';
         await chrome.storage.local.set({ userTier });
+        
+        // Clear AI usage cache to ensure updated limits are fetched
+        await chrome.storage.local.remove(['cachedAIUsage']);
       } catch (_) { }
       
       // Emit tier change event to update all parts of the extension

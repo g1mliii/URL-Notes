@@ -146,13 +146,6 @@
     - _Requirements: 8.1, 8.2_
 
 
-- [x] 15 modify extension ai usage feedback to user and availability 
-
-
-
-    - curenlty the ai uage is a bit confusing for domain notes summarization the site sumamry makes sense but it looks like its applying to both buttons if that makes sense, at least visuall to the user we need to add some sort of indication about the note summary uses being per note and the amount total which we should already have stoed somehwere i think since we have site summary 
-
-
 
 - [x] 16. implement planned migraton in stripe migration plan and produt analysis 
 

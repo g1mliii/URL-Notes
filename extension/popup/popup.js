@@ -825,6 +825,12 @@ class URLNotesApp {
       this.premiumStatus = { isPremium };
       await this.updatePremiumUI();
 
+      // Force refresh of AI usage data to get updated limits immediately
+      await this.getCurrentAIUsage();
+      
+      // Update usage display in UI
+      await this.loadUsageInfo();
+
       // Update settings UI to reflect tier changes
       await this.settingsManager.updateAuthUI();
 
@@ -4758,8 +4764,10 @@ class URLNotesApp {
   // Clear local AI usage tracking (on auth changes)
   async clearLocalAIUsage() {
     try {
-      await chrome.storage.local.remove(['localAIUsage']);
-      console.log('Local AI usage tracking cleared');
+      // Clear both local usage tracking AND cached server data
+      // This ensures fresh AI usage data is fetched with updated limits after tier changes
+      await chrome.storage.local.remove(['localAIUsage', 'cachedAIUsage']);
+      console.log('Local AI usage tracking and cached server data cleared');
     } catch (error) {
       console.warn('Error clearing local AI usage:', error);
     }
@@ -5079,7 +5087,9 @@ async function getPremiumStatus() {
 // Clear corrupted premium status cache
 async function clearPremiumStatusCache() {
   try {
-    await chrome.storage.local.remove(['cachedPremiumStatus']);
+    // Also clear AI usage cache when premium status changes
+    // This ensures AI limits are refreshed when tier changes
+    await chrome.storage.local.remove(['cachedPremiumStatus', 'cachedAIUsage']);
   } catch (error) {
     console.warn('Failed to clear premium status cache:', error);
   }

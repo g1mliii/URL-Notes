@@ -532,8 +532,8 @@ class SupabaseClient {
 
         await chrome.storage.local.set({ userTier });
 
-        // Clear premium status cache to force UI refresh
-        await chrome.storage.local.remove(['cachedPremiumStatus']);
+        // Clear premium status cache and AI usage cache to force UI refresh with updated limits
+        await chrome.storage.local.remove(['cachedPremiumStatus', 'cachedAIUsage']);
 
         // Store profile data in cache for reuse (including salt for encryption key)
         const profileData = {
