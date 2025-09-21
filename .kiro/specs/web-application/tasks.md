@@ -146,14 +146,11 @@
     - _Requirements: 8.1, 8.2_
 
 
-- [x] 15 remove console logs 
+- [x] 15 modify extension ai usage feedback to user and availability 
 
 
 
-   - Popup: Overdue sync detected, checking if we can sync
-popup.js:299 Popup: Overdue sync - can sync result: Object
-popup.js:302 Popup: Starting overdue sync
-popup.js:306 Popup: Overdue sync completed successfully
+    - curenlty the ai uage is a bit confusing for domain notes summarization the site sumamry makes sense but it looks like its applying to both buttons if that makes sense, at least visuall to the user we need to add some sort of indication about the note summary uses being per note and the amount total which we should already have stoed somehwere i think since we have site summary 
 
 
 

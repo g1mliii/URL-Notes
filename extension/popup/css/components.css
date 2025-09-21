@@ -211,13 +211,13 @@
 }
 
 /* Domain header actions: visible by default; when group is open, hide unless hovered/focused */
-details.domain-group > .domain-actions {
+details.domain-group>.domain-actions {
   display: flex !important;
   opacity: 1 !important;
   pointer-events: auto !important;
 }
 
-details.domain-group[open] > .domain-actions {
+details.domain-group[open]>.domain-actions {
   display: none !important;
   opacity: 0 !important;
   pointer-events: none !important;
@@ -225,8 +225,8 @@ details.domain-group[open] > .domain-actions {
   /* avoid delay flash when opening */
 }
 
-details.domain-group[open]:hover > .domain-actions,
-details.domain-group[open]:focus-within > .domain-actions {
+details.domain-group[open]:hover>.domain-actions,
+details.domain-group[open]:focus-within>.domain-actions {
   display: flex !important;
   opacity: 1 !important;
   pointer-events: auto !important;
@@ -876,7 +876,7 @@ html[data-view="all_notes"] details.domain-group .note-item:focus-within .note-a
 }
 
 /* All Notes view: when group is open, hide header actions unless hovered/focused (explicit) */
-html[data-view="all_notes"] details.domain-group[open] > .domain-actions {
+html[data-view="all_notes"] details.domain-group[open]>.domain-actions {
   display: flex !important;
   /* keep layout; only fade */
   opacity: 0 !important;
@@ -886,8 +886,8 @@ html[data-view="all_notes"] details.domain-group[open] > .domain-actions {
   will-change: opacity;
 }
 
-html[data-view="all_notes"] details.domain-group[open]:hover > .domain-actions,
-html[data-view="all_notes"] details.domain-group[open]:focus-within > .domain-actions {
+html[data-view="all_notes"] details.domain-group[open]:hover>.domain-actions,
+html[data-view="all_notes"] details.domain-group[open]:focus-within>.domain-actions {
   opacity: 1 !important;
   pointer-events: auto !important;
 }
@@ -2238,7 +2238,8 @@ html[data-view="site"] .note-item:hover::after {
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(8px);
-  z-index: 10000; /* Higher than settings panel (5000) and ad container (1000) */
+  z-index: 10000;
+  /* Higher than settings panel (5000) and ad container (1000) */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2669,11 +2670,21 @@ html[data-view="site"] .note-item:hover::after {
   line-height: 1.4;
 }
 
+.usage-info-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
 .usage-info {
   background: rgba(255, 255, 255, 0.1);
   padding: 8px 12px;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .usage-text {
@@ -2681,6 +2692,14 @@ html[data-view="site"] .note-item:hover::after {
   font-size: 0.8rem;
   font-weight: 500;
 }
+
+.usage-detail {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
+}
+
+
 
 .domain-selection {
   margin-bottom: 16px;

@@ -3872,10 +3872,10 @@ class URLNotesApp {
     if (siteContentBtn) {
       if (this.currentSite && this.currentSite.domain && this.currentSite.url.startsWith('http')) {
         siteContentBtn.disabled = false;
-        siteContentBtn.textContent = `Summarize ${this.currentSite.domain}`;
+        siteContentBtn.textContent = `Summarize ${this.currentSite.domain} (20 tokens)`;
       } else {
         siteContentBtn.disabled = true;
-        siteContentBtn.textContent = 'Summarize Current Page';
+        siteContentBtn.textContent = 'Summarize Current Page (20 tokens)';
       }
     }
   }
@@ -3906,31 +3906,54 @@ class URLNotesApp {
 
       if (!usageData) {
         console.warn('Failed to get summary usage');
-        const usageCount = document.getElementById('summaryUsageCount');
-        if (usageCount) {
-          usageCount.textContent = '0';
+        const noteSummaryUsageCount = document.getElementById('noteSummaryUsageCount');
+        if (noteSummaryUsageCount) {
+          noteSummaryUsageCount.textContent = '0';
+        }
+        const siteSummaryUsageCount = document.getElementById('siteSummaryUsageCount');
+        if (siteSummaryUsageCount) {
+          siteSummaryUsageCount.textContent = '0';
         }
         return;
       }
 
 
 
-      // Update UI with remaining calls
-      const usageCount = document.getElementById('summaryUsageCount');
-      if (usageCount) {
-        usageCount.textContent = usageData.remainingCalls || 0;
+      // Update UI with note summary tokens (individual tokens for note summaries)
+      const noteSummaryUsageCount = document.getElementById('noteSummaryUsageCount');
+      if (noteSummaryUsageCount) {
+        noteSummaryUsageCount.textContent = usageData.remainingCalls || 0;
       }
 
-      // Also update the usage limit display
-      const usageLimit = document.getElementById('summaryUsageLimit');
-      if (usageLimit) {
-        usageLimit.textContent = usageData.monthlyLimit || 500;
+      const noteSummaryUsageLimit = document.getElementById('noteSummaryUsageLimit');
+      if (noteSummaryUsageLimit) {
+        noteSummaryUsageLimit.textContent = usageData.monthlyLimit || 500;
+      }
+
+      // Update UI with site summary uses (each site summary costs 20 tokens)
+      const siteSummaryUsageCount = document.getElementById('siteSummaryUsageCount');
+      if (siteSummaryUsageCount) {
+        // Calculate remaining site summary uses (divide by 20, floor the result)
+        const remainingSiteSummaryUses = Math.floor((usageData.remainingCalls || 0) / 20);
+        siteSummaryUsageCount.textContent = remainingSiteSummaryUses;
+      }
+
+      // Also update the site summary usage limit display (show total site summary uses available)
+      const siteSummaryUsageLimit = document.getElementById('siteSummaryUsageLimit');
+      if (siteSummaryUsageLimit) {
+        // Calculate total site summary uses available (divide by 20, floor the result)
+        const totalSiteSummaryUses = Math.floor((usageData.monthlyLimit || 500) / 20);
+        siteSummaryUsageLimit.textContent = totalSiteSummaryUses;
       }
     } catch (error) {
       console.error('Failed to load summary usage info:', error);
-      const usageCount = document.getElementById('summaryUsageCount');
-      if (usageCount) {
-        usageCount.textContent = '0';
+      const noteSummaryUsageCount = document.getElementById('noteSummaryUsageCount');
+      if (noteSummaryUsageCount) {
+        noteSummaryUsageCount.textContent = '0';
+      }
+      const siteSummaryUsageCount = document.getElementById('siteSummaryUsageCount');
+      if (siteSummaryUsageCount) {
+        siteSummaryUsageCount.textContent = '0';
       }
     }
   }
@@ -3983,11 +4006,10 @@ class URLNotesApp {
   // Update domain info when selection changes
   async updateDomainInfo() {
     const domainSelect = document.getElementById('summaryDomainSelect');
-    const domainInfo = document.getElementById('summaryDomainInfo');
     const generateBtn = document.getElementById('aiSummaryGenerateBtn');
     const siteContentBtn = document.getElementById('siteContentSummaryBtn');
 
-    if (domainSelect && domainInfo && generateBtn && siteContentBtn) {
+    if (domainSelect && generateBtn && siteContentBtn) {
       const selectedDomain = domainSelect.value;
 
       if (selectedDomain) {
@@ -4013,21 +4035,20 @@ class URLNotesApp {
 
         const noteCount = filteredNotes.filter(note => note.domain === selectedDomain).length;
 
-        document.getElementById('summaryNoteCount').textContent = noteCount;
-        domainInfo.style.display = 'block';
         generateBtn.disabled = false;
+        generateBtn.textContent = `Generate Summary (${noteCount} tokens)`;
       } else {
-        domainInfo.style.display = 'none';
         generateBtn.disabled = true;
+        generateBtn.textContent = 'Generate Summary';
       }
 
       // Enable site content summary button if we have a current site
       if (this.currentSite && this.currentSite.domain && this.currentSite.url.startsWith('http')) {
         siteContentBtn.disabled = false;
-        siteContentBtn.textContent = `Summarize ${this.currentSite.domain}`;
+        siteContentBtn.textContent = `Summarize ${this.currentSite.domain} (20 tokens)`;
       } else {
         siteContentBtn.disabled = true;
-        siteContentBtn.textContent = 'Summarize Current Page';
+        siteContentBtn.textContent = 'Summarize Current Page (20 tokens)';
       }
     }
   }
@@ -4159,11 +4180,8 @@ class URLNotesApp {
       return;
     }
 
-    // Check if user has premium subscription (AI Summary is premium-only)
-    if (!this.premiumStatus || !this.premiumStatus.isPremium) {
-      Utils.showToast('AI Summary is a premium feature. Upgrade to premium to summarize your notes by domain.', 'info');
-      return;
-    }
+    // AI Summary is now available to all users (free and premium)
+    // No premium check needed
 
     const domainSelect = document.getElementById('summaryDomainSelect');
     if (!domainSelect || !domainSelect.value) {
@@ -4178,6 +4196,13 @@ class URLNotesApp {
 
     if (!domainNotes || domainNotes.length === 0) {
       Utils.showToast('No notes found for the selected domain.', 'warning');
+      return;
+    }
+
+    // Check if user has enough tokens for domain summary (1 token per note)
+    const currentUsage = await this.getCurrentAIUsage();
+    if (!currentUsage || currentUsage.remainingCalls < domainNotes.length) {
+      Utils.showToast(`Not enough tokens for note summary. You need ${domainNotes.length} tokens (1 per note) but only have ${currentUsage?.remainingCalls || 0} remaining.`, 'warning');
       return;
     }
 
@@ -4345,9 +4370,12 @@ class URLNotesApp {
       return;
     }
 
-    // Check if user has premium subscription (AI Summary is premium-only)
-    if (!this.premiumStatus || !this.premiumStatus.isPremium) {
-      Utils.showToast('AI Summary is a premium feature. Upgrade to premium to summarize page content.', 'info');
+    // AI Summary is now available to all users (free and premium)
+    // Check if user has enough tokens for site content summary (requires 20 tokens)
+    const currentUsage = await this.getCurrentAIUsage();
+    if (!currentUsage || currentUsage.remainingCalls < 20) {
+      const remainingUses = Math.floor((currentUsage?.remainingCalls || 0) / 20);
+      Utils.showToast(`Not enough tokens for page summary. You need 20 tokens but only have ${currentUsage?.remainingCalls || 0} remaining. (${remainingUses} page summaries available)`, 'warning');
       return;
     }
 

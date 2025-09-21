@@ -718,10 +718,18 @@
       </div>
       <div class="ai-summary-body">
         <div class="ai-summary-info">
-          <p>Select a domain to generate a summary of all notes for that site:</p>
-          <div class="usage-info" id="summaryUsageInfo">
-            <span class="usage-text">Usage: <span id="summaryUsageCount">0</span>/<span
-                id="summaryUsageLimit">500</span></span>
+          <p>Choose your summarization option:</p>
+          <div class="usage-info-container">
+            <div class="usage-info" id="noteSummaryUsageInfo">
+              <span class="usage-text">Note Summary Tokens: <span id="noteSummaryUsageCount">0</span>/<span
+                  id="noteSummaryUsageLimit">500</span> per month</span>
+              <span class="usage-detail">• Domain notes: 1 token per note</span>
+            </div>
+            <div class="usage-info" id="siteSummaryUsageInfo">
+              <span class="usage-text">Site Summary Uses: <span id="siteSummaryUsageCount">0</span>/<span
+                  id="siteSummaryUsageLimit">25</span> per month</span>
+              <span class="usage-detail">• Page content: 20 tokens per page</span>
+            </div>
           </div>
         </div>
         <div class="domain-selection">
@@ -730,9 +738,7 @@
             <option value="">Select a domain...</option>
           </select>
         </div>
-        <div class="domain-info" id="summaryDomainInfo" style="display: none;">
-          <p>Notes found: <span id="summaryNoteCount">0</span></p>
-        </div>
+
         <div class="ai-summary-actions">
           <button class="ai-summary-generate" id="aiSummaryGenerateBtn" disabled>
             Generate Summary
