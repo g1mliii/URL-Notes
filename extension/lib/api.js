@@ -65,7 +65,7 @@ class SupabaseClient {
             await this.signOut();
           }
         }
-        
+
         // Verify token is still valid
         const isValid = await this.verifyToken();
         if (!isValid) {
@@ -76,14 +76,14 @@ class SupabaseClient {
             const { profileLastChecked, userTier } = await chrome.storage.local.get(['profileLastChecked', 'userTier']);
             const now = Date.now();
             const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
-            
+
             // Only check profile if we haven't done so in the last hour AND don't have userTier
             if ((!profileLastChecked || (now - profileLastChecked) > oneHour) && !userTier) {
               await this.upsertProfile(this.currentUser);
               await chrome.storage.local.set({ profileLastChecked: now });
             } else if (userTier) {
               // Use cached subscription status
-              try { window.eventBus?.emit('tier:changed', { tier: userTier, active: userTier !== 'free' }); } catch (_) {}
+              try { window.eventBus?.emit('tier:changed', { tier: userTier, active: userTier !== 'free' }); } catch (_) { }
               if (window.adManager) {
                 if (userTier !== 'free') {
                   window.adManager.hideAdContainer?.();
@@ -359,7 +359,7 @@ class SupabaseClient {
 
     // Create or update user profile
     await this.upsertProfile(authData.user);
-    try { window.eventBus?.emit('auth:changed', { user: this.currentUser }); } catch (_) {}
+    try { window.eventBus?.emit('auth:changed', { user: this.currentUser }); } catch (_) { }
   }
 
   // Sign out
@@ -384,9 +384,9 @@ class SupabaseClient {
       try {
         await chrome.storage.local.set({ userTier: 'free' });
         window.adManager?.refreshAd?.();
-      } catch (_) {}
-      try { window.eventBus?.emit('auth:changed', { user: null }); } catch (_) {}
-      try { window.eventBus?.emit('tier:changed', { tier: 'free', active: false, expiresAt: null }); } catch (_) {}
+      } catch (_) { }
+      try { window.eventBus?.emit('auth:changed', { user: null }); } catch (_) { }
+      try { window.eventBus?.emit('tier:changed', { tier: 'free', active: false, expiresAt: null }); } catch (_) { }
     }
   }
 
@@ -449,7 +449,7 @@ class SupabaseClient {
           const j = await response.json();
           detail = j.error_description || j.msg || j.error || JSON.stringify(j);
         } catch (_) {
-          try { detail = await response.text(); } catch (_) {}
+          try { detail = await response.text(); } catch (_) { }
         }
         throw new Error(detail);
       }
@@ -463,7 +463,7 @@ class SupabaseClient {
           if (ures.ok) {
             data.user = await ures.json();
           }
-        } catch (_) {}
+        } catch (_) { }
       }
 
       // If refresh_token not returned, keep existing one
@@ -499,7 +499,7 @@ class SupabaseClient {
           body: baseProfile,
           auth: true
         });
-        
+
         // Fetch the newly created profile
         try {
           const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${user.id}&select=salt,subscription_tier,subscription_expires_at`, { auth: true });
@@ -525,15 +525,16 @@ class SupabaseClient {
 
       // Update userTier in local storage using the profile we already fetched
       if (profile) {
-        const isActive = profile.subscription_expires_at ?
-          new Date(profile.subscription_expires_at) > new Date() : false;
+        const isActive = profile.subscription_tier === 'premium' &&
+          (profile.subscription_expires_at === null ||
+            (profile.subscription_expires_at && new Date(profile.subscription_expires_at) > new Date()));
         const userTier = isActive ? (profile.subscription_tier || 'premium') : 'free';
-        
+
         await chrome.storage.local.set({ userTier });
-        
+
         // Clear premium status cache to force UI refresh
         await chrome.storage.local.remove(['cachedPremiumStatus']);
-        
+
         // Store profile data in cache for reuse (including salt for encryption key)
         const profileData = {
           tier: profile.subscription_tier || 'free',
@@ -541,13 +542,13 @@ class SupabaseClient {
           expiresAt: profile.subscription_expires_at,
           salt: profile.salt
         };
-        
-        await chrome.storage.local.set({ 
-          subscriptionLastChecked: Date.now(), 
-          cachedSubscription: profileData 
+
+        await chrome.storage.local.set({
+          subscriptionLastChecked: Date.now(),
+          cachedSubscription: profileData
         });
-        
-        try { window.eventBus?.emit('tier:changed', { tier: userTier, active: isActive, expiresAt: profile.subscription_expires_at }); } catch (_) {}
+
+        try { window.eventBus?.emit('tier:changed', { tier: userTier, active: isActive, expiresAt: profile.subscription_expires_at }); } catch (_) { }
         if (window.adManager) {
           if (isActive && userTier !== 'free') {
             window.adManager.hideAdContainer?.();
@@ -580,7 +581,7 @@ class SupabaseClient {
       }
 
       const encryptedNotes = [];
-      
+
       // Encrypt notes before uploading (only if notes exist)
       if (syncPayload.notes && Array.isArray(syncPayload.notes)) {
         for (const note of syncPayload.notes) {
@@ -588,12 +589,12 @@ class SupabaseClient {
           if (!note.content || !note.title) {
             continue;
           }
-          
+
           const encryptedNote = await window.noteEncryption.encryptNoteForCloud(
-            note, 
+            note,
             encryptionKey
           );
-          
+
           encryptedNotes.push(encryptedNote);
         }
       }
@@ -671,27 +672,27 @@ class SupabaseClient {
       }
 
       const responseData = await response.json();
-      
+
       const { notes: encryptedNotes } = responseData;
-      
+
       if (!encryptedNotes || !Array.isArray(encryptedNotes)) {
         return [];
       }
-      
+
       const decryptedNotes = [];
 
       // Decrypt notes after downloading
       const userKey = await this.getUserEncryptionKey();
-      
+
       for (const encryptedNote of encryptedNotes) {
         try {
           let decryptedNote;
-          
+
           // Check if note is encrypted or plain text
           if (encryptedNote.title_encrypted && encryptedNote.content_encrypted && userKey) {
             // Note is encrypted, decrypt it
             decryptedNote = await window.noteEncryption.decryptNoteFromCloud(
-              encryptedNote, 
+              encryptedNote,
               userKey
             );
           } else if (encryptedNote.title && encryptedNote.content) {
@@ -704,7 +705,7 @@ class SupabaseClient {
           } else {
             continue;
           }
-          
+
           decryptedNotes.push(decryptedNote);
         } catch (error) {
           // Try to use the note as-is if decryption fails
@@ -761,7 +762,7 @@ class SupabaseClient {
     // Derive key from stable user material + per-user salt from profile
     const keyMaterial = `${this.currentUser.id}:${this.currentUser.email}`;
     let salt = null;
-    
+
     // Try to get salt from cached profile data first
     try {
       const { cachedSubscription } = await chrome.storage.local.get(['cachedSubscription']);
@@ -797,11 +798,11 @@ class SupabaseClient {
     }
 
     const encryptionKey = await window.noteEncryption.generateKey(keyMaterial, salt);
-    
+
     // Cache the key material and salt instead of the CryptoKey object
     // CryptoKey objects cannot be serialized to JSON
-    await chrome.storage.local.set({ 
-      encryptionKeyLastChecked: now, 
+    await chrome.storage.local.set({
+      encryptionKeyLastChecked: now,
       cachedKeyMaterial: keyMaterial,
       cachedSalt: salt
     });
@@ -836,38 +837,55 @@ class SupabaseClient {
     }
   }
 
+  // Clear subscription cache
+  async clearSubscriptionCache() {
+    try {
+      await chrome.storage.local.remove(['subscriptionLastChecked', 'cachedSubscription']);
+    } catch (error) {
+      console.warn('Failed to clear subscription cache:', error);
+    }
+  }
+
   // Check subscription status (with caching to prevent multiple API calls)
-  async getSubscriptionStatus() {
+  async getSubscriptionStatus(forceRefresh = false) {
     if (!this.isAuthenticated()) {
       return { tier: 'free', active: false };
     }
 
     try {
-      // Check if we have cached subscription status
-      const { subscriptionLastChecked, cachedSubscription } = await chrome.storage.local.get(['subscriptionLastChecked', 'cachedSubscription']);
-      const now = Date.now();
-      const fiveMinutes = 5 * 60 * 1000; // 5 minutes cache
+      // Check if we have cached subscription status (unless force refresh)
+      if (!forceRefresh) {
+        const { subscriptionLastChecked, cachedSubscription } = await chrome.storage.local.get(['subscriptionLastChecked', 'cachedSubscription']);
+        const now = Date.now();
+        const fiveMinutes = 5 * 60 * 1000; // 5 minutes cache
 
-      // Use cached data if it's recent
-      if (subscriptionLastChecked && cachedSubscription && (now - subscriptionLastChecked) < fiveMinutes) {
-        return cachedSubscription;
+        // Use cached data if it's recent
+        if (subscriptionLastChecked && cachedSubscription && (now - subscriptionLastChecked) < fiveMinutes) {
+          return cachedSubscription;
+        }
       }
 
       // Fetch fresh data from API
+      const now = Date.now();
       const profiles = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=subscription_tier,subscription_expires_at,salt`, { auth: true });
+
       const profile = profiles?.[0];
 
       if (!profile) {
         const result = { tier: 'free', active: false };
-        await chrome.storage.local.set({ 
-          subscriptionLastChecked: now, 
-          cachedSubscription: result 
+        await chrome.storage.local.set({
+          subscriptionLastChecked: now,
+          cachedSubscription: result
         });
         return result;
       }
 
-      const isActive = profile.subscription_expires_at ?
-        new Date(profile.subscription_expires_at) > new Date() : false;
+      // Check if subscription is active
+      // If subscription_expires_at is null and tier is premium, consider it active (lifetime/never expires)
+      // If subscription_expires_at has a date, check if it's in the future
+      const isActive = profile.subscription_tier === 'premium' &&
+        (profile.subscription_expires_at === null ||
+          (profile.subscription_expires_at && new Date(profile.subscription_expires_at) > new Date()));
 
       const result = {
         tier: profile.subscription_tier || 'free',
@@ -876,13 +894,15 @@ class SupabaseClient {
         salt: profile.salt // Include salt for encryption key reuse
       };
 
-      await chrome.storage.local.set({ 
-        subscriptionLastChecked: now, 
-        cachedSubscription: result 
+      // Always update cache with fresh data
+      await chrome.storage.local.set({
+        subscriptionLastChecked: now,
+        cachedSubscription: result
       });
 
       return result;
     } catch (error) {
+      // Don't cache error results, let it try again next time
       return { tier: 'free', active: false };
     }
   }
@@ -924,17 +944,18 @@ class SupabaseClient {
       // Get both storage_used_bytes and subscription info in ONE API call
       const profiles = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=storage_used_bytes,subscription_tier,subscription_expires_at`, { auth: true });
       const profile = profiles?.[0];
-      
+
       if (!profile) {
         return { used: 0, limit: 0 };
       }
 
       // Calculate limit locally instead of calling getSubscriptionStatus()
-      const isActive = profile.subscription_expires_at ?
-        new Date(profile.subscription_expires_at) > new Date() : false;
+      const isActive = profile.subscription_tier === 'premium' &&
+        (profile.subscription_expires_at === null ||
+          (profile.subscription_expires_at && new Date(profile.subscription_expires_at) > new Date()));
       const tier = isActive ? (profile.subscription_tier || 'premium') : 'free';
-      
-      const limit = tier === 'premium' ? 
+
+      const limit = tier === 'premium' ?
         1024 * 1024 * 1024 : // 1GB for premium
         100 * 1024 * 1024;   // 100MB for free
 

@@ -34,6 +34,9 @@ class SettingsManager {
     // Sync elements
     this.manualSyncBtn = document.getElementById('manualSyncBtn');
 
+    // Premium status refresh button
+    this.refreshPremiumStatusBtn = document.getElementById('refreshPremiumStatusBtn');
+
     // Website link button
     this.websiteLinkBtn = document.getElementById('websiteLinkBtn');
 
@@ -67,6 +70,7 @@ class SettingsManager {
         show(this.authPasswordInput, false);
         show(this.authTogglePwBtn, false);
         show(this.authRow, false);
+        show(this.refreshPremiumStatusBtn, true); // Show refresh button when logged in
         if (this.authEmailInput) this.authEmailInput.value = user.email || '';
         if (this.authPasswordInput) this.authPasswordInput.value = '';
         if (actions) {
@@ -107,6 +111,7 @@ class SettingsManager {
         show(this.authTogglePwBtn, true);
         show(this.authRow, true);
         show(this.authForgotPwBtn, true);
+        show(this.refreshPremiumStatusBtn, false); // Hide refresh button when not logged in
         // Hide sync management for non-authenticated users
         show(syncManagement, false);
         // Swap buttons: Sign In on left, Sign Up on right
@@ -261,6 +266,133 @@ class SettingsManager {
     }
   }
 
+  async handleRefreshPremiumStatus() {
+    if (!window.supabaseClient?.isAuthenticated()) {
+      this.showNotification('Please sign in first', 'error');
+      return;
+    }
+
+    try {
+      // Show loading state
+      this.refreshPremiumStatusBtn.disabled = true;
+      this.refreshPremiumStatusBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin">
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+          <path d="M12 3v9l3 3"/>
+        </svg>
+        <span>Refreshing...</span>
+      `;
+
+      // Clear any cached subscription status
+      if (window.supabaseClient.clearSubscriptionCache) {
+        window.supabaseClient.clearSubscriptionCache();
+      }
+
+      // Force refresh subscription status from server
+      const status = await window.supabaseClient.getSubscriptionStatus(true); // Force refresh
+      
+      // Update userTier in local storage for other parts of the extension
+      try {
+        const userTier = status.active ? status.tier : 'free';
+        await chrome.storage.local.set({ userTier });
+      } catch (_) { }
+      
+      // Emit tier change event to update all parts of the extension
+      try { 
+        window.eventBus?.emit('tier:changed', { 
+          tier: status.tier, 
+          active: status.active, 
+          expiresAt: status.expiresAt 
+        }); 
+      } catch (_) { }
+      
+      // Emit auth:changed event similar to sign-in to refresh all components
+      try {
+        window.eventBus?.emit('auth:changed', { 
+          user: window.supabaseClient.getCurrentUser(),
+          statusRefresh: true // Flag to indicate this is a status refresh
+        });
+      } catch (_) { }
+      
+      // Notify background script about tier change
+      try {
+        chrome.runtime.sendMessage({ 
+          action: 'tier-changed', 
+          tier: status.tier, 
+          active: status.active,
+          expiresAt: status.expiresAt
+        }).catch(() => {});
+      } catch (_) { }
+      
+      // Notify background script about auth change (similar to sign-in)
+      try {
+        chrome.runtime.sendMessage({ 
+          action: 'auth-changed', 
+          user: window.supabaseClient.getCurrentUser(),
+          statusRefresh: true // Flag to indicate this is a status refresh
+        }).catch(() => {});
+      } catch (_) { }
+      
+      // Update ad manager based on new status
+      try {
+        if (window.adManager) {
+          if (status.active && status.tier !== 'free') {
+            window.adManager.hideAdContainer?.();
+          } else {
+            window.adManager.refreshAd?.();
+          }
+        }
+      } catch (_) { }
+      
+      // Update UI based on new status
+      await this.updateAuthUI();
+
+      // Show success message
+      if (status?.active && status?.tier !== 'free') {
+        this.showNotification(`Premium status confirmed! (${status.tier})`, 'success');
+      } else if (status?.tier === 'premium' && !status?.active) {
+        this.showNotification('Premium tier found but inactive - check expiration', 'warning');
+      } else {
+        this.showNotification(`Status refreshed - ${status?.tier || 'free'} tier active`, 'info');
+      }
+
+      // Reset button
+      this.refreshPremiumStatusBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+          <path d="M12 3v9l3 3"/>
+        </svg>
+        <span>Status Updated</span>
+      `;
+
+      // Reset to original text after 2 seconds
+      setTimeout(() => {
+        this.refreshPremiumStatusBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            <path d="M12 3v9l3 3"/>
+          </svg>
+          <span>Refresh Premium Status</span>
+        `;
+        this.refreshPremiumStatusBtn.disabled = false;
+      }, 2000);
+
+    } catch (e) {
+      console.error('Premium status refresh failed:', e);
+      this.showNotification(`Failed to refresh status: ${e.message || e}`, 'error');
+      
+      // Reset button on error
+      this.refreshPremiumStatusBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+          <path d="M12 3v9l3 3"/>
+        </svg>
+        <span>Refresh Premium Status</span>
+      `;
+      this.refreshPremiumStatusBtn.disabled = false;
+    }
+  }
+
   async updateStorageUsage() {
     try {
       if (!window.supabaseClient?.isAuthenticated()) return;
@@ -302,6 +434,9 @@ class SettingsManager {
     this.settingsBtn?.addEventListener('click', () => this.openSettings());
     this.settingsBackBtn?.addEventListener('click', () => this.closeSettings());
 
+    // Setup scroll indicators for settings content
+    this.setupScrollIndicators();
+
     // Font settings
     this.fontSelector?.addEventListener('change', (e) => this.handleFontChange(e.target.value));
     this.fontSizeSlider?.addEventListener('input', (e) => this.handleFontSizeChange(parseInt(e.target.value)));
@@ -313,6 +448,9 @@ class SettingsManager {
 
     // Sync management
     this.manualSyncBtn?.addEventListener('click', () => this.handleManualSync());
+
+    // Premium status refresh
+    this.refreshPremiumStatusBtn?.addEventListener('click', () => this.handleRefreshPremiumStatus());
 
     // Shortcut settings
     this.changeShortcutBtn?.addEventListener('click', () => this.openShortcutEditor());
@@ -354,6 +492,8 @@ class SettingsManager {
       this.openAdDisclosure();
     });
 
+
+
     // React to global auth and tier changes
     try {
       window.eventBus?.on('auth:changed', () => this.updateAuthUI());
@@ -368,14 +508,23 @@ class SettingsManager {
 
     if (notesList) notesList.style.display = 'none';
     if (noteEditor) noteEditor.style.display = 'none';
-    if (this.settingsPanel) this.settingsPanel.style.display = 'block';
+    if (this.settingsPanel) {
+      this.settingsPanel.style.display = 'block';
+      // Reset scroll position to top when opening
+      const settingsContent = this.settingsPanel.querySelector('.settings-content');
+      if (settingsContent) {
+        settingsContent.scrollTop = 0;
+      }
+    }
     // Refresh shortcut display when opening settings
     this.loadShortcutDisplay();
     // Refresh auth UI
     this.updateAuthUI();
-
-
+    // Setup scroll indicators after panel is visible
+    setTimeout(() => this.setupScrollIndicators(), 50);
   }
+
+
 
   // Close settings panel
   closeSettings() {
@@ -386,6 +535,8 @@ class SettingsManager {
     // Restore notes container to its stylesheet-defined display (flex),
     // instead of forcing 'block' which changes layout/background.
     if (notesList) notesList.style.removeProperty('display');
+
+
 
     // Don't automatically show editor - let the main app handle state
   }
@@ -482,6 +633,63 @@ class SettingsManager {
     this.loadShortcutDisplay();
     // Initialize auth UI
     this.updateAuthUI();
+    // Setup scroll indicators
+    this.setupScrollIndicators();
+  }
+
+  // Setup scroll indicators for better UX
+  setupScrollIndicators() {
+    const settingsContent = document.querySelector('.settings-content');
+    if (!settingsContent) return;
+
+    const updateScrollIndicators = () => {
+      const { scrollTop, scrollHeight, clientHeight } = settingsContent;
+      
+      // Check if content is scrollable
+      const isScrollable = scrollHeight > clientHeight;
+      settingsContent.setAttribute('data-scrollable', isScrollable.toString());
+      
+      // Add 'scrolled' class if user has scrolled down
+      if (scrollTop > 10) {
+        settingsContent.classList.add('scrolled');
+      } else {
+        settingsContent.classList.remove('scrolled');
+      }
+      
+      // Add 'has-more' class if there's more content below
+      if (scrollTop + clientHeight < scrollHeight - 10) {
+        settingsContent.classList.add('has-more');
+      } else {
+        settingsContent.classList.remove('has-more');
+      }
+    };
+
+    // Update indicators on scroll
+    settingsContent.addEventListener('scroll', updateScrollIndicators);
+    
+    // Update indicators on resize or content change
+    const resizeObserver = new ResizeObserver(updateScrollIndicators);
+    resizeObserver.observe(settingsContent);
+    
+    // Initial update
+    setTimeout(updateScrollIndicators, 100);
+    
+    // Also update when settings panel becomes visible
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+          const panel = mutation.target;
+          if (panel.style.display === 'block') {
+            setTimeout(updateScrollIndicators, 50);
+          }
+        }
+      });
+    });
+    
+    const settingsPanel = document.getElementById('settingsPanel');
+    if (settingsPanel) {
+      observer.observe(settingsPanel, { attributes: true });
+    }
   }
 
   // Update font preview display
@@ -616,6 +824,23 @@ class SettingsManager {
       console.warn('Failed to show onboarding tooltips:', error);
     }
   }
+
+  // Show notification helper
+  showNotification(message, type = 'info') {
+    try {
+      // Use the Utils.showToast system
+      if (typeof Utils !== 'undefined' && Utils.showToast) {
+        Utils.showToast(message, type);
+      } else {
+        // Fallback to console
+        console.log(`${type.toUpperCase()}: ${message}`);
+      }
+    } catch (error) {
+      console.log(`${type.toUpperCase()}: ${message}`);
+    }
+  }
+
+
 
 
 

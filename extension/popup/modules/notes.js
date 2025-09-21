@@ -31,7 +31,6 @@ class NotesManager {
 
     // Safety check: ensure allNotes is available
     if (!app.allNotes || !Array.isArray(app.allNotes)) {
-      console.warn('NotesManager.render: app.allNotes is not available, showing empty state');
       this.showEmptyState(notesList, 'Loading notes...');
       if (notesCount) notesCount.style.display = 'none';
       return;
@@ -47,7 +46,6 @@ class NotesManager {
       } else {
         // If no valid currentSite, show all notes instead of empty state to prevent pop-in
         filteredNotes = app.allNotes;
-        console.log('NotesManager.render: No valid currentSite domain, showing all notes for site filter');
       }
     } else if (app.filterMode === 'page') {
       // Only filter by page if we have a valid currentSite with URL
@@ -57,7 +55,6 @@ class NotesManager {
       } else {
         // If no valid currentSite URL, show all notes instead of empty state to prevent pop-in
         filteredNotes = app.allNotes;
-        console.log('NotesManager.render: No valid currentSite URL, showing all notes for page filter');
       }
     } else {
       filteredNotes = app.allNotes;

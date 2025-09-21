@@ -241,26 +241,39 @@ class URLNotesApp {
     }
 
     // Listen for background sync timer messages
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       if (message.action === 'sync-timer-triggered') {
+        // Background timer fired, check if we can sync
+        if (window.syncEngine) {
+          try {
+            const canSyncResult = await window.syncEngine.canSync();
 
+            if (canSyncResult && canSyncResult.canSync) {
+              try {
+                await window.syncEngine.manualSync();
 
-        // Background timer fired, trigger sync
-        if (window.syncEngine && window.syncEngine.canSync()) {
+                // After sync completes, restart the background timer for next cycle
+                chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
+              } catch (syncError) {
+                console.error('Popup: Automatic sync failed:', syncError);
 
+                // Even if sync fails, restart timer for next cycle
+                chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
+              }
+            } else {
+              // Can't sync, restart timer anyway for next cycle
+              chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
+            }
+          } catch (error) {
+            console.error('Popup: Error checking sync capability:', error);
 
-          window.syncEngine.manualSync().then(() => {
-
-            // After sync completes, restart the background timer for next cycle
+            // Error checking sync capability, restart timer for next cycle
             chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
-          }).catch(() => {
-
-            // Even if sync fails, restart timer for next cycle
-            chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
-          });
+          }
         } else {
+          console.warn('Popup: Sync engine not available');
 
-          // Can't sync, restart timer anyway for next cycle
+          // Sync engine not available, restart timer for next cycle
           chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
         }
       }
@@ -270,33 +283,38 @@ class URLNotesApp {
     try {
       const response = await chrome.runtime.sendMessage({ action: 'popup-opened' });
       if (response && response.shouldSync) {
-
-
         if (window.syncEngine) {
-          const canSyncResult = await window.syncEngine.canSync();
-          if (canSyncResult && canSyncResult.canSync) {
+          try {
+            const canSyncResult = await window.syncEngine.canSync();
 
+            if (canSyncResult && canSyncResult.canSync) {
+              try {
+                await window.syncEngine.manualSync();
 
-            window.syncEngine.manualSync().then(() => {
+                chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
+              } catch (syncError) {
+                console.error('Popup: Overdue sync failed:', syncError);
 
+                chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
+              }
+            } else {
               chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
-            }).catch(() => {
-
-              chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
-            });
-          } else {
+            }
+          } catch (error) {
+            console.error('Popup: Error checking sync capability for overdue sync:', error);
 
             chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
           }
         } else {
+          console.warn('Popup: Sync engine not available for overdue sync');
 
           chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
         }
       } else if (response) {
-
+        const timeRemainingMinutes = Math.round(response.timeRemaining / (1000 * 60));
       }
     } catch (error) {
-
+      console.error('Popup: Error checking for overdue sync:', error);
     }
 
     // Listen for global auth/tier changes
@@ -779,11 +797,22 @@ class URLNotesApp {
       // Refresh premium status from both storage and Supabase client
       this.premiumStatus = await getPremiumStatus();
       await this.updatePremiumUI();
-      // Also refresh notes to show version history buttons if premium
-      if (this.premiumStatus?.isPremium) {
-        this.render();
+
+      // Update settings UI to reflect auth changes
+      await this.settingsManager.updateAuthUI();
+
+      // If this is a status refresh, also refresh notes to show any decrypted content
+      if (payload && payload.statusRefresh) {
+        await this.refreshNotesFromStorage();
+      } else {
+        // Also refresh notes to show version history buttons if premium
+        if (this.premiumStatus?.isPremium) {
+          this.render();
+        }
       }
-    } catch (_) { }
+    } catch (error) {
+      console.error('Error handling auth change:', error);
+    }
   }
 
   // Handle tier change from api.js with status payload { active, tier }
@@ -795,7 +824,15 @@ class URLNotesApp {
       const isPremium = !!(status && status.active && (status.tier || 'premium') !== 'free');
       this.premiumStatus = { isPremium };
       await this.updatePremiumUI();
-    } catch (_) { }
+
+      // Update settings UI to reflect tier changes
+      await this.settingsManager.updateAuthUI();
+
+      // Refresh notes display to show/hide premium features
+      await this.refreshNotesFromStorage();
+    } catch (error) {
+      console.error('Error handling tier change:', error);
+    }
   }
 
   // Note: Sync event handlers removed - sync only happens on timer or manual button press
@@ -2357,11 +2394,11 @@ class URLNotesApp {
         targetTab = await chrome.tabs.create({ url: urlToOpen, active: true });
         // Wait for content script to be ready, then highlight
         await this.awaitContentReady(targetTab.id, { timeoutMs: 4000, intervalMs: 200 });
-        chrome.tabs.sendMessage(targetTab.id, { action: 'highlightText', href: urlToOpen, text }).catch(() => {});
+        chrome.tabs.sendMessage(targetTab.id, { action: 'highlightText', href: urlToOpen, text }).catch(() => { });
       } else {
         // If already on the same page, do not reload the page. Just activate and request highlight.
         await chrome.tabs.update(targetTab.id, { active: true });
-        chrome.tabs.sendMessage(targetTab.id, { action: 'highlightText', href: absoluteHref, text }).catch(() => {});
+        chrome.tabs.sendMessage(targetTab.id, { action: 'highlightText', href: absoluteHref, text }).catch(() => { });
       }
     } catch (err) {
       // Fallback: open normally

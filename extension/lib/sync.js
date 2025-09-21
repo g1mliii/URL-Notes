@@ -72,11 +72,25 @@ class SyncEngine {
       // NO automatic sync - only local behavior
     });
 
+    // Listen for tier changes
+    window.eventBus?.on('tier:changed', (status) => {
+      if (status && status.active && status.tier !== 'free') {
+        this.startPeriodicSync();
+      } else {
+        this.stopPeriodicSync();
+      }
+    });
+
     // Listen for auth changes
     window.eventBus?.on('auth:changed', (payload) => {
-      if (payload.user) {
+      if (payload && payload.user) {
         // Notify background script to start timer
-        chrome.runtime.sendMessage({ action: 'auth-changed', user: payload.user }).catch(() => { });
+        chrome.runtime.sendMessage({ 
+          action: 'auth-changed', 
+          user: payload.user,
+          statusRefresh: payload.statusRefresh || false
+        }).catch(() => { });
+        
         // Don't perform initial sync automatically - just start periodic sync
         this.startPeriodicSync();
       } else {
@@ -123,22 +137,39 @@ class SyncEngine {
       // Check authentication first
       try {
         if (window.supabaseClient.isAuthenticated()) {
-          // User is authenticated, check subscription status
+          // Verify the token is still valid before checking subscription
+          const isValidToken = await window.supabaseClient.verifyToken();
+          if (!isValidToken) {
+            console.warn('Sync: Authentication token is invalid, cannot sync');
+            return { authenticated: false, status: null, canSync: false };
+          }
+
+          // User is authenticated with valid token, check subscription status
           try {
             const status = await window.supabaseClient.getSubscriptionStatus();
             const canSync = status && status.active;
 
+            // Additional check: ensure we have a current user object
+            const currentUser = window.supabaseClient.getCurrentUser();
+            if (!currentUser || !currentUser.id) {
+              console.warn('Sync: No current user available, cannot sync');
+              return { authenticated: false, status, canSync: false };
+            }
+
             return { authenticated: true, status, canSync };
           } catch (statusError) {
+            console.warn('Sync: Failed to get subscription status:', statusError);
             return { authenticated: true, status: null, canSync: false };
           }
         } else {
           return { authenticated: false, status: null, canSync: false };
         }
       } catch (authError) {
+        console.warn('Sync: Authentication check failed:', authError);
         return { authenticated: false, status: null, canSync: false };
       }
     } catch (error) {
+      console.warn('Sync: canSync check failed:', error);
       return { authenticated: false, status: null, canSync: false };
     }
   }

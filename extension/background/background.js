@@ -424,10 +424,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'auth-changed':
       // Handle auth changes for sync timer management
       if (request.user) {
-        // User signed in, start timer and initialize lastSyncTime
+        // User signed in or status refreshed, start timer and initialize lastSyncTime
         lastSyncTime = Date.now();
         saveLastSyncTime(); // Save the current time as last sync
         startSyncTimer();
+        
       } else {
         // User signed out, stop timer
         stopSyncTimer();
@@ -439,6 +440,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       lastSyncTime = Date.now(); // Mark that we just synced
       saveLastSyncTime(); // Save the updated time
       startSyncTimer();
+      sendResponse({ success: true });
+      break;
+    case 'tier-changed':
+      // Handle tier changes (premium status updates)
+      // If user lost premium access, stop sync timer
+      if (!request.active || request.tier === 'free') {
+        stopSyncTimer();
+      } else {
+        // User gained premium access, start sync timer if not already running
+        if (!syncTimer) {
+          lastSyncTime = Date.now();
+          saveLastSyncTime();
+          startSyncTimer();
+        }
+      }
       sendResponse({ success: true });
       break;
     case 'reset-sync-timer':

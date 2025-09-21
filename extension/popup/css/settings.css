@@ -13,6 +13,56 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* Ensure proper height constraints */
+  max-height: 600px; /* Match popup height */
+}
+
+/* Add scroll indicator shadows */
+.settings-content::before {
+  content: '';
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: linear-gradient(to bottom, var(--bg-primary) 0%, transparent 100%);
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  margin-bottom: -8px;
+}
+
+.settings-content.scrolled::before {
+  opacity: 0.8;
+}
+
+.settings-content::after {
+  content: '';
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: linear-gradient(to top, var(--bg-primary) 0%, transparent 100%);
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  margin-top: -8px;
+}
+
+.settings-content.has-more::after {
+  opacity: 0.8;
+}
+
+/* Add subtle scroll hint for scrollable content */
+.settings-content[data-scrollable="true"]:not(.scrolled) {
+  position: relative;
+}
+
+.settings-content[data-scrollable="true"]:not(.scrolled)::after {
+  opacity: 0.4;
 }
 
 .settings-title {
@@ -27,6 +77,43 @@
   overflow-y: auto;
   overflow-x: hidden; /* prevent horizontal scrollbar */
   padding: 12px; /* condensed */
+  /* Improved scrolling behavior */
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch; /* iOS smooth scrolling */
+  /* Ensure proper scroll area */
+  max-height: calc(100vh - 80px); /* Account for header */
+  min-height: 0; /* Allow flex shrinking */
+}
+
+/* Enhanced scrollbar styling for better visibility */
+.settings-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.settings-content::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  margin: 4px 0;
+}
+
+.settings-content::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+  border: 1px solid var(--bg-secondary);
+}
+
+.settings-content::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+.settings-content::-webkit-scrollbar-thumb:active {
+  background: var(--text-secondary);
+}
+
+/* Firefox scrollbar styling */
+.settings-content {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) var(--bg-secondary);
 }
 
 .settings-section {
@@ -504,4 +591,37 @@ input[type="file"] {
   width: 16px;
   height: 16px;
   stroke: currentColor;
+}
+
+/* Ensure proper scrolling on all platforms */
+@supports (-webkit-overflow-scrolling: touch) {
+  .settings-content {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* macOS Safari specific fixes */
+@media screen and (-webkit-min-device-pixel-ratio: 1) {
+  .settings-content {
+    /* Force hardware acceleration for smooth scrolling */
+    transform: translateZ(0);
+    will-change: scroll-position;
+  }
+}
+
+/* Ensure settings sections don't get cut off */
+.settings-section:last-child {
+  margin-bottom: 20px; /* Extra space at bottom for scroll */
+  padding-bottom: 10px;
+}
+
+/* Add visual feedback for scrollable content */
+.settings-content[data-scrollable="true"] {
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Improve touch scrolling on mobile/tablet */
+.settings-content {
+  overscroll-behavior: contain;
 }
