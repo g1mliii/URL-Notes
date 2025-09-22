@@ -1400,29 +1400,28 @@ class Auth {
         return;
       }
 
-      // Generate nonce for security
-      this.generateGoogleNonce().then(([nonce, hashedNonce]) => {
-        console.log('✅ Generated Google nonce');
-        this.googleNonce = nonce;
+      // Temporarily disable nonce to debug 400 error
+      console.log('🔍 Initializing Google Sign-In without nonce for debugging');
+      this.googleNonce = null;
 
-        // Initialize Google Sign-In
-        console.log('🔍 Initializing Google accounts with Client ID:', clientId);
-        google.accounts.id.initialize({
-          client_id: clientId,
-          callback: (response) => this.handleGoogleSignIn(response),
-          nonce: hashedNonce,
-          use_fedcm_for_prompt: false, // Disable FedCM to avoid credential conflicts
-          auto_select: false,
-          cancel_on_tap_outside: true,
-          itp_support: true // Improve Safari compatibility
-        });
-        console.log('✅ Google accounts initialized');
+      // Initialize Google Sign-In
+      console.log('🔍 Initializing Google accounts with Client ID:', clientId);
+      google.accounts.id.initialize({
+        client_id: clientId,
+        callback: (response) => this.handleGoogleSignIn(response),
+        // nonce: hashedNonce, // Temporarily disabled
+        use_fedcm_for_prompt: false, // Disable FedCM to avoid credential conflicts
+        auto_select: false,
+        cancel_on_tap_outside: true,
+        itp_support: true // Improve Safari compatibility
+      });
+      console.log('✅ Google accounts initialized');
 
-        // Mark as initialized to prevent duplicate calls
-        this.googleSignInInitialized = true;
+      // Mark as initialized to prevent duplicate calls
+      this.googleSignInInitialized = true;
 
-        // Render sign-in buttons
-        if (loginContainer) {
+      // Render sign-in buttons
+      if (loginContainer) {
           console.log('🔍 Rendering Google Sign-In button for login');
           google.accounts.id.renderButton(loginContainer, {
             type: 'standard',
@@ -1432,30 +1431,27 @@ class Auth {
             size: 'large',
             logo_alignment: 'left'
           });
-          console.log('✅ Login button rendered');
-        }
+        console.log('✅ Login button rendered');
+      }
 
-        if (signupContainer) {
-          console.log('🔍 Rendering Google Sign-In button for signup');
-          google.accounts.id.renderButton(signupContainer, {
-            type: 'standard',
-            shape: 'pill',
-            theme: 'outline',
-            text: 'signup_with',
-            size: 'large',
-            logo_alignment: 'left'
-          });
-          console.log('✅ Signup button rendered');
-        }
+      if (signupContainer) {
+        console.log('🔍 Rendering Google Sign-In button for signup');
+        google.accounts.id.renderButton(signupContainer, {
+          type: 'standard',
+          shape: 'pill',
+          theme: 'outline',
+          text: 'signup_with',
+          size: 'large',
+          logo_alignment: 'left'
+        });
+        console.log('✅ Signup button rendered');
+      }
 
-        // Disable One Tap to avoid COOP issues - only use button sign-in
+      // Disable One Tap to avoid COOP issues - only use button sign-in
         console.log('✅ Google Sign-In buttons ready (One Tap disabled to avoid COOP conflicts)');
 
-      }).catch(error => {
-        console.error('❌ Error generating Google nonce:', error);
-        // Reset initialization flag on error
-        this.googleSignInInitialized = false;
-      });
+      // Mark as initialized to prevent duplicate calls
+      this.googleSignInInitialized = true;
 
     } catch (error) {
       console.error('❌ Error initializing Google Sign-In:', error);
@@ -1478,6 +1474,13 @@ class Auth {
   // Handle Google Sign-In response
   async handleGoogleSignIn(response) {
     try {
+      console.log('🔍 Google Sign-In response received:', {
+        hasCredential: !!response.credential,
+        credentialLength: response.credential?.length,
+        hasNonce: !!this.googleNonce,
+        nonceLength: this.googleNonce?.length
+      });
+
       if (!this.supabaseClient) {
         this.showNotification('Authentication service not available', 'error');
         return;
