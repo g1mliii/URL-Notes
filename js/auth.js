@@ -6,7 +6,7 @@ class Auth {
     this.encryption = null; // Will be set after encryption library loads
     this.googleSignInInitialized = false; // Prevent multiple Google Sign-In initializations
     this.googleOneTapShown = false; // Prevent multiple One Tap prompts
-    
+
     // Auth form elements (similar to extension settings.js)
     this.authEmailInput = null;
     this.authPasswordInput = null;
@@ -16,7 +16,7 @@ class Auth {
     this.authSignOutBtn = null;
     this.authStatusText = null;
     this.authForgotPwBtn = null;
-    
+
     this.init();
   }
 
@@ -34,37 +34,37 @@ class Auth {
         await this.supabaseClient.init();
       }
     }
-    
+
     // Initialize encryption library
     if (window.noteEncryption) {
       this.encryption = window.noteEncryption;
     }
-    
+
     // Initialize auth form elements
     this.initAuthElements();
-    
+
     // Set up form listeners
     this.setupFormListeners();
-    
+
     // Initialize Google Sign-In if available
     this.initializeGoogleSignIn();
-    
+
     // Retry Google Sign-In initialization periodically in case script loads later
     this.retryGoogleSignInInit();
-    
+
     // Check for OAuth callback and password reset (non-blocking)
     this.handleOAuthCallback().catch(() => {
       // OAuth callback error handled silently
     });
-    
+
     // Update auth UI based on current state
     this.updateAuthUI().catch(() => {
       // Auth UI update error handled silently
     });
-    
+
     // Set up authentication state monitoring
     this.setupAuthStateMonitoring();
-    
+
     this._initialized = true;
   }
 
@@ -76,7 +76,7 @@ class Auth {
     this.authSignInBtn = document.querySelector('#signInForm button[type="submit"]');
     this.authSignUpBtn = document.querySelector('#signUpForm button[type="submit"]');
     this.authForgotPwBtn = document.querySelector('#resetPasswordForm button[type="submit"]');
-    
+
     // For dashboard/account pages
     this.authSignOutBtn = document.getElementById('logoutBtn');
     this.authStatusText = document.getElementById('authStatus');
@@ -115,7 +115,7 @@ class Auth {
     // Enter key handlers for email/password inputs
     const emailInputs = document.querySelectorAll('input[type="email"]');
     const passwordInputs = document.querySelectorAll('input[type="password"]');
-    
+
     emailInputs.forEach(input => {
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
@@ -141,11 +141,11 @@ class Auth {
     if (!form) return;
 
     if (form.id === 'signInForm') {
-      this.handleSignIn({ preventDefault: () => {} });
+      this.handleSignIn({ preventDefault: () => { } });
     } else if (form.id === 'signUpForm') {
-      this.handleSignUp({ preventDefault: () => {} });
+      this.handleSignUp({ preventDefault: () => { } });
     } else if (form.id === 'resetPasswordForm') {
-      this.handleForgotPassword({ preventDefault: () => {} });
+      this.handleForgotPassword({ preventDefault: () => { } });
     }
   }
 
@@ -163,7 +163,7 @@ class Auth {
   getAuthInputs() {
     const emailInput = document.getElementById('loginEmail') || document.getElementById('registerEmail') || document.getElementById('resetEmail');
     const passwordInput = document.getElementById('loginPassword') || document.getElementById('registerPassword');
-    
+
     const email = (emailInput?.value || '').trim();
     const password = passwordInput?.value || '';
     return { email, password };
@@ -172,7 +172,7 @@ class Auth {
   // Handle sign in (adapted from extension settings.js)
   async handleSignIn(event) {
     event.preventDefault();
-    
+
     if (!this.supabaseClient) {
       this.showNotification('Authentication service not available', 'error');
       return;
@@ -185,7 +185,7 @@ class Auth {
   // Handle sign up (adapted from extension settings.js)
   async handleSignUp(event) {
     event.preventDefault();
-    
+
     const email = document.getElementById('registerEmail')?.value?.trim();
     const password = document.getElementById('registerPassword')?.value;
     const confirmPassword = document.getElementById('confirmPassword')?.value;
@@ -212,16 +212,16 @@ class Auth {
   // Handle forgot password (adapted from extension settings.js)
   async handleForgotPassword(event) {
     event.preventDefault();
-    
+
     const emailInput = document.getElementById('resetEmail');
     const email = emailInput?.value?.trim();
     const submitBtn = document.querySelector('#resetPasswordForm button[type="submit"]');
-    
+
     // Clear previous error states
     if (emailInput) {
       emailInput.style.borderColor = '';
     }
-    
+
     if (!email) {
       this.showNotification('Please enter your email address', 'error');
       if (emailInput) {
@@ -249,28 +249,28 @@ class Auth {
 
     try {
       this.setAuthBusy(true);
-      
+
       // Update button state
       if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.classList.add('loading');
         submitBtn.textContent = 'Sending...';
       }
-      
+
       // Password reset attempt for email
-      
+
       // Use same resetPassword method as extension
       await this.supabaseClient.resetPassword(email);
-      
+
       // Success state
       if (submitBtn) {
         submitBtn.classList.remove('loading');
         submitBtn.textContent = 'Email Sent!';
         submitBtn.style.background = 'var(--success-color)';
       }
-      
+
       this.showNotification('Password reset email sent. Check your inbox and spam folder.', 'success');
-      
+
       // Switch back to login form after delay (same as extension behavior)
       setTimeout(() => {
         const forgotPasswordForm = document.getElementById('forgotPasswordForm');
@@ -278,7 +278,7 @@ class Auth {
         if (forgotPasswordForm && loginForm && window.app) {
           window.app.switchAuthForm(forgotPasswordForm, loginForm);
         }
-        
+
         // Reset button state
         if (submitBtn) {
           submitBtn.disabled = false;
@@ -287,19 +287,19 @@ class Auth {
           submitBtn.style.background = '';
         }
       }, 3000);
-      
+
     } catch (error) {
       // Password reset error
       const userMessage = this.handlePasswordResetError(error);
       this.showNotification(userMessage, 'error');
-      
+
       // Reset button state
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.classList.remove('loading');
         submitBtn.textContent = 'Send Reset Link';
       }
-      
+
       // Focus back to email input
       if (emailInput) {
         emailInput.focus();
@@ -319,27 +319,27 @@ class Auth {
     try {
       this.setAuthBusy(true);
       await this.supabaseClient.signOut();
-      
+
       try {
         this.showNotification('Signed out', 'success');
       } catch (notifError) {
         // Notification error
       }
-      
+
       // Redirect after short delay
       setTimeout(() => {
         window.location.href = '/';
       }, 500);
-      
+
     } catch (error) {
       // Sign out error
-      
+
       try {
         this.showNotification(`Sign out failed: ${error.message || error}`, 'error');
       } catch (notifError) {
         // Notification error during error handling
       }
-      
+
       // Force redirect even if sign out fails
       setTimeout(() => {
         window.location.href = '/';
@@ -358,10 +358,10 @@ class Auth {
     try {
       const isAuthed = this.supabaseClient?.isAuthenticated?.() || false;
       const user = this.supabaseClient?.getCurrentUser?.();
-      
+
       // Helper to toggle element visibility
-      const show = (el, on = true) => { 
-        if (el) el.style.display = on ? 'block' : 'none'; 
+      const show = (el, on = true) => {
+        if (el) el.style.display = on ? 'block' : 'none';
       };
 
       if (isAuthed && user) {
@@ -370,25 +370,25 @@ class Auth {
           this.authStatusText.textContent = `Logged in as ${user.email || 'user'}`;
           this.authStatusText.style.display = '';
         }
-        
+
         // Show/hide appropriate elements for authenticated state
         show(this.authSignOutBtn, true);
-        
+
         // Hide auth forms if on landing page
         const authContainer = document.querySelector('.auth-container');
         if (authContainer) {
           authContainer.style.display = 'none';
         }
-        
+
       } else {
         // User is not authenticated
         if (this.authStatusText) {
           this.authStatusText.textContent = '';
           this.authStatusText.style.display = 'none';
         }
-        
+
         show(this.authSignOutBtn, false);
-        
+
         // Show auth forms if on landing page
         const authContainer = document.querySelector('.auth-container');
         if (authContainer) {
@@ -404,7 +404,7 @@ class Auth {
   setAuthBusy(busy) {
     const controls = [
       document.getElementById('loginEmail'),
-      document.getElementById('registerEmail'), 
+      document.getElementById('registerEmail'),
       document.getElementById('resetEmail'),
       document.getElementById('loginPassword'),
       document.getElementById('registerPassword'),
@@ -414,11 +414,11 @@ class Auth {
       this.authForgotPwBtn,
       this.authSignOutBtn
     ];
-    
-    controls.forEach(el => { 
-      if (el) el.disabled = !!busy; 
+
+    controls.forEach(el => {
+      if (el) el.disabled = !!busy;
     });
-    
+
     if (this.authStatusText) {
       this.authStatusText.style.opacity = busy ? '0.6' : '0.8';
     }
@@ -429,17 +429,17 @@ class Auth {
     // Create notification element
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
-    
+
     // Add icon based on type
     let icon = 'ℹ';
     if (type === 'success') icon = '✓';
     if (type === 'error') icon = '⚠';
-    
+
     notification.innerHTML = `
       <span class="notification-icon">${icon}</span>
       <span class="notification-message">${message}</span>
     `;
-    
+
     // Apply glassmorphism styling to match extension design
     notification.style.cssText = `
       position: fixed;
@@ -464,7 +464,7 @@ class Auth {
       align-items: center;
       gap: 8px;
     `;
-    
+
     // Apply type-specific styling
     if (type === 'success') {
       notification.style.background = 'color-mix(in oklab, var(--accent-primary, #007aff) 20%, var(--glass-bg, rgba(255, 255, 255, 0.1)) 80%)';
@@ -476,14 +476,14 @@ class Auth {
       notification.style.background = 'color-mix(in oklab, #007aff 20%, var(--glass-bg, rgba(255, 255, 255, 0.1)) 80%)';
       notification.style.borderColor = 'color-mix(in oklab, #007aff 40%, var(--glass-border, rgba(255, 255, 255, 0.2)) 60%)';
     }
-    
+
     document.body.appendChild(notification);
-    
+
     // Animate in
     setTimeout(() => {
       notification.style.transform = 'translateX(0)';
     }, 10);
-    
+
     // Remove after delay
     setTimeout(() => {
       notification.style.transform = 'translateX(100%)';
@@ -547,25 +547,25 @@ class Auth {
     try {
       // Update UI immediately
       this.updateAuthUI();
-      
+
       // Emit auth changed event if event bus is available
       try {
         window.eventBus?.emit('auth:changed', { user });
-      } catch (_) {}
-      
+      } catch (_) { }
+
       // Check for redirect parameter first
       const urlParams = new URLSearchParams(window.location.search);
       const redirectTo = urlParams.get('redirect');
-      
+
       if (redirectTo) {
         // Clear the redirect parameter and go to intended destination
         window.history.replaceState({}, document.title, window.location.pathname);
         return redirectTo;
       }
-      
+
       // Determine redirect destination based on current page
       const currentPath = window.location.pathname;
-      
+
       if (currentPath === '/' || currentPath === '/index.html' || currentPath.endsWith('index.html')) {
         // Redirect from landing page to dashboard
         return '/dashboard';
@@ -616,10 +616,10 @@ class Auth {
   // Handle password reset errors with user-friendly messages
   handlePasswordResetError(error) {
     let userMessage = 'Password reset failed. Please try again.';
-    
+
     if (error.message) {
       const errorMsg = error.message.toLowerCase();
-      
+
       if (errorMsg.includes('expired') || errorMsg.includes('invalid')) {
         userMessage = 'Password reset link has expired. Please request a new one.';
       } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
@@ -632,7 +632,7 @@ class Auth {
         userMessage = 'Email address not found. Please check your email or create a new account.';
       }
     }
-    
+
     return userMessage;
   }
 
@@ -662,7 +662,7 @@ class Auth {
       }
 
       const userData = await response.json();
-      
+
       // Handle encryption key migration if user has existing notes
       if (userData.user && this.encryption) {
         await this.migrateEncryptionKeys(userData.user, newPassword);
@@ -670,10 +670,10 @@ class Auth {
 
       // Update session with new user data
       await this.supabaseClient.handleAuthSuccess(userData);
-      
+
       this.showNotification('Password updated successfully', 'success');
       return userData.user;
-      
+
     } catch (error) {
       // Password reset error
       throw error;
@@ -689,18 +689,18 @@ class Auth {
 
     try {
       // Starting encryption key migration for password change
-      
+
       // Get old encryption key (from cached data)
       const oldKey = await this.supabaseClient.getUserEncryptionKey();
-      
+
       // Generate new encryption key with new password
       const keyMaterial = `${user.id}:${user.email}`;
-      
+
       // Get salt from profile (should already exist)
       let salt = null;
       try {
         const profile = await this.supabaseClient._request(
-          `${this.supabaseClient.apiUrl}/profiles?id=eq.${user.id}&select=salt`, 
+          `${this.supabaseClient.apiUrl}/profiles?id=eq.${user.id}&select=salt`,
           { auth: true }
         );
         salt = profile?.[0]?.salt;
@@ -715,14 +715,14 @@ class Auth {
       }
 
       const newKey = await this.encryption.generateKey(keyMaterial, salt);
-      
+
       // Fetch all user's notes
       const notes = await this.supabaseClient.fetchNotes();
-      
+
       if (notes.length === 0) {
         return;
       }
-      
+
       // Re-encrypt all notes with new key
       const migratedNotes = [];
       for (const note of notes) {
@@ -745,17 +745,17 @@ class Auth {
           lastSyncTime: null,
           timestamp: Date.now()
         });
-        
+
         // Successfully migrated notes
       }
-      
+
       // Clear cached encryption key data to force regeneration
       await this.supabaseClient.removeStorage([
-        'encryptionKeyLastChecked', 
-        'cachedKeyMaterial', 
+        'encryptionKeyLastChecked',
+        'cachedKeyMaterial',
         'cachedSalt'
       ]);
-      
+
     } catch (error) {
       // Encryption key migration failed
       // Don't throw - password change should still succeed even if migration fails
@@ -766,10 +766,10 @@ class Auth {
   // Handle OAuth callback with proper error handling and redirect
   async handleOAuthCallback() {
     const urlParams = new URLSearchParams(window.location.search);
-    
+
     // Also check URL hash fragment for Supabase auth tokens
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    
+
     // Handle success messages from redirects
     const message = urlParams.get('message');
     if (message === 'password-reset-success') {
@@ -777,37 +777,37 @@ class Auth {
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-    
+
     // Handle OAuth callback
-    
+
     if (urlParams.has('code') && this.supabaseClient) {
       try {
         await this.supabaseClient.handleOAuthCallback();
-        
+
         // Get user after successful OAuth
         const user = this.supabaseClient.getCurrentUser();
-        
+
         // Handle authentication success and get redirect destination
         const redirectTo = await this.handleAuthenticationSuccess(user);
-        
+
         if (redirectTo) {
           window.location.href = redirectTo;
         }
-        
+
       } catch (error) {
         // OAuth callback error
         this.showNotification('Authentication failed. Please try again.', 'error');
-        
+
         // Clean up URL and redirect to login
         window.history.replaceState({}, document.title, window.location.pathname);
         window.location.href = '/';
       }
     }
-    
+
     // Handle password reset callback - check both query params and hash fragment
     const isRecovery = (urlParams.has('type') && urlParams.get('type') === 'recovery') ||
-                      (hashParams.has('type') && hashParams.get('type') === 'recovery');
-    
+      (hashParams.has('type') && hashParams.get('type') === 'recovery');
+
     if (isRecovery) {
       await this.handlePasswordResetCallback();
     }
@@ -815,26 +815,26 @@ class Auth {
 
   // Handle password reset callback from email link
   async handlePasswordResetCallback() {
-    
+
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    
+
     // Check both query params and hash fragment for tokens
     const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
     const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
     const type = urlParams.get('type') || hashParams.get('type');
     const error = urlParams.get('error') || hashParams.get('error');
     const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
-    
+
     // Check for password reset tokens
-    
+
     // Show loading state while processing
     this.showNotification('Processing password reset link...', 'info');
-    
+
     // Handle errors from Supabase
     if (error) {
       // Password reset callback error
-      
+
       let userMessage = 'Password reset failed. Please try again.';
       if (errorDescription) {
         if (errorDescription.includes('expired')) {
@@ -845,9 +845,9 @@ class Auth {
           userMessage = `Password reset failed: ${errorDescription}`;
         }
       }
-      
+
       this.showNotification(userMessage, 'error');
-      
+
       // Clean up URL and redirect
       window.history.replaceState({}, document.title, window.location.pathname);
       setTimeout(() => {
@@ -855,10 +855,10 @@ class Auth {
       }, 4000);
       return;
     }
-    
+
     if (type !== 'recovery' || !accessToken) {
       this.showNotification('Invalid password reset link. Please request a new one.', 'error');
-      
+
       // Clean up URL and redirect
       window.history.replaceState({}, document.title, window.location.pathname);
       setTimeout(() => {
@@ -873,10 +873,10 @@ class Auth {
       if (!isValid) {
         throw new Error('Reset token is invalid or expired');
       }
-      
+
       // Show success message and password reset form
       this.showNotification('Password reset link verified. Please enter your new password.', 'success');
-      
+
       // Show password reset form after a brief delay
       setTimeout(() => {
         try {
@@ -886,17 +886,17 @@ class Auth {
           this.showNotification('Error showing password reset form. Please try again.', 'error');
         }
       }, 1000);
-      
+
     } catch (error) {
       // Password reset callback error
-      
+
       let userMessage = 'Password reset link expired or invalid. Please request a new one.';
       if (error.message && error.message.includes('network')) {
         userMessage = 'Network error. Please check your connection and try again.';
       }
-      
+
       this.showNotification(userMessage, 'error');
-      
+
       // Clean up URL and redirect
       window.history.replaceState({}, document.title, window.location.pathname);
       setTimeout(() => {
@@ -907,7 +907,7 @@ class Auth {
 
   // Show password reset form (creates a modal or redirects to reset page)
   showPasswordResetForm(accessToken, refreshToken) {
-    
+
     // Create a modal for password reset
     const modal = document.createElement('div');
     modal.className = 'modal';
@@ -934,9 +934,9 @@ class Auth {
         </form>
       </div>
     `;
-    
+
     document.body.appendChild(modal);
-    
+
     // Focus on first input
     setTimeout(() => {
       const firstInput = modal.querySelector('#newPassword');
@@ -944,7 +944,7 @@ class Auth {
         firstInput.focus();
       }
     }, 100);
-    
+
     // Handle password visibility toggles
     const toggleBtns = modal.querySelectorAll('.toggle-password');
     toggleBtns.forEach(btn => {
@@ -955,23 +955,23 @@ class Auth {
         btn.textContent = isPassword ? 'Hide' : 'Show';
       });
     });
-    
+
     // Handle form submission
     const form = modal.querySelector('#newPasswordForm');
     const submitBtn = modal.querySelector('#updatePasswordBtn');
-    
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
+
       const newPasswordInput = document.getElementById('newPassword');
       const confirmPasswordInput = document.getElementById('confirmNewPassword');
       const newPassword = newPasswordInput.value;
       const confirmPassword = confirmPasswordInput.value;
-      
+
       // Clear previous error states
       newPasswordInput.style.borderColor = '';
       confirmPasswordInput.style.borderColor = '';
-      
+
       // Validation
       if (newPassword.length < 6) {
         this.showNotification('Password must be at least 6 characters long', 'error');
@@ -979,37 +979,37 @@ class Auth {
         newPasswordInput.focus();
         return;
       }
-      
+
       if (newPassword !== confirmPassword) {
         this.showNotification('Passwords do not match', 'error');
         confirmPasswordInput.style.borderColor = 'var(--error-color)';
         confirmPasswordInput.focus();
         return;
       }
-      
+
       try {
         // Set loading state
         submitBtn.disabled = true;
         submitBtn.classList.add('loading');
         submitBtn.textContent = 'Updating...';
-        
+
         // Update password using the reset token
         await this.handlePasswordReset(newPassword, accessToken);
-        
+
         // Success state
         submitBtn.classList.remove('loading');
         submitBtn.textContent = 'Success!';
         submitBtn.style.background = 'var(--success-color)';
-        
+
         // Show success message
         this.showNotification('Password updated successfully! Redirecting to dashboard...', 'success');
-        
+
         // Close modal and redirect after delay
         setTimeout(() => {
           if (document.body.contains(modal)) {
             document.body.removeChild(modal);
           }
-          
+
           // Check if user is authenticated and redirect appropriately
           if (this.isAuthenticated()) {
             window.location.href = '/dashboard';
@@ -1018,24 +1018,24 @@ class Auth {
             window.location.href = '/?message=password-reset-success';
           }
         }, 1000);
-        
+
       } catch (error) {
         // Password update error
-        
+
         // Reset button state
         submitBtn.disabled = false;
         submitBtn.classList.remove('loading');
         submitBtn.textContent = 'Update Password';
-        
+
         // Show user-friendly error
         const userMessage = this.handlePasswordResetError(error);
         this.showNotification(userMessage, 'error');
-        
+
         // Focus back to first input
         newPasswordInput.focus();
       }
     });
-    
+
     // Handle modal close
     const closeBtn = modal.querySelector('.modal-close');
     closeBtn.addEventListener('click', () => {
@@ -1045,7 +1045,7 @@ class Auth {
       // Don't redirect - just close the modal
       // User can navigate manually if needed
     });
-    
+
     // Handle escape key
     const handleEscape = (e) => {
       if (e.key === 'Escape') {
@@ -1057,7 +1057,7 @@ class Auth {
       }
     };
     document.addEventListener('keydown', handleEscape);
-    
+
     // Clean up URL (remove both query params and hash fragment)
     window.history.replaceState({}, document.title, window.location.pathname);
   }
@@ -1076,7 +1076,7 @@ class Auth {
     try {
       window.eventBus?.on('auth:changed', (data) => {
         this.updateAuthUI();
-        
+
         // Handle logout in other tabs
         if (!data.user && this.isAuthenticated()) {
           this.handleSignOut();
@@ -1118,7 +1118,7 @@ class Auth {
           this.supabaseClient.accessToken = null;
           this.supabaseClient.currentUser = null;
           this.updateAuthUI();
-          
+
           // Redirect to login if on protected page
           const currentPath = window.location.pathname;
           if (currentPath.includes('/dashboard') || currentPath.includes('/account')) {
@@ -1154,7 +1154,7 @@ class Auth {
       // Update client state
       this.supabaseClient.accessToken = session.access_token;
       this.supabaseClient.currentUser = session.user;
-      
+
       return true;
     } catch (error) {
       // Auth status check failed
@@ -1182,7 +1182,7 @@ class Auth {
     const { email: inputEmail, password: inputPassword } = this.getAuthInputs();
     const finalEmail = email || inputEmail;
     const finalPassword = password || inputPassword;
-    
+
     if (!finalEmail || !finalPassword) {
       this.showNotification('Enter email and password', 'error');
       return;
@@ -1190,31 +1190,31 @@ class Auth {
 
     try {
       this.setAuthBusy(true);
-      
+
       await this.supabaseClient.signInWithEmail(finalEmail, finalPassword);
       const user = this.supabaseClient.getCurrentUser();
-      
+
       this.showNotification('Signed in successfully', 'success');
-      
+
       // Handle authentication success and redirect
       const redirectTo = await this.handleAuthenticationSuccess(user);
-      
+
       if (redirectTo) {
         setTimeout(() => {
           window.location.href = redirectTo;
         }, 1000);
       }
-      
+
     } catch (error) {
       // Sign in error
       let errorMessage = `Sign in failed: ${error.message || error}`;
-      
+
       if (error.message.includes('Invalid login credentials')) {
         errorMessage = 'Invalid email or password';
       } else if (error.message.includes('Email not confirmed')) {
         errorMessage = 'Please verify your email address by clicking the link we sent to your inbox before signing in';
       }
-      
+
       this.showNotification(errorMessage, 'error');
     } finally {
       this.setAuthBusy(false);
@@ -1225,31 +1225,31 @@ class Auth {
   async signUpWithRedirect(email, password) {
     try {
       this.setAuthBusy(true);
-      
+
       await this.supabaseClient.signUpWithEmail(email, password);
-      
+
       // Ensure session by signing in (same as extension logic)
       if (!this.supabaseClient.isAuthenticated()) {
         await this.supabaseClient.signInWithEmail(email, password);
       }
-      
+
       const user = this.supabaseClient.getCurrentUser();
-      
+
       this.showNotification('Account created successfully! Please check your email to verify your account.', 'success');
-      
+
       // Handle authentication success and redirect
       const redirectTo = await this.handleAuthenticationSuccess(user);
-      
+
       if (redirectTo) {
         setTimeout(() => {
           window.location.href = redirectTo;
         }, 1000);
       }
-      
+
     } catch (error) {
       // Sign up error
       let errorMessage = `Sign up failed: ${error.message || error}`;
-      
+
       if (error.message.includes('already registered')) {
         errorMessage = 'An account with this email already exists';
       } else if (error.message.includes('Password')) {
@@ -1257,7 +1257,7 @@ class Auth {
       } else if (error.message.includes('Email not confirmed') || error.message.includes('confirm')) {
         errorMessage = 'Please verify your email address by clicking the link we sent to your inbox';
       }
-      
+
       this.showNotification(errorMessage, 'error');
     } finally {
       this.setAuthBusy(false);
@@ -1320,12 +1320,12 @@ class Auth {
 
     try {
       // Testing encryption integration
-      
+
       // Test basic encryption
       const password = 'test-password-123';
       const salt = this.encryption.generateSalt();
       const key = await this.encryption.generateKey(password, salt);
-      
+
       const testNote = {
         title: 'Integration Test Note',
         content: 'This is a test note for web app integration 🚀',
@@ -1333,19 +1333,19 @@ class Auth {
         url: 'https://example.com',
         domain: 'example.com'
       };
-      
+
       // Encrypt note
       const encrypted = await this.encryption.encryptNoteForCloud(testNote, key);
 
-      
+
       // Decrypt note
       const decrypted = await this.encryption.decryptNoteFromCloud(encrypted, key);
 
-      
+
       // Verify integrity
-      const isValid = decrypted.title === testNote.title && 
-                     decrypted.content === testNote.content;
-      
+      const isValid = decrypted.title === testNote.title &&
+        decrypted.content === testNote.content;
+
       if (isValid) {
 
         return true;
@@ -1353,7 +1353,7 @@ class Auth {
         // Decrypted data does not match original
         return false;
       }
-      
+
     } catch (error) {
       // Encryption integration test failed
       return false;
@@ -1363,13 +1363,13 @@ class Auth {
   // Initialize Google Sign-In
   initializeGoogleSignIn() {
     console.log('🔍 Initializing Google Sign-In...');
-    
+
     // Prevent multiple initializations
     if (this.googleSignInInitialized) {
       console.log('✅ Google Sign-In already initialized, skipping');
       return;
     }
-    
+
     // Check if Google Sign-In script is loaded
     if (typeof google === 'undefined' || !google.accounts) {
       console.log('❌ Google Sign-In script not loaded, will retry when script loads');
@@ -1380,12 +1380,12 @@ class Auth {
     // Check if we're on a page that needs Google Sign-In
     const loginContainer = document.getElementById('googleSignInButton');
     const signupContainer = document.getElementById('googleSignUpButton');
-    
-    console.log('🔍 Checking containers:', { 
-      loginContainer: !!loginContainer, 
-      signupContainer: !!signupContainer 
+
+    console.log('🔍 Checking containers:', {
+      loginContainer: !!loginContainer,
+      signupContainer: !!signupContainer
     });
-    
+
     if (!loginContainer && !signupContainer) {
       console.log('❌ No Google Sign-In containers found - not on auth page');
       return; // Not on auth page
@@ -1394,7 +1394,7 @@ class Auth {
     try {
       const clientId = window.urlNotesConfig?.getGoogleClientId();
       console.log('🔍 Google Client ID:', clientId);
-      
+
       if (!clientId || clientId.includes('1234567890')) {
         console.log('❌ Google Client ID not configured or is placeholder');
         return;
@@ -1417,7 +1417,7 @@ class Auth {
           itp_support: true // Improve Safari compatibility
         });
         console.log('✅ Google accounts initialized');
-        
+
         // Mark as initialized to prevent duplicate calls
         this.googleSignInInitialized = true;
 
@@ -1448,18 +1448,8 @@ class Auth {
           console.log('✅ Signup button rendered');
         }
 
-        // Show One Tap if user is not authenticated and on login page
-        if (loginContainer && !this.isAuthenticated() && !this.googleOneTapShown) {
-          console.log('🔍 Showing Google One Tap');
-          this.googleOneTapShown = true;
-          google.accounts.id.prompt((notification) => {
-            console.log('Google One Tap notification:', notification);
-            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-              // Reset flag if One Tap was not shown or skipped
-              this.googleOneTapShown = false;
-            }
-          });
-        }
+        // Disable One Tap to avoid COOP issues - only use button sign-in
+        console.log('✅ Google Sign-In buttons ready (One Tap disabled to avoid COOP conflicts)');
 
       }).catch(error => {
         console.error('❌ Error generating Google nonce:', error);
@@ -1505,7 +1495,7 @@ class Auth {
 
       // Handle successful authentication
       const redirectTo = await this.handleAuthenticationSuccess(authData.user);
-      
+
       this.showNotification('Successfully signed in with Google!', 'success');
 
       // Redirect after short delay
@@ -1521,7 +1511,7 @@ class Auth {
     } catch (error) {
       // Google sign in error
       let errorMessage = 'Google sign-in failed. Please try again.';
-      
+
       if (error.message) {
         const errorMsg = error.message.toLowerCase();
         if (errorMsg.includes('popup_closed')) {
@@ -1548,13 +1538,13 @@ class Auth {
     const retry = () => {
       attempts++;
       console.log(`🔄 Retry Google Sign-In init attempt ${attempts}/${maxAttempts}`);
-      
+
       if (typeof google !== 'undefined' && google.accounts && !this.googleSignInInitialized) {
         console.log('✅ Google script now available, initializing...');
         this.initializeGoogleSignIn();
         return;
       }
-      
+
       if (attempts < maxAttempts) {
         setTimeout(retry, retryInterval);
       } else {
@@ -1572,7 +1562,7 @@ class Auth {
     this.googleSignInInitialized = false;
     this.googleOneTapShown = false;
     this.googleNonce = null;
-    
+
     // Cancel any existing One Tap prompts
     if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
       try {
@@ -1587,7 +1577,7 @@ class Auth {
 // Initialize auth module when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   window.auth = new Auth();
-  
+
   // Add debug helper to window
   window.debugGoogleAuth = () => {
     console.log('🔍 Google Auth Debug Info:');
@@ -1597,33 +1587,33 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('- Config available:', !!window.urlNotesConfig);
     console.log('- Client ID:', window.urlNotesConfig?.getGoogleClientId());
     console.log('- Auth module initialized:', !!window.auth);
-    
+
     if (window.auth) {
       console.log('- Auth module has initializeGoogleSignIn:', typeof window.auth.initializeGoogleSignIn === 'function');
     }
-    
+
     // Try to manually initialize
     if (window.auth && window.auth.initializeGoogleSignIn) {
       console.log('🔄 Manually triggering Google Sign-In initialization...');
       window.auth.initializeGoogleSignIn();
     }
   };
-  
+
   console.log('🔍 Auth module loaded. Run debugGoogleAuth() in console for debug info.');
-  
+
   // Auto-detect password reset on page load
   setTimeout(() => {
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const isRecovery = hashParams.has('type') && hashParams.get('type') === 'recovery';
     const hasTokens = hashParams.has('access_token') && hashParams.has('refresh_token');
-    
+
     if (isRecovery && hasTokens) {
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
-      
+
       // Show notification first
       window.auth.showNotification('Password reset link verified. Please enter your new password.', 'success');
-      
+
       // Show modal after brief delay
       setTimeout(() => {
         window.auth.showPasswordResetForm(accessToken, refreshToken);
