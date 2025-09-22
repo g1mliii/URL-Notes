@@ -1408,10 +1408,6 @@ class Auth {
 
     try {
       const clientId = window.urlNotesConfig?.getGoogleClientId();
-      console.log('🔍 Google Client ID:', clientId);
-      console.log('🔍 Client ID type:', typeof clientId);
-      console.log('🔍 Client ID is array:', Array.isArray(clientId));
-      console.log('🔍 Client ID JSON:', JSON.stringify(clientId));
 
       if (!clientId || clientId.includes('1234567890')) {
         console.log('❌ Google Client ID not configured or is placeholder');
@@ -1509,25 +1505,24 @@ class Auth {
       this.showNotification('Signing in with Google...', 'info');
 
       // Sign in with Google ID token
-      const authData = await this.supabaseClient.signInWithGoogleIdToken(
+      await this.supabaseClient.signInWithGoogleIdToken(
         response.credential,
         this.googleNonce
       );
 
-      // Handle successful authentication
-      const redirectTo = await this.handleAuthenticationSuccess(authData.user);
+      // Get the current user (same as email sign-in flow)
+      const user = this.supabaseClient.getCurrentUser();
 
       this.showNotification('Successfully signed in with Google!', 'success');
 
-      // Redirect after short delay
-      setTimeout(() => {
-        if (redirectTo) {
+      // Handle authentication success and redirect (same as email sign-in flow)
+      const redirectTo = await this.handleAuthenticationSuccess(user);
+
+      if (redirectTo) {
+        setTimeout(() => {
           window.location.href = redirectTo;
-        } else {
-          // Just update UI if no redirect needed
-          this.updateAuthUI();
-        }
-      }, 1000);
+        }, 1000);
+      }
 
     } catch (error) {
       // Google sign in error

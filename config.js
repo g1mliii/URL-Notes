@@ -66,15 +66,9 @@ window.urlNotesConfig = {
   // Get Google OAuth Client ID for current environment
   getGoogleClientId() {
     const hostname = window.location.hostname;
-    console.log('🔍 Getting Google Client ID for hostname:', hostname);
-    console.log('🔍 Google config:', this.google);
-    console.log('🔍 window.GOOGLE_CLIENT_ID:', window.GOOGLE_CLIENT_ID);
-    
     if (hostname === 'anchored.site') {
-      console.log('🔍 Using production clientId:', this.google.clientId);
       return this.google.clientId;
     } else {
-      console.log('🔍 Using dev clientId:', this.google.devClientId);
       return this.google.devClientId;
     }
   },
