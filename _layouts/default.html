@@ -78,31 +78,21 @@
     <script>
         // Global callback for when Google script loads
         window.onGoogleScriptLoad = function() {
-            console.log('🔍 Google script loaded callback triggered');
             window.googleSignInLoaded = true;
             
             // Try to initialize only if needed
             if (window.auth && window.auth.initializeGoogleSignInIfNeeded) {
-                console.log('🔄 Checking if Google Sign-In needed from script load callback');
                 window.auth.initializeGoogleSignInIfNeeded();
             }
         };
         
         // Retry Google Sign-In initialization if script loads after auth module
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🔍 DOM loaded, checking Google Sign-In status');
-            
             function tryInitGoogleSignIn() {
                 if (typeof google !== 'undefined' && google.accounts && window.auth && window.auth.initializeGoogleSignInIfNeeded) {
-                    console.log('🔄 All components ready, checking if Google Sign-In needed');
                     window.auth.initializeGoogleSignInIfNeeded();
                     return true;
                 } else {
-                    console.log('🔍 Waiting for components...', {
-                        google: typeof google !== 'undefined' && !!google.accounts,
-                        auth: !!window.auth,
-                        initMethod: !!(window.auth && window.auth.initializeGoogleSignInIfNeeded)
-                    });
                     return false;
                 }
             }
@@ -116,9 +106,6 @@
                     attempts++;
                     if (tryInitGoogleSignIn() || attempts >= maxAttempts) {
                         clearInterval(interval);
-                        if (attempts >= maxAttempts) {
-                            console.log('❌ Max attempts reached for Google Sign-In initialization');
-                        }
                     }
                 }, 500);
             }
