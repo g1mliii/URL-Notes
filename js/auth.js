@@ -1409,6 +1409,9 @@ class Auth {
     try {
       const clientId = window.urlNotesConfig?.getGoogleClientId();
       console.log('🔍 Google Client ID:', clientId);
+      console.log('🔍 Client ID type:', typeof clientId);
+      console.log('🔍 Client ID is array:', Array.isArray(clientId));
+      console.log('🔍 Client ID JSON:', JSON.stringify(clientId));
 
       if (!clientId || clientId.includes('1234567890')) {
         console.log('❌ Google Client ID not configured or is placeholder');

@@ -323,6 +323,20 @@ class SupabaseClient {
         nonceLength: nonce?.length
       });
 
+      // Debug: Decode the JWT to see the audience
+      try {
+        const tokenParts = idToken.split('.');
+        const payload = JSON.parse(atob(tokenParts[1]));
+        console.log('🔍 ID Token payload:', {
+          aud: payload.aud,
+          iss: payload.iss,
+          exp: payload.exp,
+          iat: payload.iat
+        });
+      } catch (e) {
+        console.log('❌ Could not decode ID token for debugging');
+      }
+
       const payload = {
         provider: 'google',
         id_token: idToken
@@ -348,6 +362,30 @@ class SupabaseClient {
         status: error.status,
         response: error.response
       });
+      throw error;
+    }
+  }
+
+  // Alternative Google Sign-In using Supabase OAuth flow
+  async signInWithGoogleOAuth() {
+    try {
+      console.log('🔍 Starting Google OAuth flow via Supabase...');
+
+      const { data, error } = await this._supabaseClient.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('✅ Google OAuth redirect initiated');
+      return data;
+    } catch (error) {
+      console.error('❌ Google OAuth error:', error);
       throw error;
     }
   }
