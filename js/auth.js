@@ -1563,14 +1563,8 @@ class Auth {
     this.googleOneTapShown = false;
     this.googleNonce = null;
 
-    // Cancel any existing One Tap prompts
-    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-      try {
-        google.accounts.id.cancel();
-      } catch (error) {
-        // Ignore errors when canceling
-      }
-    }
+    // Note: Not calling google.accounts.id.cancel() to avoid COOP issues
+    // since we're not using One Tap prompts anyway
   }
 }
 

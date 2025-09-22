@@ -8,6 +8,13 @@
   Cross-Origin-Opener-Policy: same-origin-allow-popups
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 
+# More permissive COOP for main page with Google Sign-In
+/
+  Cross-Origin-Opener-Policy: unsafe-none
+
+/index.html
+  Cross-Origin-Opener-Policy: unsafe-none
+
 # Cache control for static assets - reduced cache time for easier updates
 /css/*
   Cache-Control: public, max-age=86400, must-revalidate
