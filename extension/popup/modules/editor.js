@@ -1299,7 +1299,7 @@ class EditorManager {
     });
     
     // Close color picker when editor is closed
-    window.addEventListener('beforeunload', () => {
+    window.addEventListener('pagehide', () => {
       if (colorWheelPopup) {
         colorWheelPopup.style.display = 'none';
       }

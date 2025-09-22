@@ -671,7 +671,12 @@ class SettingsManager {
     settingsContent.addEventListener('scroll', updateScrollIndicators);
     
     // Update indicators on resize or content change
-    const resizeObserver = new ResizeObserver(updateScrollIndicators);
+    const resizeObserver = new ResizeObserver((entries) => {
+      // Use requestAnimationFrame to prevent ResizeObserver loops
+      requestAnimationFrame(() => {
+        updateScrollIndicators();
+      });
+    });
     resizeObserver.observe(settingsContent);
     
     // Initial update
