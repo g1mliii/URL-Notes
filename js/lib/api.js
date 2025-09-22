@@ -325,7 +325,7 @@ class SupabaseClient {
 
       const payload = {
         provider: 'google',
-        token: idToken
+        id_token: idToken
       };
 
       if (nonce) {
