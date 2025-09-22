@@ -46,11 +46,8 @@ class Auth {
     // Set up form listeners
     this.setupFormListeners();
 
-    // Initialize Google Sign-In if available
-    this.initializeGoogleSignIn();
-
-    // Retry Google Sign-In initialization periodically in case script loads later
-    this.retryGoogleSignInInit();
+    // Only initialize Google Sign-In if we're on a page that needs it
+    this.initializeGoogleSignInIfNeeded();
 
     // Check for OAuth callback and password reset (non-blocking)
     this.handleOAuthCallback().catch(() => {
@@ -1360,6 +1357,24 @@ class Auth {
     }
   }
 
+  // Check if we need Google Sign-In and initialize only if needed
+  initializeGoogleSignInIfNeeded() {
+    // Check if we're on a page that has Google Sign-In buttons
+    const loginContainer = document.getElementById('googleSignInButton');
+    const signupContainer = document.getElementById('googleSignUpButton');
+
+    if (!loginContainer && !signupContainer) {
+      console.log('✅ No Google Sign-In buttons found - skipping initialization');
+      return;
+    }
+
+    console.log('🔍 Google Sign-In buttons found, initializing...');
+    this.initializeGoogleSignIn();
+
+    // Only retry if we actually need Google Sign-In
+    this.retryGoogleSignInInit();
+  }
+
   // Initialize Google Sign-In
   initializeGoogleSignIn() {
     console.log('🔍 Initializing Google Sign-In...');
@@ -1422,15 +1437,15 @@ class Auth {
 
       // Render sign-in buttons
       if (loginContainer) {
-          console.log('🔍 Rendering Google Sign-In button for login');
-          google.accounts.id.renderButton(loginContainer, {
-            type: 'standard',
-            shape: 'pill',
-            theme: 'outline',
-            text: 'signin_with',
-            size: 'large',
-            logo_alignment: 'left'
-          });
+        console.log('🔍 Rendering Google Sign-In button for login');
+        google.accounts.id.renderButton(loginContainer, {
+          type: 'standard',
+          shape: 'pill',
+          theme: 'outline',
+          text: 'signin_with',
+          size: 'large',
+          logo_alignment: 'left'
+        });
         console.log('✅ Login button rendered');
       }
 
@@ -1448,7 +1463,7 @@ class Auth {
       }
 
       // Disable One Tap to avoid COOP issues - only use button sign-in
-        console.log('✅ Google Sign-In buttons ready (One Tap disabled to avoid COOP conflicts)');
+      console.log('✅ Google Sign-In buttons ready (One Tap disabled to avoid COOP conflicts)');
 
       // Mark as initialized to prevent duplicate calls
       this.googleSignInInitialized = true;
@@ -1532,11 +1547,17 @@ class Auth {
     }
   }
 
-  // Retry Google Sign-In initialization
+  // Retry Google Sign-In initialization (less aggressive)
   retryGoogleSignInInit() {
+    // Only retry if we haven't initialized yet and we actually need Google Sign-In
+    if (this.googleSignInInitialized) {
+      console.log('✅ Google Sign-In already initialized, no retry needed');
+      return;
+    }
+
     let attempts = 0;
-    const maxAttempts = 10;
-    const retryInterval = 1000; // 1 second
+    const maxAttempts = 3; // Reduced from 10
+    const retryInterval = 2000; // Increased to 2 seconds
 
     const retry = () => {
       attempts++;
@@ -1555,8 +1576,8 @@ class Auth {
       }
     };
 
-    // Start retrying after a short delay
-    setTimeout(retry, 500);
+    // Start retrying after a longer delay
+    setTimeout(retry, 1000);
   }
 
   // Clean up Google Sign-In state (useful for debugging or resetting)
