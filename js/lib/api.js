@@ -313,6 +313,32 @@ class SupabaseClient {
     }
   }
 
+  // Google Sign-In with ID Token (for Google's pre-built solution)
+  async signInWithGoogleIdToken(idToken, nonce = null) {
+    try {
+      const payload = {
+        provider: 'google',
+        token: idToken
+      };
+
+      if (nonce) {
+        payload.nonce = nonce;
+      }
+
+      const data = await this._request(`${this.authUrl}/token?grant_type=id_token`, {
+        method: 'POST',
+        auth: false,
+        body: payload
+      });
+
+      await this.handleAuthSuccess(data);
+      return data;
+    } catch (error) {
+      // Google ID token sign in error
+      throw error;
+    }
+  }
+
   // Handle OAuth callback (for web environment)
   async handleOAuthCallback() {
     try {

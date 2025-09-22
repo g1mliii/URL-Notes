@@ -30,6 +30,15 @@ window.urlNotesConfig = {
     currency: 'usd'
   },
 
+  // Google OAuth configuration
+  google: {
+    // Production Google OAuth Client ID (public-safe identifier)
+    // Can be overridden by environment variables during build/deployment
+    clientId: window.GOOGLE_CLIENT_ID || '222304352528-f4d1n0fbsmlrh34bnaurjmrol48mqcr1.apps.googleusercontent.com',
+    // Development/localhost client ID (if different)
+    devClientId: window.GOOGLE_DEV_CLIENT_ID || '222304352528-f4d1n0fbsmlrh34bnaurjmrol48mqcr1.apps.googleusercontent.com'
+  },
+
   // Get current environment configuration
   getCurrentConfig() {
     const hostname = window.location.hostname;
@@ -51,6 +60,16 @@ window.urlNotesConfig = {
       return this.production;
     } else {
       return this.development;
+    }
+  },
+
+  // Get Google OAuth Client ID for current environment
+  getGoogleClientId() {
+    const hostname = window.location.hostname;
+    if (hostname === 'anchored.site') {
+      return this.google.clientId;
+    } else {
+      return this.google.devClientId;
     }
   },
 

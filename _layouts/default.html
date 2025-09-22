@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Anchored">
     
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://kqjcorjjvunmyrnzvqgr.supabase.co; style-src 'self' 'unsafe-inline'; connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co wss://kqjcorjjvunmyrnzvqgr.supabase.co; img-src 'self' data: https: https://www.paypalobjects.com https://www.paypal.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self' https://www.paypal.com; upgrade-insecure-requests">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://kqjcorjjvunmyrnzvqgr.supabase.co https://accounts.google.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co wss://kqjcorjjvunmyrnzvqgr.supabase.co https://accounts.google.com; img-src 'self' data: https: https://www.paypalobjects.com https://www.paypal.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self' https://www.paypal.com; upgrade-insecure-requests; frame-src https://accounts.google.com"
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta http-equiv="X-XSS-Protection" content="1; mode=block">
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
@@ -56,6 +56,14 @@
 <body>
     {{ content }}
     
+    <!-- Google Sign-In Script (load conditionally) -->
+    {% if page.google_signin %}
+    <script src="https://accounts.google.com/gsi/client" async onload="window.googleSignInLoaded = true; if (window.auth && window.auth.initializeGoogleSignIn) window.auth.initializeGoogleSignIn();"></script>
+    {% endif %}
+    
+    <!-- Environment configuration (load before other scripts) -->
+    <script src="{{ '/js/env-config.js' | relative_url }}?v={{ site.time | date: '%Y%m%d%H%M%S' }}"></script>
+    
     <!-- Cache busting utility (load first) -->
     <script src="{{ '/js/cache-buster.js' | relative_url }}?v={{ site.time | date: '%Y%m%d%H%M%S' }}"></script>
     
@@ -63,6 +71,23 @@
         {% for script in page.scripts %}
             <script src="{{ script | relative_url }}?v={{ site.time | date: '%Y%m%d%H%M%S' }}"></script>
         {% endfor %}
+    {% endif %}
+    
+    <!-- Initialize Google Sign-In after all scripts load -->
+    {% if page.google_signin %}
+    <script>
+        // Retry Google Sign-In initialization if script loads after auth module
+        document.addEventListener('DOMContentLoaded', function() {
+            function tryInitGoogleSignIn() {
+                if (window.googleSignInLoaded && window.auth && window.auth.initializeGoogleSignIn) {
+                    window.auth.initializeGoogleSignIn();
+                } else {
+                    setTimeout(tryInitGoogleSignIn, 100);
+                }
+            }
+            setTimeout(tryInitGoogleSignIn, 500);
+        });
+    </script>
     {% endif %}
 </body>
 </html>

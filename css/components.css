@@ -2857,3 +2857,114 @@ efresh button animation */
 .refresh-icon:hover {
   transform: rotate(15deg);
 }
+/* G
+oogle Sign-In Styles */
+.google-auth-section {
+  margin: 1rem 0;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  margin: 1rem 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.auth-divider span {
+  padding: 0 1rem;
+  background: var(--bg-primary);
+}
+
+.google-signin-container {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+/* Override Google button styles to match our theme */
+.google-signin-container iframe {
+  border-radius: 8px !important;
+}
+
+/* Custom Google button styling (if needed) */
+.google-signin-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  width: 100%;
+  max-width: 280px;
+}
+
+.google-signin-button:hover {
+  background: var(--bg-secondary);
+  border-color: var(--accent-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.google-signin-button:active {
+  transform: translateY(0);
+}
+
+.google-signin-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Loading state for Google Sign-In */
+.google-signin-loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.google-signin-loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid var(--accent-primary);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive adjustments for Google Sign-In */
+@media (max-width: 768px) {
+  .google-signin-container {
+    margin: 0.75rem 0;
+  }
+  
+  .google-signin-button {
+    font-size: 0.8125rem;
+    padding: 0.6875rem 0.875rem;
+  }
+}

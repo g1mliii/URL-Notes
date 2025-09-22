@@ -2,210 +2,248 @@
 layout: default
 title: "Anchored - Take Notes on Any Website"
 scripts:
-  - config.js
-  - js/lib/encryption.js
-  - js/lib/api.js
-  - js/app.js
-  - js/auth.js
-  - js/monitoring.js
+- config.js
+- js/lib/encryption.js
+- js/lib/api.js
+- js/app.js
+- js/auth.js
+- js/monitoring.js
+google_signin: true
 ---
-    <div class="app-container">
-        <!-- Navigation Header -->
-        <header class="nav-header">
-            <div class="nav-content">
-                <div class="logo">
-                    <img src="anchore wout background 512x512.png" alt="Anchored" class="logo-icon">
-                    <h1>Anchored</h1>
-                </div>
-                <nav class="nav-links">
-                    <a href="https://chromewebstore.google.com/detail/anchored-%E2%80%93-notes-highligh/llkmfidpbpfgdgjlohgpomdjckcfkllg" target="_blank" class="nav-link chrome-store-link">Get Extension</a>
-                    <a href="#features" class="nav-link">Features</a>
-                    <a href="#pricing" class="nav-link">Pricing</a>
-                    <a href="#" id="dashboardLink" class="nav-link">Dashboard</a>
-                </nav>
+<div class="app-container">
+    <!-- Navigation Header -->
+    <header class="nav-header">
+        <div class="nav-content">
+            <div class="logo">
+                <img src="anchore wout background 512x512.png" alt="Anchored" class="logo-icon">
+                <h1>Anchored</h1>
             </div>
-        </header>
+            <nav class="nav-links">
+                <a href="https://chromewebstore.google.com/detail/anchored-%E2%80%93-notes-highligh/llkmfidpbpfgdgjlohgpomdjckcfkllg"
+                    target="_blank" class="nav-link chrome-store-link">Get Extension</a>
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#pricing" class="nav-link">Pricing</a>
+                <a href="#" id="dashboardLink" class="nav-link">Dashboard</a>
+            </nav>
+        </div>
+    </header>
 
-        <!-- Hero Section -->
-        <main class="hero-section">
-            <div class="hero-content">
-                <h2 class="hero-title">Anchor Your Ideas to the Web</h2>
-                <p class="hero-subtitle">Capture and organize notes on any website with secure, encrypted cloud sync</p>
-                
-                <!-- Chrome Web Store CTA -->
-                <div class="chrome-store-cta" style="margin: 2rem 0; text-align: center;">
-                    <a href="https://chromewebstore.google.com/detail/anchored-%E2%80%93-notes-highligh/llkmfidpbpfgdgjlohgpomdjckcfkllg" target="_blank" class="btn-primary" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; margin-bottom: 1rem;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                        </svg>
-                        Get the Full Extension
-                    </a>
-                    <p style="color: var(--text-secondary); font-size: 0.875rem; margin: 0;">Available now on Chrome Web Store • This web app is for premium sync only</p>
-                </div>
+    <!-- Hero Section -->
+    <main class="hero-section">
+        <div class="hero-content">
+            <h2 class="hero-title">Anchor Your Ideas to the Web</h2>
+            <p class="hero-subtitle">Capture and organize notes on any website with secure, encrypted cloud sync</p>
 
-                <!-- Auth Forms Container -->
-                <div class="auth-container">
-                    <!-- Login Form -->
-                    <div class="auth-form" id="loginForm">
-                        <h3>Sign In</h3>
-                        <form id="signInForm">
-                            <div class="input-group">
-                                <input type="email" id="loginEmail" placeholder="Email" required autocomplete="email">
+            <!-- Chrome Web Store CTA -->
+            <div class="chrome-store-cta" style="margin: 2rem 0; text-align: center;">
+                <a href="https://chromewebstore.google.com/detail/anchored-%E2%80%93-notes-highligh/llkmfidpbpfgdgjlohgpomdjckcfkllg"
+                    target="_blank" class="btn-primary"
+                    style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; margin-bottom: 1rem;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                    </svg>
+                    Get the Full Extension
+                </a>
+                <p style="color: var(--text-secondary); font-size: 0.875rem; margin: 0;">Available now on Chrome Web
+                    Store • This web app is for premium sync only</p>
+            </div>
+
+            <!-- Auth Forms Container -->
+            <div class="auth-container">
+                <!-- Login Form -->
+                <div class="auth-form" id="loginForm">
+                    <h3>Sign In</h3>
+                    <form id="signInForm">
+                        <div class="input-group">
+                            <input type="email" id="loginEmail" placeholder="Email" required autocomplete="email">
+                        </div>
+                        <div class="input-group">
+                            <div style="position: relative;">
+                                <input type="password" id="loginPassword" placeholder="Password" required
+                                    autocomplete="current-password">
+                                <button type="button" class="toggle-password"
+                                    style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.875rem;">Show</button>
                             </div>
-                            <div class="input-group">
-                                <div style="position: relative;">
-                                    <input type="password" id="loginPassword" placeholder="Password" required autocomplete="current-password">
-                                    <button type="button" class="toggle-password" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.875rem;">Show</button>
-                                </div>
-                            </div>
-                            <button type="submit" class="btn-primary">Sign In</button>
-                        </form>
-                        <div class="auth-links">
-                            <a href="#" id="showRegister">Create Account</a>
-                            <a href="#" id="showForgotPassword">Forgot Password?</a>
+                        </div>
+                        <button type="submit" class="btn-primary">Sign In</button>
+                    </form>
+
+                    <!-- Google Sign-In -->
+                    <div class="google-auth-section">
+                        <div class="auth-divider">
+                            <span>or</span>
+                        </div>
+                        <div id="googleSignInButton" class="google-signin-container">
+                            <!-- Google Sign-In button will be rendered here -->
                         </div>
                     </div>
 
-                    <!-- Register Form -->
-                    <div class="auth-form hidden" id="registerForm">
-                        <h3>Create Account</h3>
-                        <form id="signUpForm">
-                            <div class="input-group">
-                                <input type="email" id="registerEmail" placeholder="Email" required autocomplete="email">
+                    <div class="auth-links">
+                        <a href="#" id="showRegister">Create Account</a>
+                        <a href="#" id="showForgotPassword">Forgot Password?</a>
+                    </div>
+                </div>
+
+                <!-- Register Form -->
+                <div class="auth-form hidden" id="registerForm">
+                    <h3>Create Account</h3>
+                    <form id="signUpForm">
+                        <div class="input-group">
+                            <input type="email" id="registerEmail" placeholder="Email" required autocomplete="email">
+                        </div>
+                        <div class="input-group">
+                            <div style="position: relative;">
+                                <input type="password" id="registerPassword" placeholder="Password" required
+                                    autocomplete="new-password">
+                                <button type="button" class="toggle-password"
+                                    style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.875rem;">Show</button>
                             </div>
-                            <div class="input-group">
-                                <div style="position: relative;">
-                                    <input type="password" id="registerPassword" placeholder="Password" required autocomplete="new-password">
-                                    <button type="button" class="toggle-password" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.875rem;">Show</button>
-                                </div>
+                        </div>
+                        <div class="input-group">
+                            <div style="position: relative;">
+                                <input type="password" id="confirmPassword" placeholder="Confirm Password" required
+                                    autocomplete="new-password">
+                                <button type="button" class="toggle-password"
+                                    style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.875rem;">Show</button>
                             </div>
-                            <div class="input-group">
-                                <div style="position: relative;">
-                                    <input type="password" id="confirmPassword" placeholder="Confirm Password" required autocomplete="new-password">
-                                    <button type="button" class="toggle-password" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.875rem;">Show</button>
-                                </div>
-                            </div>
-                            <button type="submit" class="btn-primary">Create Account</button>
-                        </form>
-                        <div class="auth-links">
-                            <a href="#" id="showLogin">Already have an account?</a>
+                        </div>
+                        <button type="submit" class="btn-primary">Create Account</button>
+                    </form>
+
+                    <!-- Google Sign-In -->
+                    <div class="google-auth-section">
+                        <div class="auth-divider">
+                            <span>or</span>
+                        </div>
+                        <div id="googleSignUpButton" class="google-signin-container">
+                            <!-- Google Sign-In button will be rendered here -->
                         </div>
                     </div>
 
-                    <!-- Forgot Password Form -->
-                    <div class="auth-form hidden" id="forgotPasswordForm">
-                        <h3>Reset Password</h3>
-                        <form id="resetPasswordForm">
-                            <div class="input-group">
-                                <input type="email" id="resetEmail" placeholder="Email" required autocomplete="email">
-                            </div>
-                            <button type="submit" class="btn-primary">Send Reset Link</button>
-                        </form>
-                        <div class="auth-links">
-                            <a href="#" id="backToLogin">Back to Sign In</a>
+                    <div class="auth-links">
+                        <a href="#" id="showLogin">Already have an account?</a>
+                    </div>
+                </div>
+
+                <!-- Forgot Password Form -->
+                <div class="auth-form hidden" id="forgotPasswordForm">
+                    <h3>Reset Password</h3>
+                    <form id="resetPasswordForm">
+                        <div class="input-group">
+                            <input type="email" id="resetEmail" placeholder="Email" required autocomplete="email">
                         </div>
+                        <button type="submit" class="btn-primary">Send Reset Link</button>
+                    </form>
+                    <div class="auth-links">
+                        <a href="#" id="backToLogin">Back to Sign In</a>
                     </div>
                 </div>
             </div>
-        </main>
+        </div>
+    </main>
 
-        <!-- Features Section -->
-        <section id="features" class="features-section">
-            <div class="features-content">
-                <h2>Features</h2>
-                <div class="features-grid">
-                    <div class="feature-card">
-                        <h3>Smart Organization</h3>
-                        <p>Organize notes by website domain with advanced search across all your notes</p>
-                    </div>
-                    <div class="feature-card">
-                        <h3>AI-Powered Writing</h3>
-                        <p>Rewrite notes (1 token per note), generate site summaries (20 uses per site), and domain summaries (1 use per note) with 500 monthly tokens for premium users</p>
-                    </div>
-                    <div class="feature-card">
-                        <h3>Secure & Synced</h3>
-                        <p>Zero-knowledge encryption with cloud sync and version history for $2.50/month</p>
-                    </div>
+    <!-- Features Section -->
+    <section id="features" class="features-section">
+        <div class="features-content">
+            <h2>Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>Smart Organization</h3>
+                    <p>Organize notes by website domain with advanced search across all your notes</p>
+                </div>
+                <div class="feature-card">
+                    <h3>AI-Powered Writing</h3>
+                    <p>Rewrite notes (1 token per note), generate site summaries (20 uses per site), and domain
+                        summaries (1 use per note) with 500 monthly tokens for premium users</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Secure & Synced</h3>
+                    <p>Zero-knowledge encryption with cloud sync and version history for $2.50/month</p>
                 </div>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <!-- Pricing Section -->
-        <section id="pricing" class="features-section">
-            <div class="features-content">
-                <h2>Simple Pricing</h2>
-                <div class="features-grid">
-                    <div class="feature-card">
-                        <h3>Free</h3>
-                        <p><strong>$0/month</strong></p>
-                        <ul style="text-align: left; margin-top: 1rem;">
-                            <li>Browser extension access</li>
-                            <li>Local note storage</li>
-                            <li>Domain & page organization</li>
-                            <li>Multi-highlight mode</li>
-                            <li>Context menu quick add</li>
-                            <li>Rich text formatting</li>
-                            <li>Tags and search</li>
-                            <li>Keyboard shortcuts</li>
-                            <li>Theme customization</li>
-                            <li>Font size adjustment</li>
-                            <li>Export functionality</li>
-                            <li>AI features (30 tokens/month)</li>
-                        </ul>
-                    </div>
-                    <div class="feature-card" style="border: 2px solid var(--accent-primary);">
-                        <h3>Premium</h3>
-                        <p><strong>$2.50/month</strong></p>
-                        <ul style="text-align: left; margin-top: 1rem;">
-                            <li>Everything in Free</li>
-                            <li>Cloud synchronization</li>
-                            <li>Web application access</li>
-                            <li>Advanced search (All Notes)</li>
-                            <li>AI Rewrite (1 token per note)</li>
-                            <li>AI Summary (20 uses per site)</li>
-                            <li>AI Domain Summary (1 use per note)</li>
-                            <li>500 AI tokens total/month</li>
-                            <li>All export formats</li>
-                            <li>Import functionality</li>
-                            <li>Ad-free experience</li>
-                        </ul>
-                    </div>
-                    <div class="feature-card">
-                        <h3>Enterprise</h3>
-                        <p><strong>Coming Soon</strong></p>
-                        <ul style="text-align: left; margin-top: 1rem;">
-                            <li>Team collaboration</li>
-                            <li>Admin dashboard</li>
-                            <li>SSO integration</li>
-                            <li>Priority support</li>
-                        </ul>
-                    </div>
+    <!-- Pricing Section -->
+    <section id="pricing" class="features-section">
+        <div class="features-content">
+            <h2>Simple Pricing</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>Free</h3>
+                    <p><strong>$0/month</strong></p>
+                    <ul style="text-align: left; margin-top: 1rem;">
+                        <li>Browser extension access</li>
+                        <li>Local note storage</li>
+                        <li>Domain & page organization</li>
+                        <li>Multi-highlight mode</li>
+                        <li>Context menu quick add</li>
+                        <li>Rich text formatting</li>
+                        <li>Tags and search</li>
+                        <li>Keyboard shortcuts</li>
+                        <li>Theme customization</li>
+                        <li>Font size adjustment</li>
+                        <li>Export functionality</li>
+                        <li>AI features (30 tokens/month)</li>
+                    </ul>
+                </div>
+                <div class="feature-card" style="border: 2px solid var(--accent-primary);">
+                    <h3>Premium</h3>
+                    <p><strong>$2.50/month</strong></p>
+                    <ul style="text-align: left; margin-top: 1rem;">
+                        <li>Everything in Free</li>
+                        <li>Cloud synchronization</li>
+                        <li>Web application access</li>
+                        <li>Advanced search (All Notes)</li>
+                        <li>AI Rewrite (1 token per note)</li>
+                        <li>AI Summary (20 uses per site)</li>
+                        <li>AI Domain Summary (1 use per note)</li>
+                        <li>500 AI tokens total/month</li>
+                        <li>All export formats</li>
+                        <li>Import functionality</li>
+                        <li>Ad-free experience</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <h3>Enterprise</h3>
+                    <p><strong>Coming Soon</strong></p>
+                    <ul style="text-align: left; margin-top: 1rem;">
+                        <li>Team collaboration</li>
+                        <li>Admin dashboard</li>
+                        <li>SSO integration</li>
+                        <li>Priority support</li>
+                    </ul>
                 </div>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <!-- Footer -->
-        <footer class="site-footer">
-            <div class="container">
-                <div class="footer-content">
-                    <div class="footer-links">
-                        <a href="/privacy" class="footer-link">Privacy Policy</a>
-                        <a href="/terms" class="footer-link">Terms of Service</a>
-                        <a href="/help" class="footer-link">Help</a>
-                        <a href="mailto:info@anchored.site" class="footer-link">Contact</a>
-                    </div>
-                    <div class="footer-text">
-                        <p>&copy; 2025 Anchored. All rights reserved.</p>
-                    </div>
-                    <!-- PayPal Donation in Footer -->
-                    <div class="footer-donation">
-                        <form action="https://www.paypal.com/donate" method="post" target="_top" class="footer-paypal-form">
-                            <input type="hidden" name="hosted_button_id" value="MY59EPX5WVVQU" />
-                            <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="Support Anchored development" alt="Donate with PayPal button" style="height: 32px; width: auto;" />
-                            <img alt="" border="0" src="https://www.paypal.com/en_CA/i/scr/pixel.gif" width="1" height="1" />
-                        </form>
-                    </div>
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="/privacy" class="footer-link">Privacy Policy</a>
+                    <a href="/terms" class="footer-link">Terms of Service</a>
+                    <a href="/help" class="footer-link">Help</a>
+                    <a href="mailto:info@anchored.site" class="footer-link">Contact</a>
+                </div>
+                <div class="footer-text">
+                    <p>&copy; 2025 Anchored. All rights reserved.</p>
+                </div>
+                <!-- PayPal Donation in Footer -->
+                <div class="footer-donation">
+                    <form action="https://www.paypal.com/donate" method="post" target="_top" class="footer-paypal-form">
+                        <input type="hidden" name="hosted_button_id" value="MY59EPX5WVVQU" />
+                        <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif"
+                            border="0" name="submit" title="Support Anchored development"
+                            alt="Donate with PayPal button" style="height: 32px; width: auto;" />
+                        <img alt="" border="0" src="https://www.paypal.com/en_CA/i/scr/pixel.gif" width="1"
+                            height="1" />
+                    </form>
                 </div>
             </div>
-        </footer>
-    </div>
+        </div>
+    </footer>
+</div>

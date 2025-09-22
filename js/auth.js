@@ -44,6 +44,12 @@ class Auth {
     // Set up form listeners
     this.setupFormListeners();
     
+    // Initialize Google Sign-In if available
+    this.initializeGoogleSignIn();
+    
+    // Retry Google Sign-In initialization periodically in case script loads later
+    this.retryGoogleSignInInit();
+    
     // Check for OAuth callback and password reset (non-blocking)
     this.handleOAuthCallback().catch(() => {
       // OAuth callback error handled silently
@@ -1351,11 +1357,219 @@ class Auth {
       return false;
     }
   }
+
+  // Initialize Google Sign-In
+  initializeGoogleSignIn() {
+    console.log('🔍 Initializing Google Sign-In...');
+    
+    // Check if Google Sign-In script is loaded
+    if (typeof google === 'undefined' || !google.accounts) {
+      console.log('❌ Google Sign-In script not loaded, will retry when script loads');
+      return;
+    }
+    console.log('✅ Google Sign-In script loaded');
+
+    // Check if we're on a page that needs Google Sign-In
+    const loginContainer = document.getElementById('googleSignInButton');
+    const signupContainer = document.getElementById('googleSignUpButton');
+    
+    console.log('🔍 Checking containers:', { 
+      loginContainer: !!loginContainer, 
+      signupContainer: !!signupContainer 
+    });
+    
+    if (!loginContainer && !signupContainer) {
+      console.log('❌ No Google Sign-In containers found - not on auth page');
+      return; // Not on auth page
+    }
+
+    try {
+      const clientId = window.urlNotesConfig?.getGoogleClientId();
+      console.log('🔍 Google Client ID:', clientId);
+      
+      if (!clientId || clientId.includes('1234567890')) {
+        console.log('❌ Google Client ID not configured or is placeholder');
+        return;
+      }
+
+      // Generate nonce for security
+      this.generateGoogleNonce().then(([nonce, hashedNonce]) => {
+        console.log('✅ Generated Google nonce');
+        this.googleNonce = nonce;
+
+        // Initialize Google Sign-In
+        console.log('🔍 Initializing Google accounts with Client ID:', clientId);
+        google.accounts.id.initialize({
+          client_id: clientId,
+          callback: (response) => this.handleGoogleSignIn(response),
+          nonce: hashedNonce,
+          use_fedcm_for_prompt: true, // Chrome third-party cookie compatibility
+          auto_select: false,
+          cancel_on_tap_outside: true
+        });
+        console.log('✅ Google accounts initialized');
+
+        // Render sign-in buttons
+        if (loginContainer) {
+          console.log('🔍 Rendering Google Sign-In button for login');
+          google.accounts.id.renderButton(loginContainer, {
+            type: 'standard',
+            shape: 'pill',
+            theme: 'outline',
+            text: 'signin_with',
+            size: 'large',
+            logo_alignment: 'left'
+          });
+          console.log('✅ Login button rendered');
+        }
+
+        if (signupContainer) {
+          console.log('🔍 Rendering Google Sign-In button for signup');
+          google.accounts.id.renderButton(signupContainer, {
+            type: 'standard',
+            shape: 'pill',
+            theme: 'outline',
+            text: 'signup_with',
+            size: 'large',
+            logo_alignment: 'left'
+          });
+          console.log('✅ Signup button rendered');
+        }
+
+        // Show One Tap if user is not authenticated and on login page
+        if (loginContainer && !this.isAuthenticated()) {
+          console.log('🔍 Showing Google One Tap');
+          google.accounts.id.prompt();
+        }
+
+      }).catch(error => {
+        console.error('❌ Error generating Google nonce:', error);
+      });
+
+    } catch (error) {
+      console.error('❌ Error initializing Google Sign-In:', error);
+    }
+  }
+
+  // Generate nonce for Google Sign-In security
+  async generateGoogleNonce() {
+    const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))));
+    const encoder = new TextEncoder();
+    const encodedNonce = encoder.encode(nonce);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', encodedNonce);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashedNonce = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+    return [nonce, hashedNonce];
+  }
+
+  // Handle Google Sign-In response
+  async handleGoogleSignIn(response) {
+    try {
+      if (!this.supabaseClient) {
+        this.showNotification('Authentication service not available', 'error');
+        return;
+      }
+
+      // Show loading state
+      this.setAuthBusy(true);
+      this.showNotification('Signing in with Google...', 'info');
+
+      // Sign in with Google ID token
+      const authData = await this.supabaseClient.signInWithGoogleIdToken(
+        response.credential,
+        this.googleNonce
+      );
+
+      // Handle successful authentication
+      const redirectTo = await this.handleAuthenticationSuccess(authData.user);
+      
+      this.showNotification('Successfully signed in with Google!', 'success');
+
+      // Redirect after short delay
+      setTimeout(() => {
+        if (redirectTo) {
+          window.location.href = redirectTo;
+        } else {
+          // Just update UI if no redirect needed
+          this.updateAuthUI();
+        }
+      }, 1000);
+
+    } catch (error) {
+      // Google sign in error
+      let errorMessage = 'Google sign-in failed. Please try again.';
+      
+      if (error.message) {
+        const errorMsg = error.message.toLowerCase();
+        if (errorMsg.includes('popup_closed')) {
+          errorMessage = 'Sign-in was canceled. Please try again.';
+        } else if (errorMsg.includes('network')) {
+          errorMessage = 'Network error. Please check your connection and try again.';
+        } else if (errorMsg.includes('invalid')) {
+          errorMessage = 'Invalid Google credentials. Please try again.';
+        }
+      }
+
+      this.showNotification(errorMessage, 'error');
+    } finally {
+      this.setAuthBusy(false);
+    }
+  }
+
+  // Retry Google Sign-In initialization
+  retryGoogleSignInInit() {
+    let attempts = 0;
+    const maxAttempts = 10;
+    const retryInterval = 1000; // 1 second
+
+    const retry = () => {
+      attempts++;
+      console.log(`🔄 Retry Google Sign-In init attempt ${attempts}/${maxAttempts}`);
+      
+      if (typeof google !== 'undefined' && google.accounts) {
+        console.log('✅ Google script now available, initializing...');
+        this.initializeGoogleSignIn();
+        return;
+      }
+      
+      if (attempts < maxAttempts) {
+        setTimeout(retry, retryInterval);
+      } else {
+        console.log('❌ Max retry attempts reached for Google Sign-In initialization');
+      }
+    };
+
+    // Start retrying after a short delay
+    setTimeout(retry, 500);
+  }
 }
 
 // Initialize auth module when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   window.auth = new Auth();
+  
+  // Add debug helper to window
+  window.debugGoogleAuth = () => {
+    console.log('🔍 Google Auth Debug Info:');
+    console.log('- Google script loaded:', typeof google !== 'undefined' && !!google.accounts);
+    console.log('- Login container exists:', !!document.getElementById('googleSignInButton'));
+    console.log('- Signup container exists:', !!document.getElementById('googleSignUpButton'));
+    console.log('- Config available:', !!window.urlNotesConfig);
+    console.log('- Client ID:', window.urlNotesConfig?.getGoogleClientId());
+    console.log('- Auth module initialized:', !!window.auth);
+    
+    if (window.auth) {
+      console.log('- Auth module has initializeGoogleSignIn:', typeof window.auth.initializeGoogleSignIn === 'function');
+    }
+    
+    // Try to manually initialize
+    if (window.auth && window.auth.initializeGoogleSignIn) {
+      console.log('🔄 Manually triggering Google Sign-In initialization...');
+      window.auth.initializeGoogleSignIn();
+    }
+  };
+  
+  console.log('🔍 Auth module loaded. Run debugGoogleAuth() in console for debug info.');
   
   // Auto-detect password reset on page load
   setTimeout(() => {
