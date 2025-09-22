@@ -4,6 +4,8 @@ class Auth {
   constructor() {
     this.supabaseClient = null; // Will be initialized from global instance
     this.encryption = null; // Will be set after encryption library loads
+    this.googleSignInInitialized = false; // Prevent multiple Google Sign-In initializations
+    this.googleOneTapShown = false; // Prevent multiple One Tap prompts
     
     // Auth form elements (similar to extension settings.js)
     this.authEmailInput = null;
@@ -1362,6 +1364,12 @@ class Auth {
   initializeGoogleSignIn() {
     console.log('🔍 Initializing Google Sign-In...');
     
+    // Prevent multiple initializations
+    if (this.googleSignInInitialized) {
+      console.log('✅ Google Sign-In already initialized, skipping');
+      return;
+    }
+    
     // Check if Google Sign-In script is loaded
     if (typeof google === 'undefined' || !google.accounts) {
       console.log('❌ Google Sign-In script not loaded, will retry when script loads');
@@ -1403,11 +1411,15 @@ class Auth {
           client_id: clientId,
           callback: (response) => this.handleGoogleSignIn(response),
           nonce: hashedNonce,
-          use_fedcm_for_prompt: true, // Chrome third-party cookie compatibility
+          use_fedcm_for_prompt: false, // Disable FedCM to avoid credential conflicts
           auto_select: false,
-          cancel_on_tap_outside: true
+          cancel_on_tap_outside: true,
+          itp_support: true // Improve Safari compatibility
         });
         console.log('✅ Google accounts initialized');
+        
+        // Mark as initialized to prevent duplicate calls
+        this.googleSignInInitialized = true;
 
         // Render sign-in buttons
         if (loginContainer) {
@@ -1437,17 +1449,28 @@ class Auth {
         }
 
         // Show One Tap if user is not authenticated and on login page
-        if (loginContainer && !this.isAuthenticated()) {
+        if (loginContainer && !this.isAuthenticated() && !this.googleOneTapShown) {
           console.log('🔍 Showing Google One Tap');
-          google.accounts.id.prompt();
+          this.googleOneTapShown = true;
+          google.accounts.id.prompt((notification) => {
+            console.log('Google One Tap notification:', notification);
+            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+              // Reset flag if One Tap was not shown or skipped
+              this.googleOneTapShown = false;
+            }
+          });
         }
 
       }).catch(error => {
         console.error('❌ Error generating Google nonce:', error);
+        // Reset initialization flag on error
+        this.googleSignInInitialized = false;
       });
 
     } catch (error) {
       console.error('❌ Error initializing Google Sign-In:', error);
+      // Reset initialization flag on error
+      this.googleSignInInitialized = false;
     }
   }
 
@@ -1526,7 +1549,7 @@ class Auth {
       attempts++;
       console.log(`🔄 Retry Google Sign-In init attempt ${attempts}/${maxAttempts}`);
       
-      if (typeof google !== 'undefined' && google.accounts) {
+      if (typeof google !== 'undefined' && google.accounts && !this.googleSignInInitialized) {
         console.log('✅ Google script now available, initializing...');
         this.initializeGoogleSignIn();
         return;
@@ -1541,6 +1564,23 @@ class Auth {
 
     // Start retrying after a short delay
     setTimeout(retry, 500);
+  }
+
+  // Clean up Google Sign-In state (useful for debugging or resetting)
+  resetGoogleSignIn() {
+    console.log('🔄 Resetting Google Sign-In state');
+    this.googleSignInInitialized = false;
+    this.googleOneTapShown = false;
+    this.googleNonce = null;
+    
+    // Cancel any existing One Tap prompts
+    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+      try {
+        google.accounts.id.cancel();
+      } catch (error) {
+        // Ignore errors when canceling
+      }
+    }
   }
 }
 
