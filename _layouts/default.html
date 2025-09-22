@@ -58,7 +58,7 @@
     
     <!-- Google Sign-In Script (load conditionally) -->
     {% if page.google_signin %}
-    <script src="https://accounts.google.com/gsi/client" async onload="window.googleSignInLoaded = true; if (window.auth && window.auth.initializeGoogleSignIn) window.auth.initializeGoogleSignIn();"></script>
+    <script src="https://accounts.google.com/gsi/client" async onload="if (window.onGoogleScriptLoad) window.onGoogleScriptLoad();"></script>
     {% endif %}
     
     <!-- Environment configuration (load before other scripts) -->
@@ -76,16 +76,52 @@
     <!-- Initialize Google Sign-In after all scripts load -->
     {% if page.google_signin %}
     <script>
+        // Global callback for when Google script loads
+        window.onGoogleScriptLoad = function() {
+            console.log('🔍 Google script loaded callback triggered');
+            window.googleSignInLoaded = true;
+            
+            // Try to initialize immediately
+            if (window.auth && window.auth.initializeGoogleSignIn) {
+                console.log('🔄 Initializing Google Sign-In from script load callback');
+                window.auth.initializeGoogleSignIn();
+            }
+        };
+        
         // Retry Google Sign-In initialization if script loads after auth module
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔍 DOM loaded, checking Google Sign-In status');
+            
             function tryInitGoogleSignIn() {
-                if (window.googleSignInLoaded && window.auth && window.auth.initializeGoogleSignIn) {
+                if (typeof google !== 'undefined' && google.accounts && window.auth && window.auth.initializeGoogleSignIn) {
+                    console.log('🔄 All components ready, initializing Google Sign-In');
                     window.auth.initializeGoogleSignIn();
+                    return true;
                 } else {
-                    setTimeout(tryInitGoogleSignIn, 100);
+                    console.log('🔍 Waiting for components...', {
+                        google: typeof google !== 'undefined' && !!google.accounts,
+                        auth: !!window.auth,
+                        initMethod: !!(window.auth && window.auth.initializeGoogleSignIn)
+                    });
+                    return false;
                 }
             }
-            setTimeout(tryInitGoogleSignIn, 500);
+            
+            // Try immediately
+            if (!tryInitGoogleSignIn()) {
+                // Retry every 500ms for up to 10 seconds
+                let attempts = 0;
+                const maxAttempts = 20;
+                const interval = setInterval(() => {
+                    attempts++;
+                    if (tryInitGoogleSignIn() || attempts >= maxAttempts) {
+                        clearInterval(interval);
+                        if (attempts >= maxAttempts) {
+                            console.log('❌ Max attempts reached for Google Sign-In initialization');
+                        }
+                    }
+                }, 500);
+            }
         });
     </script>
     {% endif %}
