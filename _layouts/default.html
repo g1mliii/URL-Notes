@@ -17,8 +17,22 @@
     <meta http-equiv="X-XSS-Protection" content="1; mode=block">
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
     
-    <!-- Cache busting meta tag -->
-    <meta name="cache-version" content="{{ site.time | date: '%Y%m%d%H%M%S' }}">
+    <!-- Cache busting meta tag - manually increment when users need to refresh -->
+    <!-- 
+         Version Format: YYYY.MM.DD.N (where N is the build number for that day)
+         Only increment this when you want users to see a refresh notification
+         Examples of when to increment:
+         - New features added
+         - Bug fixes that affect user experience  
+         - UI/UX improvements
+         - Security updates
+         Do NOT increment for:
+         - Content updates
+         - Minor text changes
+         - Backend-only changes
+         - Development/testing changes
+    -->
+    <meta name="cache-version" content="2025.01.15.1">
     
     <title>{% if page.title %}{{ page.title }} - {{ site.title }}{% else %}{{ site.title }}{% endif %}</title>
     

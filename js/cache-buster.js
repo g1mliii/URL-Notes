@@ -50,7 +50,43 @@ window.CacheBuster = {
             return false;
         }
         
-        return currentVersion !== storedVersion;
+        // Only show refresh if versions are different
+        if (currentVersion === storedVersion) {
+            return false;
+        }
+        
+        // Additional criteria to reduce false positives:
+        
+        // 1. Don't show refresh notification more than once per day
+        const lastNotificationTime = localStorage.getItem('anchored-last-refresh-notification');
+        if (lastNotificationTime) {
+            const timeSinceLastNotification = Date.now() - parseInt(lastNotificationTime);
+            const oneDayMs = 24 * 60 * 60 * 1000;
+            if (timeSinceLastNotification < oneDayMs) {
+                // Store the new version but don't show notification
+                this.storeVersion(currentVersion);
+                return false;
+            }
+        }
+        
+        // 2. Only show for "significant" version changes (not just timestamp changes)
+        // If the version looks like a timestamp (all digits), be more conservative
+        const isTimestampVersion = /^\d{14}$/.test(currentVersion);
+        if (isTimestampVersion) {
+            // For timestamp versions, only show if it's been more than 1 hour since last build
+            const currentTime = parseInt(currentVersion);
+            const storedTime = parseInt(storedVersion);
+            if (!isNaN(currentTime) && !isNaN(storedTime)) {
+                const timeDiff = Math.abs(currentTime - storedTime);
+                // If less than 1 hour difference, probably just a rebuild
+                if (timeDiff < 10000) { // Less than 1 hour in YYYYMMDDHHMM format
+                    this.storeVersion(currentVersion);
+                    return false;
+                }
+            }
+        }
+        
+        return true;
     },
 
     // Force page refresh to clear cache
@@ -136,6 +172,9 @@ window.CacheBuster = {
 
     // Show cache refresh notification
     showRefreshNotification() {
+        // Track when we show the notification
+        localStorage.setItem('anchored-last-refresh-notification', Date.now().toString());
+        
         // Create notification element
         const notification = document.createElement('div');
         notification.id = 'cache-refresh-notification';
@@ -155,10 +194,10 @@ window.CacheBuster = {
                 border: 1px solid rgba(255,255,255,0.1);
             ">
                 <div style="font-weight: 600; margin-bottom: 8px;">
-                    🔄 Update Available
+                    ✨ Site Updated
                 </div>
                 <div style="font-size: 14px; margin-bottom: 12px; opacity: 0.9;">
-                    A new version is available. Refresh to get the latest features.
+                    New features and improvements are available. Refresh when convenient.
                 </div>
                 <div style="display: flex; gap: 8px;">
                     <button onclick="window.CacheBuster.forceRefresh()" style="
