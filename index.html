@@ -9,6 +9,7 @@ scripts:
 - js/auth.js
 - js/monitoring.js
 google_signin: true
+privacy_policy_url: "https://anchored.site/privacy"
 ---
 <div class="app-container">
     <!-- Navigation Header -->
@@ -23,6 +24,7 @@ google_signin: true
                     target="_blank" class="nav-link chrome-store-link">Get Extension</a>
                 <a href="#features" class="nav-link">Features</a>
                 <a href="#pricing" class="nav-link">Pricing</a>
+                <a href="https://anchored.site/privacy" class="nav-link">Privacy</a>
                 <a href="#" id="dashboardLink" class="nav-link">Dashboard</a>
             </nav>
         </div>
@@ -33,6 +35,16 @@ google_signin: true
         <div class="hero-content">
             <h2 class="hero-title">Anchor Your Ideas to the Web</h2>
             <p class="hero-subtitle">Capture and organize notes on any website with secure, encrypted cloud sync</p>
+
+            <!-- Legal Links for OAuth Verification -->
+            <div class="legal-links" style="margin: 1rem 0; text-align: center;">
+                <a href="https://anchored.site/privacy"
+                    style="color: var(--text-secondary); text-decoration: underline; margin: 0 1rem; font-size: 0.875rem;">Privacy
+                    Policy</a>
+                <a href="https://anchored.site/terms"
+                    style="color: var(--text-secondary); text-decoration: underline; margin: 0 1rem; font-size: 0.875rem;">Terms
+                    of Service</a>
+            </div>
 
             <!-- Chrome Web Store CTA -->
             <div class="chrome-store-cta" style="margin: 2rem 0; text-align: center;">
@@ -107,6 +119,14 @@ google_signin: true
                                 <button type="button" class="toggle-password"
                                     style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.875rem;">Show</button>
                             </div>
+                        </div>
+                        <div class="privacy-notice"
+                            style="margin: 1rem 0; font-size: 0.875rem; color: var(--text-secondary); text-align: center;">
+                            By creating an account, you agree to our
+                            <a href="https://anchored.site/privacy"
+                                style="color: var(--accent-primary); text-decoration: none;">Privacy Policy</a>
+                            and <a href="https://anchored.site/terms"
+                                style="color: var(--accent-primary); text-decoration: none;">Terms of Service</a>
                         </div>
                         <button type="submit" class="btn-primary">Create Account</button>
                     </form>
@@ -224,8 +244,8 @@ google_signin: true
         <div class="container">
             <div class="footer-content">
                 <div class="footer-links">
-                    <a href="/privacy" class="footer-link">Privacy Policy</a>
-                    <a href="/terms" class="footer-link">Terms of Service</a>
+                    <a href="https://anchored.site/privacy" class="footer-link">Privacy Policy</a>
+                    <a href="https://anchored.site/terms" class="footer-link">Terms of Service</a>
                     <a href="/help" class="footer-link">Help</a>
                     <a href="mailto:info@anchored.site" class="footer-link">Contact</a>
                 </div>

@@ -22,6 +22,22 @@
     
     <title>{% if page.title %}{{ page.title }} - {{ site.title }}{% else %}{{ site.title }}{% endif %}</title>
     
+    <!-- Privacy Policy Link for OAuth verification -->
+    {% if page.privacy_policy_url %}
+    <link rel="privacy-policy" href="{{ page.privacy_policy_url }}">
+    <meta name="privacy-policy" content="{{ page.privacy_policy_url }}">
+    <!-- Structured data for privacy policy -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "{{ site.title }}",
+        "url": "{{ site.url }}",
+        "privacyPolicy": "{{ page.privacy_policy_url }}"
+    }
+    </script>
+    {% endif %}
+    
     <!-- Favicon and App Icons (optimized order for better browser selection) -->
     <!-- Standard favicon (browsers will pick the best size) -->
     <link rel="icon" type="image/png" sizes="32x32" href="{{ '/anchore wout background 32x32.png' | relative_url }}">
