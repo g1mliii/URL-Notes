@@ -45,7 +45,6 @@
   // Listen for messages from popup
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     try {
-
       if (request.action === 'getPageInfo') {
         const pageInfo = getCurrentPageInfo();
         sendResponse(pageInfo);

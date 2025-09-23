@@ -424,10 +424,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'auth-changed':
       // Handle auth changes for sync timer management
       if (request.user) {
-        // User signed in or status refreshed, start timer and initialize lastSyncTime
+        // User signed in - initialize lastSyncTime but don't start timer yet
+        // Wait for tier-changed event to determine if user has premium access
         lastSyncTime = Date.now();
         saveLastSyncTime(); // Save the current time as last sync
-        startSyncTimer();
+        // Note: Don't start timer here - wait for tier-changed event
 
       } else {
         // User signed out, stop timer
@@ -536,6 +537,12 @@ async function finishUserOAuth(url, tabId) {
     // Try to get tokens from hash first, then query params
     let access_token = hashMap.get('access_token') || queryParams.get('access_token');
     let refresh_token = hashMap.get('refresh_token') || queryParams.get('refresh_token');
+    
+    console.log('OAuth tokens received:', { 
+      hasAccessToken: !!access_token, 
+      hasRefreshToken: !!refresh_token,
+      refreshTokenValue: refresh_token ? 'present' : 'missing'
+    });
 
     if (!access_token) {
       // Check for error parameters in both hash and query
@@ -568,7 +575,7 @@ async function finishUserOAuth(url, tabId) {
     const user = await userResponse.json();
 
 
-    // Create auth data object
+    // Create auth data object (same format as handleAuthSuccess expects)
     const authData = {
       access_token,
       refresh_token: refresh_token || null,
@@ -578,7 +585,7 @@ async function finishUserOAuth(url, tabId) {
 
 
 
-    // Store session in chrome.storage.local (same as handleAuthSuccess)
+    // Store session in chrome.storage.local as fallback (in case popup isn't open)
     await chrome.storage.local.set({
       supabase_session: {
         access_token,
@@ -588,10 +595,10 @@ async function finishUserOAuth(url, tabId) {
       }
     });
 
-    // Clear premium status cache to force refresh (same as handleAuthSuccess)
-    await chrome.storage.local.remove(['cachedPremiumStatus']);
+
 
     // Notify any open popups that OAuth is complete
+    // Let the popup's Supabase client handle the auth success using handleAuthSuccess
     chrome.runtime.sendMessage({
       action: 'oauth-complete',
       success: true,
@@ -599,15 +606,7 @@ async function finishUserOAuth(url, tabId) {
     }).then(() => {
 
     }).catch(() => {
-      // Popup likely closed, ignore
-    });
-
-    // Also send a general auth-changed message for any components listening
-    chrome.runtime.sendMessage({
-      action: 'auth-changed',
-      user: user
-    }).catch(() => {
-      // Popup likely closed, ignore
+      // Popup likely closed, but session is stored so it will work when popup opens
     });
 
 
@@ -1173,10 +1172,14 @@ function startSyncTimer() {
     clearTimeout(syncTimer);
   }
 
+
+
   // Set a one-time timeout instead of interval
   syncTimer = setTimeout(() => {
+
     // Send message to popup to trigger sync
     chrome.runtime.sendMessage({ action: 'sync-timer-triggered' }).catch(() => {
+
       // Popup might be closed, that's okay
       // Mark that we need to sync when popup opens
       // Don't set lastSyncTime here - let the popup handle it when it opens
@@ -1185,6 +1188,7 @@ function startSyncTimer() {
 
     // Clear the timer after it fires
     syncTimer = null;
+
   }, syncInterval);
 }
 
@@ -1198,22 +1202,25 @@ function stopSyncTimer() {
   saveLastSyncTime();
 }
 
-// Start timer when extension loads
-// Add a small delay to ensure storage is ready
+// Initialize sync timer management when extension loads
+// Note: Don't start timer automatically - wait for auth and premium status
 setTimeout(() => {
   loadLastSyncTime().then(() => {
-    // Force reset if the timestamp is still corrupted after validation
+
+
+    // Force reset if the timestamp is corrupted, but don't start timer
     const currentYear = new Date().getFullYear();
     const storedYear = new Date(lastSyncTime).getFullYear();
 
     if (lastSyncTime > Date.now() || storedYear > currentYear) {
-      forceResetSyncTimer();
-    } else {
-      startSyncTimer();
+
+      lastSyncTime = 0;
+      saveLastSyncTime();
     }
+    // Note: Don't start timer here - wait for tier-changed event with premium status
   }).catch(error => {
-    // Error in loadLastSyncTime - fallback: start timer anyway
-    startSyncTimer();
+
+    // Don't start timer on error - wait for proper auth/premium status
   });
 }, 100);
 

@@ -76,8 +76,22 @@ class SyncEngine {
     window.eventBus?.on('tier:changed', (status) => {
       if (status && status.active && status.tier !== 'free') {
         this.startPeriodicSync();
+        
+        // Notify background script to start sync timer
+        chrome.runtime.sendMessage({ 
+          action: 'tier-changed', 
+          active: status.active,
+          tier: status.tier
+        }).catch(() => { });
       } else {
         this.stopPeriodicSync();
+        
+        // Notify background script to stop sync timer
+        chrome.runtime.sendMessage({ 
+          action: 'tier-changed', 
+          active: false,
+          tier: status.tier || 'free'
+        }).catch(() => { });
       }
     });
 

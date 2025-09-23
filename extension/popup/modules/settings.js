@@ -335,6 +335,15 @@ class SettingsManager {
         });
       } catch (_) { }
 
+      // Notify background script of tier change for sync timer management
+      try {
+        chrome.runtime.sendMessage({ 
+          action: 'tier-changed', 
+          active: status.active,
+          tier: status.tier
+        }).catch(() => { });
+      } catch (_) { }
+
       // Emit auth:changed event similar to sign-in to refresh all components
       try {
         window.eventBus?.emit('auth:changed', {

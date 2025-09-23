@@ -132,6 +132,7 @@ class NotesStorage {
       
       if (premiumStatus.isPremium) {
           userKey = await window.supabaseClient?.getUserEncryptionKey();
+
           if (userKey && window.noteEncryption) {
             try {
               const decryptedNote = await window.noteEncryption.decryptNoteFromCloud(note, userKey);
@@ -156,7 +157,7 @@ class NotesStorage {
               delete note.content_hash;
             }
           } else {
-            // No premium access - provide fallback content
+            // No encryption key or module available
             note.title = note.title || 'Note from Server (Premium Required)';
             note.content = note.content || 'This note requires premium access to decrypt. The URL and domain information should still be visible.';
             note.tags = [];

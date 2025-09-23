@@ -267,6 +267,8 @@ class NotesManager {
     // Use passed premium status instead of checking again
     const hasVersionHistory = isPremium;
 
+
+
     // Only log debug info in development mode
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       console.log('Creating note element:', {

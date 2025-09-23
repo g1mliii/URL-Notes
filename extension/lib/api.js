@@ -83,7 +83,18 @@ class SupabaseClient {
               await chrome.storage.local.set({ profileLastChecked: now });
             } else if (userTier) {
               // Use cached subscription status
-              try { window.eventBus?.emit('tier:changed', { tier: userTier, active: userTier !== 'free' }); } catch (_) { }
+              const isActive = userTier !== 'free';
+              try { window.eventBus?.emit('tier:changed', { tier: userTier, active: isActive }); } catch (_) { }
+              
+              // Notify background script of tier change for sync timer management
+              try {
+                chrome.runtime.sendMessage({ 
+                  action: 'tier-changed', 
+                  active: isActive,
+                  tier: userTier
+                }).catch(() => { });
+              } catch (_) { }
+              
               if (window.adManager) {
                 if (userTier !== 'free') {
                   window.adManager.hideAdContainer?.();
@@ -247,7 +258,8 @@ class SupabaseClient {
 
       // Use Supabase's OAuth endpoint with the website login-success page
       const websiteRedirectUri = 'https://anchored.site/login-success/';
-      const authUrl = `${this.authUrl}/authorize?provider=${encodeURIComponent(provider)}&redirect_to=${encodeURIComponent(websiteRedirectUri)}`;
+      // Add access_type=offline to ensure we get refresh tokens from Google
+      const authUrl = `${this.authUrl}/authorize?provider=${encodeURIComponent(provider)}&redirect_to=${encodeURIComponent(websiteRedirectUri)}&access_type=offline&prompt=consent`;
 
       console.log('Opening OAuth URL:', authUrl);
 
@@ -351,6 +363,15 @@ class SupabaseClient {
       } catch (_) { }
       try { window.eventBus?.emit('auth:changed', { user: null }); } catch (_) { }
       try { window.eventBus?.emit('tier:changed', { tier: 'free', active: false, expiresAt: null }); } catch (_) { }
+      
+      // Notify background script that user signed out (stop sync timer)
+      try {
+        chrome.runtime.sendMessage({ 
+          action: 'tier-changed', 
+          active: false,
+          tier: 'free'
+        }).catch(() => { });
+      } catch (_) { }
     }
   }
 
@@ -397,8 +418,17 @@ class SupabaseClient {
     try {
       const { supabase_session } = await chrome.storage.local.get(['supabase_session']);
       const refreshToken = supabase_session?.refresh_token;
+      console.log('Attempting to refresh session:', { 
+        hasSession: !!supabase_session, 
+        hasRefreshToken: !!refreshToken,
+        expiresAt: supabase_session?.expires_at ? new Date(supabase_session.expires_at) : 'none'
+      });
+      
       if (!refreshToken) {
-        throw new Error('No refresh token available');
+        console.error('No refresh token available for session refresh - user will need to re-authenticate');
+        // Clear the invalid session and force re-authentication
+        await this.signOut();
+        throw new Error('No refresh token available - please sign in again');
       }
 
       const response = await fetch(`${this.authUrl}/token?grant_type=refresh_token`, {
@@ -415,6 +445,15 @@ class SupabaseClient {
         } catch (_) {
           try { detail = await response.text(); } catch (_) { }
         }
+        
+        console.error('Refresh token failed:', detail);
+        
+        // If refresh token is invalid, clear session and force re-auth
+        if (response.status === 400 || response.status === 401) {
+          console.log('Refresh token invalid, clearing session');
+          await this.signOut();
+        }
+        
         throw new Error(detail);
       }
 
@@ -435,9 +474,11 @@ class SupabaseClient {
         data.refresh_token = refreshToken;
       }
 
+      console.log('Session refresh successful');
       await this.handleAuthSuccess(data);
       return true;
     } catch (error) {
+      console.error('Session refresh failed:', error.message);
       throw error;
     }
   }
@@ -513,6 +554,16 @@ class SupabaseClient {
         });
 
         try { window.eventBus?.emit('tier:changed', { tier: userTier, active: isActive, expiresAt: profile.subscription_expires_at }); } catch (_) { }
+        
+        // Notify background script of tier change for sync timer management
+        try {
+          chrome.runtime.sendMessage({ 
+            action: 'tier-changed', 
+            active: isActive,
+            tier: userTier
+          }).catch(() => { });
+        } catch (_) { }
+        
         if (window.adManager) {
           if (isActive && userTier !== 'free') {
             window.adManager.hideAdContainer?.();
