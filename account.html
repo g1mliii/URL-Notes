@@ -48,8 +48,11 @@ scripts:
                 <div style="margin-bottom: 20px;">
                     <button id="syncSubscriptionBtn" class="btn-secondary">Sync Subscription Status</button>
                     <p style="font-size: 0.9em; color: #666; margin-top: 5px;">
-                        Click to check your latest subscription status from Stripe
+                        Check your latest subscription status from Stripe. Most useful after completing a payment or if your status appears incorrect.
                     </p>
+                    <div id="subscriptionDataSource" style="font-size: 0.8em; color: #888; margin-top: 3px; font-style: italic;">
+                        <!-- Will show "Using cached data" or "Fresh data from server" -->
+                    </div>
                 </div>
 
                 <!-- Canceled Message -->

@@ -28,21 +28,27 @@ class SubscriptionManager {
     }
   }
 
-  async loadSubscriptionStatus() {
+  async loadSubscriptionStatus(forceRefresh = false) {
     try {
       // Check if data is already cached and recent (within 5 minutes)
-      const cachedData = localStorage.getItem('cachedSubscription');
-      const cacheTime = localStorage.getItem('subscriptionCacheTime');
-      
-      if (cachedData && cacheTime) {
-        const age = Date.now() - parseInt(cacheTime);
-        if (age < 5 * 60 * 1000) { // 5 minutes cache
-          this.currentSubscription = JSON.parse(cachedData);
-          this.updateSubscriptionUI();
-          
-          // Emit cached data to other modules
-          window.eventBus.emit('subscription:updated', this.currentSubscription);
-          return;
+      // Skip cache check if forceRefresh is true (for manual sync button)
+      if (!forceRefresh) {
+        const cachedData = localStorage.getItem('cachedSubscription');
+        const cacheTime = localStorage.getItem('subscriptionCacheTime');
+        
+        if (cachedData && cacheTime) {
+          const age = Date.now() - parseInt(cacheTime);
+          if (age < 5 * 60 * 1000) { // 5 minutes cache
+            this.currentSubscription = JSON.parse(cachedData);
+            this.updateSubscriptionUI();
+            
+            // Show data source indicator
+            this.updateDataSourceIndicator('cached', new Date(parseInt(cacheTime)));
+            
+            // Emit cached data to other modules
+            window.eventBus.emit('subscription:updated', this.currentSubscription);
+            return;
+          }
         }
       }
 
@@ -57,7 +63,7 @@ class SubscriptionManager {
 
       this.currentSubscription = response;
       
-      // Cache the response
+      // Cache the response (always update cache with fresh data)
       localStorage.setItem('cachedSubscription', JSON.stringify(response));
       localStorage.setItem('subscriptionCacheTime', Date.now().toString());
       
@@ -67,6 +73,9 @@ class SubscriptionManager {
       }
       
       this.updateSubscriptionUI();
+      
+      // Show data source indicator
+      this.updateDataSourceIndicator('fresh', new Date());
       
       // Emit to other modules
       window.eventBus.emit('subscription:updated', response);
@@ -342,6 +351,54 @@ class SubscriptionManager {
     }, 5000);
   }
 
+  updateDataSourceIndicator(source, timestamp) {
+    const indicator = document.getElementById('subscriptionDataSource');
+    if (!indicator) return;
+
+    const timeStr = timestamp.toLocaleTimeString();
+    
+    if (source === 'cached') {
+      indicator.textContent = `Using cached data (last updated: ${timeStr})`;
+      indicator.style.color = '#888';
+    } else if (source === 'fresh') {
+      indicator.textContent = `Fresh data from server (updated: ${timeStr})`;
+      indicator.style.color = '#28a745';
+      
+      // Fade back to normal color after 3 seconds
+      setTimeout(() => {
+        indicator.style.color = '#888';
+      }, 3000);
+    }
+  }
+
+  updateSyncButtonState(lastSyncTime, cooldownMs) {
+    const syncBtn = document.getElementById('syncSubscriptionBtn');
+    const indicator = document.getElementById('subscriptionDataSource');
+    
+    if (!syncBtn || !lastSyncTime) return;
+
+    const now = Date.now();
+    const timeSinceSync = now - lastSyncTime;
+    
+    if (timeSinceSync < cooldownMs) {
+      const remainingSeconds = Math.ceil((cooldownMs - timeSinceSync) / 1000);
+      syncBtn.disabled = true;
+      syncBtn.textContent = `Sync Available in ${remainingSeconds}s`;
+      
+      // Update every second until cooldown is over
+      const updateInterval = setInterval(() => {
+        const currentRemaining = Math.ceil((cooldownMs - (Date.now() - lastSyncTime)) / 1000);
+        if (currentRemaining <= 0) {
+          syncBtn.disabled = false;
+          syncBtn.textContent = 'Sync Subscription Status';
+          clearInterval(updateInterval);
+        } else {
+          syncBtn.textContent = `Sync Available in ${currentRemaining}s`;
+        }
+      }, 1000);
+    }
+  }
+
   // Handle successful checkout return
   handleCheckoutSuccess() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -350,9 +407,9 @@ class SubscriptionManager {
 
     if (success === 'true') {
       this.showSuccess('Welcome to Anchored Premium! Your subscription is now active.');
-      // Reload subscription status
+      // Reload subscription status (force refresh after checkout success)
       setTimeout(() => {
-        this.loadSubscriptionStatus();
+        this.loadSubscriptionStatus(true); // Force refresh after successful checkout
       }, 2000);
       
       // Clean up URL
