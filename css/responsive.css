@@ -235,9 +235,10 @@
   }
 
   .hero-content {
-    max-width: 350px;
+    max-width: 100%;
     margin: 0 auto;
     padding: 0 1rem;
+    width: 100%;
   }
 
   .hero-title {
@@ -250,23 +251,20 @@
 
   /* Fix auth form spacing and centering on mobile */
   .auth-container {
-    max-width: 320px;
+    max-width: 100%;
     margin: 0 auto;
     padding: 0 1rem;
-    /* Add padding to container for proper centering */
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: auto;
     width: 100%;
   }
 
   .auth-form {
     padding: 1.5rem;
-    margin: 0;
-    /* Remove margin since container handles centering */
+    margin: 0 auto;
     width: 100%;
-    /* Ensure form takes full container width */
+    max-width: 320px;
     /* Simple direct background like search-input */
     background: rgba(248, 252, 253, 0.85) !important;
     backdrop-filter: none !important;
@@ -373,9 +371,10 @@
   }
 
   .hero-content {
-    max-width: 500px;
+    max-width: 100%;
     margin: 0 auto;
     padding: 0 2rem;
+    width: 100%;
   }
 
   .hero-title {
@@ -389,23 +388,20 @@
 
   /* Fix auth form spacing and centering on tablet */
   .auth-container {
-    max-width: 380px;
+    max-width: 100%;
     margin: 0 auto;
     padding: 0 1rem;
-    /* Add padding to container for proper centering */
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: auto;
     width: 100%;
   }
 
   .auth-form {
     padding: 2rem;
-    margin: 0;
-    /* Remove margin since container handles centering */
+    margin: 0 auto;
     width: 100%;
-    /* Ensure form takes full container width */
+    max-width: 380px;
   }
 
   /* Auth form specific spacing on tablet - force override */

@@ -480,11 +480,11 @@ class AdManager {
       clearTimeout(this.currentAdTimeout);
     }
 
-    console.log(`[AdManager] Ad will hide in ${this.adConfig.displayDurationMs / 1000} seconds`);
+
 
     // Schedule ad to hide after display duration
     this.currentAdTimeout = setTimeout(() => {
-      console.log('[AdManager] Hiding ad and scheduling next one');
+
       this.hideAdContainer();
       // Schedule next ad
       this.scheduleNextAd();
@@ -506,7 +506,7 @@ class AdManager {
       if (await this.canShowAd()) {
         this.showAd();
       } else {
-        console.log('[AdManager] Cannot show ad - conditions not met');
+
       }
     }, this.adConfig.nextAdDelayMs);
   }
