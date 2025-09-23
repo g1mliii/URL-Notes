@@ -257,6 +257,8 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    min-height: auto;
+    width: 100%;
   }
 
   .auth-form {
@@ -394,6 +396,8 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    min-height: auto;
+    width: 100%;
   }
 
   .auth-form {

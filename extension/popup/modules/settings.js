@@ -30,12 +30,16 @@ class SettingsManager {
     this.authSignInBtn = document.getElementById('authSignInBtn');
     this.authSignOutBtn = document.getElementById('authSignOutBtn');
     this.authStatusText = document.getElementById('authStatusText');
+    this.authGoogleBtn = document.getElementById('authGoogleBtn');
+    this.oauthSection = document.getElementById('oauthSection');
 
     // Sync elements
     this.manualSyncBtn = document.getElementById('manualSyncBtn');
 
     // Premium status refresh button
     this.refreshPremiumStatusBtn = document.getElementById('refreshPremiumStatusBtn');
+
+
 
     // Website link button
     this.websiteLinkBtn = document.getElementById('websiteLinkBtn');
@@ -70,6 +74,7 @@ class SettingsManager {
         show(this.authPasswordInput, false);
         show(this.authTogglePwBtn, false);
         show(this.authRow, false);
+        show(this.oauthSection, false); // Hide OAuth section when logged in
         show(this.refreshPremiumStatusBtn, true); // Show refresh button when logged in
         if (this.authEmailInput) this.authEmailInput.value = user.email || '';
         if (this.authPasswordInput) this.authPasswordInput.value = '';
@@ -111,6 +116,7 @@ class SettingsManager {
         show(this.authTogglePwBtn, true);
         show(this.authRow, true);
         show(this.authForgotPwBtn, true);
+        show(this.oauthSection, true); // Show OAuth section when not logged in
         show(this.refreshPremiumStatusBtn, false); // Hide refresh button when not logged in
         // Hide sync management for non-authenticated users
         show(syncManagement, false);
@@ -215,6 +221,26 @@ class SettingsManager {
     }
   }
 
+  async handleGoogleSignIn() {
+    try {
+      this.setAuthBusy(true);
+
+      // Log the redirect URL for debugging
+      const redirectUrl = chrome.identity.getRedirectURL();
+      console.log('Extension redirect URL:', redirectUrl);
+      this.showNotification(`Starting Google OAuth... Redirect URL: ${redirectUrl}`, 'info');
+
+      await window.supabaseClient.signInWithOAuth('google');
+      this.showNotification('Signed in with Google', 'success');
+      this.updateAuthUI();
+    } catch (e) {
+      console.error('Google OAuth error:', e);
+      this.showNotification(`Google sign in failed: ${e.message || e}`, 'error');
+    } finally {
+      this.setAuthBusy(false);
+    }
+  }
+
   async handleManualSync() {
     if (!window.syncEngine) {
       this.showNotification('Sync engine not available', 'error');
@@ -290,52 +316,52 @@ class SettingsManager {
 
       // Force refresh subscription status from server
       const status = await window.supabaseClient.getSubscriptionStatus(true); // Force refresh
-      
+
       // Update userTier in local storage for other parts of the extension
       try {
         const userTier = status.active ? status.tier : 'free';
         await chrome.storage.local.set({ userTier });
-        
+
         // Clear AI usage cache to ensure updated limits are fetched
         await chrome.storage.local.remove(['cachedAIUsage']);
       } catch (_) { }
-      
+
       // Emit tier change event to update all parts of the extension
-      try { 
-        window.eventBus?.emit('tier:changed', { 
-          tier: status.tier, 
-          active: status.active, 
-          expiresAt: status.expiresAt 
-        }); 
+      try {
+        window.eventBus?.emit('tier:changed', {
+          tier: status.tier,
+          active: status.active,
+          expiresAt: status.expiresAt
+        });
       } catch (_) { }
-      
+
       // Emit auth:changed event similar to sign-in to refresh all components
       try {
-        window.eventBus?.emit('auth:changed', { 
+        window.eventBus?.emit('auth:changed', {
           user: window.supabaseClient.getCurrentUser(),
           statusRefresh: true // Flag to indicate this is a status refresh
         });
       } catch (_) { }
-      
+
       // Notify background script about tier change
       try {
-        chrome.runtime.sendMessage({ 
-          action: 'tier-changed', 
-          tier: status.tier, 
+        chrome.runtime.sendMessage({
+          action: 'tier-changed',
+          tier: status.tier,
           active: status.active,
           expiresAt: status.expiresAt
-        }).catch(() => {});
+        }).catch(() => { });
       } catch (_) { }
-      
+
       // Notify background script about auth change (similar to sign-in)
       try {
-        chrome.runtime.sendMessage({ 
-          action: 'auth-changed', 
+        chrome.runtime.sendMessage({
+          action: 'auth-changed',
           user: window.supabaseClient.getCurrentUser(),
           statusRefresh: true // Flag to indicate this is a status refresh
-        }).catch(() => {});
+        }).catch(() => { });
       } catch (_) { }
-      
+
       // Update ad manager based on new status
       try {
         if (window.adManager) {
@@ -346,7 +372,7 @@ class SettingsManager {
           }
         }
       } catch (_) { }
-      
+
       // Update UI based on new status
       await this.updateAuthUI();
 
@@ -383,7 +409,7 @@ class SettingsManager {
     } catch (e) {
       console.error('Premium status refresh failed:', e);
       this.showNotification(`Failed to refresh status: ${e.message || e}`, 'error');
-      
+
       // Reset button on error
       this.refreshPremiumStatusBtn.innerHTML = `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -427,7 +453,7 @@ class SettingsManager {
   }
 
   setAuthBusy(busy) {
-    const controls = [this.authEmailInput, this.authPasswordInput, this.authTogglePwBtn, this.authSignUpBtn, this.authSignInBtn, this.authForgotPwBtn, this.authSignOutBtn];
+    const controls = [this.authEmailInput, this.authPasswordInput, this.authTogglePwBtn, this.authSignUpBtn, this.authSignInBtn, this.authForgotPwBtn, this.authSignOutBtn, this.authGoogleBtn];
     controls.forEach(el => { if (el) el.disabled = !!busy; });
     if (this.authStatusText) this.authStatusText.style.opacity = busy ? '0.6' : '0.8';
   }
@@ -455,6 +481,8 @@ class SettingsManager {
     // Premium status refresh
     this.refreshPremiumStatusBtn?.addEventListener('click', () => this.handleRefreshPremiumStatus());
 
+
+
     // Shortcut settings
     this.changeShortcutBtn?.addEventListener('click', () => this.openShortcutEditor());
 
@@ -463,6 +491,7 @@ class SettingsManager {
     this.authSignUpBtn?.addEventListener('click', () => this.handleSignUp());
     this.authSignInBtn?.addEventListener('click', () => this.handleSignIn());
     this.authSignOutBtn?.addEventListener('click', () => this.handleSignOut());
+    this.authGoogleBtn?.addEventListener('click', () => this.handleGoogleSignIn());
     // Forgot password handler
     this.authForgotPwBtn?.addEventListener('click', () => this.handleForgotPassword());
     // Press Enter to sign in from either field
@@ -647,18 +676,18 @@ class SettingsManager {
 
     const updateScrollIndicators = () => {
       const { scrollTop, scrollHeight, clientHeight } = settingsContent;
-      
+
       // Check if content is scrollable
       const isScrollable = scrollHeight > clientHeight;
       settingsContent.setAttribute('data-scrollable', isScrollable.toString());
-      
+
       // Add 'scrolled' class if user has scrolled down
       if (scrollTop > 10) {
         settingsContent.classList.add('scrolled');
       } else {
         settingsContent.classList.remove('scrolled');
       }
-      
+
       // Add 'has-more' class if there's more content below
       if (scrollTop + clientHeight < scrollHeight - 10) {
         settingsContent.classList.add('has-more');
@@ -669,7 +698,7 @@ class SettingsManager {
 
     // Update indicators on scroll
     settingsContent.addEventListener('scroll', updateScrollIndicators);
-    
+
     // Update indicators on resize or content change
     const resizeObserver = new ResizeObserver((entries) => {
       // Use requestAnimationFrame to prevent ResizeObserver loops
@@ -678,10 +707,10 @@ class SettingsManager {
       });
     });
     resizeObserver.observe(settingsContent);
-    
+
     // Initial update
     setTimeout(updateScrollIndicators, 100);
-    
+
     // Also update when settings panel becomes visible
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
@@ -693,7 +722,7 @@ class SettingsManager {
         }
       });
     });
-    
+
     const settingsPanel = document.getElementById('settingsPanel');
     if (settingsPanel) {
       observer.observe(settingsPanel, { attributes: true });
@@ -789,6 +818,8 @@ class SettingsManager {
       try { window.open('https://anchored.site', '_blank'); } catch (__) { }
     }
   }
+
+
 
   // Open advertising disclosure dialog
   openAdDisclosure() {

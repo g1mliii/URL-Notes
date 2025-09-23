@@ -44,10 +44,14 @@ class Utils {
   // Debounce utility
   static debounce(func, delay) {
     let timeout;
-    return (...args) => {
+    const debounced = (...args) => {
       clearTimeout(timeout);
       timeout = setTimeout(() => func.apply(this, args), delay);
     };
+    debounced.cancel = () => {
+      clearTimeout(timeout);
+    };
+    return debounced;
   }
 
   // Show a toast notification

@@ -5,7 +5,7 @@ class EditorManager {
   constructor(storageManager) {
     this.storageManager = storageManager;
     this.currentNote = null;
-    this.saveDraftDebounced = Utils.debounce(() => this.saveEditorDraft(), 150);
+
   }
 
   // Create a new note
@@ -183,7 +183,9 @@ class EditorManager {
         this.currentNote = null;
       } else {
         // Cache latest draft immediately on close to avoid losing unsaved edits
-        this.saveEditorDraft();
+        if (window.urlNotesApp && window.urlNotesApp.saveEditorDraft) {
+          window.urlNotesApp.saveEditorDraft();
+        }
         this.persistEditorOpen(false);
       }
     }, 240);
@@ -1139,9 +1141,8 @@ class EditorManager {
       selection.addRange(range);
     }
     
-    // Update character count and trigger save draft
+    // Update character count
     this.updateCharCount();
-    this.saveDraftDebounced();
   }
   
   // Copy citation to clipboard

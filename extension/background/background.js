@@ -428,7 +428,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         lastSyncTime = Date.now();
         saveLastSyncTime(); // Save the current time as last sync
         startSyncTimer();
-        
+
       } else {
         // User signed out, stop timer
         stopSyncTimer();
@@ -489,6 +489,167 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   return true; // Keep message channel open for async responses
 });
+
+// --- OAuth Handling ---
+
+// Listen for tab updates to catch OAuth redirects
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  // Check for OAuth callbacks
+  if (changeInfo.url) {
+    // Check if this looks like an OAuth callback (has access_token or error)
+    if (changeInfo.url.includes('access_token=') || changeInfo.url.includes('error=')) {
+      finishUserOAuth(changeInfo.url, tabId);
+      return;
+    }
+
+    // Also check for redirects to the website login-success page
+    if (changeInfo.url.includes('anchored.site/login-success') || changeInfo.url.includes('anchored.site/?')) {
+      finishUserOAuth(changeInfo.url, tabId);
+      return;
+    }
+
+    // Check for any anchored.site URL with hash parameters
+    if (changeInfo.url.includes('anchored.site') && changeInfo.url.includes('#')) {
+      finishUserOAuth(changeInfo.url, tabId);
+      return;
+    }
+  }
+
+  if (changeInfo.url?.startsWith(chrome.identity.getRedirectURL())) {
+    console.log('🎯 OAuth redirect detected (exact match), processing...');
+    finishUserOAuth(changeInfo.url, tabId);
+  }
+});
+
+/**
+ * Method used to finish OAuth callback for user authentication.
+ */
+async function finishUserOAuth(url, tabId) {
+  try {
+    // Parse URL hash for tokens (Supabase returns tokens in hash)
+    const hashMap = parseUrlHash(url);
+
+    // Also try parsing query parameters in case tokens are there
+    const urlObj = new URL(url);
+    const queryParams = new URLSearchParams(urlObj.search);
+
+    // Try to get tokens from hash first, then query params
+    let access_token = hashMap.get('access_token') || queryParams.get('access_token');
+    let refresh_token = hashMap.get('refresh_token') || queryParams.get('refresh_token');
+
+    if (!access_token) {
+      // Check for error parameters in both hash and query
+      const error = hashMap.get('error') || queryParams.get('error');
+      const error_description = hashMap.get('error_description') || queryParams.get('error_description');
+      console.log('❌ No access token found');
+      console.log('❌ Error:', error);
+      console.log('❌ Error description:', error_description);
+      throw new Error(error_description || error || 'No access token found in OAuth response');
+    }
+
+
+
+    // Get user info from the access token
+    const userResponse = await fetch('https://kqjcorjjvunmyrnzvqgr.supabase.co/auth/v1/user', {
+      headers: {
+        'Authorization': `Bearer ${access_token}`,
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxamNvcmpqdnVubXlybnp2cWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3MTc4ODgsImV4cCI6MjA3MTI5Mzg4OH0.l-ZdPOYMNi8x3lBqlemwQ2elDyvoPy-2ZUWuODVviWk'
+      }
+    });
+
+
+
+    if (!userResponse.ok) {
+      const errorText = await userResponse.text();
+      console.error('❌ User fetch failed:', errorText);
+      throw new Error(`Failed to get user info: ${userResponse.status} ${errorText}`);
+    }
+
+    const user = await userResponse.json();
+
+
+    // Create auth data object
+    const authData = {
+      access_token,
+      refresh_token: refresh_token || null,
+      user,
+      expires_in: 3600 // Default to 1 hour
+    };
+
+
+
+    // Store session in chrome.storage.local (same as handleAuthSuccess)
+    await chrome.storage.local.set({
+      supabase_session: {
+        access_token,
+        refresh_token: refresh_token || null,
+        user,
+        expires_at: Date.now() + (3600 * 1000)
+      }
+    });
+
+    // Clear premium status cache to force refresh (same as handleAuthSuccess)
+    await chrome.storage.local.remove(['cachedPremiumStatus']);
+
+    // Notify any open popups that OAuth is complete
+    chrome.runtime.sendMessage({
+      action: 'oauth-complete',
+      success: true,
+      data: authData
+    }).then(() => {
+
+    }).catch(() => {
+      // Popup likely closed, ignore
+    });
+
+    // Also send a general auth-changed message for any components listening
+    chrome.runtime.sendMessage({
+      action: 'auth-changed',
+      user: user
+    }).catch(() => {
+      // Popup likely closed, ignore
+    });
+
+
+  } catch (error) {
+    console.error('💥 OAuth callback error:', error);
+    console.error('💥 Error stack:', error.stack);
+
+    // Keep user on current page for errors
+    console.log('❌ OAuth failed, keeping user on current page');
+
+    // Notify the popup that OAuth failed
+    chrome.runtime.sendMessage({
+      action: 'oauth-complete',
+      success: false,
+      error: error.message
+    }).catch(() => {
+      // Popup likely closed, ignore
+    });
+  }
+}
+
+/**
+ * Helper method used to parse the hash of a redirect URL.
+ */
+function parseUrlHash(url) {
+  const hashParts = new URL(url).hash.slice(1).split('&');
+  const hashMap = new Map(
+    hashParts.map((part) => {
+      const [name, value] = part.split('=');
+      return [name, decodeURIComponent(value || '')];
+    })
+  );
+  return hashMap;
+}
+
+// Global function for debugging - can be called from console
+globalThis.debugOAuth = function (url) {
+  console.log('Manual OAuth debug for URL:', url);
+  finishUserOAuth(url, null);
+};
+
+// Background script loaded and ready
 
 function handleContentScriptReady(pageInfo, tab) {
   if (!tab || typeof tab.id !== 'number') {

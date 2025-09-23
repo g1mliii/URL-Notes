@@ -14,7 +14,8 @@
   flex-direction: column;
   overflow: hidden;
   /* Ensure proper height constraints */
-  max-height: 600px; /* Match popup height */
+  max-height: 600px;
+  /* Match popup height */
 }
 
 /* Add scroll indicator shadows */
@@ -75,14 +76,19 @@
 .settings-content {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden; /* prevent horizontal scrollbar */
-  padding: 12px; /* condensed */
+  overflow-x: hidden;
+  /* prevent horizontal scrollbar */
+  padding: 12px;
+  /* condensed */
   /* Improved scrolling behavior */
   scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch; /* iOS smooth scrolling */
+  -webkit-overflow-scrolling: touch;
+  /* iOS smooth scrolling */
   /* Ensure proper scroll area */
-  max-height: calc(100vh - 80px); /* Account for header */
-  min-height: 0; /* Allow flex shrinking */
+  max-height: calc(100vh - 80px);
+  /* Account for header */
+  min-height: 0;
+  /* Allow flex shrinking */
 }
 
 /* Enhanced scrollbar styling for better visibility */
@@ -117,7 +123,8 @@
 }
 
 .settings-section {
-  margin-bottom: 16px; /* condensed */
+  margin-bottom: 16px;
+  /* condensed */
 }
 
 .settings-section:last-child {
@@ -128,7 +135,8 @@
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
-  margin: 0 0 8px 0; /* tighter spacing */
+  margin: 0 0 8px 0;
+  /* tighter spacing */
 }
 
 /* Generic settings text input */
@@ -173,16 +181,90 @@
 
 /* Ensure auth grid buttons look identical and don’t wrap */
 .auth-actions .settings-btn-full {
-  margin-bottom: 0; /* no extra spacing inside grid */
+  margin-bottom: 0;
+  /* no extra spacing inside grid */
   width: 100%;
 }
+
 .auth-actions .settings-btn-full span {
-  white-space: nowrap; /* avoid multi-line labels causing height mismatch */
+  white-space: nowrap;
+  /* avoid multi-line labels causing height mismatch */
 }
 
 .auth-status {
   text-align: center;
   color: var(--text-secondary);
+}
+
+/* OAuth Section Styling - Match webpage design */
+.oauth-section {
+  margin-top: 12px;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  margin: 1rem 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.auth-divider span {
+  padding: 0 1rem;
+  background: var(--bg-primary);
+}
+
+/* Google Sign-In Button - Match webpage design */
+.oauth-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  padding: 0.75rem 1rem !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  text-decoration: none !important;
+  width: 100% !important;
+}
+
+.oauth-btn:hover {
+  background: var(--bg-secondary) !important;
+  border-color: var(--accent-primary) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.oauth-btn:active {
+  transform: translateY(0) !important;
+  transform: translateY(0);
+}
+
+.oauth-btn:disabled {
+  background: #9aa0a6 !important;
+  border-color: #9aa0a6 !important;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.oauth-btn svg {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
 }
 
 /* Data Management Grid Layout */
@@ -198,14 +280,18 @@
   grid-column: 1 / -1;
   grid-row: 1;
   display: flex;
-  flex-direction: row; /* Changed from column to row */
-  align-items: center; /* Align items vertically in the center */
+  flex-direction: row;
+  /* Changed from column to row */
+  align-items: center;
+  /* Align items vertically in the center */
   gap: 8px;
 }
 
 .export-controls .settings-select {
-  flex: 1; /* Allow select to grow and shrink */
-  width: auto; /* Override default 100% width if present */
+  flex: 1;
+  /* Allow select to grow and shrink */
+  width: auto;
+  /* Override default 100% width if present */
   padding: 10px 12px;
   border: 1px solid var(--border-color);
   border-radius: 10px;
@@ -223,10 +309,14 @@
 }
 
 .export-controls .settings-btn-full {
-  flex: 1; /* Make button take equal space as dropdown */
-  width: auto; /* Override the default 100% width from .settings-btn-full */
-  min-width: 0; /* Allow button to shrink */
-  margin-bottom: 0; /* Remove extra margin from general .settings-btn-full rule */
+  flex: 1;
+  /* Make button take equal space as dropdown */
+  width: auto;
+  /* Override the default 100% width from .settings-btn-full */
+  min-width: 0;
+  /* Allow button to shrink */
+  margin-bottom: 0;
+  /* Remove extra margin from general .settings-btn-full rule */
 }
 
 /* Import controls styling - left column */
@@ -239,7 +329,8 @@
 }
 
 .import-controls .settings-btn-full {
-  width: 100%; /* Ensure full width within grid column */
+  width: 100%;
+  /* Ensure full width within grid column */
   margin-bottom: 0;
 }
 
@@ -253,12 +344,14 @@
 }
 
 .sync-controls .settings-btn-full {
-  width: 100%; /* Ensure full width within grid column */
+  width: 100%;
+  /* Ensure full width within grid column */
   margin-bottom: 0;
 }
 
 .settings-actions .settings-btn-full {
-  margin-bottom: 0; /* avoid extra vertical space in grid */
+  margin-bottom: 0;
+  /* avoid extra vertical space in grid */
 }
 
 .settings-btn-full {
@@ -266,14 +359,17 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px; /* condensed */
+  padding: 10px 12px;
+  /* condensed */
   border: 1px solid var(--border-color);
-  border-radius: 10px; /* slightly tighter */
+  border-radius: 10px;
+  /* slightly tighter */
   background: var(--bg-secondary);
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
   color: var(--text-primary);
-  font-size: 13px; /* condensed */
+  font-size: 13px;
+  /* condensed */
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -284,7 +380,7 @@
 .settings-btn-full:hover {
   background: var(--bg-tertiary);
   transform: translateY(-1px);
-  box-shadow: 
+  box-shadow:
     0 2px 8px var(--shadow-dark),
     inset 0 1px 0 var(--shadow-light);
 }
@@ -306,7 +402,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px; /* tighter spacing */
+  margin-bottom: 12px;
+  /* tighter spacing */
 }
 
 .setting-item:last-child {
@@ -390,8 +487,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 0; /* allow children to shrink within container */
-  overflow: hidden; /* clip any thumb overflow */
+  min-width: 0;
+  /* allow children to shrink within container */
+  overflow: hidden;
+  /* clip any thumb overflow */
 }
 
 .font-inline .sep {
@@ -410,7 +509,8 @@
   cursor: pointer;
   width: 100%;
   max-width: 100%;
-  min-width: 0; /* prevent horizontal overflow in some browsers */
+  min-width: 0;
+  /* prevent horizontal overflow in some browsers */
 }
 
 .font-size-slider::-webkit-slider-thumb {
@@ -484,6 +584,7 @@
     transform: translateX(100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -495,6 +596,7 @@
     transform: translateX(0);
     opacity: 1;
   }
+
   to {
     transform: translateX(100%);
     opacity: 0;
@@ -518,7 +620,8 @@ input[type="file"] {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 8px; /* Slightly reduced horizontal padding for better fit */
+  padding: 10px 8px;
+  /* Slightly reduced horizontal padding for better fit */
   border: 1px solid var(--border-color);
   border-radius: 10px;
   background: var(--bg-secondary);
@@ -537,7 +640,7 @@ input[type="file"] {
 .settings-btn-half:hover {
   background: var(--bg-tertiary);
   transform: translateY(-1px);
-  box-shadow: 
+  box-shadow:
     0 2px 8px var(--shadow-dark),
     inset 0 1px 0 var(--shadow-light);
 }
@@ -611,7 +714,8 @@ input[type="file"] {
 
 /* Ensure settings sections don't get cut off */
 .settings-section:last-child {
-  margin-bottom: 20px; /* Extra space at bottom for scroll */
+  margin-bottom: 20px;
+  /* Extra space at bottom for scroll */
   padding-bottom: 10px;
 }
 

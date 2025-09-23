@@ -3,6 +3,7 @@
   "name": "Anchored – Notes & Highlights for Websites",
   "version": "1.1.2",
   "description": "Anchored helps take contextual notes tied to websites while you browse. Highlight text, and save notes linked pages you visit.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwapmCLZK08XBKNBWzbH76qCd7g3KsTaodNcVsPlIUQZ7TjNRlzse4Ei+HfhqG7h6v42D6TPNXRAvYBsLEMb066PvxoHIhoVEgN+IZA4JI02cOWx722qPEW20hmiOo39VIZ4Qvj5QJ7+LjGtme8dPBgq9QErY7xg98Ia04hz/gTbMvPjDOkcRZxk5i5NXxv+HfDK/7DYXL1jUBnKRIcSl/oAl/N6BpQllrWcz1Bxo7MzaefiOm3hycWjUVuBt8OwoNnAkA0yauLAARMv8yPzW4IfXqnuYRFVDNWKt9aezF0t8C4n8Y6oenek9h52vX/nEEtKWHFhyLl/aFgWOnPKcNQIDAQAB",
   "permissions": [
     "storage",
     "activeTab",

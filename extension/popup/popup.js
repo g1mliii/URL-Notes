@@ -26,8 +26,10 @@ class URLNotesApp {
     // Rate limiting for AI usage calls
     this._lastAIUsageCall = 0;
     this._cachedAIUsage = null;
-    // Flag to prevent draft saving during AI operations
-    this._isApplyingAIRewrite = false;
+    this._isApplyingAIRewrite = false; // Flag to prevent draft saving during AI rewrite
+    this._lastCacheClear = 0; // Rate limit cache clearing
+    this._aiRewriteJustCompleted = false; // Flag to track if AI rewrite just completed
+
     // Use IndexedDB storage instead of Chrome storage for sync compatibility
     this.storageManager = window.notesStorage || new StorageManager();
 
@@ -44,6 +46,13 @@ class URLNotesApp {
     this.notesManager = new NotesManager(this);
     // Debounced draft saver for editorState caching
     this.saveDraftDebounced = Utils.debounce(() => this.saveEditorDraft(), 150);
+    // Create a flush method to immediately execute pending saves
+    this.flushDraftSave = () => {
+      if (this.saveDraftDebounced.cancel) {
+        this.saveDraftDebounced.cancel();
+      }
+      return this.saveEditorDraft();
+    };
     // Debounced AI usage checker to prevent rate limiting
     this.getAIUsageDebounced = Utils.debounce(() => this.getCurrentAIUsage(), 2000);
     // Enable compact layout to ensure everything fits without scroll/clipping
@@ -523,7 +532,7 @@ class URLNotesApp {
           // Set the updated draft as current note and open editor
           this.currentNote = { ...editorState.noteDraft };
           await this.openEditor(true);
-          console.log('✅ Opened editor with context menu updated draft');
+
         }
 
         // Remove action so it doesn't re-trigger
@@ -636,25 +645,14 @@ class URLNotesApp {
         const timeDiff = now - draftTime;
         const tenMinutes = 10 * 60 * 1000; // 10 minutes in milliseconds
 
-        console.log('⏰ Draft timing check:', {
-          draftTime: new Date(draftTime).toLocaleString(),
-          timeDiff: Math.round(timeDiff / 1000) + 's',
-          isRecent: timeDiff < tenMinutes
-        });
-
         if (timeDiff < tenMinutes) {
-          console.log('✅ Attempting to restore recent draft');
           // Use improved restoration logic that handles both auto-restore and contamination prevention
           this.currentNote = null; // Clear so restoreEditorDraft knows this is auto-restore context
           const wasRestored = await this.restoreEditorDraft();
           if (wasRestored) {
-            console.log('🎉 Draft restored, opening editor');
             await this.openEditor(true);
-          } else {
-            console.log('❌ Draft restoration failed');
           }
         } else {
-          console.log('⏰ Draft is too old, clearing it');
           await chrome.storage.local.remove('editorState');
         }
       } else if (editorState && editorState.noteDraft) {
@@ -1282,11 +1280,9 @@ class URLNotesApp {
     contentInput.addEventListener('input', (e) => {
       this.editorManager.updateCharCount();
 
-      // Skip draft saving if this is an AI rewrite event
-      if (!e._aiRewrite && !this._isApplyingAIRewrite) {
+      // Skip draft saving during AI rewrite to prevent content reset
+      if (!this._isApplyingAIRewrite) {
         this.saveDraftDebounced();
-      } else if (this._isApplyingAIRewrite) {
-        console.log('Skipping draft save during AI rewrite');
       }
     });
     // Paste sanitization: allow only text, links, and line breaks
@@ -1326,8 +1322,9 @@ class URLNotesApp {
     // Import functionality is handled by SettingsManager
     // No need to add duplicate event listeners here
 
-    document.getElementById('aiRewriteBtn').addEventListener('click', () => {
-      this.showAIDropdown();
+    document.getElementById('aiRewriteBtn').addEventListener('click', async () => {
+      // Toggle AI dropdown
+      await this.toggleAIDropdown();
     });
 
     // AI Summary button click handler
@@ -1364,8 +1361,7 @@ class URLNotesApp {
       // Don't refresh during filter transitions to prevent pop-in effect
       if (this._isFilterTransitioning) return;
 
-      // Don't refresh during AI rewrite operations to prevent overwriting
-      if (this._isApplyingAIRewrite) return;
+
 
       this.allNotes = await this.loadNotes();
       this.render();
@@ -1477,8 +1473,8 @@ class URLNotesApp {
     // Persist editor/filter state when popup is about to close
     window.addEventListener('pagehide', () => {
       try {
-        // Only save draft if we have a current note and we're not in the middle of an AI operation
-        if (this.currentNote && !this._isApplyingAIRewrite) {
+        // Save draft if we have a current note
+        if (this.currentNote) {
           this.saveEditorDraft();
           // Don't change wasEditorOpen flag here - preserve it for next open
           // Just mark popup as closed
@@ -1826,7 +1822,7 @@ class URLNotesApp {
             <span class="note-date">${Utils.formatDate(note.updatedAt)}</span>
             <span class="note-domain">${note.domain}</span>
           </div>
-          ${note.tags && note.tags.length > 0 ? `<div class="note-tags">${note.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}</div>` : ''}
+          ${note.tags && note.tags.length > 0 ? `<div class="note-tags">${note.tags.slice(0, 2).map(tag => `<span class="note-tag">${tag}</span>`).join('')}${note.tags.length > 2 ? `<span class="note-tag note-tag-more">+${note.tags.length - 2}</span>` : ''}</div>` : ''}
         </div>
       </div>
     `;
@@ -2559,8 +2555,6 @@ class URLNotesApp {
 
   // Open the note editor
   async openEditor(focusContent = false) {
-    // Clear AI rewrite flag when opening editor to ensure normal draft saving
-    this._isApplyingAIRewrite = false;
 
     const editor = document.getElementById('noteEditor');
     const titleHeader = document.getElementById('noteTitleHeader');
@@ -2617,9 +2611,13 @@ class URLNotesApp {
 
 
     // Only save draft if we didn't restore one (to avoid overwriting restored content)
-    if (!draftWasRestored) {
+    if (!draftWasRestored && !this._isApplyingAIRewrite) {
       // Save initial state as draft
-      setTimeout(() => this.saveEditorDraft(), 100);
+      setTimeout(() => {
+        if (!this._isApplyingAIRewrite) {
+          this.saveEditorDraft();
+        }
+      }, 100);
     }
 
     // Focus appropriately and try to restore caret from cached draft (if present)
@@ -2651,8 +2649,8 @@ class URLNotesApp {
   async closeEditor(options = { clearDraft: false }) {
     const editor = document.getElementById('noteEditor');
 
-    // Always save draft before closing (unless explicitly clearing)
-    if (!options.clearDraft && this.currentNote) {
+    // Always save draft before closing (unless explicitly clearing or during AI rewrite)
+    if (!options.clearDraft && this.currentNote && !this._isApplyingAIRewrite) {
       try {
         // Save the current editor content as a draft (don't modify currentNote)
         await this.saveEditorDraft();
@@ -2692,6 +2690,11 @@ class URLNotesApp {
     if (!this.currentNote) {
       Utils.showToast('No note open to save', 'info');
       return;
+    }
+
+    // Flush any pending draft saves to ensure we have the latest content
+    if (!this._isApplyingAIRewrite) {
+      await this.flushDraftSave();
     }
 
     // Grab editor fields
@@ -2996,16 +2999,79 @@ class URLNotesApp {
     } catch (_) { }
   }
 
+  // Save AI rewritten content immediately (bypasses AI rewrite flag check)
+  async saveAIRewrittenContent() {
+    try {
+      if (!this.currentNote) {
+        return;
+      }
+
+      // Ensure we have valid DOM elements before proceeding
+      const titleHeader = document.getElementById('noteTitleHeader');
+      const contentInput = document.getElementById('noteContentInput');
+      const tagsInput = document.getElementById('tagsInput');
+
+      if (!titleHeader || !contentInput || !tagsInput) {
+        return;
+      }
+
+      // Capture caret in content area
+      let caretStart = 0, caretEnd = 0;
+      try {
+        if (contentInput) {
+          const pos = this.getSelectionOffsets(contentInput);
+          caretStart = pos.start;
+          caretEnd = pos.end;
+        }
+      } catch (_) { }
+
+      const currentContent = this.htmlToMarkdown(contentInput ? contentInput.innerHTML : '');
+
+      const draft = {
+        id: this.currentNote.id,
+        title: (titleHeader && titleHeader.value) || '',
+        content: currentContent,
+        tags: (tagsInput && tagsInput.value
+          ? tagsInput.value.split(',').map(t => t.trim()).filter(Boolean)
+          : []),
+        createdAt: this.currentNote.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        domain: this.currentNote.domain,
+        url: this.currentNote.url,
+        pageTitle: this.currentNote.pageTitle
+      };
+
+      const { editorState } = await chrome.storage.local.get(['editorState']);
+      const state = editorState || {};
+      state.noteDraft = draft;
+      state.caretStart = caretStart;
+      state.caretEnd = caretEnd;
+
+      await chrome.storage.local.set({ editorState: state });
+    } catch (error) {
+      console.error('❌ Failed to save AI rewritten content:', error);
+    }
+  }
+
   // Save the current editor draft (title/content/tags) into storage
   async saveEditorDraft() {
     try {
-      if (!this.currentNote) return;
-
-      // Skip draft saving during AI rewrite operations
-      if (this._isApplyingAIRewrite) {
-        console.log('Skipping draft save during AI rewrite');
+      if (!this.currentNote) {
         return;
       }
+
+      // Skip draft saving during AI rewrite operations to prevent content reset
+      if (this._isApplyingAIRewrite) {
+        return;
+      }
+
+      // Be extra careful if AI rewrite just completed
+      if (this._aiRewriteJustCompleted) {
+        // Add a small delay to ensure DOM is stable
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+
 
       // Ensure we have valid DOM elements before proceeding
       const titleHeader = document.getElementById('noteTitleHeader');
@@ -3032,18 +3098,8 @@ class URLNotesApp {
       const { editorState: existingState } = await chrome.storage.local.get(['editorState']);
       if (existingState && existingState.noteDraft && existingState.noteDraft.content &&
         existingState.noteDraft.content.trim() && !currentContent.trim()) {
-        console.log('Preventing draft overwrite with empty content');
         return;
       }
-
-      // Debug logging to track content changes
-      if (this.lastSavedContent && this.lastSavedContent !== currentContent) {
-        console.log('Draft content changed:', {
-          from: this.lastSavedContent.substring(0, 50) + '...',
-          to: currentContent.substring(0, 50) + '...'
-        });
-      }
-      this.lastSavedContent = currentContent;
 
       const draft = {
         id: this.currentNote.id,
@@ -3069,7 +3125,6 @@ class URLNotesApp {
         noteDraft: draft
       };
       await chrome.storage.local.set({ editorState: updatedState });
-      // Note: Removed verbose logging for cleaner console
     } catch (error) {
       console.error('Failed to save editor draft:', error);
     }
@@ -3097,6 +3152,11 @@ class URLNotesApp {
   // Restore editor draft from storage
   async restoreEditorDraft() {
     try {
+      // Skip draft restoration during AI rewrite operations
+      if (this._isApplyingAIRewrite) {
+        return false;
+      }
+
       const { editorState } = await chrome.storage.local.get(['editorState']);
 
       if (!editorState || !editorState.noteDraft) {
@@ -3413,8 +3473,8 @@ class URLNotesApp {
       }
     }
 
-    // Toggle dropdown instead of showing dialog
-    this.toggleAIDropdown();
+    // Toggle dropdown instead of showing dialog - wait for draft save to complete
+    await this.toggleAIDropdown();
   }
 
   // Show AI rewrite dialog
@@ -3503,14 +3563,68 @@ class URLNotesApp {
     const contentInput = document.getElementById('noteContentInput');
 
     if (contentInput && rewrittenContent) {
-      // Set flag to prevent draft saving during AI rewrite
-      this._isApplyingAIRewrite = true;
-
       try {
-        // Apply the rewritten content to the editor
-        contentInput.innerHTML = this.buildContentHtml(rewrittenContent);
+        // Set flag to prevent draft saving during content update
+        this._isApplyingAIRewrite = true;
+        
+        // Cancel any pending debounced saves to prevent interference
+        if (this.saveDraftDebounced.cancel) {
+          this.saveDraftDebounced.cancel();
+        }
 
-        // Update character count without triggering draft save
+        // Update the current note object with AI content FIRST
+        if (this.currentNote) {
+          this.currentNote.content = rewrittenContent;
+          this.currentNote.updatedAt = new Date().toISOString();
+        }
+
+        // Apply the rewritten content to the editor
+        const htmlContent = this.buildContentHtml(rewrittenContent);
+        
+        // Set up a mutation observer to protect against content changes
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            if (mutation.type === 'childList' || mutation.type === 'characterData') {
+              protectContent();
+            }
+          });
+        });
+        
+        contentInput.innerHTML = htmlContent;
+        
+        // Set up a one-time protection against content being reverted
+        let protectionActive = true;
+        const protectContent = () => {
+          if (!protectionActive) return;
+          
+          const currentContent = contentInput.innerHTML;
+          if (currentContent !== htmlContent) {
+            contentInput.innerHTML = htmlContent;
+          }
+        };
+        
+        // Check and protect the content a few times during the critical period
+        setTimeout(protectContent, 50);
+        setTimeout(protectContent, 150);
+        setTimeout(protectContent, 300);
+        setTimeout(protectContent, 500);
+        
+        // Disable protection after 1 second
+        setTimeout(() => {
+          protectionActive = false;
+          observer.disconnect();
+        }, 1000);
+        
+        // Start observing changes
+        observer.observe(contentInput, {
+          childList: true,
+          subtree: true,
+          characterData: true
+        });
+        
+
+
+        // Update character count
         this.editorManager.updateCharCount();
 
         // Apply generated tags if available
@@ -3518,24 +3632,23 @@ class URLNotesApp {
           this.applyGeneratedTags();
         }
 
-        // Update the current note object for consistency
-        if (this.currentNote) {
-          this.currentNote.content = rewrittenContent;
-          this.currentNote.updatedAt = new Date().toISOString();
-        }
+        // Immediately save the AI rewritten content to prevent it from being overwritten
+        await this.saveAIRewrittenContent();
 
-        console.log('AI rewrite applied to editor successfully');
-
-        // Clear the flag BEFORE saving draft to allow the save to proceed
-        this._isApplyingAIRewrite = false;
-
-        // Save the rewritten content as draft immediately
-        await this.saveEditorDraft();
+        // Wait longer to ensure everything is stable before clearing flag
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
       } catch (error) {
-        console.error('Error applying AI rewrite:', error);
-        // Clear flag on error too
+        console.error('💥 Error applying AI rewrite:', error);
+      } finally {
+        // Always clear the flag
         this._isApplyingAIRewrite = false;
+        this._aiRewriteJustCompleted = true;
+        
+        // Clear the "just completed" flag after a delay to allow proper saving
+        setTimeout(() => {
+          this._aiRewriteJustCompleted = false;
+        }, 3000);
       }
 
       // Success - content applied
@@ -3626,11 +3739,7 @@ class URLNotesApp {
         existingTags: this.currentNote.tags || []
       };
 
-      // Log only essential info for debugging
-      console.log('AI rewrite: Calling API for', style, 'style');
-      console.log('AI rewrite: API URL:', apiUrl);
-      console.log('AI rewrite: Has access token:', !!window.supabaseClient.accessToken);
-      console.log('AI rewrite: Request body:', requestBody);
+
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -3674,8 +3783,7 @@ class URLNotesApp {
 
       const data = await response.json();
 
-      // Log success with remaining calls
-      console.log(`AI rewrite successful: ${data.remainingCalls} calls remaining`);
+
 
       // Track local AI usage (1 credit for rewrite)
       await this.trackLocalAIUsage(1);
@@ -3689,7 +3797,6 @@ class URLNotesApp {
       // Store generated tags for later use
       if (data.generatedTags && data.generatedTags.length > 0) {
         this.generatedTags = data.generatedTags;
-        console.log('Generated tags:', this.generatedTags);
       }
 
       return data.rewrittenContent;
@@ -3782,7 +3889,7 @@ class URLNotesApp {
   }
 
   // Toggle AI dropdown
-  toggleAIDropdown() {
+  async toggleAIDropdown() {
     const dropdown = document.getElementById('aiDropdownMenu');
     if (dropdown) {
       const isVisible = dropdown.classList.contains('show');
@@ -3790,8 +3897,10 @@ class URLNotesApp {
       if (isVisible) {
         this.hideAIDropdown();
       } else {
-        // Save draft before opening dropdown to preserve current state
-        this.saveEditorDraft();
+        // Flush any pending draft saves to ensure we work with current content
+        if (this.currentNote && !this._isApplyingAIRewrite) {
+          await this.flushDraftSave();
+        }
         this.showAIDropdown();
       }
     }
@@ -3858,9 +3967,11 @@ class URLNotesApp {
     if (dropdown) {
       dropdown.classList.remove('show');
 
-      // Only save draft if we're not in the middle of applying an AI rewrite
-      if (!this._isApplyingAIRewrite) {
-        this.saveEditorDraft();
+      // Flush any pending draft saves when closing dropdown to ensure current content is saved
+      if (this.currentNote && !this._isApplyingAIRewrite) {
+        this.flushDraftSave().catch(error => {
+          console.error('Failed to flush draft save on dropdown close:', error);
+        });
       }
 
       // Clear user context input when hiding dropdown
@@ -3886,10 +3997,7 @@ class URLNotesApp {
     const trigger = document.getElementById('aiRewriteBtn');
 
     if (dropdown && trigger && !dropdown.contains(event.target) && !trigger.contains(event.target)) {
-      // Save draft before hiding dropdown to preserve any changes
-      if (this.currentNote && !this._isApplyingAIRewrite) {
-        this.saveEditorDraft();
-      }
+      // Just hide dropdown - no need to save draft again
       this.hideAIDropdown();
     }
   }
@@ -4200,19 +4308,17 @@ class URLNotesApp {
 
     const style = activeStyle.dataset.style;
 
-    // Get content from editor or note
-    let content = '';
+    // Get current content from editor only - don't use saved note content
     const contentInput = document.getElementById('noteContentInput');
-    if (contentInput && contentInput.innerHTML.trim()) {
-      content = contentInput.innerHTML;
-    } else if (this.currentNote.content) {
-      content = this.currentNote.content;
+    const titleInput = document.getElementById('noteTitleHeader');
+    
+    if (!contentInput || !titleInput) {
+      Utils.showToast('Editor not found', 'error');
+      return;
     }
 
-    // Also check title
-    const titleInput = document.getElementById('noteTitleHeader');
-    const title = titleInput ? titleInput.value : (this.currentNote.title || '');
-
+    const title = titleInput.value || '';
+    const content = this.editorManager.htmlToMarkdown(contentInput.innerHTML || '');
     const combinedContent = `${title} ${content}`.trim();
 
     if (!combinedContent) {
@@ -4225,9 +4331,6 @@ class URLNotesApp {
       Utils.showToast('Please create an account to use AI Rewrite. Free users get 30 rewrites/month!', 'info');
       return;
     }
-
-    // Set flag to prevent draft saving during the entire AI rewrite process
-    this._isApplyingAIRewrite = true;
 
     // Hide dropdown
     this.hideAIDropdown();
@@ -4245,23 +4348,21 @@ class URLNotesApp {
 
       // Check if API call was successful
       if (rewrittenContent === null) {
-        // API call failed due to authentication, don't show preview
-        this._isApplyingAIRewrite = false; // Clear flag on failure
+        // API call failed due to authentication
         return;
       }
 
       // Apply the rewritten content directly to the note
       await this.applyAIRewriteToNote(rewrittenContent, style);
 
-      // Hide dropdown
-      this.hideAIDropdown();
+      // Force update usage display after AI rewrite
+      await this.forceUpdateAIUsageDisplay();
 
       // Show success message
       Utils.showToast(`AI rewrite applied! Content rewritten in ${style} style.`, 'success');
 
     } catch (error) {
       console.error('AI rewrite failed:', error);
-      this._isApplyingAIRewrite = false; // Clear flag on error
       Utils.showToast('AI rewrite failed. Please try again.', 'error');
     }
   }
@@ -4699,10 +4800,32 @@ class URLNotesApp {
       const isPremium = premiumStatus.isPremium;
 
       // Update dropdown usage badge based on actual usage data
-      const remainingCalls = document.getElementById('remainingCalls');
+      const remainingCalls = document.getElementById('aiDropdownRemainingCalls');
       if (remainingCalls) {
-        // Always get current usage from backend for accurate numbers
-        const currentUsage = await this.getAIUsageDebounced();
+        // Check authentication state first
+        const isAuthenticated = window.supabaseClient?.isAuthenticated?.() || false;
+        const user = window.supabaseClient?.getCurrentUser?.();
+
+        if (!isAuthenticated || !user) {
+          if (isPremium) {
+            remainingCalls.textContent = '500/month';
+          } else {
+            remainingCalls.textContent = '30/month';
+          }
+          return;
+        }
+
+        // First try to get cached usage data, only fetch fresh if not available
+        let currentUsage = null;
+
+        // Check if we have recent cached data (within 5 minutes)
+        if (this._cachedAIUsage && this._cachedAIUsage.timestamp > Date.now() - 300000) {
+          currentUsage = this._cachedAIUsage.data;
+        } else {
+          // No cache or cache is stale, fetch fresh data
+          currentUsage = await this.getCurrentAIUsage();
+        }
+        
         if (currentUsage) {
           // Display actual remaining calls and monthly limit
           remainingCalls.textContent = `${currentUsage.remainingCalls}/${currentUsage.monthlyLimit}`;
@@ -4725,6 +4848,76 @@ class URLNotesApp {
       await this.displayContextInfo();
     } catch (error) {
       console.error('Error loading usage info:', error);
+    }
+  }
+
+  // Force update AI usage display immediately
+  async forceUpdateAIUsageDisplay() {
+    try {
+      // Get fresh usage data
+      const currentUsage = await this.getCurrentAIUsage();
+
+      if (currentUsage) {
+        // Update AI dropdown display
+        const aiDropdownElement = document.getElementById('aiDropdownRemainingCalls');
+        if (aiDropdownElement) {
+          const newText = `${currentUsage.remainingCalls}/${currentUsage.monthlyLimit}`;
+          aiDropdownElement.textContent = newText;
+        }
+
+        // Update other displays
+        const noteSummaryElement = document.getElementById('noteSummaryUsageCount');
+        if (noteSummaryElement) {
+          noteSummaryElement.textContent = currentUsage.remainingCalls || 0;
+        }
+
+        const siteSummaryElement = document.getElementById('siteSummaryUsageCount');
+        if (siteSummaryElement) {
+          const remainingSiteSummaryUses = Math.floor((currentUsage.remainingCalls || 0) / 20);
+          siteSummaryElement.textContent = remainingSiteSummaryUses;
+        }
+      }
+
+    } catch (error) {
+      console.error('Error force updating AI usage display:', error);
+    }
+  }
+
+  // Refresh AI usage display in all locations
+  async refreshAIUsageDisplay() {
+    try {
+      // Don't clear cache - reuse existing data if available
+
+      // Update AI dropdown display
+      const aiDropdownRemainingCalls = document.getElementById('aiDropdownRemainingCalls');
+      if (aiDropdownRemainingCalls) {
+        const currentUsage = await this.getCurrentAIUsage();
+        if (currentUsage) {
+          const newText = `${currentUsage.remainingCalls}/${currentUsage.monthlyLimit}`;
+          aiDropdownRemainingCalls.textContent = newText;
+        }
+      }
+
+      // Update other usage displays (note summary, site summary)
+      const noteSummaryUsageCount = document.getElementById('noteSummaryUsageCount');
+      if (noteSummaryUsageCount) {
+        const currentUsage = await this.getCurrentAIUsage();
+        if (currentUsage) {
+          noteSummaryUsageCount.textContent = currentUsage.remainingCalls || 0;
+        }
+      }
+
+      const siteSummaryUsageCount = document.getElementById('siteSummaryUsageCount');
+      if (siteSummaryUsageCount) {
+        const currentUsage = await this.getCurrentAIUsage();
+        if (currentUsage) {
+          const remainingSiteSummaryUses = Math.floor((currentUsage.remainingCalls || 0) / 20);
+          siteSummaryUsageCount.textContent = remainingSiteSummaryUses;
+        }
+      }
+
+    } catch (error) {
+      console.error('Error refreshing AI usage display:', error);
     }
   }
 
@@ -4881,7 +5074,7 @@ class URLNotesApp {
 
       await chrome.storage.local.set({ [localUsageKey]: localUsage });
 
-      console.log(`Local AI usage tracked: +${usageAmount}, total local: ${localUsage.usageCount}`);
+
     } catch (error) {
       console.warn('Error tracking local AI usage:', error);
     }
@@ -4890,10 +5083,16 @@ class URLNotesApp {
   // Clear local AI usage tracking (on auth changes)
   async clearLocalAIUsage() {
     try {
+      // Rate limit cache clearing to prevent excessive clearing
+      const now = Date.now();
+      if (this._lastCacheClear && now - this._lastCacheClear < 10000) { // 10 second rate limit
+        return;
+      }
+      this._lastCacheClear = now;
+
       // Clear both local usage tracking AND cached server data
       // This ensures fresh AI usage data is fetched with updated limits after tier changes
       await chrome.storage.local.remove(['localAIUsage', 'cachedAIUsage']);
-      console.log('Local AI usage tracking and cached server data cleared');
     } catch (error) {
       console.warn('Error clearing local AI usage:', error);
     }

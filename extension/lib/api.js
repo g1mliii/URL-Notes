@@ -92,6 +92,9 @@ class SupabaseClient {
                 }
               }
             }
+            
+            // Emit auth:changed event to update UI
+            try { window.eventBus?.emit('auth:changed', { user: this.currentUser }); } catch (_) { }
           } catch (e) {
             // Failed to handle profile on init - silently handled
           }
@@ -236,105 +239,66 @@ class SupabaseClient {
     }
   }
 
-  // Sign in with OAuth provider using PKCE + chrome.identity.launchWebAuthFlow
+  // Sign in with OAuth provider using tab-based flow with background script handling
   async signInWithOAuth(provider) {
     try {
       const redirectUri = chrome.identity.getRedirectURL();
-      const codeVerifier = await this.generateCodeVerifier();
-      const codeChallenge = await this.generateCodeChallenge(codeVerifier);
+      console.log('Extension redirect URI:', redirectUri);
 
-      const scope = encodeURIComponent('openid email profile');
-      const authUrl = `${this.authUrl}/authorize?provider=${encodeURIComponent(provider)}&redirect_to=${encodeURIComponent(redirectUri)}&response_type=code&code_challenge=${encodeURIComponent(codeChallenge)}&code_challenge_method=S256&scope=${scope}`;
+      // Use Supabase's OAuth endpoint with the website login-success page
+      const websiteRedirectUri = 'https://anchored.site/login-success/';
+      const authUrl = `${this.authUrl}/authorize?provider=${encodeURIComponent(provider)}&redirect_to=${encodeURIComponent(websiteRedirectUri)}`;
 
-      const responseUrl = await new Promise((resolve, reject) => {
-        chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true }, (redirectedTo) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
-            return;
+      console.log('Opening OAuth URL:', authUrl);
+
+      // Open OAuth in new tab
+      const tab = await chrome.tabs.create({ url: authUrl });
+      console.log('Opened OAuth tab:', tab.id);
+
+      // Return a promise that will be resolved by the background script
+      return new Promise((resolve, reject) => {
+        console.log('🎧 Setting up OAuth completion listener...');
+
+        // Set up a one-time listener for OAuth completion
+        const handleOAuthComplete = (message, sender, sendResponse) => {
+          console.log('📨 Received message in OAuth listener:', message);
+          console.log('📨 Message sender:', sender);
+          
+          if (message.action === 'oauth-complete') {
+            console.log('✅ OAuth completion message received:', message);
+            chrome.runtime.onMessage.removeListener(handleOAuthComplete);
+            
+            if (message.success) {
+              console.log('🎉 OAuth successful, handling auth success...');
+              // Handle the auth success locally
+              this.handleAuthSuccess(message.data).then(() => {
+                console.log('✅ Auth success handled, resolving promise');
+                resolve(message.data);
+              }).catch((error) => {
+                console.error('❌ Auth success handling failed:', error);
+                reject(error);
+              });
+            } else {
+              console.log('❌ OAuth failed:', message.error);
+              reject(new Error(message.error || 'OAuth authentication failed'));
+            }
+          } else {
+            console.log('📨 Ignoring non-oauth message:', message.action);
           }
-          resolve(redirectedTo);
-        });
+        };
+
+        chrome.runtime.onMessage.addListener(handleOAuthComplete);
+        console.log('🎧 OAuth listener set up, waiting for completion...');
+
+        // Set timeout to reject if OAuth takes too long
+        setTimeout(() => {
+          console.log('⏰ OAuth timeout reached');
+          chrome.runtime.onMessage.removeListener(handleOAuthComplete);
+          reject(new Error('OAuth authentication timed out'));
+        }, 300000); // 5 minutes timeout
       });
-
-      const urlObj = new URL(responseUrl);
-      const code = urlObj.searchParams.get('code');
-      if (!code) {
-        const errParam = urlObj.searchParams.get('error');
-        const errDesc = urlObj.searchParams.get('error_description');
-        throw new Error(`Authorization code not found. error=${errParam || ''} ${errDesc || ''}`.trim());
-      }
-
-      // Token exchange attempts with fallbacks
-      const attempts = [];
-
-      // Attempt 1: x-www-form-urlencoded with Authorization header
-      const form1 = new URLSearchParams();
-      form1.set('grant_type', 'authorization_code');
-      form1.set('code', code);
-      form1.set('code_verifier', codeVerifier);
-      form1.set('redirect_uri', redirectUri);
-      attempts.push(() => fetch(`${this.authUrl}/token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-          'apikey': this.supabaseAnonKey,
-          'Authorization': `Bearer ${this.supabaseAnonKey}`
-        },
-        body: form1.toString()
-      }));
-
-      // Attempt 2: x-www-form-urlencoded without Authorization header
-      const form2 = new URLSearchParams(form1);
-      attempts.push(() => fetch(`${this.authUrl}/token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-          'apikey': this.supabaseAnonKey
-        },
-        body: form2.toString()
-      }));
-
-      // Attempt 3: x-www-form-urlencoded with grant_type=pkce
-      const form3 = new URLSearchParams();
-      form3.set('grant_type', 'pkce');
-      form3.set('code', code);
-      form3.set('code_verifier', codeVerifier);
-      form3.set('redirect_uri', redirectUri);
-      attempts.push(() => fetch(`${this.authUrl}/token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-          'apikey': this.supabaseAnonKey
-        },
-        body: form3.toString()
-      }));
-
-      let lastStatus = 0;
-      const errors = [];
-      let tokenRes = null;
-      for (const attempt of attempts) {
-        tokenRes = await attempt();
-        if (tokenRes.ok) break;
-        lastStatus = tokenRes.status;
-        try {
-          const j = await tokenRes.json();
-          errors.push(`status ${tokenRes.status}: ${j.error_description || j.msg || JSON.stringify(j)}`);
-        } catch (_) {
-          try { errors.push(`status ${tokenRes.status}: ${await tokenRes.text()}`); } catch (_) { errors.push(`status ${tokenRes.status}`); }
-        }
-      }
-
-      if (!tokenRes || !tokenRes.ok) {
-        throw new Error(`Token exchange failed after ${attempts.length} attempts. ${errors.join(' | ')}`);
-      }
-
-      const data = await tokenRes.json();
-      await this.handleAuthSuccess(data);
-      return data;
     } catch (error) {
+      console.error('OAuth error:', error);
       throw error;
     }
   }
