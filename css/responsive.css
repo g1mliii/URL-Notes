@@ -2,6 +2,85 @@
 
 /* Mobile Base Styles (320px+) - Already defined in main.css and components.css */
 
+/* Mobile Navigation and Hero Improvements */
+@media (max-width: 768px) {
+
+  /* Hide desktop-only navigation items on mobile */
+  .nav-desktop-only {
+    display: none !important;
+  }
+
+  /* Hide desktop-only content on mobile */
+  .desktop-only {
+    display: none !important;
+  }
+
+  /* Show mobile-specific subtitle */
+  .hero-subtitle-full {
+    display: none;
+  }
+
+  .hero-subtitle-mobile {
+    display: inline;
+  }
+
+  /* Improve hero section spacing on mobile */
+  .hero-section {
+    padding: 2rem 1rem !important;
+  }
+
+  .hero-content {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .hero-title {
+    font-size: 2rem !important;
+    margin-bottom: 1rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .hero-subtitle {
+    font-size: 1.1rem !important;
+    margin-bottom: 2.5rem !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Improve auth container spacing */
+  .auth-container {
+    margin-top: 0 !important;
+  }
+
+  .auth-form {
+    padding: 2rem 1.5rem !important;
+    margin-bottom: 1.5rem !important;
+  }
+
+  .auth-form h3 {
+    margin-bottom: 1.5rem !important;
+  }
+
+  .input-group {
+    margin-bottom: 1.25rem !important;
+  }
+
+  .btn-primary {
+    padding: 0.875rem 1.5rem !important;
+    font-size: 1rem !important;
+  }
+}
+
+/* Desktop - show full content */
+@media (min-width: 769px) {
+  .hero-subtitle-mobile {
+    display: none;
+  }
+
+  .hero-subtitle-full {
+    display: inline;
+  }
+}
+
 /* Small Mobile (up to 480px) */
 @media (max-width: 480px) {
 
@@ -31,6 +110,25 @@
   /* Force spacing for very small screens */
   .note-edit .input-group {
     margin-bottom: 2.5rem !important;
+  }
+
+  /* Extra small mobile hero improvements */
+  .hero-title {
+    font-size: 1.75rem !important;
+    margin-bottom: 0.75rem !important;
+  }
+
+  .hero-subtitle {
+    font-size: 1rem !important;
+    margin-bottom: 2rem !important;
+  }
+
+  .hero-section {
+    padding: 1.5rem 0.75rem !important;
+  }
+
+  .auth-form {
+    padding: 1.5rem 1rem !important;
   }
 
   body {
@@ -154,7 +252,8 @@
   .auth-container {
     max-width: 320px;
     margin: 0 auto;
-    padding: 0 1rem; /* Add padding to container for proper centering */
+    padding: 0 1rem;
+    /* Add padding to container for proper centering */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -162,8 +261,10 @@
 
   .auth-form {
     padding: 1.5rem;
-    margin: 0; /* Remove margin since container handles centering */
-    width: 100%; /* Ensure form takes full container width */
+    margin: 0;
+    /* Remove margin since container handles centering */
+    width: 100%;
+    /* Ensure form takes full container width */
     /* Simple direct background like search-input */
     background: rgba(248, 252, 253, 0.85) !important;
     backdrop-filter: none !important;
@@ -288,7 +389,8 @@
   .auth-container {
     max-width: 380px;
     margin: 0 auto;
-    padding: 0 1rem; /* Add padding to container for proper centering */
+    padding: 0 1rem;
+    /* Add padding to container for proper centering */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -296,8 +398,10 @@
 
   .auth-form {
     padding: 2rem;
-    margin: 0; /* Remove margin since container handles centering */
-    width: 100%; /* Ensure form takes full container width */
+    margin: 0;
+    /* Remove margin since container handles centering */
+    width: 100%;
+    /* Ensure form takes full container width */
   }
 
   /* Auth form specific spacing on tablet - force override */
@@ -332,17 +436,17 @@
   .nav-links {
     gap: 1rem;
   }
-  
+
   /* Tablet header improvements */
   .nav-content {
     padding: 0 1.5rem;
   }
-  
+
   .logo-icon {
     width: 48px;
     height: 48px;
   }
-  
+
   .logo h1 {
     font-size: 1.3rem;
   }
@@ -625,17 +729,20 @@
 
   /* Fix mobile note editor spacing - force proper spacing between input groups */
   .note-panel .input-group {
-    margin-bottom: 2rem !important; /* Force increased spacing with !important */
+    margin-bottom: 2rem !important;
+    /* Force increased spacing with !important */
   }
 
   .note-panel .input-group:last-of-type {
-    margin-bottom: 2rem !important; /* Ensure last input group also has spacing */
+    margin-bottom: 2rem !important;
+    /* Ensure last input group also has spacing */
   }
 
   /* Specific spacing for note editor form elements - force override */
   .note-edit .input-group {
     margin-bottom: 2rem !important;
-    padding: 0 !important; /* Remove any conflicting padding */
+    padding: 0 !important;
+    /* Remove any conflicting padding */
   }
 
   /* Force spacing for note editor inputs */
@@ -717,7 +824,7 @@
   .logout-btn .logout-text {
     display: inline;
   }
-  
+
   /* Tablet header container adjustments */
   .nav-content {
     background: rgba(255, 255, 255, 0.06);
@@ -755,20 +862,20 @@
     border: none;
     padding: 0 3rem;
   }
-  
+
   .logo-icon {
     width: 60px;
     height: 60px;
   }
-  
+
   .logo h1 {
     font-size: 1.5rem;
   }
-  
+
   .nav-links {
     gap: 1.5rem;
   }
-  
+
   .nav-link {
     padding: 0.5rem 0;
     font-size: 0.875rem;
@@ -805,8 +912,10 @@
 
   /* Force proper spacing between account sections on mobile */
   .account-section {
-    margin-bottom: 2.5rem !important; /* Force spacing with !important */
-    padding: 1.5rem !important; /* Increase padding for better touch targets */
+    margin-bottom: 2.5rem !important;
+    /* Force spacing with !important */
+    padding: 1.5rem !important;
+    /* Increase padding for better touch targets */
     background: var(--bg-secondary) !important;
     border: 1px solid var(--border-color) !important;
     border-radius: 12px !important;
@@ -822,7 +931,7 @@
     margin-bottom: 1.5rem !important;
   }
 
-  .account-section > * + * {
+  .account-section>*+* {
     margin-top: 1.25rem !important;
   }
 
@@ -876,11 +985,11 @@
   }
 
   /* Fix subscription info spacing */
-  .subscription-info > * {
+  .subscription-info>* {
     margin-bottom: 1.5rem !important;
   }
 
-  .subscription-info > *:last-child {
+  .subscription-info>*:last-child {
     margin-bottom: 0 !important;
   }
 }
@@ -1589,11 +1698,13 @@ prehensive Mobile Safari White Bar Fix */
     }
   }
 }
+
 /* C
 RITICAL MOBILE SPACING FIXES - HIGHEST PRIORITY */
 /* These rules must override all other spacing rules on mobile */
 
 @media screen and (max-width: 767px) {
+
   /* Account page section spacing - force override all other rules with higher specificity */
   .app-container .account-main .account-container .account-section {
     margin-bottom: 2.5rem !important;
@@ -1679,11 +1790,13 @@ RITICAL MOBILE SPACING FIXES - HIGHEST PRIORITY */
     padding-top: 2rem !important;
   }
 }
+
 /* FINAL M
 OBILE SPACING OVERRIDES - NUCLEAR OPTION */
 /* These are the most specific selectors possible to ensure spacing works */
 
 @media screen and (max-width: 767px) {
+
   /* Force account section spacing with maximum specificity */
   body .app-container .account-main .account-container section.account-section {
     margin-bottom: 2.5rem !important;
@@ -1716,6 +1829,7 @@ OBILE SPACING OVERRIDES - NUCLEAR OPTION */
 }
 
 @media screen and (max-width: 480px) {
+
   /* Extra spacing for very small screens */
   body .app-container .account-main .account-container section.account-section {
     margin-bottom: 3rem !important;

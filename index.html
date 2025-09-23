@@ -23,8 +23,8 @@ privacy_policy_url: "https://anchored.site/privacy"
                 <a href="https://chromewebstore.google.com/detail/anchored-%E2%80%93-notes-highligh/llkmfidpbpfgdgjlohgpomdjckcfkllg"
                     target="_blank" class="nav-link chrome-store-link">Get Extension</a>
                 <a href="#features" class="nav-link">Features</a>
-                <a href="#pricing" class="nav-link">Pricing</a>
-                <a href="https://anchored.site/privacy" class="nav-link">Privacy</a>
+                <a href="#pricing" class="nav-link nav-desktop-only">Pricing</a>
+                <a href="https://anchored.site/privacy" class="nav-link nav-desktop-only">Privacy</a>
                 <a href="#" id="dashboardLink" class="nav-link">Dashboard</a>
             </nav>
         </div>
@@ -34,10 +34,13 @@ privacy_policy_url: "https://anchored.site/privacy"
     <main class="hero-section">
         <div class="hero-content">
             <h2 class="hero-title">Anchor Your Ideas to the Web</h2>
-            <p class="hero-subtitle">Capture and organize notes on any website with secure, encrypted cloud sync</p>
+            <p class="hero-subtitle">
+                <span class="hero-subtitle-full">Capture and organize notes on any website with secure, encrypted cloud sync</span>
+                <span class="hero-subtitle-mobile">Take notes on any website</span>
+            </p>
 
-            <!-- Legal Links for OAuth Verification -->
-            <div class="legal-links" style="margin: 1rem 0; text-align: center;">
+            <!-- Legal Links for OAuth Verification (Desktop Only) -->
+            <div class="legal-links desktop-only" style="margin: 1.5rem 0; text-align: center;">
                 <a href="https://anchored.site/privacy"
                     style="color: var(--text-secondary); text-decoration: underline; margin: 0 1rem; font-size: 0.875rem;">Privacy
                     Policy</a>
@@ -46,8 +49,8 @@ privacy_policy_url: "https://anchored.site/privacy"
                     of Service</a>
             </div>
 
-            <!-- Chrome Web Store CTA -->
-            <div class="chrome-store-cta" style="margin: 2rem 0; text-align: center;">
+            <!-- Chrome Web Store CTA (Desktop Only) -->
+            <div class="chrome-store-cta desktop-only" style="margin: 2.5rem 0; text-align: center;">
                 <a href="https://chromewebstore.google.com/detail/anchored-%E2%80%93-notes-highligh/llkmfidpbpfgdgjlohgpomdjckcfkllg"
                     target="_blank" class="btn-primary"
                     style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; margin-bottom: 1rem;">

@@ -256,6 +256,15 @@ html {
   }
 }
 
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Typography */
 h1,
 h2,

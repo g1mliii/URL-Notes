@@ -3,6 +3,8 @@ class Account {
   constructor() {
     this.user = null;
     this.subscription = null;
+    this.lastSyncTime = 0;
+    this.syncCooldownMs = 30000; // 30 seconds cooldown between manual syncs
     this.init();
   }
 
@@ -37,7 +39,7 @@ class Account {
     }, 500); // Reduced delay
 
     this.setupEventListeners();
-    
+
     // Load account data only if we don't have user from auth state
     if (!this.user) {
       this.loadAccountData();
@@ -63,6 +65,9 @@ class Account {
     // Payment successful, upgrading user to premium
 
     try {
+      // Reset sync cooldown for payment success (legitimate reason to sync)
+      this.lastSyncTime = 0;
+
       // Show success message
       const successDiv = document.getElementById('paymentSuccess');
       if (successDiv) {
@@ -78,9 +83,9 @@ class Account {
       // Sync subscription status from Stripe
       await this.syncSubscriptionStatus();
 
-      // Reload subscription status
+      // Reload subscription status (force refresh after payment)
       if (window.subscriptionManager) {
-        await window.subscriptionManager.loadSubscriptionStatus();
+        await window.subscriptionManager.loadSubscriptionStatus(true); // Force refresh after payment
       }
 
       // Clean up URL
@@ -174,8 +179,8 @@ class Account {
       // Force refresh the subscription status display
       setTimeout(() => {
         if (window.subscriptionManager) {
-          // Refreshing subscription display
-          window.subscriptionManager.loadSubscriptionStatus();
+          // Refreshing subscription display (force refresh after upgrade)
+          window.subscriptionManager.loadSubscriptionStatus(true); // Force refresh after upgrade
         }
       }, 1000);
 
@@ -221,7 +226,7 @@ class Account {
         if (result.updated) {
           // Subscription updated
           let displayMessage = result.message;
-          
+
           // Improve the message for canceled subscriptions
           if (result.message && result.message.includes('premium subscrition cancelled expired at')) {
             // Extract the date and reformat the message
@@ -259,9 +264,9 @@ class Account {
         }
       }
 
-      // Force refresh the subscription status display
+      // Force refresh the subscription status display (bypass cache)
       if (window.subscriptionManager) {
-        await window.subscriptionManager.loadSubscriptionStatus();
+        await window.subscriptionManager.loadSubscriptionStatus(true); // Force refresh
       }
 
       return result; // Return result for silent mode handling
@@ -340,9 +345,67 @@ class Account {
     // Sync subscription status button
     const syncSubscriptionBtn = document.getElementById('syncSubscriptionBtn');
     if (syncSubscriptionBtn) {
-      syncSubscriptionBtn.addEventListener('click', () => {
+      syncSubscriptionBtn.addEventListener('click', async () => {
+        // Check if we're in cooldown period
+        const now = Date.now();
+        const timeSinceLastSync = now - this.lastSyncTime;
+
+        if (timeSinceLastSync < this.syncCooldownMs) {
+          const remainingSeconds = Math.ceil((this.syncCooldownMs - timeSinceLastSync) / 1000);
+
+          // Show cooldown message
+          const cooldownMessage = document.createElement('div');
+          cooldownMessage.className = 'alert alert-info';
+          cooldownMessage.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 1000; padding: 15px; border-radius: 5px; background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460;';
+          cooldownMessage.textContent = `Please wait ${remainingSeconds} seconds before syncing again`;
+          document.body.appendChild(cooldownMessage);
+
+          setTimeout(() => {
+            if (document.body.contains(cooldownMessage)) {
+              document.body.removeChild(cooldownMessage);
+            }
+          }, 3000);
+
+          return;
+        }
+
+        // Check current subscription status to determine if sync is needed
+        const currentSubscription = window.subscriptionManager?.currentSubscription;
+        const isPremium = currentSubscription?.subscription_tier === 'premium';
+
+        if (isPremium && currentSubscription?.has_stripe_customer) {
+          // User is already premium with Stripe customer - show confirmation dialog
+          const shouldSync = confirm(
+            'You already have an active premium subscription. ' +
+            'Syncing will check for any recent changes (like cancellations or billing updates). ' +
+            'Continue with sync?'
+          );
+
+          if (!shouldSync) {
+            return;
+          }
+        }
+
         // Sync subscription status triggered
-        this.syncSubscriptionStatus(false); // Explicit false for manual sync with messages
+        try {
+          // Update last sync time
+          this.lastSyncTime = now;
+
+          // First sync the Stripe status
+          await this.syncSubscriptionStatus(false); // Explicit false for manual sync with messages
+
+          // Then force refresh the subscription display (bypass cache)
+          if (window.subscriptionManager) {
+            await window.subscriptionManager.loadSubscriptionStatus(true); // Force refresh to show latest data
+
+            // Update sync button state to show cooldown
+            window.subscriptionManager.updateSyncButtonState(this.lastSyncTime, this.syncCooldownMs);
+          }
+        } catch (error) {
+          // Reset last sync time on error so user can try again sooner
+          this.lastSyncTime = 0;
+          // Error during manual sync - error already shown by syncSubscriptionStatus
+        }
       });
     }
 
@@ -361,7 +424,7 @@ class Account {
         await new Promise(resolve => setTimeout(resolve, 100));
         apiAttempts++;
       }
-      
+
       if (!window.api) {
         setTimeout(() => this.loadAccountData(), 500);
         return;
@@ -382,7 +445,7 @@ class Account {
                 created_at: sessionData.user.created_at || new Date().toISOString(),
                 subscription_tier: 'free' // Will be updated when API loads
               });
-              
+
               // Retry loading after API is ready
               setTimeout(() => this.loadAccountData(), 1000);
               return;
@@ -391,7 +454,7 @@ class Account {
             // Invalid cached session
           }
         }
-        
+
         // No current user data and no cached session
         return;
       }
@@ -416,13 +479,33 @@ class Account {
 
       this.updateAccountUI(userData);
 
-      // Auto-sync subscription status when account page loads (silently)
-      // This ensures users always see the latest subscription status
+      // Smart auto-sync: only sync if data might be stale or inconsistent
       if (profileData?.stripe_customer_id) {
-        try {
-          await this.syncSubscriptionStatus(true); // Pass true for silent mode
-        } catch (error) {
-          // Silent sync failed, but don't show error to user
+        const shouldAutoSync = this.shouldPerformAutoSync(profileData);
+
+        if (shouldAutoSync) {
+          try {
+            // Show subtle indicator that auto-sync is happening
+            const indicator = document.getElementById('subscriptionDataSource');
+            if (indicator) {
+              indicator.textContent = 'Checking for subscription updates...';
+              indicator.style.color = '#007aff';
+            }
+
+            await this.syncSubscriptionStatus(true); // Pass true for silent mode
+
+            // Update the subscription display after auto-sync
+            if (window.subscriptionManager) {
+              await window.subscriptionManager.loadSubscriptionStatus(true);
+            }
+          } catch (error) {
+            // Silent sync failed, but don't show error to user
+            const indicator = document.getElementById('subscriptionDataSource');
+            if (indicator) {
+              indicator.textContent = 'Auto-sync failed (using cached data)';
+              indicator.style.color = '#888';
+            }
+          }
         }
       }
 
@@ -449,6 +532,58 @@ class Account {
       statusBadge.textContent = userData.subscription_tier === 'premium' ? 'Premium' : 'Free';
       statusBadge.className = `status-badge ${userData.subscription_tier}`;
     }
+  }
+
+  shouldPerformAutoSync(profileData) {
+    // Check if we should automatically sync subscription status
+
+    // 1. Check if cached subscription data is old (older than 10 minutes)
+    const cacheTime = localStorage.getItem('subscriptionCacheTime');
+    if (cacheTime) {
+      const age = Date.now() - parseInt(cacheTime);
+      if (age > 10 * 60 * 1000) { // 10 minutes
+        return true; // Cache is old, sync to get fresh data
+      }
+    } else {
+      return true; // No cache time, should sync
+    }
+
+    // 2. Check for potential status discrepancy
+    const cachedSubscription = localStorage.getItem('cachedSubscription');
+    if (cachedSubscription) {
+      try {
+        const cached = JSON.parse(cachedSubscription);
+
+        // If profile says premium but cached data says free (or vice versa)
+        if (profileData.subscription_tier !== cached.subscription_tier) {
+          return true; // Status mismatch, sync to resolve
+        }
+
+        // If profile has stripe_customer_id but cached data doesn't show Stripe customer
+        if (profileData.stripe_customer_id && !cached.has_stripe_customer) {
+          return true; // Stripe customer exists but not reflected in cache
+        }
+      } catch (error) {
+        return true; // Invalid cached data, should sync
+      }
+    } else {
+      return true; // No cached data, should sync
+    }
+
+    // 3. Check if user just came from payment flow
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true' || urlParams.get('session_id')) {
+      return true; // Just completed payment, should sync
+    }
+
+    // 4. Don't auto-sync if we recently manually synced (respect the cooldown)
+    const timeSinceLastSync = Date.now() - this.lastSyncTime;
+    if (timeSinceLastSync < this.syncCooldownMs) {
+      return false; // Recently synced manually, skip auto-sync
+    }
+
+    // Default: don't auto-sync if everything looks consistent and recent
+    return false;
   }
 
 
