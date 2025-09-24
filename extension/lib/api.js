@@ -583,6 +583,12 @@ class SupabaseClient {
       throw new Error('User not authenticated');
     }
 
+    // CRITICAL: Verify premium access before any sync operation
+    const subscriptionStatus = await this.getSubscriptionStatus();
+    if (!subscriptionStatus || !subscriptionStatus.active || subscriptionStatus.tier === 'free') {
+      throw new Error('Premium subscription required for cloud sync');
+    }
+
     // Ensure encryption module is available
     if (!window.noteEncryption) {
       throw new Error('NoteEncryption module not available');

@@ -424,13 +424,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'auth-changed':
       // Handle auth changes for sync timer management
       if (request.user) {
-        // User signed in - initialize lastSyncTime but don't start timer yet
-        // Wait for tier-changed event to determine if user has premium access
+        console.log(`🔐 [SYNC TIMER] User signed in - stopping any existing timers`);
+        // User signed in - CRITICAL: Stop any existing sync timers immediately
+        // This prevents sync from happening before premium status is determined
+        stopSyncTimer();
+        
+        // Reset sync time to prevent immediate sync on login
         lastSyncTime = Date.now();
         saveLastSyncTime(); // Save the current time as last sync
+        console.log(`⏳ [SYNC TIMER] Waiting for tier-changed event to determine premium status`);
         // Note: Don't start timer here - wait for tier-changed event
 
       } else {
+        console.log(`🚪 [SYNC TIMER] User signed out - stopping timer`);
         // User signed out, stop timer
         stopSyncTimer();
       }
@@ -438,6 +444,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       break;
     case 'restart-sync-timer':
       // Restart timer for next sync cycle
+      console.log(`🔄 [SYNC TIMER] Restart requested - sync completed`);
       lastSyncTime = Date.now(); // Mark that we just synced
       saveLastSyncTime(); // Save the updated time
       startSyncTimer();
@@ -445,15 +452,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       break;
     case 'tier-changed':
       // Handle tier changes (premium status updates)
+      console.log(`🎯 [SYNC TIMER] Tier changed - Active: ${request.active}, Tier: ${request.tier}`);
+      
       // If user lost premium access, stop sync timer
       if (!request.active || request.tier === 'free') {
+        console.log(`❌ [SYNC TIMER] Free tier detected - stopping timer`);
         stopSyncTimer();
       } else {
         // User gained premium access, start sync timer if not already running
         if (!syncTimer) {
+          console.log(`✅ [SYNC TIMER] Premium tier detected - starting timer`);
           lastSyncTime = Date.now();
           saveLastSyncTime();
           startSyncTimer();
+        } else {
+          console.log(`ℹ️ [SYNC TIMER] Premium tier confirmed - timer already running`);
         }
       }
       sendResponse({ success: true });
@@ -1086,6 +1099,35 @@ async function toggleMultiHighlightModeFromContextMenu(tab) {
 let syncTimer = null;
 let syncInterval = 5 * 60 * 1000; // 5 minutes
 let lastSyncTime = 0; // Track when we last synced
+let debugStatusTimer = null; // For periodic status logging
+
+// Start periodic debug status logging
+function startDebugStatusLogging() {
+  if (debugStatusTimer) {
+    clearInterval(debugStatusTimer);
+  }
+  
+  debugStatusTimer = setInterval(() => {
+    const now = new Date();
+    const timeSinceLastSync = now.getTime() - lastSyncTime;
+    const minutesSinceSync = Math.floor(timeSinceLastSync / (60 * 1000));
+    const isTimerActive = syncTimer !== null;
+    
+    console.log(`📊 [SYNC STATUS] ${now.toLocaleTimeString()} - Timer: ${isTimerActive ? '🟢 Active' : '🔴 Inactive'}, Last sync: ${minutesSinceSync}min ago`);
+  }, 60 * 1000); // Log every minute
+}
+
+// Stop debug status logging
+function stopDebugStatusLogging() {
+  if (debugStatusTimer) {
+    clearInterval(debugStatusTimer);
+    debugStatusTimer = null;
+    console.log(`🔇 [SYNC STATUS] Debug logging stopped`);
+  }
+}
+
+// Start debug logging when background script loads
+startDebugStatusLogging();
 
 // Load lastSyncTime from storage on startup
 async function loadLastSyncTime() {
@@ -1172,14 +1214,17 @@ function startSyncTimer() {
     clearTimeout(syncTimer);
   }
 
-
+  const now = new Date();
+  const nextSyncTime = new Date(now.getTime() + syncInterval);
+  console.log(`🟢 [SYNC TIMER] Started - Next sync at: ${nextSyncTime.toLocaleTimeString()}`);
 
   // Set a one-time timeout instead of interval
   syncTimer = setTimeout(() => {
+    console.log(`⏰ [SYNC TIMER] Triggered at: ${new Date().toLocaleTimeString()}`);
 
     // Send message to popup to trigger sync
     chrome.runtime.sendMessage({ action: 'sync-timer-triggered' }).catch(() => {
-
+      console.log(`📭 [SYNC TIMER] Popup not available for sync at: ${new Date().toLocaleTimeString()}`);
       // Popup might be closed, that's okay
       // Mark that we need to sync when popup opens
       // Don't set lastSyncTime here - let the popup handle it when it opens
@@ -1188,6 +1233,7 @@ function startSyncTimer() {
 
     // Clear the timer after it fires
     syncTimer = null;
+    console.log(`🔄 [SYNC TIMER] Timer cleared, waiting for restart`);
 
   }, syncInterval);
 }
@@ -1196,6 +1242,9 @@ function stopSyncTimer() {
   if (syncTimer) {
     clearTimeout(syncTimer);
     syncTimer = null;
+    console.log(`🔴 [SYNC TIMER] Stopped at: ${new Date().toLocaleTimeString()}`);
+  } else {
+    console.log(`⚪ [SYNC TIMER] Stop called but no timer was running`);
   }
   // Reset lastSyncTime when stopping timer (e.g., user signs out)
   lastSyncTime = 0;

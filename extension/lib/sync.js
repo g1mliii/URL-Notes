@@ -161,8 +161,10 @@ class SyncEngine {
           // User is authenticated with valid token, check subscription status
           try {
             const status = await window.supabaseClient.getSubscriptionStatus();
-            const canSync = status && status.active;
-
+            
+            // CRITICAL: Multiple checks to ensure premium access
+            const isPremium = status && status.active && status.tier === 'premium';
+            
             // Additional check: ensure we have a current user object
             const currentUser = window.supabaseClient.getCurrentUser();
             if (!currentUser || !currentUser.id) {
@@ -170,7 +172,12 @@ class SyncEngine {
               return { authenticated: false, status, canSync: false };
             }
 
-            return { authenticated: true, status, canSync };
+            // Final safety check: if tier is explicitly 'free', block sync
+            if (status && status.tier === 'free') {
+              return { authenticated: true, status, canSync: false };
+            }
+
+            return { authenticated: true, status, canSync: isPremium };
           } catch (statusError) {
             console.warn('Sync: Failed to get subscription status:', statusError);
             return { authenticated: true, status: null, canSync: false };
@@ -202,6 +209,12 @@ class SyncEngine {
   // Perform sync operation
   async performSync() {
     if (this.isSyncing) {
+      return;
+    }
+
+    // CRITICAL: Double-check premium status before any sync operation
+    if (!(await this.canSync())) {
+      console.warn('Sync engine: Attempted sync without premium access - blocking');
       return;
     }
 

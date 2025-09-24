@@ -2715,7 +2715,6 @@ class Dashboard {
   // Listen for subscription updates instead of making separate API calls
   listenForSubscriptionUpdates() {
     window.eventBus.on('subscription:updated', (subscriptionData) => {
-      console.log('📊 Dashboard received subscription update:', subscriptionData?.subscription_tier);
       // Update UI based on subscription changes
       this.handleUpgradeBanner(subscriptionData);
     });

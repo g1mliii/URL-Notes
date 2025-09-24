@@ -331,27 +331,6 @@ class SupabaseClient {
   // Google Sign-In with ID Token (for Google's pre-built solution)
   async signInWithGoogleIdToken(idToken, nonce = null) {
     try {
-      console.log('🔍 Google Sign-In request details:', {
-        hasToken: !!idToken,
-        tokenLength: idToken?.length,
-        hasNonce: !!nonce,
-        nonceLength: nonce?.length
-      });
-
-      // Debug: Decode the JWT to see the audience
-      try {
-        const tokenParts = idToken.split('.');
-        const payload = JSON.parse(atob(tokenParts[1]));
-        console.log('🔍 ID Token payload:', {
-          aud: payload.aud,
-          iss: payload.iss,
-          exp: payload.exp,
-          iat: payload.iat
-        });
-      } catch (e) {
-        console.log('❌ Could not decode ID token for debugging');
-      }
-
       const payload = {
         provider: 'google',
         id_token: idToken
@@ -361,22 +340,14 @@ class SupabaseClient {
         payload.nonce = nonce;
       }
 
-      console.log('🔍 Sending Google auth request to Supabase...');
       const data = await this._request(`${this.authUrl}/token?grant_type=id_token`, {
         method: 'POST',
         auth: false,
         body: payload
       });
-
-      console.log('✅ Google auth successful');
       await this.handleAuthSuccess(data);
       return data;
     } catch (error) {
-      console.error('❌ Google ID token sign in error:', {
-        message: error.message,
-        status: error.status,
-        response: error.response
-      });
       throw error;
     }
   }
@@ -384,8 +355,6 @@ class SupabaseClient {
   // Alternative Google Sign-In using Supabase OAuth flow
   async signInWithGoogleOAuth() {
     try {
-      console.log('🔍 Starting Google OAuth flow via Supabase...');
-
       const { data, error } = await this._supabaseClient.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -396,8 +365,6 @@ class SupabaseClient {
       if (error) {
         throw error;
       }
-
-      console.log('✅ Google OAuth redirect initiated');
       return data;
     } catch (error) {
       console.error('❌ Google OAuth error:', error);
@@ -408,7 +375,6 @@ class SupabaseClient {
   // Verify OTP token (for email confirmation, password reset, etc.)
   async verifyOtp({ token_hash, type }) {
     try {
-      console.log('🔍 Verifying OTP:', { type, hasToken: !!token_hash });
 
       const data = await this._request(`${this.authUrl}/verify`, {
         method: 'POST',

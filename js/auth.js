@@ -1423,6 +1423,10 @@ class Auth {
       return;
     }
 
+    // Note: Cross-Origin-Opener-Policy warnings from Google Sign-In are harmless
+    // They occur when Google's iframe tries to communicate with the parent window
+    // This is expected behavior and doesn't affect functionality
+
     // Check if we're on a page that needs Google Sign-In
     const loginContainer = document.getElementById('googleSignInButton');
     const signupContainer = document.getElementById('googleSignUpButton');
@@ -1449,7 +1453,9 @@ class Auth {
         use_fedcm_for_prompt: false, // Disable FedCM to avoid credential conflicts
         auto_select: false,
         cancel_on_tap_outside: true,
-        itp_support: true // Improve Safari compatibility
+        itp_support: true, // Improve Safari compatibility
+        ux_mode: 'popup', // Use popup mode to reduce COOP issues
+        context: 'signin' // Specify context to reduce iframe communication
       });
 
       // Mark as initialized to prevent duplicate calls

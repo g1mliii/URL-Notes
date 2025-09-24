@@ -25,8 +25,6 @@ class SubscriptionManager {
         const timeSinceCheckout = Date.now() - parseInt(checkoutTime);
         // If checkout was initiated within last 10 minutes, force sync
         if (timeSinceCheckout < 10 * 60 * 1000) {
-          console.log('🔄 Detected return from Stripe checkout - forcing subscription sync');
-          
           // Clear the flags
           localStorage.removeItem('pending_stripe_checkout');
           localStorage.removeItem('checkout_initiated_at');
@@ -282,8 +280,6 @@ class SubscriptionManager {
       // Set flag to force sync when user returns from Stripe
       localStorage.setItem('pending_stripe_checkout', 'true');
       localStorage.setItem('checkout_initiated_at', Date.now().toString());
-      
-      console.log('🚀 User initiated Stripe checkout - setting sync flag');
 
       const response = await this.api.callFunction('subscription-api', {
         action: 'create_checkout_session',
@@ -466,15 +462,12 @@ class SubscriptionManager {
     if (success === 'true') {
       this.showSuccess('Welcome to Anchored Premium! Your subscription is now active.');
       
-      console.log('🎉 Stripe checkout success detected - forcing subscription sync');
-      
       // Reload subscription status (force refresh after checkout success)
       setTimeout(async () => {
         await this.loadSubscriptionStatus(true); // Force refresh after successful checkout
         
         // Ensure the update propagates to all pages
         if (this.currentSubscription) {
-          console.log('📡 Emitting subscription update after Stripe success');
           window.eventBus.emit('subscription:updated', this.currentSubscription);
           
           // Update app-level cache for cross-page sharing

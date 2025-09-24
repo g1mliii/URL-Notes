@@ -62,17 +62,12 @@ class Account {
     const canceled = urlParams.get('canceled');
     const sessionId = urlParams.get('session_id');
 
-    console.log('🔍 Checking payment success:', { success, canceled, sessionId });
-
     if (success === 'true' && sessionId) {
-      console.log('✅ Stripe payment success detected');
       this.handlePaymentSuccess(sessionId);
     } else if (canceled === 'true') {
-      console.log('❌ Stripe payment canceled detected');
       this.showPaymentCanceled();
     } else if (success === 'true' && !sessionId) {
       // Handle case where success=true but no session_id (backup)
-      console.log('⚠️ Payment success without session_id - triggering sync anyway');
       this.handlePaymentSuccess('manual-success');
     }
   }
@@ -97,8 +92,6 @@ class Account {
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       // CRITICAL: Always sync after Stripe redirect (this was the original reason for auto-sync)
-      console.log('🔄 Stripe payment success detected - forcing subscription sync');
-      
       // Sync subscription status from Stripe
       await this.syncSubscriptionStatus();
 
