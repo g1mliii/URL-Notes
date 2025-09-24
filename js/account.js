@@ -21,6 +21,17 @@ class Account {
       }
     });
 
+    // Listen for subscription updates to immediately update account UI
+    window.eventBus.on('subscription:updated', (subscriptionData) => {
+      if (subscriptionData && this.user) {
+        this.updateAccountUI({
+          email: this.user.email || 'Unknown',
+          created_at: this.user.created_at || new Date().toISOString(),
+          subscription_tier: subscriptionData.subscription_tier || 'free'
+        });
+      }
+    });
+
     // Check if auth state is already available
     if (window.authState?.isAuthenticated || (window.app?.isAuthenticated && window.app?.currentUser)) {
       this.user = window.app?.currentUser || window.authState?.currentUser;
@@ -40,10 +51,9 @@ class Account {
 
     this.setupEventListeners();
 
-    // Load account data only if we don't have user from auth state
-    if (!this.user) {
-      this.loadAccountData();
-    }
+    // Always load account data to check for auto-sync needs
+    // (even if we have user data, we might need to sync after payment)
+    this.loadAccountData();
   }
 
   checkPaymentSuccess() {
@@ -52,12 +62,18 @@ class Account {
     const canceled = urlParams.get('canceled');
     const sessionId = urlParams.get('session_id');
 
-    // Checking payment success silently
+    console.log('🔍 Checking payment success:', { success, canceled, sessionId });
 
     if (success === 'true' && sessionId) {
+      console.log('✅ Stripe payment success detected');
       this.handlePaymentSuccess(sessionId);
     } else if (canceled === 'true') {
+      console.log('❌ Stripe payment canceled detected');
       this.showPaymentCanceled();
+    } else if (success === 'true' && !sessionId) {
+      // Handle case where success=true but no session_id (backup)
+      console.log('⚠️ Payment success without session_id - triggering sync anyway');
+      this.handlePaymentSuccess('manual-success');
     }
   }
 
@@ -80,12 +96,25 @@ class Account {
       // Wait a bit for the page to fully load
       await new Promise(resolve => setTimeout(resolve, 2000));
 
+      // CRITICAL: Always sync after Stripe redirect (this was the original reason for auto-sync)
+      console.log('🔄 Stripe payment success detected - forcing subscription sync');
+      
       // Sync subscription status from Stripe
       await this.syncSubscriptionStatus();
 
       // Reload subscription status (force refresh after payment)
       if (window.subscriptionManager) {
         await window.subscriptionManager.loadSubscriptionStatus(true); // Force refresh after payment
+        
+        // Ensure subscription update is propagated to all pages
+        if (window.subscriptionManager.currentSubscription) {
+          window.eventBus.emit('subscription:updated', window.subscriptionManager.currentSubscription);
+          
+          // Also update app-level cache for immediate cross-page availability
+          if (window.app) {
+            window.app.subscriptionData = window.subscriptionManager.currentSubscription;
+          }
+        }
       }
 
       // Clean up URL
@@ -95,7 +124,17 @@ class Account {
       window.history.replaceState({}, document.title, url.pathname);
 
     } catch (error) {
-      // Error handling payment success
+      // Error handling payment success - but still try to sync
+      console.error('Payment success handler error:', error);
+      
+      // Even if there's an error, try to sync subscription status
+      try {
+        if (window.subscriptionManager) {
+          await window.subscriptionManager.loadSubscriptionStatus(true);
+        }
+      } catch (syncError) {
+        console.error('Fallback sync also failed:', syncError);
+      }
     }
   }
 
@@ -398,8 +437,20 @@ class Account {
           if (window.subscriptionManager) {
             await window.subscriptionManager.loadSubscriptionStatus(true); // Force refresh to show latest data
 
+            // Ensure subscription update is propagated to all pages
+            if (window.subscriptionManager.currentSubscription) {
+              window.eventBus.emit('subscription:updated', window.subscriptionManager.currentSubscription);
+              
+              // Also update app-level cache for immediate cross-page availability
+              if (window.app) {
+                window.app.subscriptionData = window.subscriptionManager.currentSubscription;
+              }
+            }
+
             // Update sync button state to show cooldown
-            window.subscriptionManager.updateSyncButtonState(this.lastSyncTime, this.syncCooldownMs);
+            if (window.subscriptionManager.updateSyncButtonState) {
+              window.subscriptionManager.updateSyncButtonState(this.lastSyncTime, this.syncCooldownMs);
+            }
           }
         } catch (error) {
           // Reset last sync time on error so user can try again sooner
@@ -418,105 +469,99 @@ class Account {
 
   async loadAccountData() {
     try {
-      // Wait for API to be available
-      let apiAttempts = 0;
-      while (!window.api && apiAttempts < 20) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        apiAttempts++;
-      }
-
-      if (!window.api) {
-        setTimeout(() => this.loadAccountData(), 500);
-        return;
-      }
-
-      // Get current user data
-      const currentUser = window.api.currentUser;
+      // Use cached user data from auth system first (avoid redundant API calls)
+      const currentUser = this.user || window.api?.currentUser || window.app?.currentUser;
+      
       if (!currentUser) {
-        // Try to get user from cached session
+        // Try to get user from cached session as fallback
         const cachedSession = localStorage.getItem('supabase_session');
         if (cachedSession) {
           try {
             const sessionData = JSON.parse(cachedSession);
             if (sessionData.user) {
-              // Use cached user data temporarily
               this.updateAccountUI({
                 email: sessionData.user.email || 'Loading...',
                 created_at: sessionData.user.created_at || new Date().toISOString(),
-                subscription_tier: 'free' // Will be updated when API loads
+                subscription_tier: 'free' // Will be updated by subscription manager
               });
-
-              // Retry loading after API is ready
-              setTimeout(() => this.loadAccountData(), 1000);
-              return;
+              return; // Don't make additional API calls
             }
           } catch (e) {
             // Invalid cached session
           }
         }
-
-        // No current user data and no cached session
         return;
       }
 
-      // Get user profile data from Supabase
-      let profileData = null;
-      try {
-        const response = await window.api._request(`${window.api.apiUrl}/profiles?id=eq.${currentUser.id}`, { auth: true });
-        if (response && response.length > 0) {
-          profileData = response[0];
-        }
-      } catch (error) {
-        // Could not load profile data
-      }
-
-      // Combine user data with profile data
+      // Use existing user data without additional profile API call
       const userData = {
         email: currentUser.email || 'Unknown',
-        created_at: profileData?.created_at || currentUser.created_at || new Date().toISOString(),
-        subscription_tier: profileData?.subscription_tier || 'free'
+        created_at: currentUser.created_at || new Date().toISOString(),
+        subscription_tier: 'free' // Will be updated by subscription manager
       };
 
       this.updateAccountUI(userData);
 
-      // Smart auto-sync: only sync if data might be stale or inconsistent
-      if (profileData?.stripe_customer_id) {
-        const shouldAutoSync = this.shouldPerformAutoSync(profileData);
+      // Check if we should auto-sync based on cached subscription data
+      const shouldAutoSync = this.shouldPerformAutoSyncFromCache();
 
-        if (shouldAutoSync) {
-          try {
-            // Show subtle indicator that auto-sync is happening
-            const indicator = document.getElementById('subscriptionDataSource');
-            if (indicator) {
-              indicator.textContent = 'Checking for subscription updates...';
-              indicator.style.color = '#007aff';
-            }
+      if (shouldAutoSync) {
+        try {
+          const indicator = document.getElementById('subscriptionDataSource');
+          if (indicator) {
+            indicator.textContent = 'Checking for subscription updates...';
+            indicator.style.color = '#007aff';
+          }
 
-            await this.syncSubscriptionStatus(true); // Pass true for silent mode
-
-            // Update the subscription display after auto-sync
-            if (window.subscriptionManager) {
-              await window.subscriptionManager.loadSubscriptionStatus(true);
-            }
-          } catch (error) {
-            // Silent sync failed, but don't show error to user
-            const indicator = document.getElementById('subscriptionDataSource');
-            if (indicator) {
-              indicator.textContent = 'Auto-sync failed (using cached data)';
-              indicator.style.color = '#888';
-            }
+          // Use centralized subscription loading instead of separate sync
+          if (window.subscriptionManager) {
+            await window.subscriptionManager.loadSubscriptionStatus(true);
+          }
+        } catch (error) {
+          const indicator = document.getElementById('subscriptionDataSource');
+          if (indicator) {
+            indicator.textContent = 'Auto-sync failed (using cached data)';
+            indicator.style.color = '#888';
           }
         }
       }
 
     } catch (error) {
-      // Show placeholder data if loading fails
       this.updateAccountUI({
         email: 'Error loading email',
         created_at: new Date().toISOString(),
         subscription_tier: 'free'
       });
     }
+  }
+
+  // Optimized auto-sync check using cached data instead of profile API call
+  shouldPerformAutoSyncFromCache() {
+    // 1. Check if cached subscription data is old (older than 10 minutes)
+    const cacheTime = localStorage.getItem('subscriptionCacheTime');
+    if (cacheTime) {
+      const age = Date.now() - parseInt(cacheTime);
+      if (age > 10 * 60 * 1000) { // 10 minutes
+        return true; // Cache is old, sync to get fresh data
+      }
+    } else {
+      return true; // No cache time, should sync
+    }
+
+    // 2. Check if user just came from payment flow
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true' || urlParams.get('session_id')) {
+      return true; // Just completed payment, should sync
+    }
+
+    // 3. Don't auto-sync if we recently manually synced (respect the cooldown)
+    const timeSinceLastSync = Date.now() - this.lastSyncTime;
+    if (timeSinceLastSync < this.syncCooldownMs) {
+      return false; // Recently synced manually, skip auto-sync
+    }
+
+    // Default: don't auto-sync if cache is recent
+    return false;
   }
 
   updateAccountUI(userData) {
@@ -534,57 +579,7 @@ class Account {
     }
   }
 
-  shouldPerformAutoSync(profileData) {
-    // Check if we should automatically sync subscription status
 
-    // 1. Check if cached subscription data is old (older than 10 minutes)
-    const cacheTime = localStorage.getItem('subscriptionCacheTime');
-    if (cacheTime) {
-      const age = Date.now() - parseInt(cacheTime);
-      if (age > 10 * 60 * 1000) { // 10 minutes
-        return true; // Cache is old, sync to get fresh data
-      }
-    } else {
-      return true; // No cache time, should sync
-    }
-
-    // 2. Check for potential status discrepancy
-    const cachedSubscription = localStorage.getItem('cachedSubscription');
-    if (cachedSubscription) {
-      try {
-        const cached = JSON.parse(cachedSubscription);
-
-        // If profile says premium but cached data says free (or vice versa)
-        if (profileData.subscription_tier !== cached.subscription_tier) {
-          return true; // Status mismatch, sync to resolve
-        }
-
-        // If profile has stripe_customer_id but cached data doesn't show Stripe customer
-        if (profileData.stripe_customer_id && !cached.has_stripe_customer) {
-          return true; // Stripe customer exists but not reflected in cache
-        }
-      } catch (error) {
-        return true; // Invalid cached data, should sync
-      }
-    } else {
-      return true; // No cached data, should sync
-    }
-
-    // 3. Check if user just came from payment flow
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('success') === 'true' || urlParams.get('session_id')) {
-      return true; // Just completed payment, should sync
-    }
-
-    // 4. Don't auto-sync if we recently manually synced (respect the cooldown)
-    const timeSinceLastSync = Date.now() - this.lastSyncTime;
-    if (timeSinceLastSync < this.syncCooldownMs) {
-      return false; // Recently synced manually, skip auto-sync
-    }
-
-    // Default: don't auto-sync if everything looks consistent and recent
-    return false;
-  }
 
 
 
@@ -695,5 +690,33 @@ document.addEventListener('DOMContentLoaded', () => {
     window.account = new Account();
   }
 });
+
+// Debug function to test subscription update propagation
+window.testSubscriptionUpdate = function(tier = 'premium') {
+  console.log(`🧪 Testing subscription update propagation to ${tier}`);
+  
+  const testData = {
+    subscription_tier: tier,
+    has_stripe_customer: tier === 'premium',
+    subscription_expires_at: tier === 'premium' ? null : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+  };
+  
+  // Update caches
+  localStorage.setItem('cachedSubscription', JSON.stringify(testData));
+  localStorage.setItem('subscriptionCacheTime', Date.now().toString());
+  
+  if (window.app) {
+    window.app.subscriptionData = testData;
+  }
+  
+  if (window.subscriptionManager) {
+    window.subscriptionManager.currentSubscription = testData;
+  }
+  
+  // Emit update event
+  window.eventBus.emit('subscription:updated', testData);
+  
+  console.log(`✅ Subscription update emitted for ${tier} tier`);
+};
 
 window.Account = Account;

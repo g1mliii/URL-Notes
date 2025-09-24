@@ -343,34 +343,46 @@ class Dashboard {
   }
 
   setupAutoSave() {
-    // Optimized auto-save with throttling instead of debouncing for better UX
+    // Optimized auto-save with longer intervals to reduce API calls
     const autoSaveElements = [
       { id: 'noteTitle', event: 'blur' },
-      { id: 'noteContent', event: 'input', throttle: 2000 },
+      { id: 'noteContent', event: 'input', throttle: 5000 }, // Increased from 2s to 5s
       { id: 'noteContent', event: 'blur' },
       { id: 'noteUrl', event: 'blur' }
     ];
 
     let autoSaveTimeout;
     let lastAutoSave = 0;
+    let pendingChanges = false;
 
     const throttledAutoSave = () => {
       const now = Date.now();
-      if (now - lastAutoSave > 1000) { // Minimum 1 second between auto-saves
+      if (now - lastAutoSave > 3000) { // Minimum 3 seconds between auto-saves (increased from 1s)
         lastAutoSave = now;
+        pendingChanges = false;
+        
         // Use requestIdleCallback for non-critical auto-saves
         if (window.requestIdleCallback) {
           requestIdleCallback(() => this.handleAutoSave());
         } else {
           setTimeout(() => this.handleAutoSave(), 0);
         }
+      } else {
+        pendingChanges = true; // Mark that we have pending changes
       }
     };
 
     const debouncedAutoSave = () => {
       clearTimeout(autoSaveTimeout);
-      autoSaveTimeout = setTimeout(throttledAutoSave, 2000);
+      autoSaveTimeout = setTimeout(throttledAutoSave, 5000); // Increased from 2s to 5s
     };
+
+    // Save pending changes before page unload
+    window.addEventListener('beforeunload', () => {
+      if (pendingChanges) {
+        this.handleAutoSave(); // Force save pending changes
+      }
+    });
 
     autoSaveElements.forEach(({ id, event, throttle }) => {
       const element = document.getElementById(id);
@@ -2703,6 +2715,7 @@ class Dashboard {
   // Listen for subscription updates instead of making separate API calls
   listenForSubscriptionUpdates() {
     window.eventBus.on('subscription:updated', (subscriptionData) => {
+      console.log('📊 Dashboard received subscription update:', subscriptionData?.subscription_tier);
       // Update UI based on subscription changes
       this.handleUpgradeBanner(subscriptionData);
     });

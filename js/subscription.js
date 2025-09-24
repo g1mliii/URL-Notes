@@ -30,8 +30,21 @@ class SubscriptionManager {
 
   async loadSubscriptionStatus(forceRefresh = false) {
     try {
-      // Check if data is already cached and recent (within 5 minutes)
-      // Skip cache check if forceRefresh is true (for manual sync button)
+      // Use centralized subscription data from app if available and recent
+      if (!forceRefresh && window.app?.subscriptionData) {
+        const cacheTime = localStorage.getItem('subscriptionCacheTime');
+        if (cacheTime) {
+          const age = Date.now() - parseInt(cacheTime);
+          if (age < 5 * 60 * 1000) { // 5 minutes cache
+            this.currentSubscription = window.app.subscriptionData;
+            this.updateSubscriptionUI();
+            this.updateDataSourceIndicator('cached', new Date(parseInt(cacheTime)));
+            return; // Skip API call - use centralized data
+          }
+        }
+      }
+
+      // Check localStorage cache as fallback
       if (!forceRefresh) {
         const cachedData = localStorage.getItem('cachedSubscription');
         const cacheTime = localStorage.getItem('subscriptionCacheTime');
@@ -41,29 +54,31 @@ class SubscriptionManager {
           if (age < 5 * 60 * 1000) { // 5 minutes cache
             this.currentSubscription = JSON.parse(cachedData);
             this.updateSubscriptionUI();
-            
-            // Show data source indicator
             this.updateDataSourceIndicator('cached', new Date(parseInt(cacheTime)));
             
-            // Emit cached data to other modules
+            // Store in app for other modules to avoid duplicate calls
+            if (window.app) {
+              window.app.subscriptionData = this.currentSubscription;
+            }
+            
             window.eventBus.emit('subscription:updated', this.currentSubscription);
             return;
           }
         }
       }
 
+      // Only make API call if no valid cache exists
       const response = await this.api.callFunction('subscription-api', {
         action: 'get_subscription_status'
       });
 
       if (response.error) {
-        // Failed to load subscription status
         return;
       }
 
       this.currentSubscription = response;
       
-      // Cache the response (always update cache with fresh data)
+      // Update all caches atomically
       localStorage.setItem('cachedSubscription', JSON.stringify(response));
       localStorage.setItem('subscriptionCacheTime', Date.now().toString());
       
@@ -73,8 +88,6 @@ class SubscriptionManager {
       }
       
       this.updateSubscriptionUI();
-      
-      // Show data source indicator
       this.updateDataSourceIndicator('fresh', new Date());
       
       // Emit to other modules
