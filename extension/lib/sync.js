@@ -76,19 +76,19 @@ class SyncEngine {
     window.eventBus?.on('tier:changed', (status) => {
       if (status && status.active && status.tier !== 'free') {
         this.startPeriodicSync();
-        
+
         // Notify background script to start sync timer
-        chrome.runtime.sendMessage({ 
-          action: 'tier-changed', 
+        chrome.runtime.sendMessage({
+          action: 'tier-changed',
           active: status.active,
           tier: status.tier
         }).catch(() => { });
       } else {
         this.stopPeriodicSync();
-        
+
         // Notify background script to stop sync timer
-        chrome.runtime.sendMessage({ 
-          action: 'tier-changed', 
+        chrome.runtime.sendMessage({
+          action: 'tier-changed',
           active: false,
           tier: status.tier || 'free'
         }).catch(() => { });
@@ -99,12 +99,12 @@ class SyncEngine {
     window.eventBus?.on('auth:changed', (payload) => {
       if (payload && payload.user) {
         // Notify background script to start timer
-        chrome.runtime.sendMessage({ 
-          action: 'auth-changed', 
+        chrome.runtime.sendMessage({
+          action: 'auth-changed',
           user: payload.user,
           statusRefresh: payload.statusRefresh || false
         }).catch(() => { });
-        
+
         // Don't perform initial sync automatically - just start periodic sync
         this.startPeriodicSync();
       } else {
@@ -135,6 +135,41 @@ class SyncEngine {
     }
   }
 
+  // Check if encryption key is available (prevents placeholder content)
+  async isEncryptionReady() {
+    try {
+      // Check if encryption module is loaded
+      if (!window.noteEncryption) {
+        console.warn('Sync: noteEncryption module not available');
+        return false;
+      }
+
+      // Check if we can get the encryption key (this is the critical check)
+      if (!window.supabaseClient || typeof window.supabaseClient.getUserEncryptionKey !== 'function') {
+        console.warn('Sync: getUserEncryptionKey method not available');
+        return false;
+      }
+
+      // Try to get the encryption key - this is what prevents placeholder content
+      try {
+        const encryptionKey = await window.supabaseClient.getUserEncryptionKey();
+        if (!encryptionKey) {
+          console.warn('Sync: No encryption key available - would cause placeholder content');
+          return false;
+        }
+
+        return true;
+      } catch (keyError) {
+        console.warn('Sync: Failed to get encryption key - would cause placeholder content:', keyError.message);
+        return false;
+      }
+
+    } catch (error) {
+      console.warn('Sync: Encryption key check failed:', error.message);
+      return false;
+    }
+  }
+
   // Check if user can sync
   async canSync() {
     try {
@@ -161,10 +196,10 @@ class SyncEngine {
           // User is authenticated with valid token, check subscription status
           try {
             const status = await window.supabaseClient.getSubscriptionStatus();
-            
+
             // CRITICAL: Multiple checks to ensure premium access
             const isPremium = status && status.active && status.tier === 'premium';
-            
+
             // Additional check: ensure we have a current user object
             const currentUser = window.supabaseClient.getCurrentUser();
             if (!currentUser || !currentUser.id) {
@@ -175,6 +210,15 @@ class SyncEngine {
             // Final safety check: if tier is explicitly 'free', block sync
             if (status && status.tier === 'free') {
               return { authenticated: true, status, canSync: false };
+            }
+
+            // CRITICAL: Ensure encryption is fully ready before allowing sync
+            if (isPremium) {
+              const encryptionReady = await this.isEncryptionReady();
+              if (!encryptionReady) {
+                console.warn('Sync: Premium active but encryption not ready - blocking sync');
+                return { authenticated: true, status, canSync: false };
+              }
             }
 
             return { authenticated: true, status, canSync: isPremium };
@@ -211,6 +255,8 @@ class SyncEngine {
     if (this.isSyncing) {
       return;
     }
+
+
 
     // CRITICAL: Double-check premium status before any sync operation
     if (!(await this.canSync())) {
@@ -386,6 +432,7 @@ class SyncEngine {
 
   // Manual sync trigger
   async manualSync() {
+
     if (!(await this.canSync())) {
       this.showSyncError('Premium subscription required for sync');
       return;

@@ -268,13 +268,26 @@ class URLNotesApp {
     // Listen for background sync timer messages
     chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       if (message.action === 'sync-timer-triggered') {
+        console.log('📨 [POPUP SYNC] Received timer trigger message');
         // Background timer fired, check if we can sync
         if (window.syncEngine) {
           try {
             const canSyncResult = await window.syncEngine.canSync();
+            console.log('🔍 [POPUP SYNC] Timer trigger - canSync result:', canSyncResult);
 
             if (canSyncResult && canSyncResult.canSync) {
+              // Double-check encryption readiness for timer-triggered sync
+              if (window.encryptionManager && typeof window.encryptionManager.isEncryptionReady === 'function') {
+                const encryptionReady = await window.encryptionManager.isEncryptionReady();
+                if (!encryptionReady) {
+
+                  chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
+                  return;
+                }
+              }
+              
               try {
+                console.log('🚀 [POPUP SYNC] Starting timer-triggered sync');
                 await window.syncEngine.manualSync();
 
                 // After sync completes, restart the background timer for next cycle
@@ -310,10 +323,25 @@ class URLNotesApp {
       if (response && response.shouldSync) {
         if (window.syncEngine) {
           try {
+            // Add a small delay to ensure encryption is fully initialized after login
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             const canSyncResult = await window.syncEngine.canSync();
 
+
             if (canSyncResult && canSyncResult.canSync) {
+              // Double-check encryption readiness for overdue sync after login
+              if (window.encryptionManager && typeof window.encryptionManager.isEncryptionReady === 'function') {
+                const encryptionReady = await window.encryptionManager.isEncryptionReady();
+                if (!encryptionReady) {
+
+                  chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
+                  return;
+                }
+              }
+              
               try {
+
                 await window.syncEngine.manualSync();
 
                 chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
@@ -323,6 +351,7 @@ class URLNotesApp {
                 chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
               }
             } else {
+
               chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
             }
           } catch (error) {

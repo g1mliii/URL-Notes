@@ -424,16 +424,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'auth-changed':
       // Handle auth changes for sync timer management
       if (request.user) {
-        console.log(`🔐 [SYNC TIMER] User signed in - stopping any existing timers`);
-        // User signed in - CRITICAL: Stop any existing sync timers immediately
-        // This prevents sync from happening before premium status is determined
-        stopSyncTimer();
-        
-        // Reset sync time to prevent immediate sync on login
+        console.log(`🔐 [SYNC TIMER] User signed in - initializing timer`);
+        // User signed in - initialize lastSyncTime and start timer
+        // Premium check will happen at sync execution time
         lastSyncTime = Date.now();
         saveLastSyncTime(); // Save the current time as last sync
-        console.log(`⏳ [SYNC TIMER] Waiting for tier-changed event to determine premium status`);
-        // Note: Don't start timer here - wait for tier-changed event
+        startSyncTimer();
 
       } else {
         console.log(`🚪 [SYNC TIMER] User signed out - stopping timer`);
@@ -444,7 +440,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       break;
     case 'restart-sync-timer':
       // Restart timer for next sync cycle
-      console.log(`🔄 [SYNC TIMER] Restart requested - sync completed`);
+
       lastSyncTime = Date.now(); // Mark that we just synced
       saveLastSyncTime(); // Save the updated time
       startSyncTimer();
@@ -452,23 +448,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       break;
     case 'tier-changed':
       // Handle tier changes (premium status updates)
-      console.log(`🎯 [SYNC TIMER] Tier changed - Active: ${request.active}, Tier: ${request.tier}`);
-      
-      // If user lost premium access, stop sync timer
-      if (!request.active || request.tier === 'free') {
-        console.log(`❌ [SYNC TIMER] Free tier detected - stopping timer`);
-        stopSyncTimer();
-      } else {
-        // User gained premium access, start sync timer if not already running
-        if (!syncTimer) {
-          console.log(`✅ [SYNC TIMER] Premium tier detected - starting timer`);
-          lastSyncTime = Date.now();
-          saveLastSyncTime();
-          startSyncTimer();
-        } else {
-          console.log(`ℹ️ [SYNC TIMER] Premium tier confirmed - timer already running`);
-        }
-      }
+
+
+      // Timer continues running regardless of tier - premium check happens at sync execution
+      // This prevents the popup open/close issue and keeps sync timing consistent
+
+
       sendResponse({ success: true });
       break;
     case 'reset-sync-timer':
@@ -550,12 +535,17 @@ async function finishUserOAuth(url, tabId) {
     // Try to get tokens from hash first, then query params
     let access_token = hashMap.get('access_token') || queryParams.get('access_token');
     let refresh_token = hashMap.get('refresh_token') || queryParams.get('refresh_token');
-    
-    console.log('OAuth tokens received:', { 
-      hasAccessToken: !!access_token, 
+
+    console.log('OAuth tokens received:', {
+      hasAccessToken: !!access_token,
       hasRefreshToken: !!refresh_token,
       refreshTokenValue: refresh_token ? 'present' : 'missing'
     });
+
+    // Reset lastSyncTime on successful login to prevent overdue sync detection
+    lastSyncTime = Date.now();
+    await saveLastSyncTime();
+
 
     if (!access_token) {
       // Check for error parameters in both hash and query
@@ -1106,13 +1096,13 @@ function startDebugStatusLogging() {
   if (debugStatusTimer) {
     clearInterval(debugStatusTimer);
   }
-  
+
   debugStatusTimer = setInterval(() => {
     const now = new Date();
     const timeSinceLastSync = now.getTime() - lastSyncTime;
     const minutesSinceSync = Math.floor(timeSinceLastSync / (60 * 1000));
     const isTimerActive = syncTimer !== null;
-    
+
     console.log(`📊 [SYNC STATUS] ${now.toLocaleTimeString()} - Timer: ${isTimerActive ? '🟢 Active' : '🔴 Inactive'}, Last sync: ${minutesSinceSync}min ago`);
   }, 60 * 1000); // Log every minute
 }
@@ -1216,14 +1206,16 @@ function startSyncTimer() {
 
   const now = new Date();
   const nextSyncTime = new Date(now.getTime() + syncInterval);
-  console.log(`🟢 [SYNC TIMER] Started - Next sync at: ${nextSyncTime.toLocaleTimeString()}`);
+
 
   // Set a one-time timeout instead of interval
   syncTimer = setTimeout(() => {
     console.log(`⏰ [SYNC TIMER] Triggered at: ${new Date().toLocaleTimeString()}`);
 
     // Send message to popup to trigger sync
-    chrome.runtime.sendMessage({ action: 'sync-timer-triggered' }).catch(() => {
+    chrome.runtime.sendMessage({ action: 'sync-timer-triggered' }).then(() => {
+      console.log(`✅ [SYNC TIMER] Message sent to popup successfully`);
+    }).catch(() => {
       console.log(`📭 [SYNC TIMER] Popup not available for sync at: ${new Date().toLocaleTimeString()}`);
       // Popup might be closed, that's okay
       // Mark that we need to sync when popup opens

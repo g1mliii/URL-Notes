@@ -29,6 +29,7 @@ class SettingsManager {
     this.authSignUpBtn = document.getElementById('authSignUpBtn');
     this.authSignInBtn = document.getElementById('authSignInBtn');
     this.authSignOutBtn = document.getElementById('authSignOutBtn');
+    this.authForgotPwBtn = document.getElementById('authForgotPwBtn');
     this.authStatusText = document.getElementById('authStatusText');
     this.authGoogleBtn = document.getElementById('authGoogleBtn');
     this.oauthSection = document.getElementById('oauthSection');
@@ -152,26 +153,7 @@ class SettingsManager {
     return { email, password };
   }
 
-  async handleSignUp() {
-    const { email, password } = this.getAuthInputs();
-    if (!email || !password) {
-      return this.showNotification('Enter email and password', 'error');
-    }
-    try {
-      this.setAuthBusy(true);
-      await window.supabaseClient.signUpWithEmail(email, password);
-      // With confirm disabled, ensure session by signing in
-      if (!window.supabaseClient.isAuthenticated()) {
-        await window.supabaseClient.signInWithEmail(email, password);
-      }
-      this.showNotification('Signed up successfully', 'success');
-      this.updateAuthUI();
-    } catch (e) {
-      this.showNotification(`Sign up failed: ${e.message || e}`, 'error');
-    } finally {
-      this.setAuthBusy(false);
-    }
-  }
+
 
   async handleSignIn() {
     const { email, password } = this.getAuthInputs();
@@ -203,23 +185,7 @@ class SettingsManager {
     }
   }
 
-  async handleForgotPassword() {
-    const email = this.authEmailInput?.value || '';
-    if (!email) {
-      this.showNotification('Please enter your email address', 'error');
-      return;
-    }
 
-    try {
-      this.setAuthBusy(true);
-      await window.supabaseClient.resetPassword(email);
-      this.showNotification('Password reset email sent. Check your inbox.', 'success');
-    } catch (e) {
-      this.showNotification(`Password reset failed: ${e.message || e}`, 'error');
-    } finally {
-      this.setAuthBusy(false);
-    }
-  }
 
   async handleGoogleSignIn() {
     try {
@@ -242,6 +208,8 @@ class SettingsManager {
   }
 
   async handleManualSync() {
+    console.log('⚙️ [SETTINGS] Manual sync button clicked');
+    
     if (!window.syncEngine) {
       this.showNotification('Sync engine not available', 'error');
       return;
@@ -497,12 +465,12 @@ class SettingsManager {
 
     // Auth handlers
     this.authTogglePwBtn?.addEventListener('click', () => this.togglePasswordVisibility());
-    this.authSignUpBtn?.addEventListener('click', () => this.handleSignUp());
+    this.authSignUpBtn?.addEventListener('click', () => this.openSignUp());
     this.authSignInBtn?.addEventListener('click', () => this.handleSignIn());
     this.authSignOutBtn?.addEventListener('click', () => this.handleSignOut());
     this.authGoogleBtn?.addEventListener('click', () => this.handleGoogleSignIn());
     // Forgot password handler
-    this.authForgotPwBtn?.addEventListener('click', () => this.handleForgotPassword());
+    this.authForgotPwBtn?.addEventListener('click', () => this.openForgotPassword());
     // Press Enter to sign in from either field
     this.authEmailInput?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); this.handleSignIn(); }
@@ -825,6 +793,38 @@ class SettingsManager {
       }
     } catch (_) {
       try { window.open('https://anchored.site', '_blank'); } catch (__) { }
+    }
+  }
+
+  // Open signup page on website (reuses openWebsite logic)
+  openSignUp() {
+    try {
+      const signupUrl = 'https://anchored.site/?signup=true';
+      if (chrome?.tabs?.create) {
+        chrome.tabs.create({ url: signupUrl }).catch(() => {
+          try { window.open(signupUrl, '_blank'); } catch (_) { }
+        });
+      } else {
+        window.open(signupUrl, '_blank');
+      }
+    } catch (_) {
+      try { window.open('https://anchored.site/?signup=true', '_blank'); } catch (__) { }
+    }
+  }
+
+  // Open forgot password page on website (reuses openWebsite logic)
+  openForgotPassword() {
+    try {
+      const forgotUrl = 'https://anchored.site/?forgot=true';
+      if (chrome?.tabs?.create) {
+        chrome.tabs.create({ url: forgotUrl }).catch(() => {
+          try { window.open(forgotUrl, '_blank'); } catch (_) { }
+        });
+      } else {
+        window.open(forgotUrl, '_blank');
+      }
+    } catch (_) {
+      try { window.open('https://anchored.site/?forgot=true', '_blank'); } catch (__) { }
     }
   }
 
