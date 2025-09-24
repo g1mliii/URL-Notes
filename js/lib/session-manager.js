@@ -128,14 +128,14 @@ class SessionManager {
     const now = Date.now();
     const expiresAt = session.expires_at || 0;
     
-    // For mobile, be more lenient with expiry (like other apps)
+    // Be more strict about token expiry to prevent JWT errors
     if (this.isMobile) {
-      // Allow 24 hour grace period for mobile (handles app switching, etc.)
-      return expiresAt > (now - 24 * 60 * 60 * 1000);
+      // For mobile, only allow 1 hour grace period to prevent JWT issues
+      return expiresAt > (now - 60 * 60 * 1000);
     }
     
-    // For desktop, allow 1 hour grace period
-    return expiresAt > (now - 60 * 60 * 1000);
+    // For desktop, allow 30 minute grace period
+    return expiresAt > (now - 30 * 60 * 1000);
   }
 
   // Check if session needs refresh
@@ -152,9 +152,9 @@ class SessionManager {
     // Time since last activity
     const timeSinceActivity = now - lastActivity;
 
-    // More reasonable refresh thresholds for long-lasting sessions
-    const refreshWindow = this.isMobile ? 24 * 60 * 60 * 1000 : 12 * 60 * 60 * 1000; // 24 hours mobile, 12 hours desktop
-    const activityThreshold = this.isMobile ? 7 * 24 * 60 * 60 * 1000 : 3 * 24 * 60 * 60 * 1000; // 7 days mobile, 3 days desktop
+    // More aggressive refresh thresholds to prevent JWT errors
+    const refreshWindow = this.isMobile ? 2 * 60 * 60 * 1000 : 60 * 60 * 1000; // 2 hours mobile, 1 hour desktop
+    const activityThreshold = this.isMobile ? 24 * 60 * 60 * 1000 : 12 * 60 * 60 * 1000; // 24 hours mobile, 12 hours desktop
 
     return timeUntilExpiry < refreshWindow || timeSinceActivity > activityThreshold;
   }

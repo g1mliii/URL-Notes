@@ -497,7 +497,29 @@ class Dashboard {
     this.showLoadingState();
 
     try {
-      // Fetch notes from API - no auth check needed since we're already on dashboard
+      // Validate session before making API calls (especially important on mobile)
+      if (window.api && !window.api.isAuthenticated()) {
+        throw new Error('Authentication required');
+      }
+
+      // For mobile, validate token freshness before API calls
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (isMobile && window.api) {
+        try {
+          // Quick token validation
+          const isValid = await window.api.verifyToken();
+          if (!isValid) {
+            // Try to refresh token once
+            await window.api.refreshSession();
+          }
+        } catch (e) {
+          // Token validation/refresh failed, redirect to login
+          window.location.href = '/?message=session-expired';
+          return;
+        }
+      }
+
+      // Fetch notes from API
       const fetchedNotes = await window.api.fetchNotes();
 
       // Process and organize notes
@@ -509,6 +531,13 @@ class Dashboard {
       this.cleanupOldDeletedNotes();
 
     } catch (error) {
+      // Handle specific JWT/auth errors
+      if (error.message.includes('JWT') || error.message.includes('401') || error.message.includes('Authentication')) {
+        // Redirect to login with error message
+        window.location.href = '/?message=session-expired';
+        return;
+      }
+      
       this.showErrorState(error.message);
     } finally {
       this.isLoading = false;

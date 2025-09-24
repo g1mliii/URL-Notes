@@ -114,33 +114,52 @@ class SupabaseClient {
         this.currentUser = result.supabase_session.user;
         const expiresAt = result.supabase_session.expires_at || 0;
         const now = Date.now();
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-        // If the token is expired or expiring within 5 minutes, try to refresh first
-        if (!expiresAt || (expiresAt - now) < 5 * 60 * 1000) {
+        // More aggressive token validation for mobile to prevent JWT errors
+        if (expiresAt && expiresAt < now) {
+          // Token is definitely expired, try to refresh
           try {
             await this.refreshSession();
           } catch (e) {
-            // Only sign out if refresh fails and token is actually expired
-            if (expiresAt && expiresAt < now) {
-              await this.signOut();
-              return;
+            // Refresh failed, sign out
+            await this.signOut();
+            return;
+          }
+        } else if (!expiresAt || (expiresAt - now) < 10 * 60 * 1000) {
+          // Token expires within 10 minutes or has no expiry, refresh proactively
+          try {
+            await this.refreshSession();
+          } catch (e) {
+            // If refresh fails but token isn't expired yet, continue but validate
+            if (isMobile) {
+              // On mobile, validate token immediately to catch JWT issues early
+              const isValid = await this.verifyToken();
+              if (!isValid) {
+                await this.signOut();
+                return;
+              }
             }
           }
         }
 
-        // For persistent login, be more lenient with token validation
-        const rememberLogin = localStorage.getItem('remember_login');
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-        if (rememberLogin === 'true' || isMobile) {
-          // Skip token verification for remembered sessions and mobile to avoid unnecessary logouts
-          // The token will be validated on actual API calls
-        } else {
-          // Verify token is still valid for non-persistent desktop sessions
+        // Always validate token on mobile to prevent dashboard errors
+        if (isMobile) {
           const isValid = await this.verifyToken();
           if (!isValid) {
-            await this.signOut();
-            return;
+            // Token is invalid, try one refresh attempt
+            try {
+              await this.refreshSession();
+              // Verify the refreshed token
+              const isValidAfterRefresh = await this.verifyToken();
+              if (!isValidAfterRefresh) {
+                await this.signOut();
+                return;
+              }
+            } catch (e) {
+              await this.signOut();
+              return;
+            }
           }
         }
 
