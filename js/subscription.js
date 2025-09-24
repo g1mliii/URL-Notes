@@ -17,6 +17,30 @@ class SubscriptionManager {
     if (window.api) {
       this.api = window.api;
       
+      // Check if user just returned from Stripe checkout
+      const pendingCheckout = localStorage.getItem('pending_stripe_checkout');
+      const checkoutTime = localStorage.getItem('checkout_initiated_at');
+      
+      if (pendingCheckout === 'true' && checkoutTime) {
+        const timeSinceCheckout = Date.now() - parseInt(checkoutTime);
+        // If checkout was initiated within last 10 minutes, force sync
+        if (timeSinceCheckout < 10 * 60 * 1000) {
+          console.log('🔄 Detected return from Stripe checkout - forcing subscription sync');
+          
+          // Clear the flags
+          localStorage.removeItem('pending_stripe_checkout');
+          localStorage.removeItem('checkout_initiated_at');
+          
+          // Force refresh subscription status
+          await this.loadSubscriptionStatus(true);
+          return;
+        } else {
+          // Old checkout flag, clear it
+          localStorage.removeItem('pending_stripe_checkout');
+          localStorage.removeItem('checkout_initiated_at');
+        }
+      }
+      
       // Check if subscription data is already cached in app
       if (window.app?.subscriptionData) {
         this.currentSubscription = window.app.subscriptionData;
@@ -255,6 +279,12 @@ class SubscriptionManager {
         upgradeBtn.textContent = 'Processing...';
       }
 
+      // Set flag to force sync when user returns from Stripe
+      localStorage.setItem('pending_stripe_checkout', 'true');
+      localStorage.setItem('checkout_initiated_at', Date.now().toString());
+      
+      console.log('🚀 User initiated Stripe checkout - setting sync flag');
+
       const response = await this.api.callFunction('subscription-api', {
         action: 'create_checkout_session',
         origin: window.location.origin
@@ -269,6 +299,10 @@ class SubscriptionManager {
     } catch (error) {
       // Error creating checkout session
       this.showError('Failed to start subscription process. Please try again.');
+      
+      // Clear checkout flags since we're not going to Stripe
+      localStorage.removeItem('pending_stripe_checkout');
+      localStorage.removeItem('checkout_initiated_at');
       
       // Reset button state
       const upgradeBtn = document.getElementById('upgradeBtn');
@@ -431,9 +465,23 @@ class SubscriptionManager {
 
     if (success === 'true') {
       this.showSuccess('Welcome to Anchored Premium! Your subscription is now active.');
+      
+      console.log('🎉 Stripe checkout success detected - forcing subscription sync');
+      
       // Reload subscription status (force refresh after checkout success)
-      setTimeout(() => {
-        this.loadSubscriptionStatus(true); // Force refresh after successful checkout
+      setTimeout(async () => {
+        await this.loadSubscriptionStatus(true); // Force refresh after successful checkout
+        
+        // Ensure the update propagates to all pages
+        if (this.currentSubscription) {
+          console.log('📡 Emitting subscription update after Stripe success');
+          window.eventBus.emit('subscription:updated', this.currentSubscription);
+          
+          // Update app-level cache for cross-page sharing
+          if (window.app) {
+            window.app.subscriptionData = this.currentSubscription;
+          }
+        }
       }, 2000);
       
       // Clean up URL
