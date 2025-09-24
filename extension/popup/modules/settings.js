@@ -208,7 +208,7 @@ class SettingsManager {
   }
 
   async handleManualSync() {
-    console.log('⚙️ [SETTINGS] Manual sync button clicked');
+    // Manual sync button clicked
     
     if (!window.syncEngine) {
       this.showNotification('Sync engine not available', 'error');
@@ -277,78 +277,8 @@ class SettingsManager {
         <span>Refreshing...</span>
       `;
 
-      // Clear any cached subscription status
-      if (window.supabaseClient.clearSubscriptionCache) {
-        window.supabaseClient.clearSubscriptionCache();
-      }
-
-      // Force refresh subscription status from server
-      const status = await window.supabaseClient.getSubscriptionStatus(true); // Force refresh
-
-      // Update userTier in local storage for other parts of the extension
-      try {
-        const userTier = status.active ? status.tier : 'free';
-        await chrome.storage.local.set({ userTier });
-
-        // Clear AI usage cache to ensure updated limits are fetched
-        await chrome.storage.local.remove(['cachedAIUsage']);
-      } catch (_) { }
-
-      // Emit tier change event to update all parts of the extension
-      try {
-        window.eventBus?.emit('tier:changed', {
-          tier: status.tier,
-          active: status.active,
-          expiresAt: status.expiresAt
-        });
-      } catch (_) { }
-
-      // Notify background script of tier change for sync timer management
-      try {
-        chrome.runtime.sendMessage({ 
-          action: 'tier-changed', 
-          active: status.active,
-          tier: status.tier
-        }).catch(() => { });
-      } catch (_) { }
-
-      // Emit auth:changed event similar to sign-in to refresh all components
-      try {
-        window.eventBus?.emit('auth:changed', {
-          user: window.supabaseClient.getCurrentUser(),
-          statusRefresh: true // Flag to indicate this is a status refresh
-        });
-      } catch (_) { }
-
-      // Notify background script about tier change
-      try {
-        chrome.runtime.sendMessage({
-          action: 'tier-changed',
-          tier: status.tier,
-          active: status.active,
-          expiresAt: status.expiresAt
-        }).catch(() => { });
-      } catch (_) { }
-
-      // Notify background script about auth change (similar to sign-in)
-      try {
-        chrome.runtime.sendMessage({
-          action: 'auth-changed',
-          user: window.supabaseClient.getCurrentUser(),
-          statusRefresh: true // Flag to indicate this is a status refresh
-        }).catch(() => { });
-      } catch (_) { }
-
-      // Update ad manager based on new status
-      try {
-        if (window.adManager) {
-          if (status.active && status.tier !== 'free') {
-            window.adManager.hideAdContainer?.();
-          } else {
-            window.adManager.refreshAd?.();
-          }
-        }
-      } catch (_) { }
+      // Use the shared refresh method
+      const status = await window.supabaseClient.refreshPremiumStatusAndUI();
 
       // Update UI based on new status
       await this.updateAuthUI();

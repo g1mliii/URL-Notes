@@ -424,7 +424,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'auth-changed':
       // Handle auth changes for sync timer management
       if (request.user) {
-        console.log(`🔐 [SYNC TIMER] User signed in - initializing timer`);
+        // User signed in - initializing timer
         // User signed in - initialize lastSyncTime and start timer
         // Premium check will happen at sync execution time
         lastSyncTime = Date.now();
@@ -432,7 +432,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         startSyncTimer();
 
       } else {
-        console.log(`🚪 [SYNC TIMER] User signed out - stopping timer`);
+        // User signed out - stopping timer
         // User signed out, stop timer
         stopSyncTimer();
       }
@@ -536,11 +536,7 @@ async function finishUserOAuth(url, tabId) {
     let access_token = hashMap.get('access_token') || queryParams.get('access_token');
     let refresh_token = hashMap.get('refresh_token') || queryParams.get('refresh_token');
 
-    console.log('OAuth tokens received:', {
-      hasAccessToken: !!access_token,
-      hasRefreshToken: !!refresh_token,
-      refreshTokenValue: refresh_token ? 'present' : 'missing'
-    });
+    // OAuth tokens received
 
     // Reset lastSyncTime on successful login to prevent overdue sync detection
     lastSyncTime = Date.now();
@@ -1103,7 +1099,7 @@ function startDebugStatusLogging() {
     const minutesSinceSync = Math.floor(timeSinceLastSync / (60 * 1000));
     const isTimerActive = syncTimer !== null;
 
-    console.log(`📊 [SYNC STATUS] ${now.toLocaleTimeString()} - Timer: ${isTimerActive ? '🟢 Active' : '🔴 Inactive'}, Last sync: ${minutesSinceSync}min ago`);
+    // Sync status check
   }, 60 * 1000); // Log every minute
 }
 
@@ -1234,7 +1230,7 @@ function stopSyncTimer() {
   if (syncTimer) {
     clearTimeout(syncTimer);
     syncTimer = null;
-    console.log(`🔴 [SYNC TIMER] Stopped at: ${new Date().toLocaleTimeString()}`);
+    // Sync timer stopped
   } else {
     console.log(`⚪ [SYNC TIMER] Stop called but no timer was running`);
   }

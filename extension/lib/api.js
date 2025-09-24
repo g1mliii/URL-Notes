@@ -85,16 +85,16 @@ class SupabaseClient {
               // Use cached subscription status
               const isActive = userTier !== 'free';
               try { window.eventBus?.emit('tier:changed', { tier: userTier, active: isActive }); } catch (_) { }
-              
+
               // Notify background script of tier change for sync timer management
               try {
-                chrome.runtime.sendMessage({ 
-                  action: 'tier-changed', 
+                chrome.runtime.sendMessage({
+                  action: 'tier-changed',
                   active: isActive,
                   tier: userTier
                 }).catch(() => { });
               } catch (_) { }
-              
+
               if (window.adManager) {
                 if (userTier !== 'free') {
                   window.adManager.hideAdContainer?.();
@@ -103,7 +103,7 @@ class SupabaseClient {
                 }
               }
             }
-            
+
             // Emit auth:changed event to update UI
             try { window.eventBus?.emit('auth:changed', { user: this.currentUser }); } catch (_) { }
           } catch (e) {
@@ -275,11 +275,11 @@ class SupabaseClient {
         const handleOAuthComplete = (message, sender, sendResponse) => {
           console.log('📨 Received message in OAuth listener:', message);
           console.log('📨 Message sender:', sender);
-          
+
           if (message.action === 'oauth-complete') {
             console.log('✅ OAuth completion message received:', message);
             chrome.runtime.onMessage.removeListener(handleOAuthComplete);
-            
+
             if (message.success) {
               console.log('🎉 OAuth successful, handling auth success...');
               // Handle the auth success locally
@@ -333,9 +333,16 @@ class SupabaseClient {
     // Clear premium status cache to force refresh
     await chrome.storage.local.remove(['cachedPremiumStatus']);
 
-    // Create or update user profile
+    // Create or update user profile (this handles premium status refresh)
     await this.upsertProfile(authData.user);
-    try { window.eventBus?.emit('auth:changed', { user: this.currentUser }); } catch (_) { }
+
+    // Emit auth:changed event to update UI components
+    try {
+      window.eventBus?.emit('auth:changed', {
+        user: this.currentUser,
+        statusRefresh: true
+      });
+    } catch (_) { }
   }
 
   // Sign out
@@ -363,11 +370,11 @@ class SupabaseClient {
       } catch (_) { }
       try { window.eventBus?.emit('auth:changed', { user: null }); } catch (_) { }
       try { window.eventBus?.emit('tier:changed', { tier: 'free', active: false, expiresAt: null }); } catch (_) { }
-      
+
       // Notify background script that user signed out (stop sync timer)
       try {
-        chrome.runtime.sendMessage({ 
-          action: 'tier-changed', 
+        chrome.runtime.sendMessage({
+          action: 'tier-changed',
           active: false,
           tier: 'free'
         }).catch(() => { });
@@ -418,12 +425,8 @@ class SupabaseClient {
     try {
       const { supabase_session } = await chrome.storage.local.get(['supabase_session']);
       const refreshToken = supabase_session?.refresh_token;
-      console.log('Attempting to refresh session:', { 
-        hasSession: !!supabase_session, 
-        hasRefreshToken: !!refreshToken,
-        expiresAt: supabase_session?.expires_at ? new Date(supabase_session.expires_at) : 'none'
-      });
-      
+      // Attempting to refresh session
+
       if (!refreshToken) {
         console.error('No refresh token available for session refresh - user will need to re-authenticate');
         // Clear the invalid session and force re-authentication
@@ -445,15 +448,15 @@ class SupabaseClient {
         } catch (_) {
           try { detail = await response.text(); } catch (_) { }
         }
-        
+
         console.error('Refresh token failed:', detail);
-        
+
         // If refresh token is invalid, clear session and force re-auth
         if (response.status === 400 || response.status === 401) {
           console.log('Refresh token invalid, clearing session');
           await this.signOut();
         }
-        
+
         throw new Error(detail);
       }
 
@@ -474,7 +477,7 @@ class SupabaseClient {
         data.refresh_token = refreshToken;
       }
 
-      console.log('Session refresh successful');
+      // Session refresh successful
       await this.handleAuthSuccess(data);
       return true;
     } catch (error) {
@@ -554,16 +557,25 @@ class SupabaseClient {
         });
 
         try { window.eventBus?.emit('tier:changed', { tier: userTier, active: isActive, expiresAt: profile.subscription_expires_at }); } catch (_) { }
-        
+
         // Notify background script of tier change for sync timer management
         try {
-          chrome.runtime.sendMessage({ 
-            action: 'tier-changed', 
+          chrome.runtime.sendMessage({
+            action: 'tier-changed',
             active: isActive,
             tier: userTier
           }).catch(() => { });
         } catch (_) { }
-        
+
+        // Notify background script about auth change (for login flows)
+        try {
+          chrome.runtime.sendMessage({
+            action: 'auth-changed',
+            user: this.currentUser,
+            statusRefresh: true
+          }).catch(() => { });
+        } catch (_) { }
+
         if (window.adManager) {
           if (isActive && userTier !== 'free') {
             window.adManager.hideAdContainer?.();
@@ -1103,6 +1115,80 @@ class SupabaseClient {
       return { data, error: null };
     } catch (error) {
       return { data: null, error: error.message };
+    }
+  }
+
+  // Shared method for refreshing premium status and updating UI
+  // Used by both handleAuthSuccess and the manual refresh button
+  async refreshPremiumStatusAndUI() {
+    try {
+      // Clear any cached subscription status
+      if (this.clearSubscriptionCache) {
+        await this.clearSubscriptionCache();
+      }
+
+      // Force refresh subscription status from server
+      const status = await this.getSubscriptionStatus(true); // Force refresh
+
+      // Update userTier in local storage for other parts of the extension
+      const userTier = status.active ? status.tier : 'free';
+      await chrome.storage.local.set({ userTier });
+
+      // Clear AI usage cache to ensure updated limits are fetched
+      await chrome.storage.local.remove(['cachedAIUsage']);
+
+      // Emit tier change event to update all parts of the extension
+      try {
+        window.eventBus?.emit('tier:changed', {
+          tier: status.tier,
+          active: status.active,
+          expiresAt: status.expiresAt
+        });
+      } catch (_) { }
+
+      // Notify background script of tier change for sync timer management
+      try {
+        chrome.runtime.sendMessage({
+          action: 'tier-changed',
+          active: status.active,
+          tier: status.tier
+        }).catch(() => { });
+      } catch (_) { }
+
+      // Emit auth:changed event to refresh all components
+      try {
+        window.eventBus?.emit('auth:changed', {
+          user: this.currentUser,
+          statusRefresh: true // Flag to indicate this is a status refresh
+        });
+      } catch (_) { }
+
+      // Notify background script about auth change
+      try {
+        chrome.runtime.sendMessage({
+          action: 'auth-changed',
+          user: this.currentUser,
+          statusRefresh: true // Flag to indicate this is a status refresh
+        }).catch(() => { });
+      } catch (_) { }
+
+      // Update ad manager based on new status
+      try {
+        if (window.adManager) {
+          if (status.active && status.tier !== 'free') {
+            window.adManager.hideAdContainer?.();
+          } else {
+            window.adManager.refreshAd?.();
+          }
+        }
+      } catch (_) { }
+
+      return status;
+
+    } catch (error) {
+      // If comprehensive refresh fails, fall back to basic auth event
+      try { window.eventBus?.emit('auth:changed', { user: this.currentUser }); } catch (_) { }
+      throw error;
     }
   }
 }
