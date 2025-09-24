@@ -130,11 +130,13 @@ class SupabaseClient {
 
         // For persistent login, be more lenient with token validation
         const rememberLogin = localStorage.getItem('remember_login');
-        if (rememberLogin === 'true') {
-          // Skip token verification for remembered sessions to avoid unnecessary logouts
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        if (rememberLogin === 'true' || isMobile) {
+          // Skip token verification for remembered sessions and mobile to avoid unnecessary logouts
           // The token will be validated on actual API calls
         } else {
-          // Verify token is still valid for non-persistent sessions
+          // Verify token is still valid for non-persistent desktop sessions
           const isValid = await this.verifyToken();
           if (!isValid) {
             await this.signOut();
@@ -345,6 +347,10 @@ class SupabaseClient {
         auth: false,
         body: payload
       });
+
+      // For Google Auth, ensure persistent session for all users (like other websites)
+      localStorage.setItem('remember_login', 'true');
+
       await this.handleAuthSuccess(data);
       return data;
     } catch (error) {
@@ -459,13 +465,26 @@ class SupabaseClient {
     this.accessToken = authData.access_token;
     this.currentUser = authData.user;
 
-    // Store session
+    // Detect mobile for enhanced session handling
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+      (window.innerWidth <= 768 && 'ontouchstart' in window);
+
+    // Use long-lasting sessions like other modern websites (Gmail, GitHub, etc.)
+    const expiresIn = authData.expires_in || 3600;
+    const sessionDuration = isMobile ?
+      30 * 24 * 60 * 60 * 1000 : // 30 days for mobile
+      7 * 24 * 60 * 60 * 1000; // 7 days for desktop
+
+    // Store session with enhanced metadata
     await this.setStorage({
       supabase_session: {
         access_token: authData.access_token,
         refresh_token: authData.refresh_token,
         user: authData.user,
-        expires_at: Date.now() + (authData.expires_in * 1000)
+        expires_at: Date.now() + sessionDuration,
+        created_at: Date.now(),
+        last_activity: Date.now(),
+        is_mobile: isMobile
       }
     });
 
@@ -615,10 +634,36 @@ class SupabaseClient {
         data.refresh_token = refreshToken;
       }
 
+      // Preserve session metadata from original session
+      const originalSession = supabase_session;
+      data.created_at = originalSession?.created_at || Date.now();
+      data.is_mobile = originalSession?.is_mobile || false;
+
       await this.handleAuthSuccess(data);
       return true;
     } catch (error) {
-      // refreshSession error
+      // refreshSession error - for mobile, be more lenient
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+      if (isMobile && supabase_session) {
+        // On mobile, if refresh fails but session is recent, keep using it
+        const sessionAge = Date.now() - (supabase_session.created_at || 0);
+        const expiresAt = supabase_session.expires_at || 0;
+
+        // If session is less than 7 days old and not expired by more than 24 hours, keep it
+        if (sessionAge < 7 * 24 * 60 * 60 * 1000 && (Date.now() - expiresAt) < 24 * 60 * 60 * 1000) {
+          // Update activity and extend expiry
+          const extendedSession = {
+            ...supabase_session,
+            last_activity: Date.now(),
+            expires_at: Date.now() + 7 * 24 * 60 * 60 * 1000 // Extend by 7 days
+          };
+
+          await this.setStorage({ supabase_session: extendedSession });
+          return true;
+        }
+      }
+
       throw error;
     }
   }

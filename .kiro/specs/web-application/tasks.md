@@ -145,7 +145,16 @@
     - Display import preview before processing
     - _Requirements: 8.1, 8.2_
 
+- [x] 15. Implement fixes for mobile and website session expired issues
 
+
+
+
+
+  - current issues are as follows on mobile specifically both ios safari and chrome, when we login to our site using google auth, and lets say we close app or tab when we reopen the site we get session expiry evertime, right away,
+  - secondary fix not as important when logging on pc no our webpage lets say on chrome we sometimes get sesssion expired, however im not sure of our current logic for google auth and how logn the tokesn refresh before expiring we need to relogin, currenly i can say for sure it lasts at least and hour or two before i get the session expired issue, so it is someone what working there might be some issue cuasing the session expired we can figure that out this is lower priority, 
+  - secondly lets examine our supaeas auth login for both mobile and weebsite and make it to par with google auth interms of holding the sesssoin we can probably resues code and logic if we are not already and make sure expiry is happenign about the same time if possible. 
+  -google auth happens through supabase i think since we get tokesn from supabse so that might be the main issue or seomthign else regardles lets get a full understnding with main focuse being getting movbiel to not have session expired each time we open the site after loggin in, and then tracking down minor issues with webpage on pc.
 
 - [x] 16. implement planned migraton in stripe migration plan and produt analysis 
 

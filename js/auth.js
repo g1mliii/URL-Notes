@@ -26,6 +26,11 @@ class Auth {
       return;
     }
 
+    // Initialize session manager
+    if (window.SessionManager && !this.sessionManager) {
+      this.sessionManager = new window.SessionManager();
+    }
+
     // Initialize Supabase client from global instance
     if (window.supabaseClient) {
       this.supabaseClient = window.supabaseClient;
@@ -506,6 +511,11 @@ class Auth {
 
   // Web-specific session management (replaces chrome.storage with localStorage)
   async getSession() {
+    if (this.sessionManager) {
+      return this.sessionManager.getSession();
+    }
+    
+    // Fallback to direct localStorage access
     try {
       const sessionData = localStorage.getItem('supabase_session');
       return sessionData ? JSON.parse(sessionData) : null;
@@ -516,14 +526,32 @@ class Auth {
   }
 
   async setSession(sessionData) {
+    if (this.sessionManager) {
+      return this.sessionManager.setSession(sessionData);
+    }
+    
+    // Fallback to direct localStorage access
     try {
-      localStorage.setItem('supabase_session', JSON.stringify(sessionData));
+      const isMobile = this.isMobile();
+      const enhancedSession = {
+        ...sessionData,
+        last_activity: Date.now(),
+        is_mobile: isMobile,
+        created_at: sessionData.created_at || Date.now()
+      };
+      
+      localStorage.setItem('supabase_session', JSON.stringify(enhancedSession));
     } catch (error) {
       // Error setting session
     }
   }
 
   async clearSession() {
+    if (this.sessionManager) {
+      return this.sessionManager.clearSession();
+    }
+    
+    // Fallback to direct localStorage access
     try {
       localStorage.removeItem('supabase_session');
       localStorage.removeItem('remember_login');
@@ -537,6 +565,42 @@ class Auth {
       localStorage.removeItem('cachedSalt');
     } catch (error) {
       // Error clearing session
+    }
+  }
+
+  // Detect mobile devices
+  isMobile() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (window.innerWidth <= 768 && 'ontouchstart' in window);
+  }
+
+  // Validate and refresh session using session manager
+  async validateAndRefreshSession() {
+    if (!this.sessionManager) return;
+
+    try {
+      const session = await this.getSession();
+      if (!session) return;
+
+      // Use session manager to validate and refresh
+      const refreshCallback = async (sessionToRefresh) => {
+        if (this.supabaseClient && this.supabaseClient.refreshSession) {
+          await this.supabaseClient.refreshSession();
+          return await this.getSession(); // Get the updated session
+        }
+        return null;
+      };
+
+      const validatedSession = await this.sessionManager.validateSession(session, refreshCallback);
+      
+      if (!validatedSession) {
+        // Session is invalid, sign out
+        await this.handleSignOut();
+      }
+      
+      return validatedSession;
+    } catch (e) {
+      // Session validation failed
     }
   }
 

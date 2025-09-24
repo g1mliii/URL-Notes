@@ -96,13 +96,10 @@ class App {
 
   // Set up periodic session refresh to keep users logged in
   setupSessionRefresh() {
-    // Only set up refresh if user wants to be remembered
-    const rememberLogin = localStorage.getItem('remember_login');
-    if (rememberLogin !== 'true') {
-      return;
-    }
+    // Always set up refresh for authenticated users (like other modern websites)
+    // Check every 6 hours for refresh needs
+    const refreshInterval = 6 * 60 * 60 * 1000; // 6 hours
 
-    // Refresh session every 30 minutes
     setInterval(async () => {
       try {
         const sessionData = localStorage.getItem('supabase_session');
@@ -111,15 +108,82 @@ class App {
           const expiresAt = session.expires_at || 0;
           const now = Date.now();
 
-          // If token expires within 10 minutes, refresh it
-          if (expiresAt - now < 10 * 60 * 1000) {
+          // Refresh if session expires within 24 hours (like other websites)
+          const refreshWindow = 24 * 60 * 60 * 1000; // 24 hours
+
+          if (expiresAt - now < refreshWindow) {
             await this.refreshAuthToken(session);
           }
         }
       } catch (e) {
         // Session refresh failed silently
       }
-    }, 30 * 60 * 1000); // 30 minutes
+    }, refreshInterval);
+
+    // Set up mobile-specific session management
+    this.setupMobileSessionHandling();
+  }
+
+  // Detect mobile devices
+  isMobile() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+      (window.innerWidth <= 768 && 'ontouchstart' in window);
+  }
+
+  // Mobile-specific session handling
+  setupMobileSessionHandling() {
+    if (!this.isMobile()) return;
+
+    // Handle page visibility changes (mobile app switching)
+    document.addEventListener('visibilitychange', async () => {
+      if (!document.hidden && this.isAuthenticated) {
+        // Page became visible - check and refresh session if needed
+        await this.checkAndRefreshSession();
+      }
+    });
+
+    // Handle page focus (iOS Safari specific)
+    window.addEventListener('focus', async () => {
+      if (this.isAuthenticated) {
+        await this.checkAndRefreshSession();
+      }
+    });
+
+    // Handle beforeunload to save session state
+    window.addEventListener('beforeunload', () => {
+      if (this.isAuthenticated && this.currentUser) {
+        // Ensure session is saved with current timestamp
+        const sessionData = localStorage.getItem('supabase_session');
+        if (sessionData) {
+          try {
+            const session = JSON.parse(sessionData);
+            session.last_activity = Date.now();
+            localStorage.setItem('supabase_session', JSON.stringify(session));
+          } catch (e) {
+            // Error saving session activity
+          }
+        }
+      }
+    });
+  }
+
+  // Check and refresh session if needed
+  async checkAndRefreshSession() {
+    try {
+      const sessionData = localStorage.getItem('supabase_session');
+      if (!sessionData) return;
+
+      const session = JSON.parse(sessionData);
+      const expiresAt = session.expires_at || 0;
+      const now = Date.now();
+
+      // If token expires within 24 hours, refresh it (reasonable for long sessions)
+      if (expiresAt - now < 24 * 60 * 60 * 1000) {
+        await this.refreshAuthToken(session);
+      }
+    } catch (e) {
+      // Session check failed
+    }
   }
 
   // Centralized subscription status loading to avoid multiple API calls
@@ -317,14 +381,23 @@ class App {
       const expiresAt = sessionData.expires_at || 0;
       const now = Date.now();
 
-      // If token expires within 5 minutes, try to refresh it
-      if (expiresAt - now < 5 * 60 * 1000) {
+      // More lenient expiry handling for long-lasting sessions
+      const isMobile = this.isMobile();
+      const refreshWindow = isMobile ? 24 * 60 * 60 * 1000 : 12 * 60 * 60 * 1000; // 24 hours mobile, 12 hours desktop
+
+      // If token expires within refresh window, try to refresh it
+      if (expiresAt - now < refreshWindow) {
         try {
           const refreshed = await this.refreshAuthToken(sessionData);
           if (refreshed) {
             return refreshed;
           }
         } catch (e) {
+          // For mobile, be more lenient with refresh failures
+          if (isMobile && expiresAt > now) {
+            // Token is still technically valid, keep using it
+            return sessionData;
+          }
           // Refresh failed, clear session
           localStorage.removeItem('supabase_session');
           return null;
@@ -334,6 +407,18 @@ class App {
       // Token is still valid
       if (expiresAt > now) {
         return sessionData;
+      }
+
+      // For mobile, be more lenient with expired tokens if they're recent
+      if (isMobile && (now - expiresAt) < 24 * 60 * 60 * 1000) { // 24 hour grace period on mobile
+        try {
+          const refreshed = await this.refreshAuthToken(sessionData);
+          if (refreshed) {
+            return refreshed;
+          }
+        } catch (e) {
+          // Even refresh failed, token is truly expired
+        }
       }
 
       // Token is expired, clear it
@@ -371,14 +456,30 @@ class App {
       const data = await response.json();
 
       if (data.access_token) {
+        // Calculate expiry time - be more generous for mobile
+        const isMobile = this.isMobile();
+        const expiresIn = data.expires_in || 3600;
+
+        // Use long-lasting sessions like other modern websites
+        const sessionDuration = isMobile ?
+          30 * 24 * 60 * 60 * 1000 : // 30 days for mobile (like other apps)
+          7 * 24 * 60 * 60 * 1000; // 7 days for desktop
+
         const newSession = {
           access_token: data.access_token,
           refresh_token: data.refresh_token || sessionData.refresh_token,
           user: data.user || sessionData.user,
-          expires_at: Date.now() + (data.expires_in || 3600) * 1000
+          expires_at: Date.now() + sessionDuration,
+          last_activity: Date.now(),
+          is_mobile: isMobile
         };
 
         localStorage.setItem('supabase_session', JSON.stringify(newSession));
+
+        // Update current auth state
+        this.isAuthenticated = true;
+        this.currentUser = newSession.user;
+
         return newSession;
       }
 
