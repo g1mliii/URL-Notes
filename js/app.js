@@ -50,7 +50,7 @@ class App {
     const userAgent = navigator.userAgent.toLowerCase();
     const crawlers = [
       'googlebot',
-      'bingbot', 
+      'bingbot',
       'slurp',
       'duckduckbot',
       'baiduspider',
@@ -59,7 +59,7 @@ class App {
       'twitterbot',
       'linkedinbot'
     ];
-    
+
     return crawlers.some(crawler => userAgent.includes(crawler));
   }
 
@@ -79,6 +79,9 @@ class App {
     // If authenticated, load subscription status once for all modules
     if (this.isAuthenticated) {
       await this.loadSubscriptionStatusOnce();
+
+      // Set up periodic session refresh for persistent login
+      this.setupSessionRefresh();
     }
 
     // Initialize page-specific functionality
@@ -91,6 +94,34 @@ class App {
     this.hideLoadingState();
   }
 
+  // Set up periodic session refresh to keep users logged in
+  setupSessionRefresh() {
+    // Only set up refresh if user wants to be remembered
+    const rememberLogin = localStorage.getItem('remember_login');
+    if (rememberLogin !== 'true') {
+      return;
+    }
+
+    // Refresh session every 30 minutes
+    setInterval(async () => {
+      try {
+        const sessionData = localStorage.getItem('supabase_session');
+        if (sessionData) {
+          const session = JSON.parse(sessionData);
+          const expiresAt = session.expires_at || 0;
+          const now = Date.now();
+
+          // If token expires within 10 minutes, refresh it
+          if (expiresAt - now < 10 * 60 * 1000) {
+            await this.refreshAuthToken(session);
+          }
+        }
+      } catch (e) {
+        // Session refresh failed silently
+      }
+    }, 30 * 60 * 1000); // 30 minutes
+  }
+
   // Centralized subscription status loading to avoid multiple API calls
   async loadSubscriptionStatusOnce() {
     if (this.subscriptionCheckInProgress) {
@@ -98,12 +129,12 @@ class App {
     }
 
     this.subscriptionCheckInProgress = true;
-    
+
     try {
       // Check cache first
       const cachedData = localStorage.getItem('cachedSubscription');
       const cacheTime = localStorage.getItem('subscriptionCacheTime');
-      
+
       if (cachedData && cacheTime) {
         const age = Date.now() - parseInt(cacheTime);
         if (age < 5 * 60 * 1000) { // 5 minutes cache
@@ -121,11 +152,11 @@ class App {
 
         if (!response.error) {
           this.subscriptionData = response;
-          
+
           // Cache the response
           localStorage.setItem('cachedSubscription', JSON.stringify(response));
           localStorage.setItem('subscriptionCacheTime', Date.now().toString());
-          
+
           this.emitSubscriptionStateChange();
         }
       }
@@ -241,7 +272,7 @@ class App {
 
     this.authCheckInProgress = true;
     this.authCheckPromise = this._performAuthCheck();
-    
+
     try {
       const result = await this.authCheckPromise;
       // Emit auth state change event for other modules to listen
@@ -259,13 +290,101 @@ class App {
       isAuthenticated: this.isAuthenticated,
       currentUser: this.currentUser
     };
-    
+
     // Use custom event system for auth state sharing
     if (window.eventBus) {
       window.eventBus.emit('auth:stateChanged', authData);
     } else {
       // Fallback: store in global state
       window.authState = authData;
+    }
+  }
+
+  // Restore authentication from localStorage with token refresh
+  async restoreAuthFromStorage() {
+    try {
+      const cachedSession = localStorage.getItem('supabase_session');
+      if (!cachedSession) {
+        return null;
+      }
+
+      const sessionData = JSON.parse(cachedSession);
+      if (!sessionData.access_token || !sessionData.user) {
+        localStorage.removeItem('supabase_session');
+        return null;
+      }
+
+      const expiresAt = sessionData.expires_at || 0;
+      const now = Date.now();
+
+      // If token expires within 5 minutes, try to refresh it
+      if (expiresAt - now < 5 * 60 * 1000) {
+        try {
+          const refreshed = await this.refreshAuthToken(sessionData);
+          if (refreshed) {
+            return refreshed;
+          }
+        } catch (e) {
+          // Refresh failed, clear session
+          localStorage.removeItem('supabase_session');
+          return null;
+        }
+      }
+
+      // Token is still valid
+      if (expiresAt > now) {
+        return sessionData;
+      }
+
+      // Token is expired, clear it
+      localStorage.removeItem('supabase_session');
+      return null;
+    } catch (e) {
+      // Error parsing session, clear it
+      localStorage.removeItem('supabase_session');
+      return null;
+    }
+  }
+
+  // Refresh authentication token
+  async refreshAuthToken(sessionData) {
+    if (!sessionData.refresh_token) {
+      return null;
+    }
+
+    try {
+      const response = await fetch('https://kqjcorjjvunmyrnzvqgr.supabase.co/auth/v1/token?grant_type=refresh_token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxamNvcmpqdnVubXlybnp2cWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3MTc4ODgsImV4cCI6MjA3MTI5Mzg4OH0.l-ZdPOYMNi8x3lBqlemwQ2elDyvoPy-2ZUWuODVviWk'
+        },
+        body: JSON.stringify({
+          refresh_token: sessionData.refresh_token
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Token refresh failed');
+      }
+
+      const data = await response.json();
+
+      if (data.access_token) {
+        const newSession = {
+          access_token: data.access_token,
+          refresh_token: data.refresh_token || sessionData.refresh_token,
+          user: data.user || sessionData.user,
+          expires_at: Date.now() + (data.expires_in || 3600) * 1000
+        };
+
+        localStorage.setItem('supabase_session', JSON.stringify(newSession));
+        return newSession;
+      }
+
+      return null;
+    } catch (e) {
+      return null;
     }
   }
 
@@ -276,31 +395,38 @@ class App {
         return;
       }
 
-      // Check for cached authentication state first to prevent race conditions
-      const cachedSession = localStorage.getItem('supabase_session');
       const currentPath = window.location.pathname;
-      
-      // If we have a cached session, use it temporarily to prevent redirects during initialization
-      if (cachedSession) {
-        try {
-          const sessionData = JSON.parse(cachedSession);
-          if (sessionData.access_token && sessionData.user) {
-            // Temporarily set authenticated state from cache
-            this.isAuthenticated = true;
-            this.currentUser = sessionData.user;
+
+      // First, try to restore session from localStorage immediately
+      const restoredAuth = await this.restoreAuthFromStorage();
+      if (restoredAuth) {
+        this.isAuthenticated = true;
+        this.currentUser = restoredAuth.user;
+
+        // If on login page and authenticated, redirect to dashboard
+        if (currentPath === '/' || currentPath === '/index.html' || currentPath.endsWith('index.html')) {
+          // Don't redirect if handling password reset
+          const urlParams = new URLSearchParams(window.location.search);
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+
+          const isRecovery = (urlParams.has('type') && urlParams.get('type') === 'recovery') ||
+            (hashParams.has('type') && hashParams.get('type') === 'recovery');
+
+          if (!isRecovery) {
+            window.location.href = '/dashboard';
+            return;
           }
-        } catch (e) {
-          // Invalid cached session data
         }
+        return; // Successfully authenticated from storage
       }
 
       // Wait for auth module to initialize with timeout
       let authReady = false;
       let attempts = 0;
-      const maxAttempts = 30; // 3 seconds max wait
-      
+      const maxAttempts = 15; // 1.5 seconds max wait
+
       while (!authReady && attempts < maxAttempts) {
-        if (window.auth && window.auth.supabaseClient && window.auth.supabaseClient.accessToken !== undefined) {
+        if (window.auth && window.auth.supabaseClient) {
           authReady = true;
           break;
         }
@@ -309,44 +435,49 @@ class App {
       }
 
       if (authReady && window.auth && window.auth.supabaseClient) {
-        // Use authentication status check after API client is fully initialized
+        // Try to initialize the client and restore session
+        try {
+          await window.auth.supabaseClient.init();
+        } catch (e) {
+          // Client init failed, continue with fallback
+        }
+
         const isAuthed = window.auth.isAuthenticated();
         const user = window.auth.getCurrentUser();
 
-        this.isAuthenticated = isAuthed;
-        this.currentUser = user;
-
         if (isAuthed && user) {
+          this.isAuthenticated = true;
+          this.currentUser = user;
+
           // User is authenticated - redirect to dashboard if on login page
           if (currentPath === '/' || currentPath === '/index.html' || currentPath.endsWith('index.html')) {
             // Don't redirect if we're handling a password reset callback
             const urlParams = new URLSearchParams(window.location.search);
             const hashParams = new URLSearchParams(window.location.hash.substring(1));
-            
+
             const isRecovery = (urlParams.has('type') && urlParams.get('type') === 'recovery') ||
-                              (hashParams.has('type') && hashParams.get('type') === 'recovery');
-            
+              (hashParams.has('type') && hashParams.get('type') === 'recovery');
+
             if (!isRecovery) {
               window.location.href = '/dashboard';
               return;
             }
           }
-        } else {
+        } else if (!this.isAuthenticated) {
+          // Only redirect if we truly have no authentication
+          this.isAuthenticated = false;
+          this.currentUser = null;
+
           // User is not authenticated - redirect to login if on protected pages
           if (currentPath.includes('/dashboard') || currentPath.includes('/account')) {
-            // Only redirect if we're sure the user is not authenticated (not during initialization)
-            if (attempts < maxAttempts) {
-              // Show a message and redirect after a short delay
-              if (window.auth && window.auth.showNotification) {
-                window.auth.showNotification('Please sign in to access this page', 'info');
-              }
-              setTimeout(() => {
-                window.location.href = '/?redirect=' + encodeURIComponent(currentPath);
-              }, 1500);
-              return;
+            if (window.auth && window.auth.showNotification) {
+              window.auth.showNotification('Session expired. Please sign in again.', 'info');
             }
+            setTimeout(() => {
+              window.location.href = '/?redirect=' + encodeURIComponent(currentPath);
+            }, 1000);
+            return;
           }
-          this.isAuthenticated = false;
         }
       } else {
         // Auth module not ready after timeout
@@ -358,7 +489,7 @@ class App {
           }
           // If we have cached session, stay on page and let it load
         }
-        
+
         // Set authenticated state based on cached session if available
         if (!this.isAuthenticated && cachedSession) {
           try {
@@ -373,29 +504,43 @@ class App {
         }
       }
     } catch (error) {
-      // Auth check failed silently
+      // Auth check failed - use cached session as fallback
       const currentPath = window.location.pathname;
-      
+
       // Check for cached session as fallback
       try {
         const cachedSession = localStorage.getItem('supabase_session');
         if (cachedSession) {
           const sessionData = JSON.parse(cachedSession);
           if (sessionData.access_token && sessionData.user) {
-            this.isAuthenticated = true;
-            this.currentUser = sessionData.user;
-            return; // Don't redirect if we have valid cached session
+            // Check if token is not expired
+            const expiresAt = sessionData.expires_at || 0;
+            const now = Date.now();
+
+            if (expiresAt > now) {
+              this.isAuthenticated = true;
+              this.currentUser = sessionData.user;
+              return; // Don't redirect if we have valid cached session
+            }
           }
         }
       } catch (e) {
-        // Cached session check failed
+        // Cached session check failed - clear invalid data
+        localStorage.removeItem('supabase_session');
       }
-      
-      this.isAuthenticated = false;
 
-      // On error, redirect protected pages to login only if no cached session
-      if (currentPath.includes('/dashboard') || currentPath.includes('/account')) {
-        window.location.href = '/?redirect=' + encodeURIComponent(currentPath);
+      // Only set to false if we don't have valid cached session
+      if (!this.isAuthenticated) {
+        this.isAuthenticated = false;
+        this.currentUser = null;
+
+        // On error, redirect protected pages to login only if no cached session
+        if (currentPath.includes('/dashboard') || currentPath.includes('/account')) {
+          // Add a small delay to prevent rapid redirects
+          setTimeout(() => {
+            window.location.href = '/?redirect=' + encodeURIComponent(currentPath);
+          }, 1000);
+        }
       }
     }
   }
@@ -521,7 +666,7 @@ class App {
   async handleDashboardAccess() {
     // Check authentication with fallback to cached session
     const isAuthenticated = this.checkAuthenticationForNavigation();
-    
+
     if (isAuthenticated) {
       // User is authenticated, go to dashboard
       window.location.href = '/dashboard';
@@ -534,7 +679,7 @@ class App {
   async handleAccountAccess() {
     // Check authentication with fallback to cached session
     const isAuthenticated = this.checkAuthenticationForNavigation();
-    
+
     if (isAuthenticated) {
       // User is authenticated, go to account page
       window.location.href = '/account';
@@ -565,7 +710,7 @@ class App {
           // Check if token is not expired
           const expiresAt = sessionData.expires_at || 0;
           const now = Date.now() / 1000; // Convert to seconds
-          
+
           if (expiresAt > now) {
             return true; // Valid cached session
           }
@@ -609,6 +754,7 @@ class App {
     } else {
       // Fallback logout - clear all auth-related data
       localStorage.removeItem('supabase_session');
+      localStorage.removeItem('remember_login');
       localStorage.removeItem('userTier');
       localStorage.removeItem('profileLastChecked');
       localStorage.removeItem('subscriptionLastChecked');

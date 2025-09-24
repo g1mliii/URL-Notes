@@ -115,20 +115,35 @@ class SupabaseClient {
         const expiresAt = result.supabase_session.expires_at || 0;
         const now = Date.now();
 
-        // If the token is expired or expiring within 60s, try to refresh first
-        if (!expiresAt || (expiresAt - now) < 60000) {
+        // If the token is expired or expiring within 5 minutes, try to refresh first
+        if (!expiresAt || (expiresAt - now) < 5 * 60 * 1000) {
           try {
             await this.refreshSession();
           } catch (e) {
-            await this.signOut();
+            // Only sign out if refresh fails and token is actually expired
+            if (expiresAt && expiresAt < now) {
+              await this.signOut();
+              return;
+            }
           }
         }
 
-        // Verify token is still valid
-        const isValid = await this.verifyToken();
-        if (!isValid) {
-          await this.signOut();
+        // For persistent login, be more lenient with token validation
+        const rememberLogin = localStorage.getItem('remember_login');
+        if (rememberLogin === 'true') {
+          // Skip token verification for remembered sessions to avoid unnecessary logouts
+          // The token will be validated on actual API calls
         } else {
+          // Verify token is still valid for non-persistent sessions
+          const isValid = await this.verifyToken();
+          if (!isValid) {
+            await this.signOut();
+            return;
+          }
+        }
+
+        // Session is valid, continue with profile setup
+        if (this.accessToken && this.currentUser) {
           // Check if we need to create/update profile (only if not done recently)
           try {
             const { profileLastChecked, userTier } = await this.getStorage(['profileLastChecked', 'userTier']);

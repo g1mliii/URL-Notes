@@ -526,6 +526,7 @@ class Auth {
   async clearSession() {
     try {
       localStorage.removeItem('supabase_session');
+      localStorage.removeItem('remember_login');
       // Clear other auth-related data
       localStorage.removeItem('userTier');
       localStorage.removeItem('profileLastChecked');
@@ -1174,7 +1175,7 @@ class Auth {
     }
   }
 
-  // Enhanced sign in with proper redirect handling
+  // Enhanced sign in with proper redirect handling and persistent session
   async signInWithRedirect(email, password) {
     const { email: inputEmail, password: inputPassword } = this.getAuthInputs();
     const finalEmail = email || inputEmail;
@@ -1190,6 +1191,25 @@ class Auth {
 
       await this.supabaseClient.signInWithEmail(finalEmail, finalPassword);
       const user = this.supabaseClient.getCurrentUser();
+
+      if (user) {
+        // Store session with extended expiration for persistent login
+        const sessionData = {
+          access_token: this.supabaseClient.accessToken,
+          refresh_token: this.supabaseClient.refreshToken,
+          user: user,
+          expires_at: Date.now() + (30 * 24 * 60 * 60 * 1000) // 30 days
+        };
+        
+        localStorage.setItem('supabase_session', JSON.stringify(sessionData));
+        localStorage.setItem('remember_login', 'true');
+        
+        // Also update app state immediately
+        if (window.app) {
+          window.app.isAuthenticated = true;
+          window.app.currentUser = user;
+        }
+      }
 
       this.showNotification('Signed in successfully', 'success');
 
@@ -1218,7 +1238,7 @@ class Auth {
     }
   }
 
-  // Enhanced sign up with proper redirect handling  
+  // Enhanced sign up with proper redirect handling and persistent session
   async signUpWithRedirect(email, password) {
     try {
       this.setAuthBusy(true);
@@ -1231,6 +1251,25 @@ class Auth {
       }
 
       const user = this.supabaseClient.getCurrentUser();
+
+      if (user) {
+        // Store session with extended expiration for persistent login
+        const sessionData = {
+          access_token: this.supabaseClient.accessToken,
+          refresh_token: this.supabaseClient.refreshToken,
+          user: user,
+          expires_at: Date.now() + (30 * 24 * 60 * 60 * 1000) // 30 days
+        };
+        
+        localStorage.setItem('supabase_session', JSON.stringify(sessionData));
+        localStorage.setItem('remember_login', 'true');
+        
+        // Also update app state immediately
+        if (window.app) {
+          window.app.isAuthenticated = true;
+          window.app.currentUser = user;
+        }
+      }
 
       this.showNotification('Account created successfully! Please check your email to verify your account.', 'success');
 
