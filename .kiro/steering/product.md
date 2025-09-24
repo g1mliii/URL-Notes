@@ -2,99 +2,99 @@
 inclusion: always
 ---
 
-# Product Rules & Implementation Guidelines
+# Product Implementation Guidelines
 
 URL Notes is a browser extension for domain/URL-specific note-taking with glassmorphism design and local-first architecture.
 
-## Core Architecture Principles
+## Critical Architecture Rules
 
-### Local-First Data Flow
-- All features MUST work offline; implement cloud sync as optional enhancement
-- IndexedDB is source of truth; Supabase is sync destination only
-- Never block UI on network operations; show cached data immediately
+### Local-First Data Flow (MANDATORY)
+- **Offline-first**: All features MUST work without network connection
+- **IndexedDB primary**: Local storage is source of truth, Supabase is sync destination only
+- **Non-blocking UI**: Never block interface on network operations, show cached data immediately
+- **Background sync**: Cloud operations happen asynchronously after local operations complete
 
-### Note Organization Model
-- **"This Site" notes**: Stored by domain (e.g., `github.com`)
-- **"This Page" notes**: Stored by full URL (e.g., `github.com/user/repo`)
-- Always provide both scoping options in UI
+### Note Storage Model
+- **Domain notes**: Store by domain only (`github.com`) for site-wide notes
+- **Page notes**: Store by full URL (`github.com/user/repo`) for page-specific notes
+- **Dual scoping**: Always provide both "This Site" and "This Page" options in UI
+- **URL normalization**: Strip query parameters and fragments for consistent storage keys
 
-### Zero-Knowledge Security
-- Encrypt ALL user content with AES-256-GCM before cloud storage
-- Derive encryption keys from user password + salt
-- Server must never access plaintext content
+### Security Requirements
+- **Client-side encryption**: AES-256-GCM encryption before any cloud storage
+- **Key derivation**: Use user password + salt, never store keys in plaintext
+- **Zero-knowledge**: Server must never access unencrypted user content
+- **Local encryption**: Encrypt sensitive data in IndexedDB for additional security
 
-## UI/UX Implementation Rules
+## UI/UX Implementation Standards
 
 ### Glassmorphism Design System
-- Use `backdrop-filter: blur(10px)` with `background: rgba(255,255,255,0.1)`
-- Apply subtle `box-shadow: 0 8px 32px rgba(0,0,0,0.1)`
-- Maintain semi-transparent surfaces throughout
+```css
+/* Required glassmorphism properties */
+backdrop-filter: blur(10px);
+background: rgba(255,255,255,0.1);
+box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+border: 1px solid rgba(255,255,255,0.2);
+```
 
-### Popup Constraints
-- Fixed dimensions: 400x600px - optimize all layouts for this size
-- Load time target: <200ms from click to visible content
-- Preserve keyboard shortcuts: Alt+E (popup), Alt+N (new note)
+### Popup Specifications
+- **Fixed size**: 400x600px (never change dimensions)
+- **Performance target**: <200ms from click to visible content
+- **Keyboard shortcuts**: Alt+E (toggle popup), Alt+N (new note)
+- **Responsive breakpoints**: 400px (popup), 768px+ (tablet), 1024px+ (desktop)
 
-### Responsive Behavior
-- Popup: 400px (primary interface)
-- Tablet: 768px+ (web app access)
-- Desktop: 1024px+ (full feature set)
+## Feature Tier Implementation
 
-## Feature Implementation Boundaries
-
-### Free Tier Restrictions
+### Free Tier Constraints
 - Local storage only (no cloud sync)
-- Version history limited to last 5 versions
-- Search scope limited to current domain/page
-- Display CodeFuel ads (respectful placement)
+- Version history: maximum 5 versions per note
+- Search scope: current domain/page only
+- CodeFuel ads: display respectfully, non-intrusive placement
 
-### Premium Feature Gates
+### Premium Features
 - Cloud sync with Supabase
 - Unlimited version history
 - Global search across all domains
 - Ad-free experience
 - Web app access
 
-### Version Management
-- Always preserve chronological versions before updates
-- Never overwrite without creating backup version
-- Implement last-write-wins for sync conflicts
+## Data Management Rules
 
-## Development Implementation Rules
+### Version Control
+- **Always backup**: Create version before any update operation
+- **Chronological order**: Preserve creation timestamps for all versions
+- **Conflict resolution**: Last-write-wins strategy with conflict version creation
+- **Never lose data**: Create conflict copies rather than overwriting
 
-### File Organization
-- Extension code ONLY in `/extension/` directory
-- No build system - code must run directly in browser
-- Use Manifest V3 service workers (never background pages)
-
-### Data Access Patterns
-- Primary: IndexedDB via `storage.js`
-- Secondary: Supabase sync via `sync.js`
-- Always check local first, sync in background
-
-### Performance Requirements
+### Performance Targets
 - Popup initialization: <200ms
 - Local search results: <100ms
-- IndexedDB operations: <50ms for basic CRUD
-
-### Browser Compatibility
-- Target: Chrome, Brave, Edge (Chromium-based only)
-- Use only features supported in Manifest V3
-- Handle IndexedDB quota limits gracefully
-
-## Content Handling Rules
+- IndexedDB CRUD operations: <50ms
+- Background sync: non-blocking, user-invisible
 
 ### Search Implementation
-- Free users: Search current domain/page only
-- Premium users: Global search across all stored notes
-- Always prioritize local results over cloud
+- **Free users**: Domain/page scope only
+- **Premium users**: Global search across all stored notes
+- **Priority order**: Local results first, then cloud results
+- **Fuzzy matching**: Support partial text matching for better UX
 
-### Sync Conflict Resolution
-- Use last-write-wins strategy
-- Preserve all versions in conflict scenarios
-- Never lose user data - create conflict versions if needed
+## Development Constraints
 
-### Ad Integration Guidelines
-- CodeFuel ads for free tier only
-- Place ads respectfully (not intrusive to note-taking flow)
-- Remove completely for premium users
+### Browser Extension Requirements
+- **Manifest V3 only**: Use service workers, never background pages
+- **No build system**: Code must run directly in browser without transpilation
+- **Extension directory**: All extension code in `/extension/` folder only
+- **Browser support**: Chrome, Brave, Edge (Chromium-based browsers only)
+
+### Data Access Pattern
+```
+User Action → popup.js → Module → storage.js → IndexedDB
+                    ↓
+Background: sync.js → api.js → Supabase (encrypted)
+```
+
+### Error Handling
+- **Graceful degradation**: Handle IndexedDB quota limits
+- **Network failures**: Continue working offline, queue sync operations
+- **Encryption errors**: Never expose plaintext, fail securely
+- **User feedback**: Show clear error messages for user-actionable issues

@@ -2,58 +2,60 @@
 inclusion: always
 ---
 
-# Project Structure & Architecture Rules
+# Project Structure & Architecture
 
-## Critical File Locations
-- **Extension code**: `/extension/` - Never modify files outside this directory for extension functionality
-- **Database**: `/supabase/migrations/` - Schema changes only through migrations
-- **Edge functions**: `/supabase/functions/` - TypeScript serverless functions
-- **Documentation**: `/guide files/` - Read-only specifications and guides
+## File Organization Rules
 
-## Module Architecture (Strict Separation)
+### Critical Directories
+- `/extension/` - Browser extension code (Manifest V3, vanilla JS)
+- `/supabase/migrations/` - Database schema changes only
+- `/supabase/functions/` - TypeScript Edge Functions
+- Root files - Web app and configuration
 
-### Popup Module Responsibilities
-- **popup.js**: Orchestrator ONLY - initializes modules, routes actions, manages view state
-- **notes.js**: Owns ALL note rendering, grouping, destructive UI (delete, archive)
-- **editor.js**: Owns editor lifecycle, content transforms, draft persistence
-- **storage.js**: Data access layer - NO DOM manipulation, pure data operations
-- **settings.js**: Settings UI and preferences management
+### Module Separation (Strict)
+- **popup.js** - Orchestrator only: initializes modules, routes actions
+- **notes.js** - Note rendering, grouping, delete/archive UI
+- **editor.js** - Editor lifecycle, content transforms, drafts
+- **storage.js** - Data layer only, no DOM manipulation
+- **settings.js** - Settings UI and preferences
 
 ### Library Layer (`/extension/lib/`)
-- **storage.js**: IndexedDB wrapper - handles all local data persistence
-- **sync.js**: Cloud sync engine - manages Supabase synchronization
-- **encryption.js**: Client-side AES-256 encryption for zero-knowledge architecture
-- **api.js**: Supabase client wrapper
-- **ads.js**: CodeFuel integration for free tier
+- **storage.js** - IndexedDB wrapper for local persistence
+- **sync.js** - Supabase cloud synchronization
+- **encryption.js** - AES-256-GCM client-side encryption
+- **api.js** - Supabase client wrapper
+- **ads.js** - CodeFuel integration
 
-## Code Organization Rules
+## Code Standards
 
-### File Naming Conventions
-- **Extension modules**: Lowercase descriptive names (notes.js, editor.js)
-- **Libraries**: Single-purpose lowercase (storage.js, sync.js)
-- **Documentation**: UPPERCASE_WITH_UNDERSCORES.md
+### JavaScript Patterns
+- **No build system** - Direct browser execution only
+- **Global modules** - Export via `window.ModuleName = {}`
+- **Dependency injection** - Pass deps as parameters, avoid globals
+- **Vanilla JS only** - No ES6 modules, maintain browser compatibility
 
-### Import/Export Patterns
-- **NO build system**: Use direct script tags in manifest.json
-- **Global module pattern**: Each module exports via `window.ModuleName = {}`
-- **Dependency injection**: Pass dependencies as function parameters
-- **No ES6 modules**: Use vanilla JavaScript for browser compatibility
-
-### Data Flow Architecture
+### Data Flow (Mandatory)
 ```
 User Action → popup.js → Module → storage.js → IndexedDB
                     ↓
-            Background sync: sync.js → api.js → Supabase
+Background: sync.js → api.js → Supabase (encrypted)
 ```
 
-## Development Constraints
-- **Manifest V3 only**: Use service workers, not background pages
-- **No transpilation**: Code must run directly in browser
-- **IndexedDB first**: Local storage is primary, cloud is sync destination
-- **Modular popup**: Each module owns specific UI domains, no cross-module DOM access
+### Naming Conventions
+- Extension modules: lowercase (notes.js, editor.js)
+- Libraries: single-purpose lowercase (storage.js, sync.js)
+- Documentation: UPPERCASE_WITH_UNDERSCORES.md
 
-## File Modification Guidelines
-- **Extension files**: Modify freely for feature development
-- **Supabase migrations**: Only add new migrations, never edit existing ones
-- **Documentation**: Read for context, update only when explicitly requested
-- **Config files**: Modify package.json only for Supabase CLI dependencies
+## Development Constraints
+
+### Architecture Rules
+- **Local-first** - IndexedDB is source of truth, cloud is sync only
+- **Module isolation** - No cross-module DOM access
+- **Manifest V3** - Service workers only, no background pages
+- **Zero build** - Code runs directly in browser
+
+### File Modification Policy
+- Extension files: Modify freely for features
+- Supabase migrations: Add new only, never edit existing
+- Documentation: Read-only unless explicitly requested
+- Config files: Supabase CLI dependencies only
