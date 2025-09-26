@@ -700,8 +700,12 @@ class Dashboard {
     // Get unique domains
     const domains = [...new Set(this.notes.map(note => note.domain))].sort();
 
-    // Clear existing options (except "All Domains")
-    domainFilter.innerHTML = '<option value="">All Domains</option>';
+    // Clear existing options safely
+    domainFilter.innerHTML = '';
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'All Domains';
+    domainFilter.appendChild(defaultOption);
 
     // Add domain options
     domains.forEach(domain => {
@@ -819,27 +823,68 @@ class Dashboard {
       card.classList.add('selected');
     }
 
-    card.innerHTML = `
-      <div class="note-card-selection">
-        <input type="checkbox" class="note-checkbox" ${isSelected ? 'checked' : ''} data-note-id="${note.id}">
-      </div>
-      <div class="note-card-content">
-        <div class="note-card-header">
-          <div class="note-card-title">${this.escapeHtml(note.title)}</div>
-          <div class="note-card-date">${note.formattedDate}</div>
-        </div>
-        <div class="note-card-preview">${this.escapeHtml(note.preview)}</div>
-        ${note.url ? `<div class="note-card-url">${this.escapeHtml(this.truncateUrl(note.url))}</div>` : ''}
-        ${note.tags && note.tags.length > 0 ? `
-          <div class="note-card-tags">
-            ${note.tags.map(tag => `<span class="tag">${this.escapeHtml(tag)}</span>`).join('')}
-          </div>
-        ` : ''}
-      </div>
-    `;
+    // Create card structure safely using DOM methods
+    const selectionDiv = document.createElement('div');
+    selectionDiv.className = 'note-card-selection';
+    
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'note-checkbox';
+    checkbox.checked = isSelected;
+    checkbox.setAttribute('data-note-id', note.id);
+    selectionDiv.appendChild(checkbox);
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'note-card-content';
+
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'note-card-header';
+
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'note-card-title';
+    titleDiv.textContent = note.title;
+
+    const dateDiv = document.createElement('div');
+    dateDiv.className = 'note-card-date';
+    dateDiv.textContent = note.formattedDate;
+
+    headerDiv.appendChild(titleDiv);
+    headerDiv.appendChild(dateDiv);
+
+    const previewDiv = document.createElement('div');
+    previewDiv.className = 'note-card-preview';
+    previewDiv.textContent = note.preview;
+
+    contentDiv.appendChild(headerDiv);
+    contentDiv.appendChild(previewDiv);
+
+    // Add URL if present
+    if (note.url) {
+      const urlDiv = document.createElement('div');
+      urlDiv.className = 'note-card-url';
+      urlDiv.textContent = this.truncateUrl(note.url);
+      contentDiv.appendChild(urlDiv);
+    }
+
+    // Add tags if present
+    if (note.tags && note.tags.length > 0) {
+      const tagsDiv = document.createElement('div');
+      tagsDiv.className = 'note-card-tags';
+      
+      note.tags.forEach(tag => {
+        const tagSpan = document.createElement('span');
+        tagSpan.className = 'tag';
+        tagSpan.textContent = tag;
+        tagsDiv.appendChild(tagSpan);
+      });
+      
+      contentDiv.appendChild(tagsDiv);
+    }
+
+    card.appendChild(selectionDiv);
+    card.appendChild(contentDiv);
 
     // Add checkbox event listener
-    const checkbox = card.querySelector('.note-checkbox');
     checkbox.addEventListener('change', (e) => {
       e.stopPropagation();
       this.toggleNoteSelection(note.id);
@@ -866,24 +911,66 @@ class Dashboard {
       card.classList.add('selected');
     }
 
-    card.innerHTML = `
-      <div class="note-card-selection">
-        <input type="checkbox" class="note-checkbox" ${isSelected ? 'checked' : ''} data-note-id="${note.id}">
-      </div>
-      <div class="note-card-content">
-        <div class="note-card-header">
-          <div class="note-card-title">${this.escapeHtml(note.title)}</div>
-          <div class="note-card-date">${note.formattedDate}</div>
-        </div>
-        <div class="note-card-preview">${this.escapeHtml(note.preview)}</div>
-        ${note.url ? `<div class="note-card-url">${this.escapeHtml(this.truncateUrl(note.url))}</div>` : ''}
-        ${note.tags && note.tags.length > 0 ? `
-          <div class="note-card-tags">
-            ${note.tags.map(tag => `<span class="tag">${this.escapeHtml(tag)}</span>`).join('')}
-          </div>
-        ` : ''}
-      </div>
-    `;
+    // Create card structure safely using DOM methods (optimized version)
+    const selectionDiv = document.createElement('div');
+    selectionDiv.className = 'note-card-selection';
+    
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'note-checkbox';
+    checkbox.checked = isSelected;
+    checkbox.setAttribute('data-note-id', note.id);
+    selectionDiv.appendChild(checkbox);
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'note-card-content';
+
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'note-card-header';
+
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'note-card-title';
+    titleDiv.textContent = note.title;
+
+    const dateDiv = document.createElement('div');
+    dateDiv.className = 'note-card-date';
+    dateDiv.textContent = note.formattedDate;
+
+    headerDiv.appendChild(titleDiv);
+    headerDiv.appendChild(dateDiv);
+
+    const previewDiv = document.createElement('div');
+    previewDiv.className = 'note-card-preview';
+    previewDiv.textContent = note.preview;
+
+    contentDiv.appendChild(headerDiv);
+    contentDiv.appendChild(previewDiv);
+
+    // Add URL if present
+    if (note.url) {
+      const urlDiv = document.createElement('div');
+      urlDiv.className = 'note-card-url';
+      urlDiv.textContent = this.truncateUrl(note.url);
+      contentDiv.appendChild(urlDiv);
+    }
+
+    // Add tags if present
+    if (note.tags && note.tags.length > 0) {
+      const tagsDiv = document.createElement('div');
+      tagsDiv.className = 'note-card-tags';
+      
+      note.tags.forEach(tag => {
+        const tagSpan = document.createElement('span');
+        tagSpan.className = 'tag';
+        tagSpan.textContent = tag;
+        tagsDiv.appendChild(tagSpan);
+      });
+      
+      contentDiv.appendChild(tagsDiv);
+    }
+
+    card.appendChild(selectionDiv);
+    card.appendChild(contentDiv);
 
     return card;
   }
@@ -932,6 +1019,74 @@ class Dashboard {
     return div.innerHTML;
   }
 
+  // Safe DOM manipulation methods using DOMSanitizer
+  async safeSetInnerHTML(element, content, type = 'richText') {
+    if (window.domSanitizer) {
+      await window.domSanitizer.safeSetInnerHTML(element, content, type);
+    } else {
+      // Fallback to text content if sanitizer not available
+      element.textContent = content || '';
+    }
+  }
+
+  safeSetTextContent(element, content) {
+    if (element) {
+      element.textContent = content || '';
+    }
+  }
+
+  // Input validation and sanitization methods
+  async validateAndSanitizeInput(input, type) {
+    if (window.domSanitizer) {
+      return await window.domSanitizer.validateInput(input, type);
+    } else {
+      // Fallback validation
+      return this.basicInputValidation(input, type);
+    }
+  }
+
+  async validateAndSanitizeTags(tagsString) {
+    if (!tagsString) return [];
+    
+    const tags = tagsString.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+    const sanitizedTags = [];
+    
+    for (const tag of tags) {
+      if (tag.length <= 100) { // Max tag length
+        const sanitized = await this.validateAndSanitizeInput(tag, 'tag');
+        if (sanitized) {
+          sanitizedTags.push(sanitized);
+        }
+      }
+    }
+    
+    return sanitizedTags.slice(0, 20); // Max 20 tags
+  }
+
+  basicInputValidation(input, type) {
+    if (!input) return '';
+    
+    // Basic HTML escaping
+    const div = document.createElement('div');
+    div.textContent = input;
+    let sanitized = div.innerHTML;
+    
+    // Length limits
+    const maxLengths = {
+      title: 500,
+      content: 50000,
+      tag: 100,
+      url: 2000
+    };
+    
+    const maxLength = maxLengths[type] || maxLengths.content;
+    if (sanitized.length > maxLength) {
+      sanitized = sanitized.substring(0, maxLength);
+    }
+    
+    return sanitized;
+  }
+
   showLoadingState() {
     const notesGrid = document.getElementById('notesGrid');
     const emptyState = document.getElementById('emptyState');
@@ -939,12 +1094,20 @@ class Dashboard {
     if (notesGrid && emptyState) {
       notesGrid.classList.add('hidden');
       emptyState.classList.remove('hidden');
-      emptyState.innerHTML = `
-        <div class="loading">
-          <h3>Loading notes...</h3>
-          <p>Please wait while we fetch your notes.</p>
-        </div>
-      `;
+      // Create loading state safely
+      emptyState.innerHTML = '';
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'loading';
+      
+      const title = document.createElement('h3');
+      title.textContent = 'Loading notes...';
+      
+      const message = document.createElement('p');
+      message.textContent = 'Please wait while we fetch your notes.';
+      
+      loadingDiv.appendChild(title);
+      loadingDiv.appendChild(message);
+      emptyState.appendChild(loadingDiv);
     }
   }
 
@@ -958,18 +1121,36 @@ class Dashboard {
 
       const hasFilters = this.currentFilter.search || this.currentFilter.domain || this.currentFilter.dateRange;
 
+      // Clear existing content
+      emptyState.innerHTML = '';
+
+      const title = document.createElement('h3');
+      title.textContent = 'No notes found';
+
+      const message = document.createElement('p');
+      
       if (hasFilters) {
-        emptyState.innerHTML = `
-          <h3>No notes found</h3>
-          <p>No notes match your current filters. Try adjusting your search or filters.</p>
-          <button class="btn-secondary" onclick="window.dashboard.clearFilters()">Clear Filters</button>
-        `;
+        message.textContent = 'No notes match your current filters. Try adjusting your search or filters.';
+        
+        const clearButton = document.createElement('button');
+        clearButton.className = 'btn-secondary';
+        clearButton.textContent = 'Clear Filters';
+        clearButton.addEventListener('click', () => this.clearFilters());
+        
+        emptyState.appendChild(title);
+        emptyState.appendChild(message);
+        emptyState.appendChild(clearButton);
       } else {
-        emptyState.innerHTML = `
-          <h3>No notes found</h3>
-          <p>Start taking notes with the browser extension or create your first note here.</p>
-          <button class="btn-primary" onclick="window.dashboard.showNoteEditor()">Create First Note</button>
-        `;
+        message.textContent = 'Start taking notes with the browser extension or create your first note here.';
+        
+        const createButton = document.createElement('button');
+        createButton.className = 'btn-primary';
+        createButton.textContent = 'Create First Note';
+        createButton.addEventListener('click', () => this.showNoteEditor());
+        
+        emptyState.appendChild(title);
+        emptyState.appendChild(message);
+        emptyState.appendChild(createButton);
       }
     }
   }
@@ -981,11 +1162,23 @@ class Dashboard {
     if (notesGrid && emptyState) {
       notesGrid.classList.add('hidden');
       emptyState.classList.remove('hidden');
-      emptyState.innerHTML = `
-        <h3>Error loading notes</h3>
-        <p>${this.escapeHtml(message)}</p>
-        <button class="btn-primary" onclick="window.dashboard.loadNotes()">Try Again</button>
-      `;
+      // Create error state safely
+      emptyState.innerHTML = '';
+      
+      const title = document.createElement('h3');
+      title.textContent = 'Error loading notes';
+      
+      const errorMessage = document.createElement('p');
+      errorMessage.textContent = message;
+      
+      const retryButton = document.createElement('button');
+      retryButton.className = 'btn-primary';
+      retryButton.textContent = 'Try Again';
+      retryButton.addEventListener('click', () => this.loadNotes());
+      
+      emptyState.appendChild(title);
+      emptyState.appendChild(errorMessage);
+      emptyState.appendChild(retryButton);
     }
   }
 
@@ -1059,31 +1252,50 @@ class Dashboard {
     dateEl.textContent = this.formatDate(note.updatedAt || note.createdAt);
     domainEl.textContent = note.domain || 'Unknown';
 
-    // Populate formatted content
-    contentEl.innerHTML = this.buildContentHtml(note.content || '');
+    // Populate formatted content safely using DOMSanitizer
+    this.safeSetInnerHTML(contentEl, this.buildContentHtml(note.content || ''), 'richText').catch(console.error);
 
-    // Populate URL
+    // Populate URL safely
+    urlEl.innerHTML = '';
     if (note.url) {
-      urlEl.innerHTML = `
-        <a href="${note.url}" target="_blank" rel="noopener noreferrer" class="note-url-link">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-          </svg>
-          ${this.truncateUrl(note.url, 40)}
-        </a>
-      `;
-    } else {
-      urlEl.innerHTML = '';
+      const urlLink = document.createElement('a');
+      urlLink.href = note.url;
+      urlLink.target = '_blank';
+      urlLink.rel = 'noopener noreferrer';
+      urlLink.className = 'note-url-link';
+      
+      // Create SVG icon
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', '16');
+      svg.setAttribute('height', '16');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('fill', 'none');
+      svg.setAttribute('stroke', 'currentColor');
+      svg.setAttribute('stroke-width', '2');
+      
+      const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path1.setAttribute('d', 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71');
+      
+      const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path2.setAttribute('d', 'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71');
+      
+      svg.appendChild(path1);
+      svg.appendChild(path2);
+      
+      urlLink.appendChild(svg);
+      urlLink.appendChild(document.createTextNode(' ' + this.truncateUrl(note.url, 40)));
+      urlEl.appendChild(urlLink);
     }
 
-    // Populate tags
+    // Populate tags safely
+    tagsEl.innerHTML = '';
     if (note.tags && note.tags.length > 0) {
-      tagsEl.innerHTML = note.tags.map(tag =>
-        `<span class="note-tag">${this.escapeHtml(tag)}</span>`
-      ).join('');
-    } else {
-      tagsEl.innerHTML = '';
+      note.tags.forEach(tag => {
+        const tagSpan = document.createElement('span');
+        tagSpan.className = 'note-tag';
+        tagSpan.textContent = tag;
+        tagsEl.appendChild(tagSpan);
+      });
     }
   }
 
@@ -1213,7 +1425,8 @@ class Dashboard {
     if (this.currentNote) {
       titleInput.value = this.currentNote.title || '';
       urlInput.value = this.currentNote.url || '';
-      contentInput.innerHTML = this.buildContentHtml(this.currentNote.content || '');
+      // Set content safely using DOMSanitizer
+      this.safeSetInnerHTML(contentInput, this.buildContentHtml(this.currentNote.content || ''), 'richText').catch(console.error);
       tagsInput.value = (this.currentNote.tags || []).join(', ');
     }
 
@@ -1241,9 +1454,10 @@ class Dashboard {
   }
 
   // Convert HTML back to extension's markdown-like format for storage
-  htmlToMarkdown(html) {
+  async htmlToMarkdown(html) {
     const tmp = document.createElement('div');
-    tmp.innerHTML = html || '';
+    // Use DOMSanitizer to safely set HTML content
+    await this.safeSetInnerHTML(tmp, html || '', 'richText');
 
     // Convert formatting tags to markdown-style markers
     // Bold tags
@@ -1333,10 +1547,11 @@ class Dashboard {
     const noteContentInput = document.getElementById('noteContentInput');
     const noteTags = document.getElementById('noteTags');
 
-    const title = noteTitle.value.trim();
-    const url = noteUrl.value.trim();
-    const content = this.htmlToMarkdown(noteContentInput.innerHTML);
-    const tags = noteTags.value.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+    // Validate and sanitize inputs
+    const title = await this.validateAndSanitizeInput(noteTitle.value.trim(), 'title');
+    const url = await this.validateAndSanitizeInput(noteUrl.value.trim(), 'url');
+    const content = await this.htmlToMarkdown(noteContentInput.innerHTML);
+    const tags = await this.validateAndSanitizeTags(noteTags.value);
 
     if (!title && !content) {
       this.showNotification('Please enter a title or content for the note.', 'error');
@@ -1828,24 +2043,30 @@ class Dashboard {
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
 
-    fileInfo.innerHTML = `
-      <div class="file-info-item">
-        <span class="file-info-label">File Name:</span>
-        <span class="file-info-value">${this.escapeHtml(this.importFileInfo.name)}</span>
-      </div>
-      <div class="file-info-item">
-        <span class="file-info-label">File Size:</span>
-        <span class="file-info-value">${formatFileSize(this.importFileInfo.size)}</span>
-      </div>
-      <div class="file-info-item">
-        <span class="file-info-label">Total Notes:</span>
-        <span class="file-info-value">${this.importFileInfo.totalNotes}</span>
-      </div>
-      <div class="file-info-item">
-        <span class="file-info-label">Domains:</span>
-        <span class="file-info-value">${this.importFileInfo.validDomains}</span>
-      </div>
-    `;
+    // Create file info safely
+    fileInfo.innerHTML = '';
+    
+    const createInfoItem = (label, value) => {
+      const item = document.createElement('div');
+      item.className = 'file-info-item';
+      
+      const labelSpan = document.createElement('span');
+      labelSpan.className = 'file-info-label';
+      labelSpan.textContent = label;
+      
+      const valueSpan = document.createElement('span');
+      valueSpan.className = 'file-info-value';
+      valueSpan.textContent = value;
+      
+      item.appendChild(labelSpan);
+      item.appendChild(valueSpan);
+      return item;
+    };
+    
+    fileInfo.appendChild(createInfoItem('File Name:', this.importFileInfo.name));
+    fileInfo.appendChild(createInfoItem('File Size:', formatFileSize(this.importFileInfo.size)));
+    fileInfo.appendChild(createInfoItem('Total Notes:', this.importFileInfo.totalNotes));
+    fileInfo.appendChild(createInfoItem('Domains:', this.importFileInfo.validDomains));
 
     fileInfoSection.classList.remove('hidden');
   }
@@ -2085,11 +2306,14 @@ class Dashboard {
     exportNotesList.innerHTML = '';
 
     if (this.filteredNotes.length === 0) {
-      exportNotesList.innerHTML = `
-        <div class="export-empty-state">
-          <p>No notes available for export.</p>
-        </div>
-      `;
+      const emptyState = document.createElement('div');
+      emptyState.className = 'export-empty-state';
+      
+      const message = document.createElement('p');
+      message.textContent = 'No notes available for export.';
+      
+      emptyState.appendChild(message);
+      exportNotesList.appendChild(emptyState);
       return;
     }
 
@@ -2114,20 +2338,46 @@ class Dashboard {
       item.classList.add('selected');
     }
 
-    item.innerHTML = `
-      <input type="checkbox" class="export-note-checkbox" ${isSelected ? 'checked' : ''} data-note-id="${note.id}">
-      <div class="export-note-content">
-        <div class="export-note-title">${this.escapeHtml(note.title)}</div>
-        <div class="export-note-meta">
-          <span class="export-note-domain">${this.escapeHtml(note.domain)}</span>
-          <span class="export-note-date">${note.formattedDate}</span>
-        </div>
-        <div class="export-note-preview">${this.escapeHtml(note.preview)}</div>
-      </div>
-    `;
+    // Create export note item safely
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'export-note-checkbox';
+    checkbox.checked = isSelected;
+    checkbox.setAttribute('data-note-id', note.id);
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'export-note-content';
+    
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'export-note-title';
+    titleDiv.textContent = note.title;
+    
+    const metaDiv = document.createElement('div');
+    metaDiv.className = 'export-note-meta';
+    
+    const domainSpan = document.createElement('span');
+    domainSpan.className = 'export-note-domain';
+    domainSpan.textContent = note.domain;
+    
+    const dateSpan = document.createElement('span');
+    dateSpan.className = 'export-note-date';
+    dateSpan.textContent = note.formattedDate;
+    
+    metaDiv.appendChild(domainSpan);
+    metaDiv.appendChild(dateSpan);
+    
+    const previewDiv = document.createElement('div');
+    previewDiv.className = 'export-note-preview';
+    previewDiv.textContent = note.preview;
+    
+    contentDiv.appendChild(titleDiv);
+    contentDiv.appendChild(metaDiv);
+    contentDiv.appendChild(previewDiv);
+    
+    item.appendChild(checkbox);
+    item.appendChild(contentDiv);
 
     // Add event listeners
-    const checkbox = item.querySelector('.export-note-checkbox');
     checkbox.addEventListener('change', (e) => {
       e.stopPropagation();
       this.toggleExportNoteSelection(note.id);
@@ -2149,8 +2399,12 @@ class Dashboard {
     // Get unique domains from current notes
     const domains = [...new Set(this.filteredNotes.map(note => note.domain))].sort();
 
-    // Clear existing options (except first)
-    domainBulkSelect.innerHTML = '<option value="">Choose domain...</option>';
+    // Clear existing options safely
+    domainBulkSelect.innerHTML = '';
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Choose domain...';
+    domainBulkSelect.appendChild(defaultOption);
 
     // Add domain options
     domains.forEach(domain => {

@@ -258,18 +258,26 @@ class App {
         z-index: 9999;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       `;
-      loadingOverlay.innerHTML = `
-        <div style="text-align: center;">
-          <div style="width: 40px; height: 40px; border: 3px solid #f3f3f3; border-top: 3px solid #007aff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
-          <p style="color: var(--text-secondary, #666); margin: 0;">Loading...</p>
-        </div>
-        <style>
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        </style>
-      `;
+      // Create loading content safely
+      const container = document.createElement('div');
+      container.style.textAlign = 'center';
+      
+      const spinner = document.createElement('div');
+      spinner.style.cssText = 'width: 40px; height: 40px; border: 3px solid #f3f3f3; border-top: 3px solid #007aff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;';
+      
+      const text = document.createElement('p');
+      text.style.cssText = 'color: var(--text-secondary, #666); margin: 0;';
+      text.textContent = 'Loading...';
+      
+      container.appendChild(spinner);
+      container.appendChild(text);
+      
+      // Add keyframes style
+      const style = document.createElement('style');
+      style.textContent = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
+      
+      loadingOverlay.appendChild(container);
+      loadingOverlay.appendChild(style);
       document.body.appendChild(loadingOverlay);
     }
   }

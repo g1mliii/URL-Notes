@@ -217,7 +217,7 @@ class Auth {
 
     const emailInput = document.getElementById('resetEmail');
     const email = emailInput?.value?.trim();
-    const submitBtn = document.querySelector('#resetPasswordForm button[type="submit"]');
+    const resetSubmitBtn = document.querySelector('#resetPasswordForm button[type="submit"]');
 
     // Clear previous error states
     if (emailInput) {
@@ -253,10 +253,10 @@ class Auth {
       this.setAuthBusy(true);
 
       // Update button state
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.classList.add('loading');
-        submitBtn.textContent = 'Sending...';
+      if (resetSubmitBtn) {
+        resetSubmitBtn.disabled = true;
+        resetSubmitBtn.classList.add('loading');
+        resetSubmitBtn.textContent = 'Sending...';
       }
 
       // Password reset attempt for email
@@ -265,10 +265,10 @@ class Auth {
       await this.supabaseClient.resetPassword(email);
 
       // Success state
-      if (submitBtn) {
-        submitBtn.classList.remove('loading');
-        submitBtn.textContent = 'Email Sent!';
-        submitBtn.style.background = 'var(--success-color)';
+      if (resetSubmitBtn) {
+        resetSubmitBtn.classList.remove('loading');
+        resetSubmitBtn.textContent = 'Email Sent!';
+        resetSubmitBtn.style.background = 'var(--success-color)';
       }
 
       this.showNotification('Password reset email sent. Check your inbox and spam folder.', 'success');
@@ -282,11 +282,11 @@ class Auth {
         }
 
         // Reset button state
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.classList.remove('loading');
-          submitBtn.textContent = 'Send Reset Link';
-          submitBtn.style.background = '';
+        if (resetSubmitBtn) {
+          resetSubmitBtn.disabled = false;
+          resetSubmitBtn.classList.remove('loading');
+          resetSubmitBtn.textContent = 'Send Reset Link';
+          resetSubmitBtn.style.background = '';
         }
       }, 3000);
 
@@ -296,10 +296,10 @@ class Auth {
       this.showNotification(userMessage, 'error');
 
       // Reset button state
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.classList.remove('loading');
-        submitBtn.textContent = 'Send Reset Link';
+      if (resetSubmitBtn) {
+        resetSubmitBtn.disabled = false;
+        resetSubmitBtn.classList.remove('loading');
+        resetSubmitBtn.textContent = 'Send Reset Link';
       }
 
       // Focus back to email input
@@ -437,10 +437,17 @@ class Auth {
     if (type === 'success') icon = '✓';
     if (type === 'error') icon = '⚠';
 
-    notification.innerHTML = `
-      <span class="notification-icon">${icon}</span>
-      <span class="notification-message">${message}</span>
-    `;
+    // Create notification content safely
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'notification-icon';
+    iconSpan.textContent = icon;
+    
+    const messageSpan = document.createElement('span');
+    messageSpan.className = 'notification-message';
+    messageSpan.textContent = message;
+    
+    notification.appendChild(iconSpan);
+    notification.appendChild(messageSpan);
 
     // Apply glassmorphism styling to match extension design
     notification.style.cssText = `
@@ -973,29 +980,91 @@ class Auth {
     // Create a modal for password reset
     const modal = document.createElement('div');
     modal.className = 'modal';
-    modal.innerHTML = `
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>Set New Password</h3>
-          <button class="modal-close" type="button">&times;</button>
-        </div>
-        <form id="newPasswordForm">
-          <div class="input-group">
-            <div style="position: relative;">
-              <input type="password" id="newPassword" placeholder="New Password (minimum 6 characters)" required minlength="6" autocomplete="new-password">
-              <button type="button" class="toggle-password" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.875rem;">Show</button>
-            </div>
-          </div>
-          <div class="input-group">
-            <div style="position: relative;">
-              <input type="password" id="confirmNewPassword" placeholder="Confirm New Password" required minlength="6" autocomplete="new-password">
-              <button type="button" class="toggle-password" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.875rem;">Show</button>
-            </div>
-          </div>
-          <button type="submit" class="btn-primary" id="updatePasswordBtn">Update Password</button>
-        </form>
-      </div>
-    `;
+    // Create modal content safely using DOM methods
+    const modalContent = document.createElement('div');
+    modalContent.className = 'modal-content';
+    
+    const modalHeader = document.createElement('div');
+    modalHeader.className = 'modal-header';
+    
+    const title = document.createElement('h3');
+    title.textContent = 'Set New Password';
+    
+    const modalCloseBtn = document.createElement('button');
+    modalCloseBtn.className = 'modal-close';
+    modalCloseBtn.type = 'button';
+    modalCloseBtn.textContent = '×';
+    
+    modalHeader.appendChild(title);
+    modalHeader.appendChild(modalCloseBtn);
+    
+    const passwordForm = document.createElement('form');
+    passwordForm.id = 'newPasswordForm';
+    
+    // Create password input group
+    const inputGroup1 = document.createElement('div');
+    inputGroup1.className = 'input-group';
+    
+    const passwordContainer = document.createElement('div');
+    passwordContainer.style.position = 'relative';
+    
+    const passwordInput = document.createElement('input');
+    passwordInput.type = 'password';
+    passwordInput.id = 'newPassword';
+    passwordInput.placeholder = 'New Password (minimum 6 characters)';
+    passwordInput.required = true;
+    passwordInput.minLength = 6;
+    passwordInput.autocomplete = 'new-password';
+    
+    const toggleBtn1 = document.createElement('button');
+    toggleBtn1.type = 'button';
+    toggleBtn1.className = 'toggle-password';
+    toggleBtn1.textContent = 'Show';
+    toggleBtn1.style.cssText = 'position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.875rem;';
+    
+    passwordContainer.appendChild(passwordInput);
+    passwordContainer.appendChild(toggleBtn1);
+    inputGroup1.appendChild(passwordContainer);
+    
+    // Create confirm password input group
+    const inputGroup2 = document.createElement('div');
+    inputGroup2.className = 'input-group';
+    
+    const confirmContainer = document.createElement('div');
+    confirmContainer.style.position = 'relative';
+    
+    const confirmInput = document.createElement('input');
+    confirmInput.type = 'password';
+    confirmInput.id = 'confirmNewPassword';
+    confirmInput.placeholder = 'Confirm New Password';
+    confirmInput.required = true;
+    confirmInput.minLength = 6;
+    confirmInput.autocomplete = 'new-password';
+    
+    const toggleBtn2 = document.createElement('button');
+    toggleBtn2.type = 'button';
+    toggleBtn2.className = 'toggle-password';
+    toggleBtn2.textContent = 'Show';
+    toggleBtn2.style.cssText = 'position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.875rem;';
+    
+    confirmContainer.appendChild(confirmInput);
+    confirmContainer.appendChild(toggleBtn2);
+    inputGroup2.appendChild(confirmContainer);
+    
+    // Create submit button
+    const passwordSubmitBtn = document.createElement('button');
+    passwordSubmitBtn.type = 'submit';
+    passwordSubmitBtn.className = 'btn-primary';
+    passwordSubmitBtn.id = 'updatePasswordBtn';
+    passwordSubmitBtn.textContent = 'Update Password';
+    
+    passwordForm.appendChild(inputGroup1);
+    passwordForm.appendChild(inputGroup2);
+    passwordForm.appendChild(passwordSubmitBtn);
+    
+    modalContent.appendChild(modalHeader);
+    modalContent.appendChild(passwordForm);
+    modal.appendChild(modalContent);
 
     document.body.appendChild(modal);
 
@@ -1019,10 +1088,10 @@ class Auth {
     });
 
     // Handle form submission
-    const form = modal.querySelector('#newPasswordForm');
-    const submitBtn = modal.querySelector('#updatePasswordBtn');
+    const newPasswordForm = modal.querySelector('#newPasswordForm');
+    const updateSubmitBtn = modal.querySelector('#updatePasswordBtn');
 
-    form.addEventListener('submit', async (e) => {
+    newPasswordForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const newPasswordInput = document.getElementById('newPassword');
@@ -1051,9 +1120,9 @@ class Auth {
 
       try {
         // Set loading state
-        submitBtn.disabled = true;
-        submitBtn.classList.add('loading');
-        submitBtn.textContent = 'Updating...';
+        updateSubmitBtn.disabled = true;
+        updateSubmitBtn.classList.add('loading');
+        updateSubmitBtn.textContent = 'Updating...';
 
         // Update password using the reset token
         await this.handlePasswordReset(newPassword, accessToken);
@@ -1085,9 +1154,9 @@ class Auth {
         // Password update error
 
         // Reset button state
-        submitBtn.disabled = false;
-        submitBtn.classList.remove('loading');
-        submitBtn.textContent = 'Update Password';
+        updateSubmitBtn.disabled = false;
+        updateSubmitBtn.classList.remove('loading');
+        updateSubmitBtn.textContent = 'Update Password';
 
         // Show user-friendly error
         const userMessage = this.handlePasswordResetError(error);
@@ -1099,8 +1168,8 @@ class Auth {
     });
 
     // Handle modal close
-    const closeBtn = modal.querySelector('.modal-close');
-    closeBtn.addEventListener('click', () => {
+    const modalCloseButton = modal.querySelector('.modal-close');
+    modalCloseButton.addEventListener('click', () => {
       if (document.body.contains(modal)) {
         document.body.removeChild(modal);
       }

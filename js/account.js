@@ -587,10 +587,17 @@ class Account {
     if (type === 'success') icon = '✓';
     if (type === 'error') icon = '⚠';
 
-    notification.innerHTML = `
-      <span class="notification-icon">${icon}</span>
-      <span class="notification-message">${message}</span>
-    `;
+    // Create notification content safely
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'notification-icon';
+    iconSpan.textContent = icon;
+    
+    const messageSpan = document.createElement('span');
+    messageSpan.className = 'notification-message';
+    messageSpan.textContent = message;
+    
+    notification.appendChild(iconSpan);
+    notification.appendChild(messageSpan);
 
     // Apply glassmorphism styling to match extension design
     notification.style.cssText = `
