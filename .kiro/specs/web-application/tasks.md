@@ -164,7 +164,7 @@
   - **GOAL**: Prove XSS prevention approach works before tackling complex extension
   - _Requirements: Web application security and data protection requirements_
 
-- [ ] 15.1 Implement XSS prevention for extension (CRITICAL - DO AFTER WEB APP)
+- [x] 15.1 Implement XSS prevention for extension (CRITICAL - DO AFTER WEB APP)
   - Apply lessons learned from web app XSS prevention to extension
   - Install and integrate DOMPurify library for content sanitization in extension
   - Replace all innerHTML usage in extension with safe DOM manipulation methods
@@ -183,7 +183,7 @@
   - **GOAL**: Secure extension without breaking any rich text functionality
   - _Requirements: Extension security and data protection requirements while maintaining full UX_
 
-- [ ] 15.2.2 Implement HTTP-only cookie authentication for web app (WEB APP ONLY)
+- [ ] 15.2 Implement HTTP-only cookie authentication for web app (WEB APP ONLY)
   - **Create Supabase Edge Functions** for secure cookie-based authentication (NO JWT/AUTH REQUIRED)
     - `auth-login`: Handle login and set HTTP-only refresh token cookie (public endpoint - no auth required)
     - `auth-refresh`: Refresh access token using HTTP-only cookie (uses cookie for auth, not JWT header)

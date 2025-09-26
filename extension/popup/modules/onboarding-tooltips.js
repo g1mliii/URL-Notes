@@ -101,7 +101,7 @@ class OnboardingTooltips {
 
         this.tooltipContainer = document.createElement('div');
         this.tooltipContainer.id = 'onboarding-tooltip-container';
-        this.tooltipContainer.innerHTML = `
+        const tooltipHtml = `
       <div class="onboarding-tooltip" id="onboarding-tooltip" style="display: none;">
         <div class="tooltip-content">
           <div class="tooltip-header">
@@ -125,6 +125,12 @@ class OnboardingTooltips {
         <div class="tooltip-arrow" id="tooltip-arrow"></div>
       </div>
     `;
+    
+    if (window.safeDOM) {
+      window.safeDOM.setInnerHTML(this.tooltipContainer, tooltipHtml, false);
+    } else {
+      this.tooltipContainer.innerHTML = tooltipHtml;
+    }
 
         document.body.appendChild(this.tooltipContainer);
         this.addTooltipStyles();
@@ -443,7 +449,12 @@ class OnboardingTooltips {
         const nextBtn = document.getElementById('tooltip-next');
 
         if (title) {
-            title.innerHTML = config.title + (config.premiumFeature ? '<span class="tooltip-premium-badge">Premium</span>' : '');
+            const titleHtml = config.title + (config.premiumFeature ? '<span class="tooltip-premium-badge">Premium</span>' : '');
+            if (window.safeDOM) {
+                window.safeDOM.setInnerHTML(title, titleHtml, false);
+            } else {
+                title.innerHTML = titleHtml;
+            }
         }
 
         if (text) {
@@ -453,7 +464,11 @@ class OnboardingTooltips {
                 content += '<div class="tooltip-upgrade-prompt">💎 <a href="#" class="tooltip-upgrade-link" id="tooltip-upgrade-link">Upgrade to Premium</a> for advanced features and cloud sync!</div>';
             }
 
-            text.innerHTML = content;
+            if (window.safeDOM) {
+                window.safeDOM.setInnerHTML(text, content, false);
+            } else {
+                text.innerHTML = content;
+            }
         }
 
         if (progress) {

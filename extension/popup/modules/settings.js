@@ -51,6 +51,15 @@ class SettingsManager {
     this.setupEventListeners();
   }
 
+  // Helper function to safely set button HTML
+  setButtonHTML(button, html) {
+    if (window.safeDOM) {
+      window.safeDOM.setInnerHTML(button, html, false);
+    } else {
+      button.innerHTML = html;
+    }
+  }
+
   // ===== Auth UI and handlers =====
   async updateAuthUI() {
     try {
@@ -191,10 +200,7 @@ class SettingsManager {
     try {
       this.setAuthBusy(true);
 
-      // Log the redirect URL for debugging
       const redirectUrl = chrome.identity.getRedirectURL();
-      console.log('Extension redirect URL:', redirectUrl);
-      this.showNotification(`Starting Google OAuth... Redirect URL: ${redirectUrl}`, 'info');
 
       await window.supabaseClient.signInWithOAuth('google');
       this.showNotification('Signed in with Google', 'success');
@@ -209,7 +215,7 @@ class SettingsManager {
 
   async handleManualSync() {
     // Manual sync button clicked
-    
+
     if (!window.syncEngine) {
       this.showNotification('Sync engine not available', 'error');
       return;
@@ -217,30 +223,30 @@ class SettingsManager {
 
     try {
       this.manualSyncBtn.disabled = true;
-      this.manualSyncBtn.innerHTML = `
+      this.setButtonHTML(this.manualSyncBtn, `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 3v9l3 3"/>
         </svg>
         <span>Syncing...</span>
-      `;
+      `);
 
       await window.syncEngine.manualSync();
 
-      this.manualSyncBtn.innerHTML = `
+      this.setButtonHTML(this.manualSyncBtn, `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 3v9l3 3"/>
         </svg>
         <span>Sync Complete</span>
-      `;
+      `);
 
       setTimeout(() => {
-        this.manualSyncBtn.innerHTML = `
+        this.setButtonHTML(this.manualSyncBtn, `
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
             <path d="M12 3v12l3 3"/>
           </svg>
           <span>Sync Now</span>
-        `;
+        `);
         this.manualSyncBtn.disabled = false;
       }, 2000);
 
@@ -250,13 +256,13 @@ class SettingsManager {
     } catch (e) {
       this.showNotification(`Manual sync failed: ${e.message || e}`, 'error');
       this.manualSyncBtn.disabled = false;
-      this.manualSyncBtn.innerHTML = `
+      this.setButtonHTML(this.manualSyncBtn, `
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
           <path d="M12 3v9l3 3"/>
         </svg>
         <span>Sync Now</span>
-      `;
+      `);
     }
   }
 
@@ -269,13 +275,13 @@ class SettingsManager {
     try {
       // Show loading state
       this.refreshPremiumStatusBtn.disabled = true;
-      this.refreshPremiumStatusBtn.innerHTML = `
+      this.setButtonHTML(this.refreshPremiumStatusBtn, `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin">
           <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
           <path d="M12 3v9l3 3"/>
         </svg>
         <span>Refreshing...</span>
-      `;
+      `);
 
       // Use the shared refresh method
       const status = await window.supabaseClient.refreshPremiumStatusAndUI();
@@ -293,23 +299,23 @@ class SettingsManager {
       }
 
       // Reset button
-      this.refreshPremiumStatusBtn.innerHTML = `
+      this.setButtonHTML(this.refreshPremiumStatusBtn, `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
           <path d="M12 3v9l3 3"/>
         </svg>
         <span>Status Updated</span>
-      `;
+      `);
 
       // Reset to original text after 2 seconds
       setTimeout(() => {
-        this.refreshPremiumStatusBtn.innerHTML = `
+        this.setButtonHTML(this.refreshPremiumStatusBtn, `
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
             <path d="M12 3v9l3 3"/>
           </svg>
           <span>Refresh Premium Status</span>
-        `;
+        `);
         this.refreshPremiumStatusBtn.disabled = false;
       }, 2000);
 
@@ -318,13 +324,13 @@ class SettingsManager {
       this.showNotification(`Failed to refresh status: ${e.message || e}`, 'error');
 
       // Reset button on error
-      this.refreshPremiumStatusBtn.innerHTML = `
+      this.setButtonHTML(this.refreshPremiumStatusBtn, `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
           <path d="M12 3v9l3 3"/>
         </svg>
         <span>Refresh Premium Status</span>
-      `;
+      `);
       this.refreshPremiumStatusBtn.disabled = false;
     }
   }
@@ -809,12 +815,9 @@ class SettingsManager {
       // Use the Utils.showToast system
       if (typeof Utils !== 'undefined' && Utils.showToast) {
         Utils.showToast(message, type);
-      } else {
-        // Fallback to console
-        console.log(`${type.toUpperCase()}: ${message}`);
       }
     } catch (error) {
-      console.log(`${type.toUpperCase()}: ${message}`);
+      // Fallback notification handling
     }
   }
 
@@ -1040,10 +1043,10 @@ class SettingsManager {
     if (type === 'success') icon = '✓';
     if (type === 'error') icon = '⚠';
 
-    notification.innerHTML = `
+    this.setButtonHTML(notification, `
       <span class="notification-icon">${icon}</span>
       <span class="notification-message">${message}</span>
-    `;
+    `);
 
     // Apply glass morphism styling to match sync notifications
     notification.style.cssText = `

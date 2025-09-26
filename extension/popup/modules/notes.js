@@ -26,7 +26,11 @@ class NotesManager {
 
     // Only clear if we have notes to clear
     if (notesList.children.length > 0) {
-      notesList.innerHTML = '';
+      if (window.safeDOM) {
+        window.safeDOM.clearContent(notesList);
+      } else {
+        notesList.innerHTML = '';
+      }
     }
 
     // Safety check: ensure allNotes is available
@@ -116,7 +120,15 @@ class NotesManager {
   // Render notes grouped by domain for 'All Notes' view
   async renderGroupedNotes(notes, container) {
     if (!notes || !Array.isArray(notes) || notes.length === 0) {
-      container.innerHTML = '<div class="empty-state">No notes found</div>';
+      if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(container, '<div class="empty-state">No notes found</div>', false);
+      } else {
+        if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(container, '<div class="empty-state">No notes found</div>', false);
+      } else {
+        container.innerHTML = '<div class="empty-state">No notes found</div>';
+      }
+      }
       const notesCount = document.getElementById('notesCount');
       if (notesCount) notesCount.style.display = 'none';
       return;
@@ -137,8 +149,12 @@ class NotesManager {
     const sortedDomains = Object.keys(grouped).sort();
 
     // Clear container for new content
-    container.innerHTML = '';
-    container.classList.add('notes-fade-in');
+    if (window.safeDOM) {
+      window.safeDOM.clearContent(container);
+    } else {
+      container.innerHTML = '';
+    }
+    // Don't add container-level animation for All Notes view since individual notes have stagger animation
 
     // Load saved open domains to prevent visual shift
     let openSet = new Set();
@@ -533,7 +549,7 @@ class NotesManager {
       emptyState = document.createElement('div');
       emptyState.id = 'emptyState';
       emptyState.className = 'empty-state';
-      emptyState.innerHTML = `
+      const emptyStateHtml = `
         <div class="empty-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -546,6 +562,12 @@ class NotesManager {
         <h4>${title}</h4>
         <p>${message}</p>
       `;
+      
+      if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(emptyState, emptyStateHtml, false);
+      } else {
+        emptyState.innerHTML = emptyStateHtml;
+      }
     } else {
       // Update existing empty state
       const titleEl = emptyState.querySelector('h4');
@@ -556,7 +578,11 @@ class NotesManager {
 
     // Only clear if there are other children to prevent unnecessary clearing
     if (notesList.children.length > 0 && !notesList.querySelector('#emptyState')) {
-      notesList.innerHTML = '';
+      if (window.safeDOM) {
+        window.safeDOM.clearContent(notesList);
+      } else {
+        notesList.innerHTML = '';
+      }
     }
     notesList.appendChild(emptyState);
     emptyState.style.display = 'flex';

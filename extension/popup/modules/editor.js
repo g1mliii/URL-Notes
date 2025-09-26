@@ -19,7 +19,7 @@ class EditorManager {
         title: 'General Note'
       };
     }
-    
+
     const newNote = {
       id: this.generateId(),
       title: '',
@@ -49,36 +49,42 @@ class EditorManager {
   populateEditor() {
     try {
       if (!this.currentNote) return;
-      
+
       const titleHeader = document.getElementById('noteTitleHeader');
       const contentInput = document.getElementById('noteContentInput');
       const tagsInput = document.getElementById('tagsInput');
       const dateSpan = document.getElementById('noteDate');
-      
+
       // Populate title
       if (titleHeader) {
         titleHeader.value = this.currentNote.title || '';
       }
-      
-      // Populate content
+
+      // Populate content with XSS protection
       if (contentInput) {
-        contentInput.innerHTML = this.buildContentHtml(this.currentNote.content || '');
+        const safeContent = this.buildContentHtml(this.currentNote.content || '');
+        if (window.safeDOM) {
+          window.safeDOM.setInnerHTML(contentInput, safeContent, true);
+        } else {
+          // Fallback for safety
+          contentInput.textContent = this.currentNote.content || '';
+        }
       }
-      
+
       // Populate tags
       if (tagsInput) {
         tagsInput.value = (this.currentNote.tags || []).join(', ');
       }
-      
+
       // Populate date
       if (dateSpan) {
-        dateSpan.textContent = this.currentNote.createdAt ? 
+        dateSpan.textContent = this.currentNote.createdAt ?
           new Date(this.currentNote.createdAt).toLocaleDateString() : '';
       }
-      
+
       // Update character count
       this.updateCharCount();
-      
+
     } catch (error) {
       console.error('Error populating editor:', error);
     }
@@ -90,7 +96,7 @@ class EditorManager {
     const notesContainer = document.querySelector('.notes-container');
     const searchContainer = document.querySelector('.search-container');
     const aiRewriteBtn = document.getElementById('aiRewriteBtn');
-    
+
     if (!editor || !notesContainer || !searchContainer) {
       console.error('Editor elements not found');
       return;
@@ -99,11 +105,11 @@ class EditorManager {
     // Hide notes list and show editor
     notesContainer.style.display = 'none';
     searchContainer.style.display = 'none';
-    
+
     // Show editor and trigger slide-in animation
     editor.style.display = 'flex';
     editor.classList.add('open');
-    
+
     // Small delay to ensure display change is applied before animation
     setTimeout(() => {
       editor.classList.add('slide-in');
@@ -146,7 +152,7 @@ class EditorManager {
         await window.urlNotesApp.updatePremiumUI();
       }
     } catch (error) {
-              // Remove verbose logging
+      // Remove verbose logging
     }
 
     // Emit editor opened event
@@ -158,24 +164,24 @@ class EditorManager {
     const editor = document.getElementById('noteEditor');
     const notesContainer = document.querySelector('.notes-container');
     const searchContainer = document.querySelector('.search-container');
-    
+
     if (!editor || !notesContainer || !searchContainer) {
       console.error('Editor elements not found for closing');
       return;
     }
-    
+
     // Add slide-out animation
     editor.classList.add('slide-out');
-    
+
     setTimeout(() => {
       // Hide editor and show notes
       editor.style.display = 'none';
       notesContainer.style.display = 'block';
       searchContainer.style.display = 'block';
-      
+
       // Remove animation classes
       editor.classList.remove('open', 'slide-in', 'slide-out', 'editor-fade-in');
-      
+
       // If requested, clear cached draft; otherwise keep cached but mark not open
       if (options && options.clearDraft) {
         this.clearEditorState();
@@ -200,26 +206,26 @@ class EditorManager {
         .replace(/>/g, '&gt;');
 
       let text = content || '';
-      
+
       // Convert formatting markers to HTML (process outermost first to handle nesting)
       // Bold: **text** -> <b>text</b> (process first - outermost)
       text = text.replace(/\*\*([^*]*(?:\*(?!\*)[^*]*)*)\*\*/g, '<b>$1</b>');
-      
+
       // Italics: *text* -> <i>text</i> (avoid conflict with bold)
       text = text.replace(/\*([^*]+)\*/g, '<i>$1</i>');
-      
+
       // Underline: __text__ -> <u>text</u>
       text = text.replace(/__([^_]*(?:_(?!_)[^_]*)*?)__/g, '<u>$1</u>');
-      
+
       // Strikethrough: ~~text~~ -> <s>text</s> (process last - innermost)
       text = text.replace(/~~([^~]*(?:~(?!~)[^~]*)*?)~~/g, '<s>$1</s>');
-      
+
       // Color: {color:#ff0000}text{/color} -> <span style="color:#ff0000">text</span>
       text = text.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, '<span style="color:$1">$2</span>');
-      
+
       // Citation: {citation}text{/citation} -> <span style="font-style: italic; color: var(--text-secondary)">text</span>
       text = text.replace(/\{citation\}([^{]*)\{\/citation\}/g, '<span style="font-style: italic; color: var(--text-secondary)">$1</span>');
-      
+
       const lines = text.split(/\r?\n/);
       const mdLink = /\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g;
       const htmlLines = lines.map(line => {
@@ -244,7 +250,7 @@ class EditorManager {
       return (content || '').replace(/\n/g, '<br>');
     }
   }
-  
+
   // Helper method to escape HTML but preserve our formatting tags
   escapeHtmlExceptTags(text) {
     // First escape all HTML
@@ -252,19 +258,24 @@ class EditorManager {
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
-    
+
     // Then unescape our allowed formatting tags
     escaped = escaped
       .replace(/&lt;(\/?(?:b|i|u|s|span[^&]*))&gt;/gi, '<$1>')
       .replace(/&lt;span style=&quot;([^&]*)&quot;&gt;/gi, '<span style="$1">');
-    
+
     return escaped;
   }
 
   // Convert limited HTML back to markdown-like plain text for storage
   htmlToMarkdown(html) {
     const tmp = document.createElement('div');
-    tmp.innerHTML = html || '';
+    // Use safe DOM manipulation
+    if (window.safeDOM) {
+      window.safeDOM.setInnerHTML(tmp, html || '', true);
+    } else {
+      tmp.innerHTML = html || '';
+    }
     // Remove disallowed tags by unwrapping while preserving line breaks.
     // For block elements, insert <br> boundaries to reflect visual line breaks.
     const allowed = new Set(['A', 'BR', 'B', 'STRONG', 'I', 'EM', 'U', 'S', 'STRIKE', 'SPAN']);
@@ -301,12 +312,17 @@ class EditorManager {
     // Convert formatting tags to markdown-style markers
     // Process innermost tags first to preserve nested formatting
     // We need to process in reverse document order to handle nested tags correctly
-    
+
     // Strikethrough tags (process first - innermost)
     tmp.querySelectorAll('s, strike').forEach(el => {
       const innerHTML = el.innerHTML;
       const md = document.createElement('span');
-      md.innerHTML = `~~${innerHTML}~~`;
+      // Use safe DOM manipulation
+      if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(md, `~~${innerHTML}~~`, true);
+      } else {
+        md.innerHTML = `~~${innerHTML}~~`;
+      }
       // Replace with the content, not a text node, to preserve nested HTML
       while (md.firstChild) {
         el.parentNode.insertBefore(md.firstChild, el);
@@ -318,7 +334,12 @@ class EditorManager {
     tmp.querySelectorAll('u').forEach(el => {
       const innerHTML = el.innerHTML;
       const md = document.createElement('span');
-      md.innerHTML = `__${innerHTML}__`;
+      // Use safe DOM manipulation
+      if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(md, `__${innerHTML}__`, true);
+      } else {
+        md.innerHTML = `__${innerHTML}__`;
+      }
       while (md.firstChild) {
         el.parentNode.insertBefore(md.firstChild, el);
       }
@@ -329,7 +350,12 @@ class EditorManager {
     tmp.querySelectorAll('i, em').forEach(el => {
       const innerHTML = el.innerHTML;
       const md = document.createElement('span');
-      md.innerHTML = `*${innerHTML}*`;
+      // Use safe DOM manipulation
+      if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(md, `*${innerHTML}*`, true);
+      } else {
+        md.innerHTML = `*${innerHTML}*`;
+      }
       while (md.firstChild) {
         el.parentNode.insertBefore(md.firstChild, el);
       }
@@ -340,7 +366,12 @@ class EditorManager {
     tmp.querySelectorAll('b, strong').forEach(el => {
       const innerHTML = el.innerHTML;
       const md = document.createElement('span');
-      md.innerHTML = `**${innerHTML}**`;
+      // Use safe DOM manipulation
+      if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(md, `**${innerHTML}**`, true);
+      } else {
+        md.innerHTML = `**${innerHTML}**`;
+      }
       while (md.firstChild) {
         el.parentNode.insertBefore(md.firstChild, el);
       }
@@ -361,7 +392,7 @@ class EditorManager {
         el.replaceWith(document.createTextNode(text));
       }
     });
-    
+
     // Color spans (process AFTER citation spans to avoid conflicts)
     tmp.querySelectorAll('span[style*="color"]').forEach(el => {
       const text = el.textContent;
@@ -394,7 +425,12 @@ class EditorManager {
     const text = htmlStr.replace(/<[^>]*>/g, '');
     // Decode entities by using textContent of a temp element
     const decode = document.createElement('textarea');
-    decode.innerHTML = text;
+    // Use safe DOM manipulation for decoding
+    if (window.safeDOM) {
+      window.safeDOM.setInnerHTML(decode, text, false);
+    } else {
+      decode.innerHTML = text;
+    }
     return decode.value;
   }
 
@@ -504,7 +540,7 @@ class EditorManager {
       const sel = window.getSelection();
       sel.removeAllRanges();
       sel.addRange(range);
-    } catch (_) {}
+    } catch (_) { }
   }
 
   // Handle paste into contenteditable: sanitize to safe minimal HTML
@@ -516,7 +552,12 @@ class EditorManager {
       if (!text) return;
       e.preventDefault();
       const html = this.sanitizePastedTextToHtml(text);
-      this.insertHtmlAtCaret(html);
+      // Use safe HTML insertion
+      if (window.safeDOM) {
+        window.safeDOM.insertHTML(html, true);
+      } else {
+        this.insertHtmlAtCaret(html);
+      }
       this.updateCharCount();
     } catch (_) {
       // On error, allow default paste
@@ -548,6 +589,13 @@ class EditorManager {
 
   // Insert HTML at caret within contenteditable safely
   insertHtmlAtCaret(html) {
+    // Use safe DOM insertion if available
+    if (window.safeDOM) {
+      window.safeDOM.insertHTML(html, true);
+      return;
+    }
+
+    // Fallback implementation with basic sanitization
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) {
       document.execCommand('insertHTML', false, html);
@@ -592,22 +640,22 @@ class EditorManager {
     if (!selection || selection.rangeCount === 0) return;
 
     const range = selection.getRangeAt(0);
-    
+
     // Always create a new line for the list button
     const brElement = document.createElement('br');
     range.insertNode(brElement);
     range.setStartAfter(brElement);
-    
+
     // Insert bullet point
     const bulletText = document.createTextNode('• ');
     range.insertNode(bulletText);
-    
+
     // Move cursor after bullet
     range.setStartAfter(bulletText);
     range.collapse(true);
     selection.removeAllRanges();
     selection.addRange(range);
-    
+
     contentInput.focus();
   }
 
@@ -622,37 +670,37 @@ class EditorManager {
 
       const range = selection.getRangeAt(0);
       const currentNode = range.startContainer;
-      
+
       // Check if we're on a line that contains a bullet (anywhere on the line)
       if (currentNode.nodeType === Node.TEXT_NODE) {
         const textBeforeCursor = currentNode.textContent.substring(0, range.startOffset);
         const lines = textBeforeCursor.split('\n');
         const currentLine = lines[lines.length - 1];
-        
+
         // Check if the current line contains a bullet anywhere, not just at the start
         if (currentLine.includes('•')) {
           e.preventDefault();
-          
+
           // Create new line first
           const brElement = document.createElement('br');
           range.insertNode(brElement);
           range.setStartAfter(brElement);
-          
+
           // Insert bullet point on the new line
           const bulletText = document.createTextNode('• ');
           range.insertNode(bulletText);
-          
+
           // Move cursor after bullet
           range.setStartAfter(bulletText);
           range.collapse(true);
           selection.removeAllRanges();
           selection.addRange(range);
-          
+
           contentInput.focus();
           return; // Exit early to prevent default behavior
         }
       }
-      
+
       // If not in list mode, let default Enter behavior happen
     }
   }
@@ -677,7 +725,7 @@ class EditorManager {
         clsEl.textContent = `${count} characters`;
         if (count > 8000) clsEl.classList.add('warning'); else clsEl.classList.remove('warning');
       }
-    } catch (_) {}
+    } catch (_) { }
   }
 
   // Persist editor open flag (and keep existing noteDraft intact)
@@ -699,7 +747,7 @@ class EditorManager {
   async saveEditorDraft() {
     try {
       if (!this.currentNote) {
-        console.log('💾 Cannot save draft: no current note');
+
         return;
       }
       const titleHeader = document.getElementById('noteTitleHeader');
@@ -716,24 +764,18 @@ class EditorManager {
 
       // Get caret position
       const { start, end } = contentInput ? this.getSelectionOffsets(contentInput) : { start: 0, end: 0 };
-      
+
       const { editorState } = await chrome.storage.local.get(['editorState']);
       const state = editorState || {};
       // Preserve the existing open state - don't force it to true
       state.noteDraft = { ...this.currentNote };
       state.caretStart = start;
       state.caretEnd = end;
-      
-      console.log('💾 Saving draft:', {
-        id: this.currentNote.id,
-        title: this.currentNote.title,
-        contentLength: this.currentNote.content.length,
-        updatedAt: this.currentNote.updatedAt,
-        wasEditorOpen: state.wasEditorOpen
-      });
-      
+
+
+
       await chrome.storage.local.set({ editorState: state });
-    } catch (error) { 
+    } catch (error) {
       console.error('❌ Failed to save draft:', error);
     }
   }
@@ -751,27 +793,27 @@ class EditorManager {
       const titleHeader = document.getElementById('noteTitleHeader');
       const contentInput = document.getElementById('noteContentInput');
       const tagsInput = document.getElementById('tagsInput');
-      
+
       if (!this.currentNote) return;
-      
+
       // Update current note object with editor values for live preview
       this.currentNote.title = (titleHeader && titleHeader.value ? titleHeader.value : '').trim();
       this.currentNote.content = this.htmlToMarkdown(contentInput ? contentInput.innerHTML : '');
       this.currentNote.tags = (tagsInput && tagsInput.value
         ? tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
         : []);
-      
+
       // Update any preview elements if they exist
       const previewTitle = document.querySelector('.note-preview-title');
       const previewContent = document.querySelector('.note-preview-content');
-      
+
       if (previewTitle) {
         previewTitle.textContent = this.currentNote.title || 'Untitled';
       }
       if (previewContent) {
         previewContent.textContent = this.currentNote.content || '';
       }
-    } catch (_) {}
+    } catch (_) { }
   }
 
   // (duplicate removed; see unified updateCharCount above)
@@ -790,9 +832,9 @@ class EditorManager {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
       return crypto.randomUUID();
     }
-    
+
     // Fallback to UUID v4 format for older browsers
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
       const r = Math.random() * 16 | 0;
       const v = c === 'x' ? r : (r & 0x3 | 0x8);
       return v.toString(16);
@@ -806,7 +848,7 @@ class EditorManager {
       if (this.currentNote) {
         await this.saveCurrentNote();
       }
-      
+
       // Close the editor
       this.closeEditor({ clearDraft: true });
     } catch (error) {
@@ -818,29 +860,29 @@ class EditorManager {
   async saveCurrentNote() {
     try {
       if (!this.currentNote) return;
-      
+
       const titleHeader = document.getElementById('noteTitleHeader');
       const contentInput = document.getElementById('noteContentInput');
       const tagsInput = document.getElementById('tagsInput');
-      
+
       // Update current note with editor values
       this.currentNote.title = (titleHeader && titleHeader.value ? titleHeader.value : '').trim();
       this.currentNote.content = this.htmlToMarkdown(contentInput ? contentInput.innerHTML : '');
       this.currentNote.tags = (tagsInput && tagsInput.value
         ? tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
         : []);
-      
+
       // Update timestamp
       this.currentNote.updatedAt = new Date().toISOString();
-      
+
       // Save to storage
       if (window.notesStorage) {
         await window.notesStorage.saveNote(this.currentNote);
       }
-      
+
       // Emit note updated event
       window.eventBus?.emit('notes:updated', { noteId: this.currentNote.id, note: this.currentNote });
-      
+
     } catch (error) {
       console.error('Error saving note:', error);
     }
@@ -850,12 +892,12 @@ class EditorManager {
   generateCitation(format) {
     // Try to get current note from multiple sources
     let note = this.currentNote;
-    
+
     // If no current note in editor, try to get it from the main popup instance
     if (!note && window.urlNotesApp && window.urlNotesApp.currentNote) {
       note = window.urlNotesApp.currentNote;
     }
-    
+
     // If still no note, try to get it from the current site context
     if (!note && window.urlNotesApp && window.urlNotesApp.currentSite) {
       const currentSite = window.urlNotesApp.currentSite;
@@ -867,7 +909,7 @@ class EditorManager {
         createdAt: new Date().toISOString()
       };
     }
-    
+
     // Last resort: try to get site info from DOM elements
     if (!note) {
       const domainEl = document.getElementById('siteDomain');
@@ -884,20 +926,20 @@ class EditorManager {
         };
       }
     }
-    
+
     if (!note) {
       console.warn('No current note or site context available for citation generation');
       return '';
     }
-    
-    console.log('Generating citation for note:', note);
-    
+
+
+
     // Get note properties with fallbacks
     const title = note.title || 'Untitled Note';
     const url = note.url || '';
     const pageTitle = note.pageTitle || note.title || 'Unknown Page';
     const domain = note.domain || 'Unknown Domain';
-    
+
     // Handle date creation with fallbacks
     let createdAt;
     try {
@@ -909,16 +951,16 @@ class EditorManager {
       console.warn('Invalid date, using current date:', error);
       createdAt = new Date();
     }
-    
+
     const year = createdAt.getFullYear();
     const month = createdAt.getMonth();
     const day = createdAt.getDate();
-    
+
     // Format date components
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'];
     const monthName = monthNames[month];
-    
+
     // Generate citation based on format
     let citation = '';
     switch (format) {
@@ -926,73 +968,73 @@ class EditorManager {
         // APA 7th Edition format
         citation = `${pageTitle ? `${pageTitle}. ` : ''}(${year}, ${monthName} ${day}). ${title}. Retrieved from ${url}`;
         break;
-      
+
       case 'mla':
         // MLA 9th Edition format  
         citation = `"${pageTitle}." ${domain}, ${day} ${monthName} ${year}, ${url}.`;
         break;
-      
+
       case 'chicago':
         // Chicago Manual of Style format
         citation = `"${pageTitle}." ${domain}. Accessed ${monthName} ${day}, ${year}. ${url}.`;
         break;
-      
+
       case 'harvard':
         // Harvard referencing format
         citation = `${pageTitle} (${year}) ${domain}, viewed ${day} ${monthName} ${year}, <${url}>.`;
         break;
-      
+
       case 'ieee':
         // IEEE format
         citation = `"${pageTitle}," ${domain}, ${monthName} ${day}, ${year}. [Online]. Available: ${url}`;
         break;
-      
+
       default:
         citation = `${pageTitle} - ${url} (accessed ${monthName} ${day}, ${year})`;
     }
-    
-    console.log(`Generated ${format} citation:`, citation);
+
+
     return citation;
   }
-  
+
   // Handle citation button click
   toggleCitationDropdown() {
     const dropdown = document.getElementById('citationDropdown');
     if (!dropdown) return;
-    
+
     const isVisible = dropdown.style.display !== 'none' && dropdown.classList.contains('show');
-    
+
     if (isVisible) {
       this.hideCitationDropdown();
     } else {
       this.showCitationDropdown();
     }
   }
-  
+
   // Show citation dropdown
   showCitationDropdown() {
     const dropdown = document.getElementById('citationDropdown');
     const citationBtn = document.getElementById('citationBtn');
     if (!dropdown || !citationBtn) return;
-    
+
     // Hide other dropdowns first
     const colorWheelPopup = document.getElementById('colorWheelPopup');
     if (colorWheelPopup) colorWheelPopup.style.display = 'none';
-    
+
     // Move popup to body to escape editor stacking context (same as color picker)
     if (dropdown.parentNode !== document.body) {
       document.body.appendChild(dropdown);
     }
-    
+
     // Position the popup relative to the button (same logic as color picker)
     const buttonRect = citationBtn.getBoundingClientRect();
     const popupWidth = 180;
     const popupHeight = 200;
-    
+
     // Calculate position (below and to the right of button, but keep on screen)
     let left = buttonRect.left;
     let top = buttonRect.bottom + 5;
-    
+
     // Adjust if popup would go off screen
     if (left + popupWidth > window.innerWidth) {
       left = buttonRect.right - popupWidth;
@@ -1000,49 +1042,49 @@ class EditorManager {
     if (top + popupHeight > window.innerHeight) {
       top = buttonRect.top - popupHeight - 5;
     }
-    
+
     // Ensure minimum distance from edges
     left = Math.max(10, left);
     top = Math.max(10, top);
-    
+
     dropdown.style.left = `${left}px`;
     dropdown.style.top = `${top}px`;
     dropdown.style.display = 'block';
     dropdown.classList.add('show');
-    
+
     // Add overlay to close when clicking outside
     const overlay = document.createElement('div');
     overlay.className = 'citation-dropdown-overlay';
     overlay.onclick = () => this.hideCitationDropdown();
     document.body.appendChild(overlay);
   }
-  
+
   // Hide citation dropdown
   hideCitationDropdown() {
     const dropdown = document.getElementById('citationDropdown');
     if (dropdown) {
       dropdown.style.display = 'none';
       dropdown.classList.remove('show');
-      
+
       // Move dropdown back to its original container if it was moved to body
       const originalContainer = document.querySelector('.citation-container');
       if (originalContainer && dropdown.parentNode === document.body) {
         originalContainer.appendChild(dropdown);
       }
     }
-    
+
     // Remove overlay
     const overlay = document.querySelector('.citation-dropdown-overlay');
     if (overlay) {
       overlay.remove();
     }
   }
-  
+
   // Handle citation format selection
   async handleCitationFormat(format) {
     try {
-      console.log('Handling citation format:', format);
-      
+
+
       // Try to get current note from multiple sources
       let note = this.currentNote;
       if (!note && window.urlNotesApp && window.urlNotesApp.currentNote) {
@@ -1051,65 +1093,62 @@ class EditorManager {
       if (!note && window.urlNotesApp && window.urlNotesApp.currentSite) {
         note = window.urlNotesApp.currentSite;
       }
-      
-      console.log('Current note state:', note);
-      console.log('Main app currentNote:', window.urlNotesApp?.currentNote);
-      console.log('Main app currentSite:', window.urlNotesApp?.currentSite);
-      
+
+
+
       const citation = this.generateCitation(format);
-      console.log('Generated citation:', citation);
-      
+
       if (!citation) {
         console.error('Citation generation failed - empty result');
         this.showToast('Unable to generate citation - no note data available', 'error');
         return;
       }
-      
+
       // Insert citation into editor
       this.insertCitationIntoEditor(citation);
-      
+
       // Copy to clipboard
       await this.copyCitationToClipboard(citation);
-      
+
       // Hide dropdown
       this.hideCitationDropdown();
-      
+
       // Show success toast
       const formatNames = {
         'apa': 'APA',
-        'mla': 'MLA', 
+        'mla': 'MLA',
         'chicago': 'Chicago',
         'harvard': 'Harvard',
         'ieee': 'IEEE'
       };
-      
+
       this.showToast(`${formatNames[format]} citation added to note and copied to clipboard`, 'success');
-      
+
     } catch (error) {
       console.error('Error handling citation:', error);
       this.showToast('Failed to generate citation', 'error');
     }
   }
-  
+
   // Insert citation into the editor at cursor position
   insertCitationIntoEditor(citation) {
     const contentInput = document.getElementById('noteContentInput');
     if (!contentInput) return;
-    
+
     contentInput.focus();
-    
+
     const selection = window.getSelection();
     if (selection.rangeCount === 0) {
       // No selection, append to end
       const brElement = document.createElement('br');
       contentInput.appendChild(brElement);
-      
+
       const citationElement = document.createElement('span');
       citationElement.textContent = citation;
       citationElement.style.fontStyle = 'italic';
       citationElement.style.color = 'var(--text-secondary)';
       contentInput.appendChild(citationElement);
-      
+
       // Move cursor after citation
       const range = document.createRange();
       range.setStartAfter(citationElement);
@@ -1119,32 +1158,32 @@ class EditorManager {
     } else {
       // Insert at current cursor position
       const range = selection.getRangeAt(0);
-      
+
       // Create citation element
       const citationElement = document.createElement('span');
       citationElement.textContent = citation;
       citationElement.style.fontStyle = 'italic';
       citationElement.style.color = 'var(--text-secondary)';
-      
+
       // Insert citation at current position
       range.insertNode(citationElement);
-      
+
       // Add line break after citation
       const brElement = document.createElement('br');
       range.setStartAfter(citationElement);
       range.insertNode(brElement);
-      
+
       // Move cursor after the line break
       range.setStartAfter(brElement);
       range.collapse(true);
       selection.removeAllRanges();
       selection.addRange(range);
     }
-    
+
     // Update character count
     this.updateCharCount();
   }
-  
+
   // Copy citation to clipboard
   async copyCitationToClipboard(citation) {
     try {
@@ -1168,7 +1207,7 @@ class EditorManager {
       // Don't throw error as citation was still inserted
     }
   }
-  
+
   // Show toast notification (utility function)
   showToast(message, type = 'info') {
     try {
@@ -1177,7 +1216,7 @@ class EditorManager {
         window.urlNotesApp.showToast(message, type);
         return;
       }
-      
+
       // Fallback toast implementation
       let toast = document.getElementById('toast');
       if (!toast) {
@@ -1186,14 +1225,14 @@ class EditorManager {
         toast.className = 'toast';
         document.body.appendChild(toast);
       }
-      
+
       toast.textContent = message;
       toast.className = `toast ${type} show`;
-      
+
       setTimeout(() => {
         toast.classList.remove('show');
       }, 3000);
-      
+
     } catch (error) {
       console.error('Error showing toast:', error);
     }
@@ -1239,7 +1278,7 @@ class EditorManager {
       colorBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const isVisible = colorWheelPopup.style.display !== 'none';
-        
+
         if (isVisible) {
           colorWheelPopup.style.display = 'none';
         } else {
@@ -1247,16 +1286,16 @@ class EditorManager {
           if (colorWheelPopup.parentNode !== document.body) {
             document.body.appendChild(colorWheelPopup);
           }
-          
+
           // Position the popup relative to the button
           const buttonRect = colorBtn.getBoundingClientRect();
           const popupWidth = 140;
           const popupHeight = 80;
-          
+
           // Calculate position (below and to the right of button, but keep on screen)
           let left = buttonRect.left;
           let top = buttonRect.bottom + 5;
-          
+
           // Adjust if popup would go off screen
           if (left + popupWidth > window.innerWidth) {
             left = buttonRect.right - popupWidth;
@@ -1264,11 +1303,11 @@ class EditorManager {
           if (top + popupHeight > window.innerHeight) {
             top = buttonRect.top - popupHeight - 5;
           }
-          
+
           // Ensure minimum distance from edges
           left = Math.max(10, left);
           top = Math.max(10, top);
-          
+
           colorWheelPopup.style.left = `${left}px`;
           colorWheelPopup.style.top = `${top}px`;
           colorWheelPopup.style.display = 'block';
@@ -1292,19 +1331,19 @@ class EditorManager {
       if (colorWheelPopup && !e.target.closest('.color-picker-container')) {
         colorWheelPopup.style.display = 'none';
       }
-      
+
       // Close citation dropdown when clicking outside
       if (citationDropdown && !e.target.closest('.citation-container')) {
         this.hideCitationDropdown();
       }
     });
-    
+
     // Close color picker when editor is closed
     window.addEventListener('pagehide', () => {
       if (colorWheelPopup) {
         colorWheelPopup.style.display = 'none';
       }
-      
+
       // Close citation dropdown when editor is closed
       if (citationDropdown) {
         this.hideCitationDropdown();
@@ -1314,14 +1353,14 @@ class EditorManager {
     // Citation button and dropdown
     const citationBtn = document.getElementById('citationBtn');
     const citationDropdown = document.getElementById('citationDropdown');
-    
+
     if (citationBtn) {
       citationBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         this.toggleCitationDropdown();
       });
     }
-    
+
     if (citationDropdown) {
       // Handle citation format button clicks
       citationDropdown.addEventListener('click', (e) => {
@@ -1349,7 +1388,7 @@ class EditorManager {
     if (!contentInput) return;
 
     contentInput.focus();
-    
+
     try {
       document.execCommand(command, false, null);
       this.updateFormatButtonStates();
@@ -1364,16 +1403,16 @@ class EditorManager {
     if (!contentInput) return;
 
     contentInput.focus();
-    
+
     try {
       document.execCommand('foreColor', false, color);
-      
+
       // Update color indicator
       const colorIndicator = document.getElementById('colorIndicator');
       if (colorIndicator) {
         colorIndicator.style.backgroundColor = color;
       }
-      
+
       this.updateFormatButtonStates();
     } catch (error) {
       console.error('Error applying color:', error);
@@ -1385,9 +1424,9 @@ class EditorManager {
     try {
       const boldBtn = document.getElementById('boldBtn');
       const italicsBtn = document.getElementById('italicsBtn');
-      const underlineBtn = document.getElementById('underlineBtn');  
+      const underlineBtn = document.getElementById('underlineBtn');
       const strikethroughBtn = document.getElementById('strikethroughBtn');
-      
+
       if (boldBtn) {
         boldBtn.classList.toggle('active', document.queryCommandState('bold'));
       }

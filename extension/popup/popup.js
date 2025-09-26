@@ -46,11 +46,11 @@ class URLNotesApp {
     this.notesManager = new NotesManager(this);
     // Debounced draft saver for editorState caching
     this.saveDraftDebounced = Utils.debounce(() => this.saveEditorDraft(), 150);
-    // Create a flush method to immediately execute pending saves
-    this.flushDraftSave = () => {
-      if (this.saveDraftDebounced.cancel) {
-        this.saveDraftDebounced.cancel();
-      }
+    // Create a flush method to wait for pending saves to complete
+    this.flushDraftSave = async () => {
+      // Wait a bit longer than the debounce delay to ensure any pending save completes
+      await new Promise(resolve => setTimeout(resolve, 300));
+      // Then save the current editor state to ensure we have the latest
       return this.saveEditorDraft();
     };
     // Debounced AI usage checker to prevent rate limiting
@@ -90,17 +90,45 @@ class URLNotesApp {
         // Update site icon with real favicon
         const siteIcon = document.querySelector('.site-icon');
         if (siteIcon) {
+          // Clear existing content
+          siteIcon.innerHTML = '';
+
           if (this.currentSite.favicon) {
-            siteIcon.innerHTML = `<img src="${this.currentSite.favicon}" alt="Site favicon">`;
+            // Create favicon image directly (bypass XSS prevention for trusted favicon URLs)
+            const img = document.createElement('img');
+            img.src = this.currentSite.favicon;
+            img.alt = 'Site favicon';
+            siteIcon.appendChild(img);
           } else {
-            siteIcon.innerHTML = `
-              <div class="site-fallback" aria-label="No favicon available">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="9"></circle>
-                  <path d="M3 12h18"></path>
-                  <path d="M12 3a15.3 15.3 0 0 1 4 9 15.3 15.3 0 0 1-4 9 15.3 15.3 0 0 1-4-9 15.3 15.3 0 0 1 4-9z"></path>
-                </svg>
-              </div>`;
+            // Create fallback SVG directly
+            const fallbackDiv = document.createElement('div');
+            fallbackDiv.className = 'site-fallback';
+            fallbackDiv.setAttribute('aria-label', 'No favicon available');
+
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('viewBox', '0 0 24 24');
+            svg.setAttribute('fill', 'none');
+            svg.setAttribute('stroke', 'currentColor');
+            svg.setAttribute('stroke-width', '1.5');
+            svg.setAttribute('stroke-linecap', 'round');
+            svg.setAttribute('stroke-linejoin', 'round');
+
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('cx', '12');
+            circle.setAttribute('cy', '12');
+            circle.setAttribute('r', '9');
+
+            const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path1.setAttribute('d', 'M3 12h18');
+
+            const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path2.setAttribute('d', 'M12 3a15.3 15.3 0 0 1 4 9 15.3 15.3 0 0 1-4 9 15.3 15.3 0 0 1-4-9 15.3 15.3 0 0 1 4-9z');
+
+            svg.appendChild(circle);
+            svg.appendChild(path1);
+            svg.appendChild(path2);
+            fallbackDiv.appendChild(svg);
+            siteIcon.appendChild(fallbackDiv);
           }
         }
 
@@ -130,14 +158,38 @@ class URLNotesApp {
         // Update UI to show no site context
         const siteIcon = document.querySelector('.site-icon');
         if (siteIcon) {
-          siteIcon.innerHTML = `
-            <div class="site-fallback" aria-label="No site context">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="9"></circle>
-                <path d="M3 12h18"></path>
-                <path d="M12 3a9 9 0 0 1 0 18 9 9 0 0 1 0-18z"></path>
-              </svg>
-            </div>`;
+          // Clear existing content
+          siteIcon.innerHTML = '';
+
+          // Create fallback SVG directly
+          const fallbackDiv = document.createElement('div');
+          fallbackDiv.className = 'site-fallback';
+          fallbackDiv.setAttribute('aria-label', 'No site context');
+
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.setAttribute('viewBox', '0 0 24 24');
+          svg.setAttribute('fill', 'none');
+          svg.setAttribute('stroke', 'currentColor');
+          svg.setAttribute('stroke-width', '1.5');
+          svg.setAttribute('stroke-linecap', 'round');
+          svg.setAttribute('stroke-linejoin', 'round');
+
+          const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          circle.setAttribute('cx', '12');
+          circle.setAttribute('cy', '12');
+          circle.setAttribute('r', '9');
+
+          const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path1.setAttribute('d', 'M3 12h18');
+
+          const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path2.setAttribute('d', 'M12 3a9 9 0 0 1 0 18 9 9 0 0 1 0-18z');
+
+          svg.appendChild(circle);
+          svg.appendChild(path1);
+          svg.appendChild(path2);
+          fallbackDiv.appendChild(svg);
+          siteIcon.appendChild(fallbackDiv);
         }
 
         const domainEl = document.getElementById('siteDomain');
@@ -195,7 +247,14 @@ class URLNotesApp {
             const tagsInput = document.getElementById('tagsInput');
 
             if (titleHeader) titleHeader.value = this.currentNote.title || '';
-            if (contentInput) contentInput.innerHTML = this.buildContentHtml(this.currentNote.content || '');
+            if (contentInput) {
+              const safeContent = this.buildContentHtml(this.currentNote.content || '');
+              if (window.safeDOM) {
+                window.safeDOM.setInnerHTML(contentInput, safeContent, true);
+              } else {
+                contentInput.innerHTML = safeContent;
+              }
+            }
             if (tagsInput) tagsInput.value = (this.currentNote.tags || []).join(', ');
           }
 
@@ -268,12 +327,12 @@ class URLNotesApp {
     // Listen for background sync timer messages
     chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       if (message.action === 'sync-timer-triggered') {
-        console.log('📨 [POPUP SYNC] Received timer trigger message');
+
         // Background timer fired, check if we can sync
         if (window.syncEngine) {
           try {
             const canSyncResult = await window.syncEngine.canSync();
-            console.log('🔍 [POPUP SYNC] Timer trigger - canSync result:', canSyncResult);
+
 
             if (canSyncResult && canSyncResult.canSync) {
               // Double-check encryption readiness for timer-triggered sync
@@ -285,9 +344,9 @@ class URLNotesApp {
                   return;
                 }
               }
-              
+
               try {
-                console.log('🚀 [POPUP SYNC] Starting timer-triggered sync');
+
                 await window.syncEngine.manualSync();
 
                 // After sync completes, restart the background timer for next cycle
@@ -325,7 +384,7 @@ class URLNotesApp {
           try {
             // Add a small delay to ensure encryption is fully initialized after login
             await new Promise(resolve => setTimeout(resolve, 500));
-            
+
             const canSyncResult = await window.syncEngine.canSync();
 
 
@@ -339,7 +398,7 @@ class URLNotesApp {
                   return;
                 }
               }
-              
+
               try {
 
                 await window.syncEngine.manualSync();
@@ -468,7 +527,7 @@ class URLNotesApp {
             for (const [key, value] of Object.entries(allData)) {
               if (key.startsWith('note_') && value && value.id === lastAction.noteId) {
                 createdNote = value;
-                console.log('Found context menu note in chrome.storage.local:', createdNote);
+
                 break;
               }
             }
@@ -482,7 +541,7 @@ class URLNotesApp {
           if (createdNote.domain && createdNote.content) {
             try {
               await window.notesStorage.saveNote(createdNote);
-              console.log('Moved context menu note to IndexedDB:', createdNote.id);
+
 
               // Remove from chrome.storage.local
               const key = `note_${createdNote.id}`;
@@ -630,7 +689,12 @@ class URLNotesApp {
               // Update the editor content
               const contentInput = document.getElementById('noteContentInput');
               if (contentInput) {
-                contentInput.innerHTML = this.buildContentHtml(this.currentNote.content || '');
+                const safeContent = this.buildContentHtml(this.currentNote.content || '');
+                if (window.safeDOM) {
+                  window.safeDOM.setInnerHTML(contentInput, safeContent, true);
+                } else {
+                  contentInput.innerHTML = safeContent;
+                }
               }
               // Update the draft in storage
               await this.saveEditorDraft();
@@ -932,7 +996,12 @@ class URLNotesApp {
         // Update the editor content to show the new content
         const contentInput = document.getElementById('noteContentInput');
         if (contentInput) {
-          contentInput.innerHTML = this.buildContentHtml(note.content || '');
+          const safeContent = this.buildContentHtml(note.content || '');
+          if (window.safeDOM) {
+            window.safeDOM.setInnerHTML(contentInput, safeContent, true);
+          } else {
+            contentInput.innerHTML = safeContent;
+          }
         }
       }
     } catch (error) {
@@ -1260,7 +1329,7 @@ class URLNotesApp {
       clearDraftAfterSave: false,
       closeEditorAfterSave: false,
       showToast: true,
-      switchFilterAfterSave: true
+      switchFilterAfterSave: false // Keep current filter
     }).catch(() => { });
     document.getElementById('backBtn').addEventListener('click', (e) => {
       e.preventDefault();
@@ -1452,7 +1521,11 @@ class URLNotesApp {
               const contentFocused = document.activeElement === contentInput;
               const newHtml = this.buildContentHtml(this.currentNote.content || '');
               if (!contentFocused && contentInput.innerHTML !== newHtml) {
-                contentInput.innerHTML = newHtml;
+                if (window.safeDOM) {
+                  window.safeDOM.setInnerHTML(contentInput, newHtml, true);
+                } else {
+                  contentInput.innerHTML = newHtml;
+                }
               }
             }
 
@@ -1721,7 +1794,11 @@ class URLNotesApp {
 
     // Only clear if there are other children to prevent unnecessary clearing
     if (notesList.children.length > 0) {
-      notesList.innerHTML = '';
+      if (window.safeDOM) {
+        window.safeDOM.clearContent(notesList);
+      } else {
+        notesList.innerHTML = '';
+      }
     }
     notesList.classList.add('notes-fade-in');
 
@@ -1742,7 +1819,7 @@ class URLNotesApp {
         </div>
       ` : '';
 
-      domainGroup.innerHTML = `
+      const domainGroupHtml = `
         <summary class="domain-group-header">
           <div class="domain-header-info">
             <span>${domain} (${domainNotes.length})</span>
@@ -1765,6 +1842,12 @@ class URLNotesApp {
         </summary>
         <div class="domain-notes-list"></div>
       `;
+
+      if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(domainGroup, domainGroupHtml, false);
+      } else {
+        domainGroup.innerHTML = domainGroupHtml;
+      }
 
       // No pre-open suppression; restore original behavior
 
@@ -1816,7 +1899,7 @@ class URLNotesApp {
     // Check if user has premium access for version history button
     const hasVersionHistory = this.premiumStatus?.isPremium || false;
 
-    noteDiv.innerHTML = `
+    const noteHtml = `
       <div class="note-content">
         <div class="note-main">
           <h4 class="note-title">${pageIndicator}${note.title || 'Untitled'}</h4>
@@ -1855,6 +1938,12 @@ class URLNotesApp {
         </div>
       </div>
     `;
+
+    if (window.safeDOM) {
+      window.safeDOM.setInnerHTML(noteDiv, noteHtml, false);
+    } else {
+      noteDiv.innerHTML = noteHtml;
+    }
 
     // Add open button event listener (only present in non-page views)
     const openBtn = noteDiv.querySelector('.open-page-btn');
@@ -2038,7 +2127,11 @@ class URLNotesApp {
   // Convert limited HTML back to markdown-like plain text for storage
   htmlToMarkdown(html) {
     const tmp = document.createElement('div');
-    tmp.innerHTML = html || '';
+    if (window.safeDOM) {
+      window.safeDOM.setInnerHTML(tmp, html || '', true);
+    } else {
+      tmp.innerHTML = html || '';
+    }
     // Remove disallowed tags by unwrapping while preserving line breaks.
     // For block elements, insert <br> boundaries to reflect visual line breaks.
     const allowed = new Set(['A', 'BR', 'B', 'STRONG', 'I', 'EM', 'U', 'S', 'STRIKE', 'SPAN']);
@@ -2080,7 +2173,11 @@ class URLNotesApp {
     tmp.querySelectorAll('s, strike').forEach(el => {
       const innerHTML = el.innerHTML;
       const md = document.createElement('span');
-      md.innerHTML = `~~${innerHTML}~~`;
+      if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(md, `~~${innerHTML}~~`, true);
+      } else {
+        md.innerHTML = `~~${innerHTML}~~`;
+      }
       // Replace with the content, not a text node, to preserve nested HTML
       while (md.firstChild) {
         el.parentNode.insertBefore(md.firstChild, el);
@@ -2092,7 +2189,11 @@ class URLNotesApp {
     tmp.querySelectorAll('u').forEach(el => {
       const innerHTML = el.innerHTML;
       const md = document.createElement('span');
-      md.innerHTML = `__${innerHTML}__`;
+      if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(md, `__${innerHTML}__`, true);
+      } else {
+        md.innerHTML = `__${innerHTML}__`;
+      }
       while (md.firstChild) {
         el.parentNode.insertBefore(md.firstChild, el);
       }
@@ -2103,7 +2204,11 @@ class URLNotesApp {
     tmp.querySelectorAll('i, em').forEach(el => {
       const innerHTML = el.innerHTML;
       const md = document.createElement('span');
-      md.innerHTML = `*${innerHTML}*`;
+      if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(md, `*${innerHTML}*`, true);
+      } else {
+        md.innerHTML = `*${innerHTML}*`;
+      }
       while (md.firstChild) {
         el.parentNode.insertBefore(md.firstChild, el);
       }
@@ -2114,7 +2219,11 @@ class URLNotesApp {
     tmp.querySelectorAll('b, strong').forEach(el => {
       const innerHTML = el.innerHTML;
       const md = document.createElement('span');
-      md.innerHTML = `**${innerHTML}**`;
+      if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(md, `**${innerHTML}**`, true);
+      } else {
+        md.innerHTML = `**${innerHTML}**`;
+      }
       while (md.firstChild) {
         el.parentNode.insertBefore(md.firstChild, el);
       }
@@ -2168,7 +2277,11 @@ class URLNotesApp {
     const text = htmlStr.replace(/<[^>]*>/g, '');
     // Decode entities by using textContent of a temp element
     const decode = document.createElement('textarea');
-    decode.innerHTML = text;
+    if (window.safeDOM) {
+      window.safeDOM.setInnerHTML(decode, text, false);
+    } else {
+      decode.innerHTML = text;
+    }
     return decode.value;
   }
 
@@ -2503,7 +2616,13 @@ class URLNotesApp {
     const tagsInput = document.getElementById('tagsInput');
 
     if (titleInput) titleInput.value = '';
-    if (contentInput) contentInput.innerHTML = '';
+    if (contentInput) {
+      if (window.safeDOM) {
+        window.safeDOM.clearContent(contentInput);
+      } else {
+        contentInput.innerHTML = '';
+      }
+    }
     if (tagsInput) tagsInput.value = '';
 
     let noteContext;
@@ -2599,7 +2718,12 @@ class URLNotesApp {
     if (!draftWasRestored) {
       // Always populate when no draft was restored (clears any stale form data)
       titleHeader.value = this.currentNote.title || '';
-      contentInput.innerHTML = this.buildContentHtml(this.currentNote.content || '');
+      const safeContent = this.buildContentHtml(this.currentNote.content || '');
+      if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(contentInput, safeContent, true);
+      } else {
+        contentInput.innerHTML = safeContent;
+      }
       tagsInput.value = (this.currentNote.tags || []).join(', ');
     }
     // Do not show created date inside the editor UI to avoid mid-editor clutter
@@ -2714,14 +2838,14 @@ class URLNotesApp {
       clearDraftAfterSave: true,
       closeEditorAfterSave: true,
       showToast: !optionsOrAutosave, // if autosave boolean passed true, suppress toast
-      switchFilterAfterSave: true
+      switchFilterAfterSave: false // Keep current filter instead of switching to page
     };
     if (!this.currentNote) {
       Utils.showToast('No note open to save', 'info');
       return;
     }
 
-    // Flush any pending draft saves to ensure we have the latest content
+    // Wait for any pending draft saves to ensure we have the latest content
     if (!this._isApplyingAIRewrite) {
       await this.flushDraftSave();
     }
@@ -2789,7 +2913,7 @@ class URLNotesApp {
       // Re-render from memory (switchFilter already renders)
       Utils.checkStorageQuota();
     } else {
-      // Still need to re-render to show the saved note
+      // Re-render to show the saved note while keeping current filter
       this.render();
     }
   }
@@ -2825,12 +2949,18 @@ class URLNotesApp {
         break;
     }
 
-    popup.innerHTML = `
+    const popupHtml = `
       <div class="popup-content">
         <span class="popup-icon">${icon}</span>
         <span class="popup-message">${message}</span>
       </div>
     `;
+
+    if (window.safeDOM) {
+      window.safeDOM.setInnerHTML(popup, popupHtml, false);
+    } else {
+      popup.innerHTML = popupHtml;
+    }
 
     // Apply liquid glass theme styling
     popup.style.cssText = `
@@ -2987,11 +3117,17 @@ class URLNotesApp {
 
     const confirmUI = document.createElement('div');
     confirmUI.className = 'inline-confirm';
-    confirmUI.innerHTML = `
+    const confirmHtml = `
       <span>Delete?</span>
       <button class="confirm-yes">Confirm</button>
       <button class="confirm-no">Cancel</button>
     `;
+
+    if (window.safeDOM) {
+      window.safeDOM.setInnerHTML(confirmUI, confirmHtml, false);
+    } else {
+      confirmUI.innerHTML = confirmHtml;
+    }
 
     parent.appendChild(confirmUI);
 
@@ -3207,7 +3343,14 @@ class URLNotesApp {
         const tagsInput = document.getElementById('tagsInput');
 
         if (titleHeader) titleHeader.value = draft.title || '';
-        if (contentInput) contentInput.innerHTML = this.buildContentHtml(draft.content || '');
+        if (contentInput) {
+          const safeContent = this.buildContentHtml(draft.content || '');
+          if (window.safeDOM) {
+            window.safeDOM.setInnerHTML(contentInput, safeContent, true);
+          } else {
+            contentInput.innerHTML = safeContent;
+          }
+        }
         if (tagsInput) tagsInput.value = (draft.tags || []).join(', ');
 
         return true; // Draft was restored
@@ -3226,7 +3369,14 @@ class URLNotesApp {
         const tagsInput = document.getElementById('tagsInput');
 
         if (titleHeader) titleHeader.value = draft.title || '';
-        if (contentInput) contentInput.innerHTML = this.buildContentHtml(draft.content || '');
+        if (contentInput) {
+          const safeContent = this.buildContentHtml(draft.content || '');
+          if (window.safeDOM) {
+            window.safeDOM.setInnerHTML(contentInput, safeContent, true);
+          } else {
+            contentInput.innerHTML = safeContent;
+          }
+        }
         if (tagsInput) tagsInput.value = (draft.tags || []).join(', ');
 
         return true; // Draft was restored
@@ -3595,7 +3745,7 @@ class URLNotesApp {
       try {
         // Set flag to prevent draft saving during content update
         this._isApplyingAIRewrite = true;
-        
+
         // Cancel any pending debounced saves to prevent interference
         if (this.saveDraftDebounced.cancel) {
           this.saveDraftDebounced.cancel();
@@ -3609,7 +3759,7 @@ class URLNotesApp {
 
         // Apply the rewritten content to the editor
         const htmlContent = this.buildContentHtml(rewrittenContent);
-        
+
         // Set up a mutation observer to protect against content changes
         const observer = new MutationObserver((mutations) => {
           mutations.forEach((mutation) => {
@@ -3618,39 +3768,49 @@ class URLNotesApp {
             }
           });
         });
-        
-        contentInput.innerHTML = htmlContent;
-        
+
+        // Use safe DOM manipulation for AI rewrite content
+        if (window.safeDOM) {
+          window.safeDOM.setInnerHTML(contentInput, htmlContent, true);
+        } else {
+          contentInput.innerHTML = htmlContent;
+        }
+
         // Set up a one-time protection against content being reverted
         let protectionActive = true;
         const protectContent = () => {
           if (!protectionActive) return;
-          
+
           const currentContent = contentInput.innerHTML;
           if (currentContent !== htmlContent) {
-            contentInput.innerHTML = htmlContent;
+            // Use safe DOM manipulation for protection as well
+            if (window.safeDOM) {
+              window.safeDOM.setInnerHTML(contentInput, htmlContent, true);
+            } else {
+              contentInput.innerHTML = htmlContent;
+            }
           }
         };
-        
+
         // Check and protect the content a few times during the critical period
         setTimeout(protectContent, 50);
         setTimeout(protectContent, 150);
         setTimeout(protectContent, 300);
         setTimeout(protectContent, 500);
-        
+
         // Disable protection after 1 second
         setTimeout(() => {
           protectionActive = false;
           observer.disconnect();
         }, 1000);
-        
+
         // Start observing changes
         observer.observe(contentInput, {
           childList: true,
           subtree: true,
           characterData: true
         });
-        
+
 
 
         // Update character count
@@ -3673,7 +3833,7 @@ class URLNotesApp {
         // Always clear the flag
         this._isApplyingAIRewrite = false;
         this._aiRewriteJustCompleted = true;
-        
+
         // Clear the "just completed" flag after a delay to allow proper saving
         setTimeout(() => {
           this._aiRewriteJustCompleted = false;
@@ -4219,7 +4379,11 @@ class URLNotesApp {
 
       if (domainSelect) {
         // Clear existing options
-        domainSelect.innerHTML = '<option value="">Select a domain...</option>';
+        if (window.safeDOM) {
+          window.safeDOM.setInnerHTML(domainSelect, '<option value="">Select a domain...</option>', false);
+        } else {
+          domainSelect.innerHTML = '<option value="">Select a domain...</option>';
+        }
 
         // Add domain options
         domains.forEach(domain => {
@@ -4340,7 +4504,7 @@ class URLNotesApp {
     // Get current content from editor only - don't use saved note content
     const contentInput = document.getElementById('noteContentInput');
     const titleInput = document.getElementById('noteTitleHeader');
-    
+
     if (!contentInput || !titleInput) {
       Utils.showToast('Editor not found', 'error');
       return;
@@ -4854,7 +5018,7 @@ class URLNotesApp {
           // No cache or cache is stale, fetch fresh data
           currentUsage = await this.getCurrentAIUsage();
         }
-        
+
         if (currentUsage) {
           // Display actual remaining calls and monthly limit
           remainingCalls.textContent = `${currentUsage.remainingCalls}/${currentUsage.monthlyLimit}`;
@@ -5146,13 +5310,23 @@ class URLNotesApp {
       // Create upgrade message
       const upgradeMsg = document.createElement('div');
       upgradeMsg.className = 'upgrade-message';
-      upgradeMsg.innerHTML = `
+      const upgradeHtml = `
         <span class="upgrade-text">Upgrade to Premium</span>
         <span class="upgrade-subtitle">Get 500 rewrites/month</span>
       `;
 
+      if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(upgradeMsg, upgradeHtml, false);
+      } else {
+        upgradeMsg.innerHTML = upgradeHtml;
+      }
+
       // Replace the usage badge content
-      usageBadge.innerHTML = '';
+      if (window.safeDOM) {
+        window.safeDOM.clearContent(usageBadge);
+      } else {
+        usageBadge.innerHTML = '';
+      }
       usageBadge.appendChild(upgradeMsg);
 
       // Add click handler to open settings
@@ -5175,7 +5349,12 @@ class URLNotesApp {
       // Update editor
       const contentInput = document.getElementById('noteContentInput');
       if (contentInput) {
-        contentInput.innerHTML = previewContent.textContent;
+        const safeContent = this.buildContentHtml(previewContent.textContent);
+        if (window.safeDOM) {
+          window.safeDOM.setInnerHTML(contentInput, safeContent, true);
+        } else {
+          contentInput.innerHTML = safeContent;
+        }
       }
 
       // Save note
@@ -5321,10 +5500,16 @@ class URLNotesApp {
         break;
     }
 
-    notification.innerHTML = `
+    const notificationHtml = `
       <span class="notification-icon">${icon}</span>
       <span class="notification-message">${message}</span>
     `;
+
+    if (window.safeDOM) {
+      window.safeDOM.setInnerHTML(notification, notificationHtml, false);
+    } else {
+      notification.innerHTML = notificationHtml;
+    }
 
     notification.style.cssText = `
       position: fixed;

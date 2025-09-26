@@ -530,17 +530,22 @@
 
     const count = highlights.length;
 
+    // Create toolbar content safely (content script doesn't have access to safeDOM)
+    // Since this is a content script with trusted static content, we can use innerHTML directly
+    // but we should validate the count to prevent any potential issues
+    const safeCount = Math.max(0, Math.min(1000, parseInt(count) || 0)); // Limit count to reasonable range
+    
     highlightToolbar.innerHTML = `
       <div style="margin-bottom: 8px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
         <span>📝 Multi-Highlight Mode</span>
         <button id="exit-highlight-mode" style="background: #e74c3c; border: none; color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Exit</button>
       </div>
       <div style="margin-bottom: 12px; color: #bdc3c7;">
-        ${count} highlight${count !== 1 ? 's' : ''} selected
+        ${safeCount} highlight${safeCount !== 1 ? 's' : ''} selected
       </div>
       <div style="display: flex; gap: 8px;">
-        <button id="add-highlights-to-note" style="background: #3498db; border: none; color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; flex: 1; ${count === 0 ? 'opacity: 0.5; cursor: not-allowed;' : ''}">Add to Note</button>
-        <button id="clear-all-highlights" style="background: #95a5a6; border: none; color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; ${count === 0 ? 'opacity: 0.5; cursor: not-allowed;' : ''}">Clear All</button>
+        <button id="add-highlights-to-note" style="background: #3498db; border: none; color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; flex: 1; ${safeCount === 0 ? 'opacity: 0.5; cursor: not-allowed;' : ''}">Add to Note</button>
+        <button id="clear-all-highlights" style="background: #95a5a6; border: none; color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; ${safeCount === 0 ? 'opacity: 0.5; cursor: not-allowed;' : ''}">Clear All</button>
       </div>
       <div style="margin-top: 8px; font-size: 12px; color: #bdc3c7;">
         <div>• Click and drag to highlight text</div>

@@ -73,6 +73,6 @@
     }
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co https://kqjcorjjvunmyrnzvqgr.supabase.co/auth/v1 https://kqjcorjjvunmyrnzvqgr.supabase.co/rest/v1; img-src 'self' data: https:; style-src 'self' 'unsafe-inline';"
+    "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co https://kqjcorjjvunmyrnzvqgr.supabase.co/auth/v1 https://kqjcorjjvunmyrnzvqgr.supabase.co/rest/v1; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; frame-src 'none'; base-uri 'self'; form-action 'self';"
   }
 }

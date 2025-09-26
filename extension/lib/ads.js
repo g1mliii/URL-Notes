@@ -224,14 +224,22 @@ class AdManager {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    adContent.innerHTML = `
-      <div class="nordvpn-ad" id="nordvpnAdBanner">
-        <img src="../assets/affiliate-sales-campaign-nordvpn.png" 
-             alt="NordVPN - Secure Your Browsing" 
-             class="nordvpn-banner"
-             loading="lazy">
-      </div>
-    `;
+    // Clear existing content
+    adContent.innerHTML = '';
+    
+    // Create elements safely without XSS prevention (trusted extension content)
+    const adDiv = document.createElement('div');
+    adDiv.className = 'nordvpn-ad';
+    adDiv.id = 'nordvpnAdBanner';
+    
+    const img = document.createElement('img');
+    img.src = '../assets/affiliate-sales-campaign-nordvpn.png';
+    img.alt = 'NordVPN - Secure Your Browsing';
+    img.className = 'nordvpn-banner';
+    img.loading = 'lazy';
+    
+    adDiv.appendChild(img);
+    adContent.appendChild(adDiv);
 
     // Add click event listener (CSP compliant)
     const nordvpnAd = document.getElementById('nordvpnAdBanner');
@@ -249,14 +257,22 @@ class AdManager {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    adContent.innerHTML = `
-      <div class="vrbo-ad" id="vrboAdBanner">
-        <img src="../assets/vrbo.gif" 
-             alt="Vrbo - Book Your Perfect Vacation Rental" 
-             class="vrbo-banner"
-             loading="lazy">
-      </div>
-    `;
+    // Clear existing content
+    adContent.innerHTML = '';
+    
+    // Create elements safely without XSS prevention (trusted extension content)
+    const adDiv = document.createElement('div');
+    adDiv.className = 'vrbo-ad';
+    adDiv.id = 'vrboAdBanner';
+    
+    const img = document.createElement('img');
+    img.src = '../assets/vrbo.gif';
+    img.alt = 'Vrbo - Book Your Perfect Vacation Rental';
+    img.className = 'vrbo-banner';
+    img.loading = 'lazy';
+    
+    adDiv.appendChild(img);
+    adContent.appendChild(adDiv);
 
     // Add click event listener (CSP compliant)
     const vrboAd = document.getElementById('vrboAdBanner');
@@ -274,14 +290,22 @@ class AdManager {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    adContent.innerHTML = `
-      <div class="newbanner-ad" id="newBannerAdBanner">
-        <img src="../assets/15575447-1729241297568.png" 
-             alt="Special Offer - Click to Learn More" 
-             class="newbanner-banner"
-             loading="lazy">
-      </div>
-    `;
+    // Clear existing content
+    adContent.innerHTML = '';
+    
+    // Create elements safely without XSS prevention (trusted extension content)
+    const adDiv = document.createElement('div');
+    adDiv.className = 'newbanner-ad';
+    adDiv.id = 'newBannerAdBanner';
+    
+    const img = document.createElement('img');
+    img.src = '../assets/15575447-1729241297568.png';
+    img.alt = 'Special Offer - Click to Learn More';
+    img.className = 'newbanner-banner';
+    img.loading = 'lazy';
+    
+    adDiv.appendChild(img);
+    adContent.appendChild(adDiv);
 
     // Add click event listener (CSP compliant)
     const newBannerAd = document.getElementById('newBannerAdBanner');
@@ -299,17 +323,33 @@ class AdManager {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    adContent.innerHTML = `
-      <div class="fallback-ad">
-        <div class="ad-text">
-          <strong>Upgrade to Premium</strong>
-          <p>Remove ads and sync across devices</p>
-        </div>
-        <button class="upgrade-btn" id="upgradeAdButton">
-          Upgrade Now
-        </button>
-      </div>
-    `;
+    // Clear existing content
+    adContent.innerHTML = '';
+    
+    // Create elements safely without XSS prevention (trusted extension content)
+    const adDiv = document.createElement('div');
+    adDiv.className = 'fallback-ad';
+    
+    const textDiv = document.createElement('div');
+    textDiv.className = 'ad-text';
+    
+    const strong = document.createElement('strong');
+    strong.textContent = 'Upgrade to Premium';
+    
+    const p = document.createElement('p');
+    p.textContent = 'Remove ads and sync across devices';
+    
+    textDiv.appendChild(strong);
+    textDiv.appendChild(p);
+    
+    const button = document.createElement('button');
+    button.className = 'upgrade-btn';
+    button.id = 'upgradeAdButton';
+    button.textContent = 'Upgrade Now';
+    
+    adDiv.appendChild(textDiv);
+    adDiv.appendChild(button);
+    adContent.appendChild(adDiv);
 
     // Add click event listener (CSP compliant)
     const upgradeBtn = document.getElementById('upgradeAdButton');
