@@ -164,9 +164,8 @@
   - **GOAL**: Prove XSS prevention approach works before tackling complex extension
   - _Requirements: Web application security and data protection requirements_
 
-- [ ] 15.1.1 Implement XSS prevention for extension (CRITICAL - DO AFTER WEB APP)
+- [ ] 15.1 Implement XSS prevention for extension (CRITICAL - DO AFTER WEB APP)
   - Apply lessons learned from web app XSS prevention to extension
-  - implement retry mechanism for encrypted notes with placeholder content when encryption key is recieved, for example if sync issue happens and note gets placeholder content, add flag and retry method so it get unencrypted and refresht thenotes view so the updated versoin shows up. 
   - Install and integrate DOMPurify library for content sanitization in extension
   - Replace all innerHTML usage in extension with safe DOM manipulation methods
   - Add comprehensive input validation for note content, titles, and tags in extension
@@ -244,7 +243,8 @@
   - **NOTE**: Extension testing only needs device binding validation
   - _Requirements: Comprehensive validation of simplified cookie-based authentication_
 
-
+- [ ] 17. implement retry mechanism for encrypted notes in our extension so that when we have placeholder content and then the encryption key is recieved it unencrypts and fixes the note, for example if sync issue happens and note gets placeholder content, add flag and retry method so it get unencrypted with the key and refresht the notes view so the updated versoin shows up.
+     -also make sure if placeholder content is there sync cannot happen for those notes as otherwise theyu will overwrite the notes in the /database with paceholder.
 
 
 - [x] 16. implement planned migraton in stripe migration plan and produt analysis 

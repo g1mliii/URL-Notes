@@ -38,6 +38,9 @@ class Dashboard {
 
     // Use centralized subscription check instead of separate call
     this.listenForSubscriptionUpdates();
+
+    // Initialize XSS debug panel
+    this.initializeXSSDebug();
   }
 
   async initializeStorage() {
@@ -1085,6 +1088,89 @@ class Dashboard {
     }
     
     return sanitized;
+  }
+
+  // XSS Debug Panel Functions
+  initializeXSSDebug() {
+    // Show debug panel if in development mode or if URL contains debug=xss
+    const urlParams = new URLSearchParams(window.location.search);
+    const showDebug = urlParams.get('debug') === 'xss' || window.location.hostname === 'localhost';
+    
+    if (showDebug) {
+      this.showXSSDebugPanel();
+    }
+
+    // Add keyboard shortcut to toggle debug panel (Ctrl+Shift+X)
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'X') {
+        this.toggleXSSDebugPanel();
+      }
+    });
+  }
+
+  showXSSDebugPanel() {
+    const panel = document.getElementById('xssDebugPanel');
+    const content = document.getElementById('xssDebugContent');
+    
+    if (panel && content) {
+      panel.style.display = 'block';
+      
+      // Check DOMPurify status
+      const hasDOMPurify = !!window.DOMPurify;
+      const sanitizerStatus = window.domSanitizer?.isInitialized ? 'Initialized' : 'Not Initialized';
+      
+      content.innerHTML = `
+        <div>DOMPurify: ${hasDOMPurify ? '✅ Loaded' : '❌ Not Loaded'}</div>
+        <div>Sanitizer: ${sanitizerStatus}</div>
+        <div>Mode: ${hasDOMPurify ? 'Full Protection' : 'Fallback Mode'}</div>
+        <div style="margin-top: 10px;">
+          <button onclick="window.dashboard.testXSSProtection()" style="background: #007bff; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">Test XSS</button>
+        </div>
+      `;
+    }
+  }
+
+  toggleXSSDebugPanel() {
+    const panel = document.getElementById('xssDebugPanel');
+    if (panel) {
+      if (panel.style.display === 'none') {
+        this.showXSSDebugPanel();
+      } else {
+        panel.style.display = 'none';
+      }
+    }
+  }
+
+  async testXSSProtection() {
+    console.log('🧪 Testing XSS Protection...');
+    
+    // Test malicious content
+    const maliciousContent = '<script>alert("XSS Attack!")</script><img src=x onerror=alert("XSS")><p>Safe content</p>';
+    
+    try {
+      if (window.domSanitizer) {
+        const sanitized = await window.domSanitizer.sanitizeRichText(maliciousContent);
+        console.log('Original:', maliciousContent);
+        console.log('Sanitized:', sanitized);
+        
+        // Show result in debug panel
+        const content = document.getElementById('xssDebugContent');
+        if (content) {
+          content.innerHTML += `
+            <div style="margin-top: 10px; padding: 5px; background: rgba(255,255,255,0.1); border-radius: 3px;">
+              <div style="font-weight: bold;">XSS Test Result:</div>
+              <div style="font-size: 10px; color: #ccc;">Original: ${maliciousContent.substring(0, 50)}...</div>
+              <div style="font-size: 10px; color: #90EE90;">Sanitized: ${sanitized}</div>
+              <div style="color: ${sanitized.includes('<script>') || sanitized.includes('onerror') ? '#ff6b6b' : '#90EE90'};">
+                ${sanitized.includes('<script>') || sanitized.includes('onerror') ? '❌ FAILED' : '✅ PASSED'}
+              </div>
+            </div>
+          `;
+        }
+      }
+    } catch (error) {
+      console.error('XSS test failed:', error);
+    }
   }
 
   showLoadingState() {

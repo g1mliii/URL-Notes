@@ -4,6 +4,7 @@ title: "Dashboard"
 permalink: /dashboard/
 scripts:
 - config.js
+- js/lib/purify.min.js
 - js/lib/session-manager.js
 - js/lib/encryption.js
 - js/lib/api.js
@@ -55,6 +56,15 @@ scripts:
         </div>
     </div>
 
+    <!-- XSS Debug Panel (remove in production) -->
+    <div id="xssDebugPanel"
+        style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 5px; font-size: 12px; z-index: 10000; max-width: 300px; display: none;">
+        <div style="font-weight: bold; margin-bottom: 5px;">🛡️ XSS Protection Status</div>
+        <div id="xssDebugContent"></div>
+        <button onclick="document.getElementById('xssDebugPanel').style.display='none'"
+            style="float: right; background: none; border: none; color: white; cursor: pointer;">×</button>
+    </div>
+
     <!-- Dashboard Content -->
     <main class="dashboard-main">
         <div class="dashboard-content">
@@ -69,7 +79,8 @@ scripts:
                     </div>
                     <div class="header-right">
                         <button id="refreshNotesBtn" class="btn-secondary btn-icon" title="Refresh notes">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="refresh-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" class="refresh-icon">
                                 <polyline points="23 4 23 10 17 10"></polyline>
                                 <polyline points="1 20 1 14 7 14"></polyline>
                                 <path d="m3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
@@ -213,11 +224,13 @@ scripts:
                     <div class="export-section-header">
                         <h4>Select Notes to Export</h4>
                         <div class="export-selection-controls">
-                            <button type="button" id="selectAllExportBtn" class="btn-secondary btn-small">Select All</button>
-                            <button type="button" id="deselectAllExportBtn" class="btn-secondary btn-small">Deselect All</button>
+                            <button type="button" id="selectAllExportBtn" class="btn-secondary btn-small">Select
+                                All</button>
+                            <button type="button" id="deselectAllExportBtn" class="btn-secondary btn-small">Deselect
+                                All</button>
                         </div>
                     </div>
-                    
+
                     <!-- Bulk Selection Options -->
                     <div class="bulk-selection-options">
                         <div class="bulk-option">
@@ -290,7 +303,8 @@ scripts:
                     <h4>Select File to Import</h4>
                     <div class="file-upload-area" id="fileUploadArea">
                         <div class="file-upload-content">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                 <polyline points="14,2 14,8 20,8"></polyline>
                                 <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -363,8 +377,11 @@ scripts:
                 <div class="footer-donation">
                     <form action="https://www.paypal.com/donate" method="post" target="_top" class="footer-paypal-form">
                         <input type="hidden" name="hosted_button_id" value="MY59EPX5WVVQU" />
-                        <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="Support Anchored development" alt="Donate with PayPal button" style="height: 32px; width: auto;" />
-                        <img alt="" border="0" src="https://www.paypal.com/en_CA/i/scr/pixel.gif" width="1" height="1" />
+                        <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif"
+                            border="0" name="submit" title="Support Anchored development"
+                            alt="Donate with PayPal button" style="height: 32px; width: auto;" />
+                        <img alt="" border="0" src="https://www.paypal.com/en_CA/i/scr/pixel.gif" width="1"
+                            height="1" />
                     </form>
                 </div>
             </div>

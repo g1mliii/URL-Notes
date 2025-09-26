@@ -135,6 +135,12 @@
 
         // Initialize when page loads
         window.addEventListener('load', initSanitizer);
+        
+        // Also try to initialize immediately
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, DOMPurify available:', !!window.DOMPurify);
+            initSanitizer();
+        });
 
         function showResult(testId, passed, message) {
             const resultDiv = document.getElementById(testId + '-result');
@@ -258,7 +264,7 @@
         }
 
         // Auto-run tests after a delay
-        setTimeout(runAllTests, 2000);
+        setTimeout(runAllTests, 1000);
     </script>
 </body>
 
