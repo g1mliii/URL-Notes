@@ -9,19 +9,27 @@ class DOMSanitizer {
 
     // Configuration for different content types
     this.configs = {
-      // Basic rich text for note content (allows common formatting)
+      // Rich text for note content (preserves ALL extension formatting)
       richText: {
-        ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'a', 'ul', 'ol', 'li', 'blockquote', 'code', 'pre'],
-        ALLOWED_ATTR: ['href', 'target', 'rel'],
+        ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'strike', 'span', 'a', 'ul', 'ol', 'li', 'blockquote', 'code', 'pre'],
+        ALLOWED_ATTR: ['href', 'target', 'rel', 'style', 'class'],
         ALLOW_DATA_ATTR: false,
-        FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
-        FORBID_ATTR: ['onclick', 'onload', 'onerror', 'onmouseover', 'onfocus', 'onblur', 'onchange', 'onsubmit'],
-        ADD_ATTR: ['target', 'rel'],
-        ADD_TAGS: [],
+        FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
+        FORBID_ATTR: ['onclick', 'onload', 'onerror', 'onmouseover', 'onfocus', 'onblur', 'onchange', 'onsubmit', 'onkeydown', 'onkeyup', 'onmousedown', 'onmouseup'],
+        ADD_ATTR: ['target', 'rel', 'style'],
+        ADD_TAGS: ['span'],
         KEEP_CONTENT: true,
         RETURN_DOM: false,
         RETURN_DOM_FRAGMENT: false,
-        SANITIZE_DOM: true
+        SANITIZE_DOM: true,
+        // Allow safe CSS properties for colors and formatting
+        ALLOWED_CSS: {
+          'color': true,
+          'font-style': true,
+          'font-weight': true,
+          'text-decoration': true,
+          'cursor': true
+        }
       },
 
       // Plain text only (strips all HTML)
@@ -67,12 +75,10 @@ class DOMSanitizer {
     }
 
     if (window.DOMPurify) {
-      console.log('✅ DOMSanitizer: Using DOMPurify library');
       this.purify = window.DOMPurify;
       this.isInitialized = true;
       return this.purify;
     } else {
-      console.warn('⚠️ DOMSanitizer: Using fallback sanitizer (DOMPurify not available)');
       // Use fallback sanitizer
       this.purify = this.createFallbackSanitizer();
       this.isInitialized = true;
@@ -144,7 +150,6 @@ class DOMSanitizer {
         throw new Error('DOMPurify not available after loading');
       }
     } catch (error) {
-      console.warn('DOMPurify loading failed, using fallback sanitizer:', error.message);
       // Fallback to basic HTML escaping
       this.purify = this.createFallbackSanitizer();
       this.isInitialized = true;
@@ -168,19 +173,58 @@ class DOMSanitizer {
           const scripts = temp.querySelectorAll('script');
           scripts.forEach(script => script.remove());
 
-          // Remove dangerous attributes
+          // Clean up attributes on all elements
           const allElements = temp.querySelectorAll('*');
           allElements.forEach(el => {
-            // Remove event handler attributes
+            const tagName = el.tagName.toLowerCase();
+            
+            // Remove event handler attributes and dangerous attributes
             const attributes = [...el.attributes];
             attributes.forEach(attr => {
-              if (attr.name.startsWith('on') || attr.name === 'javascript:') {
+              const attrName = attr.name.toLowerCase();
+              
+              // Remove event handlers
+              if (attrName.startsWith('on')) {
+                el.removeAttribute(attr.name);
+                return;
+              }
+              
+              // Remove javascript: URLs
+              if (attr.value && attr.value.toLowerCase().includes('javascript:')) {
+                el.removeAttribute(attr.name);
+                return;
+              }
+              
+              // For style attributes, only allow safe CSS properties
+              if (attrName === 'style') {
+                const safeStyles = [];
+                const styles = attr.value.split(';');
+                styles.forEach(style => {
+                  const [prop, value] = style.split(':').map(s => s.trim());
+                  if (prop && value) {
+                    // Allow safe CSS properties for formatting
+                    if (['color', 'font-style', 'font-weight', 'text-decoration', 'cursor'].includes(prop.toLowerCase())) {
+                      safeStyles.push(`${prop}: ${value}`);
+                    }
+                  }
+                });
+                if (safeStyles.length > 0) {
+                  el.setAttribute('style', safeStyles.join('; '));
+                } else {
+                  el.removeAttribute('style');
+                }
+                return;
+              }
+              
+              // Keep only allowed attributes
+              const allowedAttrs = ['href', 'target', 'rel', 'style', 'class'];
+              if (!allowedAttrs.includes(attrName)) {
                 el.removeAttribute(attr.name);
               }
             });
-
-            // Remove dangerous tags
-            if (!config.ALLOWED_TAGS.includes(el.tagName.toLowerCase())) {
+            
+            // Remove disallowed tags but keep content
+            if (!config.ALLOWED_TAGS.includes(tagName)) {
               // Replace with text content
               const textNode = document.createTextNode(el.textContent);
               el.parentNode.replaceChild(textNode, el);
@@ -241,7 +285,6 @@ class DOMSanitizer {
       return;
     }
 
-    const originalLength = content.length;
     let sanitized;
     switch (type) {
       case 'plainText':
@@ -254,20 +297,6 @@ class DOMSanitizer {
       default:
         sanitized = await this.sanitizeRichText(content);
         break;
-    }
-
-    const sanitizedLength = sanitized.length;
-    const wasModified = originalLength !== sanitizedLength || content !== sanitized;
-    
-    if (wasModified) {
-      console.log(`🛡️ DOMSanitizer: Content sanitized (${type})`, {
-        original: content.substring(0, 100) + (content.length > 100 ? '...' : ''),
-        sanitized: sanitized.substring(0, 100) + (sanitized.length > 100 ? '...' : ''),
-        originalLength,
-        sanitizedLength
-      });
-    } else {
-      console.log(`✅ DOMSanitizer: Content safe (${type}), no changes needed`);
     }
 
     element.innerHTML = sanitized;
