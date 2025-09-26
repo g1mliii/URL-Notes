@@ -62,12 +62,11 @@ class DOMSanitizer {
 
   async loadDOMPurify() {
     try {
-      // Load DOMPurify from CDN for web application
+      // Load DOMPurify from local file for web application
       if (typeof window !== 'undefined' && !window.DOMPurify) {
-        // Create script element to load DOMPurify
+        // Create script element to load DOMPurify locally
         const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js';
-        script.crossOrigin = 'anonymous';
+        script.src = 'js/lib/purify.min.js';
         
         // Wait for script to load
         await new Promise((resolve, reject) => {

@@ -147,9 +147,6 @@
 
 
 - [x] 15 Implement XSS prevention for web application (CRITICAL - DO FIRST)
-
-
-
   - Install and integrate DOMPurify library for content sanitization in web app
   - Replace all innerHTML usage in web app with safe DOM manipulation methods
   - Implement Content Security Policy (CSP) headers for web application
@@ -188,10 +185,10 @@
   - _Requirements: Extension security and data protection requirements while maintaining full UX_
 
 - [ ] 15.2.2 Implement HTTP-only cookie authentication for web app (WEB APP ONLY)
-  - **Create Supabase Edge Functions** for secure cookie-based authentication
-    - `auth-login`: Handle login and set HTTP-only refresh token cookie
-    - `auth-refresh`: Refresh access token using HTTP-only cookie
-    - `auth-logout`: Clear HTTP-only cookies and invalidate tokens
+  - **Create Supabase Edge Functions** for secure cookie-based authentication (NO JWT/AUTH REQUIRED)
+    - `auth-login`: Handle login and set HTTP-only refresh token cookie (public endpoint - no auth required)
+    - `auth-refresh`: Refresh access token using HTTP-only cookie (uses cookie for auth, not JWT header)
+    - `auth-logout`: Clear HTTP-only cookies and invalidate tokens (uses cookie for auth, not JWT header)
   - **Replace localStorage token storage** with HTTP-only cookies
     - Remove all localStorage token storage code from web app
     - Store refresh tokens in HTTP-only, Secure, SameSite cookies

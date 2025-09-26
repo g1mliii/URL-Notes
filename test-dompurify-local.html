@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOMPurify Local Test</title>
+</head>
+<body>
+    <h1>DOMPurify Local Loading Test</h1>
+    <div id="test-output"></div>
+    
+    <script src="js/lib/purify.min.js"></script>
+    <script>
+        const output = document.getElementById('test-output');
+        
+        if (window.DOMPurify) {
+            output.innerHTML = '<p style="color: green;">✅ DOMPurify loaded successfully from local file!</p>';
+            
+            // Test sanitization
+            const dirty = '<script>alert("XSS")</script><p>Safe content</p>';
+            const clean = DOMPurify.sanitize(dirty);
+            
+            output.innerHTML += '<p><strong>Test:</strong></p>';
+            output.innerHTML += '<p><strong>Input:</strong> ' + dirty.replace(/</g, '&lt;') + '</p>';
+            output.innerHTML += '<p><strong>Sanitized:</strong> ' + clean.replace(/</g, '&lt;') + '</p>';
+            
+            if (!clean.includes('script') && clean.includes('<p>Safe content</p>')) {
+                output.innerHTML += '<p style="color: green;">✅ Sanitization working correctly!</p>';
+            } else {
+                output.innerHTML += '<p style="color: red;">❌ Sanitization failed!</p>';
+            }
+        } else {
+            output.innerHTML = '<p style="color: red;">❌ DOMPurify failed to load from local file!</p>';
+        }
+    </script>
+</body>
+</html>
