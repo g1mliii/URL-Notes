@@ -5291,6 +5291,8 @@ class URLNotesApp {
     }
   }
 
+
+
   // Check premium status
   async checkPremiumStatus() {
     try {

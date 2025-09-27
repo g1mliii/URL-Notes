@@ -4,6 +4,31 @@
 class NotesManager {
   constructor(app) {
     this.app = app; // reference to URLNotesApp
+    
+    // Listen for decryption retry success events
+    if (window.eventBus) {
+      window.eventBus.on('notes:decryption_retry_success', this.handleDecryptionRetrySuccess.bind(this));
+    }
+  }
+
+  // Handle successful decryption retry
+  handleDecryptionRetrySuccess(event) {
+    const { successful, failed, total } = event;
+    console.log(`NotesManager: Decryption retry successful for ${successful}/${total} notes`);
+    
+    // Refresh the notes display to show decrypted content
+    if (this.app && this.app.loadAllNotes) {
+      this.app.loadAllNotes().then(() => {
+        this.render();
+        
+        // Show notification about successful decryption
+        if (this.app.showNotification) {
+          this.app.showNotification(`Successfully decrypted ${successful} notes`, 'success');
+        }
+      }).catch(error => {
+        console.error('NotesManager: Failed to refresh notes after decryption retry:', error);
+      });
+    }
   }
 
   // Public entry: render notes list based on current filter and search

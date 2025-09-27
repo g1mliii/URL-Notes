@@ -146,107 +146,6 @@
     - _Requirements: 8.1, 8.2_
 
 
-- [x] 15 Implement XSS prevention for web application (CRITICAL - DO FIRST)
-  - Install and integrate DOMPurify library for content sanitization in web app
-  - Replace all innerHTML usage in web app with safe DOM manipulation methods
-  - Implement Content Security Policy (CSP) headers for web application
-  - Add comprehensive input validation for note content, titles, and tags in web app
-  - **WEB APP FOCUS**: Simple contenteditable with basic formatting - fewer features to preserve
-  - Preserve core web app functionality:
-    - Basic contenteditable behavior and cursor positioning
-    - Simple link handling and external link opening
-    - Auto-save functionality during editing
-    - Note display and rendering in dashboard
-    - Import/export functionality
-  - Configure DOMPurify to allow safe HTML tags needed for basic rich text
-  - Test XSS prevention with malicious payloads in web app
-  - Validate that note import/export maintains formatting after sanitization
-  - **GOAL**: Prove XSS prevention approach works before tackling complex extension
-  - _Requirements: Web application security and data protection requirements_
-
-- [x] 15.1 Implement XSS prevention for extension (CRITICAL - DO AFTER WEB APP)
-  - Apply lessons learned from web app XSS prevention to extension
-  - Install and integrate DOMPurify library for content sanitization in extension
-  - Replace all innerHTML usage in extension with safe DOM manipulation methods
-  - Add comprehensive input validation for note content, titles, and tags in extension
-  - **EXTENSION COMPLEXITY**: Rich text editor with advanced features - requires careful preservation of:
-    - Rich text formatting toolbar (bold, italic, underline, strikethrough)
-    - Markdown conversion (bidirectional HTML ↔ Markdown)
-    - Advanced paste handling and existing sanitization logic
-    - Citation and color formatting features
-    - Nested formatting combinations (bold + italic, etc.)
-    - Context menu operations and keyboard shortcuts
-    - Complex contenteditable behavior and cursor positioning
-  - Configure DOMPurify to allow safe HTML tags needed for rich text editing
-  - Test XSS prevention with malicious payloads while ensuring ALL editor features work
-  - Validate that note import/export maintains complex formatting after sanitization
-  - **GOAL**: Secure extension without breaking any rich text functionality
-  - _Requirements: Extension security and data protection requirements while maintaining full UX_
-
-- [ ] 15.2 Implement HTTP-only cookie authentication for web app (WEB APP ONLY)
-  - **Create Supabase Edge Functions** for secure cookie-based authentication (NO JWT/AUTH REQUIRED)
-    - `auth-login`: Handle login and set HTTP-only refresh token cookie (public endpoint - no auth required)
-    - `auth-refresh`: Refresh access token using HTTP-only cookie (uses cookie for auth, not JWT header)
-    - `auth-logout`: Clear HTTP-only cookies and invalidate tokens (uses cookie for auth, not JWT header)
-  - **Replace localStorage token storage** with HTTP-only cookies
-    - Remove all localStorage token storage code from web app
-    - Store refresh tokens in HTTP-only, Secure, SameSite cookies
-    - Keep access tokens in memory only (short-lived, 15-30 minutes)
-    - Automatic cookie handling by browser (no manual storage code needed)
-  - **Configure cookie security settings**
-    - HttpOnly: Prevent JavaScript access (XSS protection)
-    - Secure: HTTPS only transmission
-    - SameSite=Strict: CSRF protection
-    - Appropriate Max-Age for refresh tokens
-  - **Update web app authentication flow**
-    - Route all auth through Edge Functions instead of direct Supabase calls
-    - Use `credentials: 'include'` for automatic cookie handling
-    - Implement automatic token refresh before expiration
-    - Handle cookie-based session validation
-  - **Device fingerprinting for token binding** (both platforms)
-    - Bind tokens to device characteristics to prevent session hijacking
-    - Extension: Add to existing chrome.storage.local implementation
-    - Web app: Integrate with Edge Function cookie validation
-  - **Clean up old token management code**
-    - Remove localStorage encryption/decryption logic
-    - Remove session management complexity
-    - Simplify authentication state handling
-  - **NOTE**: Extension keeps current chrome.storage.local (already secure), only adds device binding
-  - _Requirements: Secure web app authentication with simplified token management_
-
-- [ ] 15.3.3 Test and validate HTTP-only cookie implementation (WEB APP ONLY)
-  - **Cross-browser compatibility testing**
-    - Desktop browsers: Chrome, Safari, Firefox, Edge
-    - Mobile browsers: iOS Safari, Android Chrome
-    - Private/incognito browsing mode compatibility
-    - Cookie persistence across browser sessions
-  - **Security validation testing**
-    - Verify HTTP-only cookies cannot be accessed via JavaScript
-    - Test XSS attack scenarios (cookies should be protected)
-    - Validate CSRF protection with SameSite settings
-    - Test token refresh flow and automatic cookie handling
-  - **Edge Function testing**
-    - Test authentication Edge Functions under load
-    - Validate cookie setting and clearing functionality
-    - Test error handling and fallback scenarios
-    - Verify CORS configuration for cookie handling
-  - **Migration and cleanup**
-    - Migrate existing localStorage sessions to cookie-based auth
-    - Clean up old localStorage data and encryption code
-    - Remove unused session management utilities
-    - Update documentation and authentication flow diagrams
-  - **Performance and reliability testing**
-    - Test authentication flow performance vs old localStorage approach
-    - Validate session persistence across mobile app switching
-    - Test network failure scenarios and recovery
-    - Verify automatic token refresh reliability
-  - **NOTE**: Extension testing only needs device binding validation
-  - _Requirements: Comprehensive validation of simplified cookie-based authentication_
-
-- [ ] 17. implement retry mechanism for encrypted notes in our extension so that when we have placeholder content and then the encryption key is recieved it unencrypts and fixes the note, for example if sync issue happens and note gets placeholder content, add flag and retry method so it get unencrypted with the key and refresht the notes view so the updated versoin shows up.
-     -also make sure if placeholder content is there sync cannot happen for those notes as otherwise theyu will overwrite the notes in the /database with paceholder.
-
-
 - [x] 16. implement planned migraton in stripe migration plan and produt analysis 
 
 
@@ -263,3 +162,72 @@
   - Environment variable: STRIPE_PREMIUM_PRICE_ID (with fallback)
   - No breaking changes to existing subscriptions
   - Professional Stripe product setup for better analytics and management
+
+
+
+
+
+
+
+
+
+- [ ] 17. ui fixes and improvments for extensoin, currently toast notificatoins for different evetns have different sytlles
+    - example the sync event has green toast that come in from right while other toast come down from midddle
+    -lets identify all toast styles or types we have and any conflicting css tyling for these and create 1 simple and normal style gor all toast notificatoins
+    - the style should follow our liquid glass setup/ design language
+    - settings menu ui also need to be updated to look more mordern and fir out design language specifically buttons in same area are different sizes, spacing is all over the place, we are using way too much vertical space requiring tons of scorlling
+    - wheni press new note button which opens the editor and I then leave the editor with or withoug saving a new note our notes list size, shrinks from its original size, The notes list im referring to is the notes list in the notes container, when i close and reopen the popup the notes list size reverts to its orignal size lets determine why this is happending and see if we can come up with a fix for it.
+    - our generate site summary dropdown style and look look veryu different from our other designs/syle of our main ui lets make it look more like our deisng languagae, the summarize buttons specifcally and thier backgrounds for example genearte summary button and summarize site name here (20 tokens) have purple background for some reason not sure why over all style guide needs to be much better
+    - our show tips menu after implementing xss protections has losts it x button to close it, and the number is not increaasing from 1-6 as a cylec through the tips as a user. 
+    - our refresh premium status button and sign out button should be side by side instead of ontop of each other and long horizontally filling up the whole screen 
+    - our open anchored website in settings with the link logo the box is square instead of circular, couold be conflicin css stuyles or some other issue
+
+- [ ] 18. webpage feature parity for note editor, and improvment of note editor ui
+    - currenly note editor is showsn on right side of screen as note with very few editing feautes
+    - lets bring up to parity whiule mainting xss safety, to our extension level with support for, adding and removing strikthrough, bold, underline, list, color change, and italics, we may be able to reuses extension editor code for this, to simplify implementation but it shouldnt be too much of a problem regardless.
+
+- [ ] 19. - lets also update our note view to look different instead of showing up on the side of the screen why not have it popout like a small new windows that can be moved arounds so the note can be edited like a tiny windows so that you can still access the rest of the site. we may need to adjust the saving mechanism for this and add it to the popup the save button to the popup and make sure we can have mutiple open and still save/sync as well as the dashboard may need functionality to open muitple notes if thats not possible already since i dont think we have a restriction on how many notes we can open except the ui elementt is limited to opening 1 and saving 1 currenly. 
+    - these changes musth be implemented while mainting xss security that we already have in place.
+    - for mobile i think we can keep the note editor as is since we dont have the extra screen realestate to mobe around the ntoes, thats includign ipad this should probably be only for desktop.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+- [x] 20. supabase rls policy security audit ✅
+
+    **COMPLETED SECURITY AUDIT & FIXES:**
+    - ✅ Applied comprehensive security migration with 2 database migrations
+    - ✅ Fixed RLS policies to prevent unauthorized data access and modification
+    - ✅ Added database triggers to protect critical fields (subscription_tier, stripe_customer_id, AI usage)
+    - ✅ Implemented function search_path security to prevent injection attacks
+    - ✅ Added audit logging for security monitoring
+    - ✅ Created validation functions for Edge Function access control
+    - ✅ Added database constraints to prevent invalid data
+    - ✅ Secured webhook_logs table with service-role-only access
+    - ✅ All Edge Functions verified secure (require JWT authentication)
+    - ✅ Client-side code reviewed - no direct database manipulation vulnerabilities found
+    
+    **SECURITY IMPROVEMENTS IMPLEMENTED:**
+    - Users can no longer modify their AI usage numbers directly
+    - Users cannot access or modify other users' information
+    - Users cannot change their Stripe customer ID, subscription tier, or expiration date
+    - Database triggers prevent unauthorized modifications to critical fields
+    - All functions secured with proper search_path settings
+    - Audit trail for security monitoring implemented
+    
+    **REMAINING RECOMMENDATION:**
+    - Enable leaked password protection in Supabase Auth settings (non-critical, can be done via dashboard)
+    

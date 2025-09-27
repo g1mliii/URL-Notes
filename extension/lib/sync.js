@@ -95,6 +95,19 @@ class SyncEngine {
       }
     });
 
+    // Listen for decryption failures and retry
+    window.eventBus?.on('notes:decryption_failed', async (payload) => {
+      console.log('Sync: Decryption failed for note, will retry when key becomes available');
+      // Retry after a short delay to allow encryption key to be set up
+      setTimeout(async () => {
+        try {
+          await this.retryFailedDecryption();
+        } catch (error) {
+          console.warn('Sync: Failed to retry decryption after failure event:', error);
+        }
+      }, 2000);
+    });
+
     // Listen for auth changes
     window.eventBus?.on('auth:changed', (payload) => {
       if (payload && payload.user) {
@@ -167,6 +180,61 @@ class SyncEngine {
     } catch (error) {
       console.warn('Sync: Encryption key check failed:', error.message);
       return false;
+    }
+  }
+
+  // Retry decryption for notes that previously failed
+  async retryFailedDecryption() {
+    try {
+      // Check if we have notes that need decryption retry
+      const retryCount = await window.notesStorage.getDecryptionRetryCount();
+      if (retryCount === 0) {
+        return { retried: 0, successful: 0, failed: 0 };
+      }
+
+      console.log(`Sync: Found ${retryCount} notes needing decryption retry`);
+
+      // First attempt: try to retry decryption with current key
+      let result = await window.notesStorage.retryDecryptionForFailedNotes();
+
+      // If decryption still failed and we have premium access, try refreshing premium status to get new encryption key
+      if (result.failed > 0 && window.supabaseClient?.isAuthenticated()) {
+        console.log(`Sync: ${result.failed} notes still failed, refreshing premium status to get encryption key`);
+
+        try {
+          // Use the premium refresh functionality to clear caches and refresh encryption key
+          await window.supabaseClient.refreshPremiumStatusAndUI();
+
+          // Wait a moment for the refresh to complete
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          // Retry decryption after premium status refresh
+          const secondResult = await window.notesStorage.retryDecryptionForFailedNotes();
+
+          // Combine results
+          result = {
+            retried: result.retried,
+            successful: result.successful + secondResult.successful,
+            failed: secondResult.failed
+          };
+
+          if (secondResult.successful > 0) {
+            console.log(`Sync: Successfully decrypted ${secondResult.successful} additional notes after premium refresh`);
+          }
+        } catch (refreshError) {
+          console.warn('Sync: Failed to refresh premium status during decryption retry:', refreshError);
+        }
+      }
+
+      if (result.successful > 0) {
+        console.log(`Sync: Successfully decrypted ${result.successful} notes on retry`);
+        this.showSyncSuccess(`Decrypted ${result.successful} previously encrypted notes`);
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Sync: Failed to retry decryption:', error);
+      return { retried: 0, successful: 0, failed: 0 };
     }
   }
 
@@ -378,6 +446,8 @@ class SyncEngine {
             // Note: Removed verbose logging for cleaner console
           }
         }
+
+
 
         // Update sync time
         const now = Date.now();
