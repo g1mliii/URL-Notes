@@ -66,11 +66,8 @@ class SupabaseClient {
           }
         }
 
-        // Verify token is still valid
-        const isValid = await this.verifyToken();
-        if (!isValid) {
-          await this.signOut();
-        } else {
+        // Token validity will be checked naturally by API calls
+        {
           // Check if we need to create/update profile (only if not done recently)
           try {
             const { profileLastChecked, userTier } = await chrome.storage.local.get(['profileLastChecked', 'userTier']);
@@ -408,17 +405,6 @@ class SupabaseClient {
     }
   }
 
-  // Verify token validity
-  async verifyToken() {
-    if (!this.accessToken) return false;
-
-    try {
-      const response = await this._request(`${this.authUrl}/user`, { auth: true, raw: true });
-      return response.ok;
-    } catch (error) {
-      return false;
-    }
-  }
 
   // Refresh session using refresh_token
   async refreshSession() {

@@ -186,12 +186,7 @@ class SyncEngine {
       // Check authentication first
       try {
         if (window.supabaseClient.isAuthenticated()) {
-          // Verify the token is still valid before checking subscription
-          const isValidToken = await window.supabaseClient.verifyToken();
-          if (!isValidToken) {
-            console.warn('Sync: Authentication token is invalid, cannot sync');
-            return { authenticated: false, status: null, canSync: false };
-          }
+          // Token validity will be checked naturally by API calls
 
           // User is authenticated with valid token, check subscription status
           try {
