@@ -176,8 +176,8 @@ class EditorManager {
     setTimeout(() => {
       // Hide editor and show notes
       editor.style.display = 'none';
-      notesContainer.style.display = 'block';
-      searchContainer.style.display = 'block';
+      notesContainer.style.display = ''; // Remove inline style to let CSS flex take over
+      searchContainer.style.display = ''; // Remove inline style to let CSS flex take over
 
       // Remove animation classes
       editor.classList.remove('open', 'slide-in', 'slide-out', 'editor-fade-in');

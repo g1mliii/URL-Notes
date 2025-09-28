@@ -163,15 +163,8 @@
   - No breaking changes to existing subscriptions
   - Professional Stripe product setup for better analytics and management
 
+- [x] 17. ui fixes and improvments for extensoin, currently toast notificatoins for different evetns have different sytlles
 
-
-
-
-
-
-
-
-- [ ] 17. ui fixes and improvments for extensoin, currently toast notificatoins for different evetns have different sytlles
     - example the sync event has green toast that come in from right while other toast come down from midddle
     -lets identify all toast styles or types we have and any conflicting css tyling for these and create 1 simple and normal style gor all toast notificatoins
     - the style should follow our liquid glass setup/ design language
@@ -181,6 +174,9 @@
     - our show tips menu after implementing xss protections has losts it x button to close it, and the number is not increaasing from 1-6 as a cylec through the tips as a user. 
     - our refresh premium status button and sign out button should be side by side instead of ontop of each other and long horizontally filling up the whole screen 
     - our open anchored website in settings with the link logo the box is square instead of circular, couold be conflicin css stuyles or some other issue
+
+
+
 
 - [ ] 18. webpage feature parity for note editor, and improvment of note editor ui
     - currenly note editor is showsn on right side of screen as note with very few editing feautes

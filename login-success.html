@@ -1,129 +1,153 @@
----
-layout: default
-title: Login Successful
-description: Successfully signed in to Anchored. You can now close this tab and return to the extension.
-permalink: /login-success/
----
+<!DOCTYPE html>
+<html lang="en">
 
-<style>
-    .success-container {
-        min-height: 80vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem;
-    }
-
-    .success-content {
-        text-align: center;
-        max-width: 500px;
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 16px;
-        padding: 3rem 2rem;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    }
-
-    .success-icon {
-        width: 80px;
-        height: 80px;
-        margin: 0 auto 1.5rem;
-        background: linear-gradient(135deg, #10b981, #059669);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        animation: successPulse 2s ease-in-out infinite;
-    }
-
-    .success-icon svg {
-        width: 40px;
-        height: 40px;
-        color: white;
-    }
-
-    @keyframes successPulse {
-
-        0%,
-        100% {
-            transform: scale(1);
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extension Login Success - Anchored</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        50% {
-            transform: scale(1.05);
-        }
-    }
-
-    .success-title {
-        font-size: 2rem;
-        font-weight: 700;
-        margin-bottom: 1rem;
-        color: var(--text-primary, #1f2937);
-    }
-
-    .success-message {
-        font-size: 1.1rem;
-        color: var(--text-secondary, #6b7280);
-        margin-bottom: 2rem;
-        line-height: 1.6;
-    }
-
-    .success-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        align-items: center;
-    }
-
-    .close-tab-btn {
-        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-        color: white;
-        border: none;
-        padding: 0.75rem 2rem;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        font-size: 1rem;
-    }
-
-    .close-tab-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-    }
-
-    .extension-link {
-        color: var(--text-secondary, #6b7280);
-        text-decoration: none;
-        font-size: 0.9rem;
-        transition: color 0.2s ease;
-    }
-
-    .extension-link:hover {
-        color: var(--text-primary, #1f2937);
-    }
-
-    .auto-close-notice {
-        font-size: 0.85rem;
-        color: var(--text-tertiary, #9ca3af);
-        margin-top: 1rem;
-    }
-
-    @media (max-width: 768px) {
-        .success-content {
-            margin: 1rem;
-            padding: 2rem 1.5rem;
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            padding: 1rem;
         }
 
-        .success-title {
-            font-size: 1.5rem;
+        .container {
+            text-align: center;
+            max-width: 450px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 3rem 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         }
-    }
-</style>
 
-<main class="success-container">
-    <div class="success-content">
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 2rem;
+            background: rgba(16, 185, 129, 0.2);
+            border: 2px solid rgba(16, 185, 129, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .success-icon svg {
+            width: 40px;
+            height: 40px;
+            color: #10b981;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+
+        .instruction {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .extension-icon {
+            width: 24px;
+            height: 24px;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+            opacity: 0.8;
+        }
+
+        .instruction-text {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .instruction-detail {
+            font-size: 0.95rem;
+            opacity: 0.8;
+        }
+
+        .close-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.75rem 2rem;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1rem;
+            margin-top: 1rem;
+        }
+
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .auto-close {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            margin-top: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 1rem;
+                padding: 2rem 1.5rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
         <div class="success-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
                 stroke-linejoin="round">
@@ -131,71 +155,79 @@ permalink: /login-success/
             </svg>
         </div>
 
-        <h1 class="success-title">Successfully Signed In!</h1>
+        <h1>Login Successful!</h1>
+        <p class="subtitle">Your Google account has been connected to the Anchored extension.</p>
 
-        <p class="success-message">
-            You've been successfully authenticated with Anchored. You can now close this tab and return to using the
-            extension with your account.
-        </p>
-
-        <div class="success-actions">
-            <button class="close-tab-btn" onclick="closeTab()">
-                Close This Tab
-            </button>
-
-            <a href="/" class="extension-link">
-                ← Back to Anchored Home
-            </a>
+        <div class="instruction">
+            <div class="instruction-text">
+                <svg class="extension-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                </svg>
+                Please open the Anchored extension
+            </div>
+            <div class="instruction-detail">
+                Click the extension icon in your browser toolbar to continue with your premium account.
+            </div>
         </div>
 
-        <p class="auto-close-notice">
-            This tab will automatically close in <span id="countdown">10</span> seconds
-        </p>
+        <button class="close-btn" onclick="closeTab()">Close This Tab</button>
+
+        <div class="auto-close">
+            This tab will close automatically in <span id="countdown">5</span> seconds
+        </div>
     </div>
-</main>
 
-<script>
-    // Auto-close functionality
-    let countdown = 10;
-    const countdownElement = document.getElementById('countdown');
+    <script>
+        // Check if this is an extension OAuth callback
+        const isExtensionOAuth = window.location.hash && window.location.hash.includes('access_token');
 
-    const timer = setInterval(() => {
-        countdown--;
-        countdownElement.textContent = countdown;
+        if (isExtensionOAuth) {
+            console.log('Extension OAuth detected - showing static success page');
+        }
 
-        if (countdown <= 0) {
+        // Auto-close functionality
+        let countdown = 5;
+        const countdownElement = document.getElementById('countdown');
+
+        const timer = setInterval(() => {
+            countdown--;
+            if (countdownElement) {
+                countdownElement.textContent = countdown;
+            }
+
+            if (countdown <= 0) {
+                clearInterval(timer);
+                closeTab();
+            }
+        }, 1000);
+
+        // Close tab function
+        function closeTab() {
+            try {
+                window.close();
+                // If window.close() doesn't work, just keep the page static
+            } catch (error) {
+                // Keep page static - don't redirect
+                console.log('Tab close blocked by browser - keeping page open');
+            }
+        }
+
+        // Stop countdown if user interacts with the page
+        document.addEventListener('click', () => {
             clearInterval(timer);
-            closeTab();
-        }
-    }, 1000);
+            if (countdownElement && countdownElement.parentElement) {
+                countdownElement.parentElement.style.display = 'none';
+            }
+        });
 
-    // Close tab function
-    function closeTab() {
-        try {
-            // Try to close the tab
-            window.close();
+        document.addEventListener('keydown', () => {
+            clearInterval(timer);
+            if (countdownElement && countdownElement.parentElement) {
+                countdownElement.parentElement.style.display = 'none';
+            }
+        });
+    </script>
+</body>
 
-            // If window.close() doesn't work (some browsers block it), 
-            // redirect to the main site after a short delay
-            setTimeout(() => {
-                if (!window.closed) {
-                    window.location.href = '/';
-                }
-            }, 500);
-        } catch (error) {
-            // Fallback: redirect to main site
-            window.location.href = '/';
-        }
-    }
-
-    // Stop countdown if user interacts with the page
-    document.addEventListener('click', () => {
-        clearInterval(timer);
-        countdownElement.parentElement.style.display = 'none';
-    });
-
-    document.addEventListener('keydown', () => {
-        clearInterval(timer);
-        countdownElement.parentElement.style.display = 'none';
-    });
-</script>
+</html>

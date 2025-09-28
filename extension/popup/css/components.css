@@ -752,6 +752,12 @@ body {
   --content-max: 660px;
   position: relative;
   /* For absolute positioning of counter */
+
+  /* Ensure consistent sizing regardless of content */
+  height: auto;
+  /* Let flex handle the height */
+  box-sizing: border-box;
+  /* Include padding and border in size calculations */
 }
 
 /* Notes header background band */
@@ -1035,59 +1041,168 @@ body {
   background: var(--canvas-bg);
 }
 
-/* Toast Notification - Updated to match sync notification theme */
+/* Premium Glassmorphism Toast - Optimized for Sync Notifications */
 .toast {
-  position: absolute;
-  /* within .app-container (relative) */
+  position: fixed;
   left: 50%;
-  top: 12px;
-  /* show at top, above editor */
-  bottom: auto;
-  transform: translate(-50%, -8px);
+  top: 16px;
+  transform: translate(-50%, -20px);
   z-index: 10001;
-  /* above .note-editor (9999) */
-  max-width: calc(100% - 24px);
-  padding: 12px 16px;
-  border-radius: 8px;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  max-width: calc(100% - 32px);
+  min-width: 220px;
+  padding: 14px 18px;
+  /* Slightly more padding for premium feel */
+  border-radius: 16px;
+  /* More rounded for modern look */
+
+  /* Enhanced glassmorphism styling - benchmark quality */
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.25) 0%,
+      rgba(255, 255, 255, 0.15) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+
   color: var(--text-primary);
-  box-shadow: var(--glass-inset), var(--glass-shadow);
-  backdrop-filter: blur(var(--backdrop-blur));
-  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  font-size: 14px;
+  font-weight: 600;
+  /* Slightly bolder for better readability */
+
   opacity: 0;
   pointer-events: none;
-  /* let clicks pass through */
-  transition: opacity 160ms ease, transform 160ms ease;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  font-size: 14px;
-  font-weight: 500;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  /* Smoother easing */
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Slightly more space for premium feel */
+
+  /* Prevent text overflow */
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+
+  /* Subtle animation enhancement */
+  will-change: transform, opacity;
 }
 
 .toast.show {
   opacity: 1;
   transform: translate(-50%, 0);
+  pointer-events: auto;
+  animation: toast-slide-in 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-/* Toast variants for different message types */
+/* Premium slide-in animation for sync notifications */
+@keyframes toast-slide-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -30px) scale(0.95);
+    filter: blur(2px);
+  }
+
+  60% {
+    opacity: 0.8;
+    transform: translate(-50%, 2px) scale(1.02);
+    filter: blur(0px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+    filter: blur(0px);
+  }
+}
+
+/* Premium Toast Content Styling */
+.toast-icon {
+  font-size: 18px;
+  /* Slightly larger for better visibility */
+  flex-shrink: 0;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+  /* Subtle icon shadow */
+  animation: toast-icon-glow 0.4s ease-out;
+}
+
+.toast-message {
+  flex: 1;
+  line-height: 1.5;
+  /* Better readability */
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  /* Subtle text shadow for clarity */
+}
+
+/* Subtle icon animation for premium feel */
+@keyframes toast-icon-glow {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Subtle Toast Variants - More Transparent and Less Colored */
 .toast.success {
-  background: linear-gradient(180deg, rgba(0, 122, 255, 0.15), rgba(0, 122, 255, 0.08));
-  border-color: rgba(0, 122, 255, 0.25);
-  color: var(--text-primary);
+  background: linear-gradient(135deg,
+      rgba(52, 199, 89, 0.08) 0%,
+      rgba(52, 199, 89, 0.05) 50%,
+      rgba(255, 255, 255, 0.15) 100%);
+  border: 1px solid rgba(52, 199, 89, 0.15);
+  box-shadow:
+    0 8px 32px rgba(52, 199, 89, 0.06),
+    0 2px 8px rgba(52, 199, 89, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 .toast.error {
-  background: linear-gradient(180deg, rgba(255, 59, 48, 0.15), rgba(255, 59, 48, 0.08));
-  border-color: rgba(255, 59, 48, 0.25);
-  color: var(--text-primary);
+  background: linear-gradient(135deg,
+      rgba(255, 59, 48, 0.08) 0%,
+      rgba(255, 59, 48, 0.05) 50%,
+      rgba(255, 255, 255, 0.15) 100%);
+  border: 1px solid rgba(255, 59, 48, 0.15);
+  box-shadow:
+    0 8px 32px rgba(255, 59, 48, 0.06),
+    0 2px 8px rgba(255, 59, 48, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.toast.warning {
+  background: linear-gradient(135deg,
+      rgba(255, 149, 0, 0.08) 0%,
+      rgba(255, 149, 0, 0.05) 50%,
+      rgba(255, 255, 255, 0.15) 100%);
+  border: 1px solid rgba(255, 149, 0, 0.15);
+  box-shadow:
+    0 8px 32px rgba(255, 149, 0, 0.06),
+    0 2px 8px rgba(255, 149, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 .toast.info {
-  background: linear-gradient(180deg, rgba(0, 122, 255, 0.15), rgba(0, 122, 255, 0.08));
-  border-color: rgba(0, 122, 255, 0.25);
-  color: var(--text-primary);
+  background: linear-gradient(135deg,
+      rgba(0, 122, 255, 0.08) 0%,
+      rgba(0, 122, 255, 0.05) 50%,
+      rgba(255, 255, 255, 0.15) 100%);
+  border: 1px solid rgba(0, 122, 255, 0.15);
+  box-shadow:
+    0 8px 32px rgba(0, 122, 255, 0.06),
+    0 2px 8px rgba(0, 122, 255, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 /* Notification icon styling */
@@ -1151,6 +1266,13 @@ body {
   /* Ensure scrollbar doesn't cause layout shifts */
   scrollbar-gutter: stable;
   /* Let the list span full width; cards themselves are constrained */
+
+  /* Smooth scrolling improvements */
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  /* iOS smooth scrolling */
+  overscroll-behavior: contain;
+  /* Prevent scroll chaining */
 }
 
 /* Filter transition animations */
@@ -2775,9 +2897,13 @@ html[data-view="site"] .note-item:hover::after {
 }
 
 .ai-summary-generate {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  color: white;
+  /* Use consistent glassmorphism styling instead of purple gradient */
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-inset), var(--glass-shadow);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  color: var(--text-primary);
   padding: 10px 20px;
   border-radius: 8px;
   font-size: 0.9rem;
@@ -2787,16 +2913,18 @@ html[data-view="site"] .note-item:hover::after {
 }
 
 .ai-summary-generate:hover:not(:disabled) {
+  background: var(--glass-bg-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: var(--glass-inset), 0 4px 12px var(--shadow-dark);
 }
 
 .ai-summary-generate:disabled {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.5);
+  background: color-mix(in oklab, var(--glass-bg) 50%, transparent);
+  color: var(--text-tertiary);
   cursor: not-allowed;
   transform: none;
-  box-shadow: none;
+  box-shadow: var(--glass-inset);
+  opacity: 0.5;
 }
 
 .dropdown-header {

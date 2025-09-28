@@ -253,7 +253,7 @@ class SupabaseClient {
       const redirectUri = chrome.identity.getRedirectURL();
       console.log('Extension redirect URI:', redirectUri);
 
-      // Use Supabase's OAuth endpoint with the website login-success page
+      // Use Supabase's OAuth endpoint with the extension-specific login-success page
       const websiteRedirectUri = 'https://anchored.site/login-success/';
       // Add access_type=offline to ensure we get refresh tokens from Google
       const authUrl = `${this.authUrl}/authorize?provider=${encodeURIComponent(provider)}&redirect_to=${encodeURIComponent(websiteRedirectUri)}&access_type=offline&prompt=consent`;
@@ -340,6 +340,8 @@ class SupabaseClient {
         statusRefresh: true
       });
     } catch (_) { }
+
+    // Note: Premium refresh flag is handled separately by email/OAuth flows
   }
 
   // Sign out

@@ -296,6 +296,9 @@ class URLNotesApp {
     // Apply premium-dependent UI immediately
     try { await this.updatePremiumUI(); } catch (_) { }
 
+    // Check if OAuth just completed (popup was closed during OAuth flow)
+    await this.checkOAuthCompletion();
+
     // RESTORE CACHED VALUES IMMEDIATELY to prevent visual shifts
     await this.restoreCachedUIState();
 
@@ -947,6 +950,37 @@ class URLNotesApp {
       console.error('Error handling tier change:', error);
     }
   }
+
+  // Check if OAuth just completed (called during popup initialization)
+  async checkOAuthCompletion() {
+    try {
+      const { oauthJustCompleted } = await chrome.storage.local.get(['oauthJustCompleted']);
+
+      if (oauthJustCompleted && oauthJustCompleted !== null && oauthJustCompleted.success) {
+        // Check if this completion is recent (within last 30 seconds)
+        const timeSinceCompletion = Date.now() - oauthJustCompleted.timestamp;
+
+        if (timeSinceCompletion < 30000) {
+          // Clear the flag so we don't trigger again
+          await chrome.storage.local.set({ oauthJustCompleted: null });
+
+          // Trigger refresh after a short delay to ensure UI is ready
+          setTimeout(() => {
+            if (this.settingsManager && this.settingsManager.handleRefreshPremiumStatus) {
+              this.settingsManager.handleRefreshPremiumStatus();
+            }
+          }, 1500);
+        } else {
+          // Old completion, clear it
+          await chrome.storage.local.set({ oauthJustCompleted: null });
+        }
+      }
+    } catch (error) {
+      console.error('Error checking OAuth completion:', error);
+    }
+  }
+
+
 
   // Note: Sync event handlers removed - sync only happens on timer or manual button press
 
@@ -2918,91 +2952,31 @@ class URLNotesApp {
     }
   }
 
-  // Add new method for sync-aware popup
+  // Unified note saved notification using premium glassmorphism toast
   showNoteSavedPopup(message, type = 'saved') {
-    // Remove any existing popups first to prevent overlapping
-    const existingPopups = document.querySelectorAll('.note-saved-popup');
-    existingPopups.forEach(popup => {
-      if (popup.parentNode) {
-        popup.parentNode.removeChild(popup);
-      }
-    });
-
-    const popup = document.createElement('div');
-    popup.className = `note-saved-popup ${type}`;
-
-    let icon = '✓';
-    let bgColor = 'rgba(0, 122, 255, 0.9)';
+    // Convert custom popup types to standard toast types
+    let toastType = 'success';
 
     switch (type) {
       case 'sync':
-        icon = '⟳';
-        bgColor = 'rgba(255, 149, 0, 0.9)';
+        toastType = 'warning'; // Orange for syncing in progress
         break;
       case 'synced':
-        icon = '✓';
-        bgColor = 'rgba(52, 199, 89, 0.9)';
+        toastType = 'success'; // Green for successful sync
         break;
       case 'sync-error':
-        icon = '⚠';
-        bgColor = 'rgba(255, 59, 48, 0.9)';
+        toastType = 'error'; // Red for sync errors
+        break;
+      case 'error':
+        toastType = 'error';
+        break;
+      default:
+        toastType = 'success'; // Default saved state
         break;
     }
 
-    const popupHtml = `
-      <div class="popup-content">
-        <span class="popup-icon">${icon}</span>
-        <span class="popup-message">${message}</span>
-      </div>
-    `;
-
-    if (window.safeDOM) {
-      window.safeDOM.setInnerHTML(popup, popupHtml, false);
-    } else {
-      popup.innerHTML = popupHtml;
-    }
-
-    // Apply liquid glass theme styling
-    popup.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: var(--glass-bg);
-      color: var(--text-primary);
-      padding: 12px 16px;
-      border-radius: 12px;
-      backdrop-filter: blur(20px);
-      border: 1px solid var(--glass-border);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-      z-index: 10000;
-      font-size: 14px;
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      max-width: 300px;
-      animation: slideInRight 0.3s ease-out;
-    `;
-
-    // Add to DOM and animate in
-    document.body.appendChild(popup);
-
-    // Trigger animation
-    requestAnimationFrame(() => {
-      popup.style.transform = 'translateX(0)';
-    });
-
-    // Auto-remove after 3 seconds
-    setTimeout(() => {
-      if (popup.parentNode) {
-        popup.style.animation = 'slideOutRight 0.3s ease-in';
-        setTimeout(() => {
-          if (popup.parentNode) {
-            popup.parentNode.removeChild(popup);
-          }
-        }, 300);
-      }
-    }, 3000);
+    // Use the unified premium glassmorphism toast system
+    Utils.showToast(message, toastType);
   }
 
   // Delete current note (from editor)
@@ -5307,6 +5281,10 @@ class URLNotesApp {
 
   // Show upgrade message when free users hit their limit
   showUpgradeMessage() {
+    // Use unified toast system for upgrade message
+    Utils.showToast('AI limit reached! Upgrade to Premium for 500 rewrites/month', 'warning');
+
+    // Also update the usage badge to show upgrade option
     const usageBadge = document.getElementById('usageBadge');
     if (usageBadge) {
       // Create upgrade message
@@ -5478,83 +5456,16 @@ class URLNotesApp {
 
   // Import functionality is handled by SettingsManager.handleImportNotes()
 
-  // Show notification message
+  // Show notification message using unified glassmorphism toast system
   showNotification(message, type = 'info') {
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-
-    let icon = 'ℹ';
-    let bgColor = 'rgba(0, 122, 255, 0.9)';
-
-    switch (type) {
-      case 'success':
-        icon = '✓';
-        bgColor = 'rgba(52, 199, 89, 0.9)';
-        break;
-      case 'warning':
-        icon = '⚠';
-        bgColor = 'rgba(255, 149, 0, 0.9)';
-        break;
-      case 'error':
-        icon = '✗';
-        bgColor = 'rgba(255, 59, 48, 0.9)';
-        break;
-    }
-
-    const notificationHtml = `
-      <span class="notification-icon">${icon}</span>
-      <span class="notification-message">${message}</span>
-    `;
-
-    if (window.safeDOM) {
-      window.safeDOM.setInnerHTML(notification, notificationHtml, false);
+    // Use the unified Utils.showToast for consistent glassmorphism styling
+    // This ensures sync notifications (the most important ones) use the best styling
+    if (window.Utils && typeof window.Utils.showToast === 'function') {
+      window.Utils.showToast(message, type);
     } else {
-      notification.innerHTML = notificationHtml;
+      // Fallback to console if Utils not available
+      console.log(`${type.toUpperCase()}: ${message}`);
     }
-
-    notification.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: ${bgColor};
-      color: white;
-      padding: 12px 16px;
-      border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      z-index: 10000;
-      transform: translateX(100%);
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      max-width: 300px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      font-size: 14px;
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    `;
-
-    document.body.appendChild(notification);
-
-    // Animate in
-    setTimeout(() => {
-      notification.style.transform = 'translateX(0)';
-    }, 100);
-
-    // Auto-hide after delay
-    setTimeout(() => {
-      notification.style.transform = 'translateX(100%)';
-      setTimeout(() => {
-        if (notification.parentNode) {
-          notification.parentNode.removeChild(notification);
-        }
-      }, 300);
-    }, 3000);
   }
 
 }

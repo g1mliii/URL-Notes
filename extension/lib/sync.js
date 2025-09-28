@@ -309,7 +309,7 @@ class SyncEngine {
       this.startPeriodicSync();
     } catch (error) {
       console.error('Initial sync failed:', error);
-      this.showSyncError('Initial sync failed. Please try again.');
+      this.showSyncError('Sync failed');
     }
   }
 
@@ -462,7 +462,7 @@ class SyncEngine {
 
     } catch (error) {
       console.error('Sync failed:', error);
-      this.showSyncError('Sync failed. Changes will be saved locally.');
+      this.showSyncError('Sync failed');
     } finally {
       this.isSyncing = false;
     }
@@ -499,15 +499,15 @@ class SyncEngine {
   async manualSync() {
 
     if (!(await this.canSync())) {
-      this.showSyncError('Premium subscription required for sync');
+      this.showSyncError('Premium required');
       return;
     }
 
     try {
       await this.performSync();
-      this.showSyncSuccess('Manual sync completed successfully');
+      this.showSyncSuccess('Synced');
     } catch (error) {
-      this.showSyncError('Manual sync failed');
+      this.showSyncError('Sync failed');
     }
   }
 

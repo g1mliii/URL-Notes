@@ -23,7 +23,7 @@ class NotesManager {
         
         // Show notification about successful decryption
         if (this.app.showNotification) {
-          this.app.showNotification(`Successfully decrypted ${successful} notes`, 'success');
+          this.app.showNotification(`Decrypted ${successful} notes`, 'success');
         }
       }).catch(error => {
         console.error('NotesManager: Failed to refresh notes after decryption retry:', error);
@@ -643,7 +643,7 @@ class NotesManager {
 
       // Show success message
       if (deletedCount > 0) {
-        this.app.showNotification(`Deleted ${deletedCount} notes`, 'success');
+        this.app.showNotification(`${deletedCount} notes deleted`, 'success');
         // Refresh the notes display
         this.render();
       }

@@ -1,4 +1,3 @@
-
 /* Explicit dark-mode text fixes to avoid black text on dark surfaces */
 :root[data-theme="dark"] .search-input {
   color: rgba(255, 255, 255, 0.92) !important;
@@ -15,7 +14,8 @@
 :root[data-theme="light"] .note-title-header,
 :root:not([data-theme]) .note-title-header {
   color: rgba(0, 0, 0, 0.9) !important;
-  -webkit-text-fill-color: rgba(0, 0, 0, 0.9) !important; /* force for WebKit inputs */
+  -webkit-text-fill-color: rgba(0, 0, 0, 0.9) !important;
+  /* force for WebKit inputs */
 }
 
 
@@ -137,6 +137,7 @@
   :root:not([data-theme]) .search-input {
     color: rgba(255, 255, 255, 0.92) !important;
   }
+
   :root:not([data-theme]) .search-input::placeholder {
     color: rgba(255, 255, 255, 0.6) !important;
   }
@@ -192,13 +193,15 @@ body {
   color: var(--text-primary);
   background: transparent;
   line-height: 1.4;
-  text-rendering: optimizeLegibility; /* crisper kerning */
+  text-rendering: optimizeLegibility;
+  /* crisper kerning */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 /* Ensure Chrome sizes the popup correctly */
-html, body {
+html,
+body {
   width: 380px;
   height: 600px;
   overflow-x: hidden;
@@ -212,7 +215,7 @@ html, body {
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
   border: 1px solid var(--border-color);
   border-radius: 20px;
-  box-shadow: 
+  box-shadow:
     0 8px 32px var(--shadow-dark),
     inset 0 1px 0 var(--shadow-light);
   display: flex;
@@ -238,7 +241,8 @@ html, body {
     radial-gradient(220px 180px at 28% 82%, rgba(50, 205, 50, 0.12), transparent 60%),
     radial-gradient(200px 220px at 92% 88%, rgba(155, 89, 182, 0.12), transparent 60%);
   filter: blur(34px) saturate(125%);
-  opacity: 1; /* Stronger background effect */
+  opacity: 1;
+  /* Stronger background effect */
   animation: nebulous-flow 40s ease-in-out infinite;
 }
 
@@ -262,14 +266,16 @@ html, body {
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
   border-bottom: 1px solid var(--border-color);
-  padding: 12px 16px; /* tighter, iOS-like */
+  padding: 12px 16px;
+  /* tighter, iOS-like */
 }
 
 .header-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 4px; /* reduce extra gap below header */
+  margin-bottom: 4px;
+  /* reduce extra gap below header */
 }
 
 .site-info {
@@ -442,7 +448,8 @@ html, body {
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  border-radius: 12px; /* softer pill */
+  border-radius: 12px;
+  /* softer pill */
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 13px;
@@ -498,7 +505,8 @@ html, body {
 
 /* Search Container */
 .search-container {
-  padding: 8px 16px 8px 16px; /* pull search closer to header */
+  padding: 8px 16px 8px 16px;
+  /* pull search closer to header */
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -534,7 +542,7 @@ html, body {
 .search-input:focus {
   outline: none;
   border-color: var(--accent-primary);
-  box-shadow: 
+  box-shadow:
     inset 0 2px 4px var(--shadow-dark),
     0 0 0 3px color-mix(in srgb, var(--accent-primary) 20%, transparent);
 }
@@ -563,9 +571,11 @@ html, body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: var(--bg-primary); /* Less transparent */
+  background: var(--bg-primary);
+  /* Less transparent */
   z-index: 5000;
-  display: none; /* Hidden by default */
+  display: none;
+  /* Hidden by default */
   flex-direction: column;
   border: 1px solid var(--border-color);
   border-radius: 16px;
@@ -583,14 +593,16 @@ html, body {
   margin: 0;
   flex-grow: 1;
   text-align: center;
-  padding-right: 40px; /* Account for back button */
+  padding-right: 40px;
+  /* Account for back button */
 }
 
 .settings-content {
   padding: 16px;
   overflow-y: auto;
   flex-grow: 1;
-  max-height: calc(100vh - 60px); /* Ensure scrolling works within popup height */
+  max-height: calc(100vh - 60px);
+  /* Ensure scrolling works within popup height */
 }
 
 /* Spinning animation for refresh buttons */
@@ -599,8 +611,13 @@ html, body {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .settings-section {
@@ -612,7 +629,7 @@ html, body {
   box-shadow: inset 0 1px 0 var(--shadow-light);
 }
 
-.settings-section + .settings-section {
+.settings-section+.settings-section {
   margin-top: 10px;
 }
 
@@ -659,7 +676,7 @@ html, body {
   border: 1px solid var(--border-color);
 }
 
-.setting-item + .setting-item {
+.setting-item+.setting-item {
   margin-top: 8px;
 }
 
@@ -689,7 +706,8 @@ html, body {
   background-repeat: no-repeat;
   background-position: right 8px center;
   background-size: 16px;
-  padding-right: 30px; /* space for arrow */
+  padding-right: 30px;
+  /* space for arrow */
 }
 
 .settings-select:focus {
@@ -710,7 +728,8 @@ html, body {
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
-  min-height: 44px; /* ensures vertical centering within outlined area */
+  min-height: 44px;
+  /* ensures vertical centering within outlined area */
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -729,7 +748,8 @@ html, body {
   height: 34px;
   padding: 0 12px;
   background: var(--accent-primary);
-  color: #fff; /* enforce legible text on any accent */
+  color: #fff;
+  /* enforce legible text on any accent */
   border: none;
   border-radius: 10px;
   font-size: 13px;
@@ -764,7 +784,10 @@ html, body {
   flex: 1;
   overflow-y: auto;
   padding: 8px;
-  max-height: calc(600px - 240px); /* Adjusted for layout changes */
+  min-height: 0;
+  /* Allow flex child to shrink */
+  height: auto;
+  /* Let flex handle the height */
 }
 
 .notes-list::-webkit-scrollbar {
@@ -840,7 +863,8 @@ html, body {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 14px;
-  padding: 8px 10px 20px 10px; /* tighter top, small reserve at bottom for overlaid tags */
+  padding: 8px 10px 20px 10px;
+  /* tighter top, small reserve at bottom for overlaid tags */
   margin-bottom: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -855,7 +879,7 @@ html, body {
 .note-item:hover {
   background: var(--bg-primary);
   transform: translateY(-1px);
-  box-shadow: 
+  box-shadow:
     0 4px 12px var(--shadow-dark),
     inset 0 1px 0 var(--shadow-light);
 }
@@ -878,19 +902,25 @@ html, body {
   flex-direction: row;
   align-items: center;
   gap: 6px;
-  min-width: 0; /* allow title to ellipsize */
+  min-width: 0;
+  /* allow title to ellipsize */
 }
 
 /* Ensure no tag chips ever render on the left side of the header */
 .note-header-left .note-tags,
-.note-header-left .note-tag { display: none !important; }
+.note-header-left .note-tag {
+  display: none !important;
+}
 
 .note-header-right {
   display: flex;
   align-items: center;
-  gap: 4px; /* closer spacing between trash and date */
-  margin-left: auto; /* push trash+date group to the right */
-  padding-right: 26px; /* reserve just enough room for the absolute date */
+  gap: 4px;
+  /* closer spacing between trash and date */
+  margin-left: auto;
+  /* push trash+date group to the right */
+  padding-right: 26px;
+  /* reserve just enough room for the absolute date */
 }
 
 .note-inline-actions {
@@ -914,8 +944,10 @@ html, body {
 .note-date {
   font-size: 12px;
   color: var(--text-secondary);
-  position: absolute; /* pin to right edge of header */
-  right: 6px; /* same breathing room as tags */
+  position: absolute;
+  /* pin to right edge of header */
+  right: 6px;
+  /* same breathing room as tags */
   top: 50%;
   transform: translateY(-50%);
   margin: 0;
@@ -946,19 +978,29 @@ html, body {
   justify-content: center;
   border-radius: 6px;
   transition: background-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
-  position: static; /* participate in flex layout to sit left of date */
+  position: static;
+  /* participate in flex layout to sit left of date */
 }
 
-.note-item:hover .note-delete-btn { opacity: 1; }
+.note-item:hover .note-delete-btn {
+  opacity: 1;
+}
 
-.note-delete-btn:hover { background: rgba(255, 71, 87, 0.1); transform: scale(1.05); }
+.note-delete-btn:hover {
+  background: rgba(255, 71, 87, 0.1);
+  transform: scale(1.05);
+}
 
-.note-delete-btn:active { transform: scale(0.95); }
+.note-delete-btn:active {
+  transform: scale(0.95);
+}
 
 /* Header right padding minimal since delete sits in-flow to the left of date */
 .note-item-header {
-  position: relative; /* positioning context for absolute date */
-  padding-right: 6px; /* minimal edge padding so date hugs the right */
+  position: relative;
+  /* positioning context for absolute date */
+  padding-right: 6px;
+  /* minimal edge padding so date hugs the right */
 }
 
 .note-preview {
@@ -975,7 +1017,8 @@ html, body {
 /* Tags inside note cards: overlay in the card so they don't change height */
 .note-item .note-tags {
   position: absolute;
-  right: 6px; /* match right padding with date */
+  right: 6px;
+  /* match right padding with date */
   bottom: 6px;
   left: auto;
   display: flex;
@@ -986,7 +1029,8 @@ html, body {
   text-overflow: ellipsis;
   pointer-events: none;
   opacity: 0.75;
-  z-index: 2; /* appear above content */
+  z-index: 2;
+  /* appear above content */
 }
 
 .note-item .note-tag {
@@ -1004,7 +1048,8 @@ html, body {
 /* Compact styles for Page/Site views */
 :root[data-view="page"] .note-item,
 :root[data-view="site"] .note-item {
-  padding: 5px 9px 18px 9px; /* compact with minimal tag reserve */
+  padding: 5px 9px 18px 9px;
+  /* compact with minimal tag reserve */
   margin-bottom: 4px;
   border-radius: 12px;
 }
@@ -1055,11 +1100,6 @@ html, body {
   color: #fff;
   opacity: 0.8;
 }
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 11px;
-  border: 1px solid var(--border-color);
-}
 
 .page-indicator {
   display: inline-flex;
@@ -1096,21 +1136,25 @@ html, body {
   border: 1px solid var(--border-color);
   box-shadow: 0 2px 8px var(--shadow-dark);
 }
+
 .page-indicator:hover::after {
   opacity: 1;
 }
 
 /* Domain Grouping */
 .domain-group {
-  margin-bottom: 2px; /* Even tighter spacing */
+  margin-bottom: 2px;
+  /* Even tighter spacing */
 }
 
 .domain-group-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 8px; /* Condensed vertical padding */
-  margin-bottom: 4px; /* Tighter to notes list */
+  padding: 4px 8px;
+  /* Condensed vertical padding */
+  margin-bottom: 4px;
+  /* Tighter to notes list */
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
@@ -1121,47 +1165,65 @@ html, body {
   box-shadow: none;
   transition: background 0.2s ease;
   position: relative;
-  z-index: 0; /* establish stacking context */
+  z-index: 0;
+  /* establish stacking context */
 }
 
 /* Distinguish the notes region from the domain header */
 .domain-notes-list {
   position: relative;
-  padding: 0 4px 0 10px; /* align left guide with exact notes stack height */
-  margin-left: 6px; /* slight indent relative to header */
+  padding: 0 4px 0 10px;
+  /* align left guide with exact notes stack height */
+  margin-left: 6px;
+  /* slight indent relative to header */
   border-left: 1px solid color-mix(in srgb, var(--border-color) 20%, transparent);
-  z-index: 1; /* render above header's subtle shadow */
-  display: flex;              /* ensure no outside margins affect height */
+  z-index: 1;
+  /* render above header's subtle shadow */
+  display: flex;
+  /* ensure no outside margins affect height */
   flex-direction: column;
-  gap: 6px;                   /* internal spacing between notes */
+  gap: 6px;
+  /* internal spacing between notes */
 }
 
 /* remove top gradient to avoid perceived shadow block */
-.domain-notes-list::before { display: none; }
+.domain-notes-list::before {
+  display: none;
+}
 
 /* Ensure header hover doesn’t bleed into notes area */
-details.domain-group[open] > .domain-notes-list {
-  background: transparent; /* remove blocky background that reads like a large shadow */
+details.domain-group[open]>.domain-notes-list {
+  background: transparent;
+  /* remove blocky background that reads like a large shadow */
   border-radius: 0;
 }
 
 /* Hide only left-side domain tags (if ever rendered inside header-info) */
-.domain-group-header .domain-header-info .domain-tags { display: none !important; }
+.domain-group-header .domain-header-info .domain-tags {
+  display: none !important;
+}
 
 /* Prepare header for overlay elements (right-side tags) */
 .domain-group-header {
   position: relative;
-  padding-right: 0; /* let absolute right elements sit at true edge */
-  overflow: visible; /* allow absolute children to render fully */
+  padding-right: 0;
+  /* let absolute right elements sit at true edge */
+  overflow: visible;
+  /* allow absolute children to render fully */
 }
+
 /* Reserve room on the left block for delete + tags area */
-.domain-group-header .domain-header-info { padding-right: 124px; }
+.domain-group-header .domain-header-info {
+  padding-right: 124px;
+}
 
 /* Right-side domain tags overlay (does not affect height) */
 .domain-group-header .domain-tags-right {
   position: absolute;
-  right: 6px; /* match global right padding */
-  bottom: 4px; /* lower to increase vertical space from delete icon */
+  right: 6px;
+  /* match global right padding */
+  bottom: 4px;
+  /* lower to increase vertical space from delete icon */
   display: flex;
   gap: 4px;
   max-width: 55%;
@@ -1176,43 +1238,52 @@ details.domain-group[open] > .domain-notes-list {
 /* Right-align domain actions at top-right and make smaller */
 .domain-actions {
   position: absolute !important;
-  right: 6px !important;    /* comfortable padding from right (standard) */
-  top: 4px !important;      /* comfortable padding from top */
-  z-index: 3;  /* above right-side tags */
+  right: 6px !important;
+  /* comfortable padding from right (standard) */
+  top: 4px !important;
+  /* comfortable padding from top */
+  z-index: 3;
+  /* above right-side tags */
 }
+
 .domain-actions .icon-btn {
-  width: 18px;   /* smaller so it fits top-right neatly */
+  width: 18px;
+  /* smaller so it fits top-right neatly */
   height: 18px;
   padding: 0;
 }
 
 /* Domain header actions: visible by default; when group is open, hide unless hovered/focused */
-details.domain-group > .domain-actions {
+details.domain-group>.domain-actions {
   display: flex !important;
   opacity: 1 !important;
   pointer-events: auto !important;
 }
-details.domain-group[open] > .domain-actions {
+
+details.domain-group[open]>.domain-actions {
   display: none !important;
   opacity: 0 !important;
   pointer-events: none !important;
-  transition: none !important; /* avoid delay when multiple groups are open */
+  transition: none !important;
+  /* avoid delay when multiple groups are open */
 }
-details.domain-group[open]:hover > .domain-actions,
-details.domain-group[open]:focus-within > .domain-actions {
+
+details.domain-group[open]:hover>.domain-actions,
+details.domain-group[open]:focus-within>.domain-actions {
   display: flex !important;
   opacity: 1 !important;
   pointer-events: auto !important;
 }
 
 /* All Notes only: when group is open, hide header actions unless hovered/focused */
-html[data-view="all_notes"] details.domain-group[open] > .domain-actions {
+html[data-view="all_notes"] details.domain-group[open]>.domain-actions {
   display: none !important;
   opacity: 0 !important;
   pointer-events: none !important;
 }
-html[data-view="all_notes"] details.domain-group[open]:hover > .domain-actions,
-html[data-view="all_notes"] details.domain-group[open]:focus-within > .domain-actions {
+
+html[data-view="all_notes"] details.domain-group[open]:hover>.domain-actions,
+html[data-view="all_notes"] details.domain-group[open]:focus-within>.domain-actions {
   display: flex !important;
   opacity: 1 !important;
   pointer-events: auto !important;
@@ -1220,8 +1291,10 @@ html[data-view="all_notes"] details.domain-group[open]:focus-within > .domain-ac
 
 /* Inside grouped notes, keep shadows minimal so they don't look oversized */
 .domain-notes-list .note-item {
-  background: color-mix(in srgb, var(--bg-primary) 14%, transparent); /* slightly stronger tint for visibility */
-  box-shadow: none;        /* keep flat inside grouped list */
+  background: color-mix(in srgb, var(--bg-primary) 14%, transparent);
+  /* slightly stronger tint for visibility */
+  box-shadow: none;
+  /* keep flat inside grouped list */
   backdrop-filter: none;
 }
 
@@ -1251,7 +1324,8 @@ html[data-view="all_notes"] details.domain-group[open]:focus-within > .domain-ac
   text-overflow: ellipsis;
   pointer-events: none;
   opacity: 0.75;
-  z-index: 2; /* appear above content */
+  z-index: 2;
+  /* appear above content */
 }
 
 .domain-notes-list .note-preview {
@@ -1262,10 +1336,24 @@ html[data-view="all_notes"] details.domain-group[open]:focus-within > .domain-ac
 }
 
 /* Tighten title, date, and inline spacing in All Notes */
-.domain-notes-list .note-header-left { gap: 4px; }
-.domain-notes-list .note-title { font-size: 13px; line-height: 1.2; }
-.domain-notes-list .note-date { font-size: 11px; opacity: 0.8; }
-.domain-notes-list .icon-btn.sm { width: 20px; height: 20px; }
+.domain-notes-list .note-header-left {
+  gap: 4px;
+}
+
+.domain-notes-list .note-title {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.domain-notes-list .note-date {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.domain-notes-list .icon-btn.sm {
+  width: 20px;
+  height: 20px;
+}
 
 /* Subtle separators between notes instead of card borders */
 /* separators no longer needed as notes have outlines */
@@ -1299,7 +1387,8 @@ html[data-view="all_notes"] details.domain-group[open]:focus-within > .domain-ac
 .domain-header-info {
   display: flex;
   flex-direction: column;
-  gap: 4px; /* Tighter gap */
+  gap: 4px;
+  /* Tighter gap */
   flex: 1;
   min-width: 0;
 }
@@ -1343,15 +1432,18 @@ html[data-view="all_notes"] details.domain-group[open]:focus-within > .domain-ac
 
 .delete-domain-btn:hover {
   background-color: var(--bg-secondary);
-  color: #ff4757; /* danger color */
+  color: #ff4757;
+  /* danger color */
 }
 
 .inline-confirm {
-  position: static; /* revert to inline flow inside .domain-actions */
+  position: static;
+  /* revert to inline flow inside .domain-actions */
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-left: 8px; /* sits to the left of delete icon or expands next to it */
+  margin-left: 8px;
+  /* sits to the left of delete icon or expands next to it */
   padding: 0;
   background: none;
   border: none;
@@ -1434,7 +1526,8 @@ html[data-view="all_notes"] details.domain-group[open]:focus-within > .domain-ac
   background: var(--bg-overlay);
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
-  display: none; /* Hidden by default */
+  display: none;
+  /* Hidden by default */
   flex-direction: column;
   z-index: 10;
   width: 100%;
@@ -1491,7 +1584,8 @@ html[data-view="all_notes"] details.domain-group[open]:focus-within > .domain-ac
   gap: 4px;
   padding: 6px 10px;
   background: var(--accent-primary);
-  color: #fff; /* enforce legible text on any accent */
+  color: #fff;
+  /* enforce legible text on any accent */
   border: none;
   border-radius: 8px;
   font-size: 12px;
@@ -1636,7 +1730,8 @@ html[data-view="all_notes"] details.domain-group[open]:focus-within > .domain-ac
 
 .tags-input::placeholder {
   color: var(--placeholder);
-  letter-spacing: -0.01em; /* crisper placeholder */
+  letter-spacing: -0.01em;
+  /* crisper placeholder */
 }
 
 .tags-input:focus {
@@ -1649,9 +1744,11 @@ html[data-view="all_notes"] details.domain-group[open]:focus-within > .domain-ac
   .note-title-header:focus {
     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18);
   }
+
   .note-content-input:focus {
     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18);
   }
+
   .tags-input:focus {
     border-color: rgba(255, 255, 255, 0.18);
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
@@ -1703,6 +1800,7 @@ html[data-view="all_notes"] details.domain-group[open]:focus-within > .domain-ac
     transform: translateY(20px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -1714,6 +1812,7 @@ html[data-view="all_notes"] details.domain-group[open]:focus-within > .domain-ac
     transform: translateY(0);
     opacity: 1;
   }
+
   to {
     transform: translateY(20px);
     opacity: 0;
@@ -1734,6 +1833,7 @@ html[data-view="all_notes"] details.domain-group[open]:focus-within > .domain-ac
     opacity: 0;
     transform: translateY(6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1750,6 +1850,7 @@ html[data-view="all_notes"] details.domain-group[open]:focus-within > .domain-ac
     opacity: 0;
     transform: translateY(6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1855,9 +1956,11 @@ textarea:focus-visible {
   background: var(--bg-secondary);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-radius: 10px; /* Tighter radius */
+  border-radius: 10px;
+  /* Tighter radius */
   padding: 4px;
-  display: none; /* Hidden by default */
+  display: none;
+  /* Hidden by default */
   align-items: center;
   gap: 6px;
   box-shadow: 0 2px 6px var(--shadow-dark);
@@ -1887,7 +1990,8 @@ textarea:focus-visible {
   background: transparent;
   border: none;
   color: var(--text-primary);
-  font-size: 12px; /* Smaller font */
+  font-size: 12px;
+  /* Smaller font */
   padding: 4px 6px;
   border-radius: 6px;
   cursor: pointer;
@@ -1915,7 +2019,8 @@ textarea:focus-visible {
 .font-size-slider {
   -webkit-appearance: none;
   appearance: none;
-  width: 70px; /* Shorter slider */
+  width: 70px;
+  /* Shorter slider */
   height: 4px;
   background: var(--bg-tertiary);
   border-radius: 2px;
@@ -1951,9 +2056,11 @@ textarea:focus-visible {
   0% {
     transform: rotate(0deg) scale(1);
   }
+
   50% {
     transform: rotate(15deg) scale(1.05);
   }
+
   100% {
     transform: rotate(0deg) scale(1);
   }

@@ -501,13 +501,13 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       return;
     }
 
-    // Also check for redirects to the website login-success page
+    // Also check for redirects to the extension-specific login-success page
     if (changeInfo.url.includes('anchored.site/login-success') || changeInfo.url.includes('anchored.site/?')) {
       finishUserOAuth(changeInfo.url, tabId);
       return;
     }
 
-    // Check for any anchored.site URL with hash parameters
+    // Check for any anchored.site URL with hash parameters (extension OAuth)
     if (changeInfo.url.includes('anchored.site') && changeInfo.url.includes('#')) {
       finishUserOAuth(changeInfo.url, tabId);
       return;
@@ -595,6 +595,14 @@ async function finishUserOAuth(url, tabId) {
     });
 
 
+
+    // Set flag for popup to check on reopen (since popup closes during OAuth)
+    await chrome.storage.local.set({
+      oauthJustCompleted: {
+        success: true,
+        timestamp: Date.now()
+      }
+    });
 
     // Notify any open popups that OAuth is complete
     // Let the popup's Supabase client handle the auth success using handleAuthSuccess

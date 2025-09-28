@@ -101,36 +101,78 @@ class OnboardingTooltips {
 
         this.tooltipContainer = document.createElement('div');
         this.tooltipContainer.id = 'onboarding-tooltip-container';
-        const tooltipHtml = `
-      <div class="onboarding-tooltip" id="onboarding-tooltip" style="display: none;">
-        <div class="tooltip-content">
-          <div class="tooltip-header">
-            <h4 class="tooltip-title" id="tooltip-title"></h4>
-            <button class="tooltip-close" id="tooltip-close" title="Skip onboarding">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          <p class="tooltip-text" id="tooltip-text"></p>
-          <div class="tooltip-actions">
-            <button class="tooltip-btn tooltip-skip" id="tooltip-skip">Skip Tour</button>
-            <div class="tooltip-progress">
-              <span id="tooltip-progress-text">1 of 6</span>
-            </div>
-            <button class="tooltip-btn tooltip-next" id="tooltip-next">Next</button>
-          </div>
-        </div>
-        <div class="tooltip-arrow" id="tooltip-arrow"></div>
-      </div>
-    `;
-    
-    if (window.safeDOM) {
-      window.safeDOM.setInnerHTML(this.tooltipContainer, tooltipHtml, false);
-    } else {
-      this.tooltipContainer.innerHTML = tooltipHtml;
-    }
+        
+        // Create tooltip elements using DOM methods to avoid XSS issues
+        const tooltip = document.createElement('div');
+        tooltip.className = 'onboarding-tooltip';
+        tooltip.id = 'onboarding-tooltip';
+        tooltip.style.display = 'none';
+        
+        const content = document.createElement('div');
+        content.className = 'tooltip-content';
+        
+        // Header
+        const header = document.createElement('div');
+        header.className = 'tooltip-header';
+        
+        const title = document.createElement('h4');
+        title.className = 'tooltip-title';
+        title.id = 'tooltip-title';
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'tooltip-close';
+        closeBtn.id = 'tooltip-close';
+        closeBtn.title = 'Skip onboarding';
+        closeBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>`;
+        
+        header.appendChild(title);
+        header.appendChild(closeBtn);
+        
+        // Text
+        const text = document.createElement('p');
+        text.className = 'tooltip-text';
+        text.id = 'tooltip-text';
+        
+        // Actions
+        const actions = document.createElement('div');
+        actions.className = 'tooltip-actions';
+        
+        const skipBtn = document.createElement('button');
+        skipBtn.className = 'tooltip-btn tooltip-skip';
+        skipBtn.id = 'tooltip-skip';
+        skipBtn.textContent = 'Skip Tour';
+        
+        const progress = document.createElement('div');
+        progress.className = 'tooltip-progress';
+        const progressText = document.createElement('span');
+        progressText.id = 'tooltip-progress-text';
+        progressText.textContent = `1 of ${this.tooltipConfigs.length}`;
+        progress.appendChild(progressText);
+        
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'tooltip-btn tooltip-next';
+        nextBtn.id = 'tooltip-next';
+        nextBtn.textContent = 'Next';
+        
+        actions.appendChild(skipBtn);
+        actions.appendChild(progress);
+        actions.appendChild(nextBtn);
+        
+        // Arrow
+        const arrow = document.createElement('div');
+        arrow.className = 'tooltip-arrow';
+        arrow.id = 'tooltip-arrow';
+        
+        // Assemble
+        content.appendChild(header);
+        content.appendChild(text);
+        content.appendChild(actions);
+        tooltip.appendChild(content);
+        tooltip.appendChild(arrow);
+        this.tooltipContainer.appendChild(tooltip);
 
         document.body.appendChild(this.tooltipContainer);
         this.addTooltipStyles();

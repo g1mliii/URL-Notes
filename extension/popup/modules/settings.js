@@ -172,8 +172,7 @@ class SettingsManager {
     try {
       this.setAuthBusy(true);
       await window.supabaseClient.signInWithEmail(email, password);
-      this.showNotification('Signed in', 'success');
-      this.updateAuthUI();
+      await this.handleSuccessfulSignIn('Signed in successfully');
     } catch (e) {
       this.showNotification(`Sign in failed: ${e.message || e}`, 'error');
     } finally {
@@ -199,18 +198,30 @@ class SettingsManager {
   async handleGoogleSignIn() {
     try {
       this.setAuthBusy(true);
-
-      const redirectUrl = chrome.identity.getRedirectURL();
-
       await window.supabaseClient.signInWithOAuth('google');
-      this.showNotification('Signed in with Google', 'success');
-      this.updateAuthUI();
+      await this.handleSuccessfulSignIn('Signed in with Google');
     } catch (e) {
       console.error('Google OAuth error:', e);
       this.showNotification(`Google sign in failed: ${e.message || e}`, 'error');
     } finally {
       this.setAuthBusy(false);
     }
+  }
+
+  // Shared post-authentication logic for both email and Google sign-in
+  async handleSuccessfulSignIn(successMessage) {
+    this.showNotification(successMessage, 'success');
+
+    // Update settings UI immediately
+    await this.updateAuthUI();
+
+    // Email login triggers refresh directly (OAuth uses background flag mechanism)
+    if (successMessage.includes('Signed in successfully')) {
+      setTimeout(() => {
+        this.handleRefreshPremiumStatus();
+      }, 1500);
+    }
+    // Note: Google OAuth refresh is handled by background flag mechanism
   }
 
   async handleManualSync() {
@@ -291,9 +302,9 @@ class SettingsManager {
 
       // Show success message
       if (status?.active && status?.tier !== 'free') {
-        this.showNotification(`Premium status confirmed! (${status.tier})`, 'success');
+        this.showNotification(`Premium ${status.tier} active`, 'success');
       } else if (status?.tier === 'premium' && !status?.active) {
-        this.showNotification('Premium tier found but inactive - check expiration', 'warning');
+        this.showNotification('Premium inactive - check expiration', 'warning');
       } else {
         this.showNotification(`Status refreshed - ${status?.tier || 'free'} tier active`, 'info');
       }
@@ -851,7 +862,7 @@ class SettingsManager {
 
       // Show success message with format info
       const formatInfo = exportFormats.getSupportedFormats()[selectedFormat];
-      this.showNotification(`Notes exported as ${formatInfo.name} successfully!`, 'success');
+      this.showNotification(`Exported as ${formatInfo.name}`, 'success');
     } catch (error) {
       console.error('Error exporting notes:', error);
       this.showNotification('Failed to export notes', 'error');
@@ -1032,75 +1043,15 @@ class SettingsManager {
     return validation.isValid;
   }
 
-  // Show notification message - Updated to match sync notification theme
+  // Show notification message using unified toast system
   showNotification(message, type = 'info') {
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-
-    // Add icon based on type
-    let icon = 'ℹ';
-    if (type === 'success') icon = '✓';
-    if (type === 'error') icon = '⚠';
-
-    this.setButtonHTML(notification, `
-      <span class="notification-icon">${icon}</span>
-      <span class="notification-message">${message}</span>
-    `);
-
-    // Apply glass morphism styling to match sync notifications
-    notification.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      padding: 12px 16px;
-      border-radius: 8px;
-      color: var(--text-primary);
-      font-size: 14px;
-      font-weight: 500;
-      z-index: 10000;
-      max-width: 300px;
-      word-wrap: break-word;
-      background: var(--glass-bg);
-      border: 1px solid var(--glass-border);
-      box-shadow: var(--glass-inset), var(--glass-shadow);
-             backdrop-filter: blur(var(--backdrop-blur));
-       -webkit-backdrop-filter: blur(var(--backdrop-blur));
-      transform: translateX(100%);
-      transition: transform 0.3s ease;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    `;
-
-    // Apply type-specific styling
-    if (type === 'success') {
-      notification.style.background = 'color-mix(in oklab, var(--accent-primary) 20%, var(--glass-bg) 80%)';
-      notification.style.borderColor = 'color-mix(in oklab, var(--accent-primary) 40%, var(--glass-border) 60%)';
-    } else if (type === 'error') {
-      notification.style.background = 'color-mix(in oklab, #ff3b30 20%, var(--glass-bg) 80%)';
-      notification.style.borderColor = 'color-mix(in oklab, #ff3b30 40%, var(--glass-border) 60%)';
-    } else if (type === 'info') {
-      notification.style.background = 'color-mix(in oklab, #007aff 20%, var(--glass-bg) 80%)';
-      notification.style.borderColor = 'color-mix(in oklab, #007aff 40%, var(--glass-border) 60%)';
+    // Use the unified Utils.showToast instead of custom notification
+    if (window.Utils && typeof window.Utils.showToast === 'function') {
+      window.Utils.showToast(message, type);
+    } else {
+      // Fallback to console if Utils not available
+      console.log(`${type.toUpperCase()}: ${message}`);
     }
-
-    document.body.appendChild(notification);
-
-    // Animate in
-    setTimeout(() => {
-      notification.style.transform = 'translateX(0)';
-    }, 10);
-
-    // Remove after delay
-    setTimeout(() => {
-      notification.style.transform = 'translateX(100%)';
-      setTimeout(() => {
-        if (notification.parentNode) {
-          notification.parentNode.removeChild(notification);
-        }
-      }, 300);
-    }, 3000);
   }
 
   // Get current settings
