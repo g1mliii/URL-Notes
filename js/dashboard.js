@@ -2132,18 +2132,18 @@ class Dashboard {
 
       // Check for Anchored export identifier
       if (!importData._anchored) {
-        return { 
-          isValid: false, 
-          error: 'This file does not appear to be an Anchored notes export. Please ensure you are importing a file exported from Anchored.' 
+        return {
+          isValid: false,
+          error: 'This file does not appear to be an Anchored notes export. Please ensure you are importing a file exported from Anchored.'
         };
       }
 
       // Validate Anchored metadata
       const anchored = importData._anchored;
       if (!anchored.version || !anchored.format || anchored.format !== 'anchored-notes') {
-        return { 
-          isValid: false, 
-          error: 'Invalid Anchored export format. Please ensure you are importing a valid Anchored notes file.' 
+        return {
+          isValid: false,
+          error: 'Invalid Anchored export format. Please ensure you are importing a valid Anchored notes file.'
         };
       }
 
@@ -2189,9 +2189,9 @@ class Dashboard {
         return { isValid: false, error: `Too many notes (${totalNotes}). Maximum is 10,000 notes per import.` };
       }
 
-      return { 
-        isValid: true, 
-        totalNotes, 
+      return {
+        isValid: true,
+        totalNotes,
         validDomains,
         version: anchored.version,
         source: anchored.source,
@@ -2490,8 +2490,13 @@ class Dashboard {
               // Check if note already exists
               const existingNote = this.notes.find(n => n.id === noteData.id);
 
+              // If existing note is deleted with pending sync, we'll overwrite it
+              if (existingNote && existingNote.is_deleted && existingNote.sync_pending) {
+                console.log(`Overwriting deleted note ${noteData.id} with imported version`);
+              }
+
               if (existingNote) {
-                // Update existing note
+                // Update existing note (including overwriting deleted ones)
                 await window.storage.saveNote(noteData);
                 updatedCount++;
               } else {

@@ -1370,7 +1370,15 @@ class NotesStorage {
         const domainNotes = importedData[domain];
         for (const note of domainNotes) {
           if (note && note.id) {
-            // Ensure the note is not marked as deleted
+            // Check if note already exists and is marked for deletion
+            const existingNote = await this.getNote(note.id);
+            if (existingNote && existingNote.is_deleted && existingNote.sync_pending) {
+              // Remove the pending deletion record since we're importing over it
+              await this.removeDeletionRecord(note.id);
+              console.log(`Overwriting deleted note ${note.id} with imported version`);
+            }
+
+            // Ensure the imported note is not marked as deleted
             note.is_deleted = false;
             note.deleted_at = null;
             
