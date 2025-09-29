@@ -13,7 +13,7 @@ class ExportFormats {
     };
   }
 
-  // Clean note data by removing encryption fields
+  // Clean note data by removing encryption and internal fields
   cleanNoteData(note) {
     const cleanNote = { ...note };
     
@@ -22,6 +22,15 @@ class ExportFormats {
     delete cleanNote.content_encrypted;
     delete cleanNote.tags_encrypted;
     delete cleanNote.content_hash;
+    
+    // Remove internal storage fields
+    delete cleanNote.is_deleted;
+    delete cleanNote.deleted_at;
+    delete cleanNote.version;
+    delete cleanNote.sync_pending;
+    delete cleanNote.needs_decryption_retry;
+    delete cleanNote.decryption_error;
+    delete cleanNote.last_synced_at;
     
     // Ensure we have plain text versions
     if (!cleanNote.title && cleanNote.title_encrypted) {
@@ -297,12 +306,17 @@ class ExportFormats {
     return null; // Unsafe URL
   }
 
-  // Convert notes data to JSON format (existing format, cleaned)
+  // Convert notes data to JSON format (Anchored Backup format, cleaned)
   toJSON(notesData) {
     const cleanedData = {};
     
+    // Preserve _anchored metadata if it exists
+    if (notesData._anchored) {
+      cleanedData._anchored = notesData._anchored;
+    }
+    
     for (const domain in notesData) {
-      if (Array.isArray(notesData[domain])) {
+      if (domain !== '_anchored' && Array.isArray(notesData[domain])) {
         cleanedData[domain] = notesData[domain].map(note => this.cleanNoteData(note));
       }
     }
@@ -1159,9 +1173,29 @@ class ExportFormats {
         throw new Error(`Unsupported format: ${format}`);
     }
 
+    // Generate filename with timestamp and note count (matching webpage format)
+    const timestamp = new Date().toISOString().split('T')[0];
+    
+    // Count total notes for filename
+    let totalNotes = 0;
+    for (const domain in notesData) {
+      if (domain !== '_anchored' && Array.isArray(notesData[domain])) {
+        totalNotes += notesData[domain].length;
+      }
+    }
+    
+    const noteCountSuffix = totalNotes > 1 ? `-${totalNotes}notes` : '';
+    
+    let filename;
+    if (format === 'json') {
+      filename = `anchored-backup-${timestamp}${noteCountSuffix}${formatInfo.extension}`;
+    } else {
+      filename = `url-notes-export-${timestamp}${noteCountSuffix}${formatInfo.extension}`;
+    }
+
     return {
       content,
-      filename: `url-notes-export-${new Date().toISOString().split('T')[0]}${formatInfo.extension}`,
+      filename,
       mimeType: formatInfo.mimeType
     };
   }

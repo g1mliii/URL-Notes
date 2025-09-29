@@ -135,6 +135,33 @@ class StorageManager {
     return domain;
   }
 
+  // Clean note data for export by removing internal fields
+  cleanNoteForExport(note) {
+    const cleanNote = { ...note };
+    
+    // Remove encryption-related fields
+    delete cleanNote.title_encrypted;
+    delete cleanNote.content_encrypted;
+    delete cleanNote.tags_encrypted;
+    delete cleanNote.content_hash;
+    
+    // Remove internal storage fields
+    delete cleanNote.is_deleted;
+    delete cleanNote.deleted_at;
+    delete cleanNote.version;
+    delete cleanNote.sync_pending;
+    delete cleanNote.needs_decryption_retry;
+    delete cleanNote.decryption_error;
+    delete cleanNote.last_synced_at;
+    
+    // Ensure tags is always an array
+    if (!Array.isArray(cleanNote.tags)) {
+      cleanNote.tags = [];
+    }
+    
+    return cleanNote;
+  }
+
   // Export all notes to JSON format (only visible notes, excluding deleted/filtered notes)
   async exportNotes() {
     try {
@@ -142,7 +169,7 @@ class StorageManager {
       // This ensures we only export notes that are currently visible to the user
       const filteredNotes = this.allNotes || [];
 
-      // Group notes by domain (same structure as before)
+      // Group notes by domain and clean them for export
       const notesData = {};
       for (const note of filteredNotes) {
         if (!note.domain) continue; // Skip notes without domain
@@ -150,7 +177,9 @@ class StorageManager {
         if (!notesData[note.domain]) {
           notesData[note.domain] = [];
         }
-        notesData[note.domain].push(note);
+        // Clean note data before export
+        const cleanNote = this.cleanNoteForExport(note);
+        notesData[note.domain].push(cleanNote);
       }
 
       // Add Anchored export identifier and metadata

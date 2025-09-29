@@ -1324,19 +1324,48 @@ class NotesStorage {
     }
   }
 
+  // Clean note data for export by removing internal fields
+  cleanNoteForExport(note) {
+    const cleanNote = { ...note };
+    
+    // Remove encryption-related fields
+    delete cleanNote.title_encrypted;
+    delete cleanNote.content_encrypted;
+    delete cleanNote.tags_encrypted;
+    delete cleanNote.content_hash;
+    
+    // Remove internal storage fields
+    delete cleanNote.is_deleted;
+    delete cleanNote.deleted_at;
+    delete cleanNote.version;
+    delete cleanNote.sync_pending;
+    delete cleanNote.needs_decryption_retry;
+    delete cleanNote.decryption_error;
+    delete cleanNote.last_synced_at;
+    
+    // Ensure tags is always an array
+    if (!Array.isArray(cleanNote.tags)) {
+      cleanNote.tags = [];
+    }
+    
+    return cleanNote;
+  }
+
   // Export notes (compatibility method for StorageManager)
   async exportNotes() {
     try {
       // Only export notes that are visible in the UI (not deleted)
       const notes = await this.getAllNotesForDisplay();
 
-      // Group notes by domain for compatibility with StorageManager format
+      // Group notes by domain and clean them for export
       const notesByDomain = {};
       notes.forEach(note => {
         if (!notesByDomain[note.domain]) {
           notesByDomain[note.domain] = [];
         }
-        notesByDomain[note.domain].push(note);
+        // Clean note data before export
+        const cleanNote = this.cleanNoteForExport(note);
+        notesByDomain[note.domain].push(cleanNote);
       });
 
       // Add Anchored export identifier and metadata
