@@ -6,7 +6,6 @@ class RichTextEditor {
     constructor(contentElement, toolbarElement) {
         this.contentElement = contentElement;
         this.toolbarElement = toolbarElement;
-        this.currentColor = '#000000';
         this.init();
     }
 
@@ -76,35 +75,8 @@ class RichTextEditor {
             });
         }
 
-        // Color button and palette
-        const colorBtn = this.toolbarElement.querySelector('#colorBtn');
-        const colorPalette = this.toolbarElement.querySelector('#colorPalette');
-
-        if (colorBtn && colorPalette) {
-            colorBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                colorPalette.classList.toggle('hidden');
-            });
-
-            // Color options
-            const colorOptions = colorPalette.querySelectorAll('.color-option');
-            colorOptions.forEach(option => {
-                option.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const color = option.dataset.color;
-                    this.applyColor(color);
-                    colorPalette.classList.add('hidden');
-                });
-            });
-
-            // Close color palette when clicking outside
-            document.addEventListener('click', (e) => {
-                if (!colorBtn.contains(e.target) && !colorPalette.contains(e.target)) {
-                    colorPalette.classList.add('hidden');
-                }
-            });
-        }
+        // Color functionality removed for simplification
+        // Colors from imported notes will still display correctly
     }
 
     setupContentEvents() {
@@ -223,52 +195,8 @@ class RichTextEditor {
         this.contentElement.focus();
     }
 
-    applyColor(color) {
-        this.currentColor = color;
-
-        // Update color indicator
-        const colorIndicator = this.toolbarElement.querySelector('#colorIndicator');
-        if (colorIndicator) {
-            colorIndicator.style.backgroundColor = color;
-        }
-
-        const selection = window.getSelection();
-        if (!selection.rangeCount) return;
-
-        const range = selection.getRangeAt(0);
-        const selectedText = range.toString();
-
-        if (selectedText) {
-            // Wrap selected text with color
-            const coloredText = `{color:${color}}${selectedText}{/color}`;
-            range.deleteContents();
-
-            const textNode = document.createTextNode(coloredText);
-            range.insertNode(textNode);
-
-            // Move cursor after inserted text
-            range.setStartAfter(textNode);
-            range.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(range);
-        } else {
-            // Insert color markers at cursor
-            const coloredText = `{color:${color}}{/color}`;
-            range.deleteContents();
-
-            const textNode = document.createTextNode(coloredText);
-            range.insertNode(textNode);
-
-            // Position cursor between markers
-            const startPos = `{color:${color}}`.length;
-            range.setStart(textNode, startPos);
-            range.setEnd(textNode, startPos);
-            selection.removeAllRanges();
-            selection.addRange(range);
-        }
-
-        this.contentElement.focus();
-    }
+    // Color modification removed for simplification
+    // Existing colored text from imported notes will still display correctly
 
     createList() {
         const selection = window.getSelection();

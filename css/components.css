@@ -1636,36 +1636,7 @@ Dashboard Specific Styles - Google Drive-like Layout */
   border-radius: 1px;
 }
 
-.color-palette {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 100;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 0.5rem;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.25rem;
-  box-shadow: 0 4px 16px var(--shadow-dark);
-  backdrop-filter: blur(var(--backdrop-blur));
-  -webkit-backdrop-filter: blur(var(--backdrop-blur));
-}
-
-.color-option {
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: all 0.2s ease;
-}
-
-.color-option:hover {
-  border-color: var(--accent-primary);
-  transform: scale(1.1);
-}
+/* Color palette removed for simplification - colors from imported notes still display */
 
 /* Mobile responsive toolbar */
 @media (max-width: 768px) {
@@ -1717,10 +1688,7 @@ Dashboard Specific Styles - Google Drive-like Layout */
     height: 12px;
   }
   
-  .color-option {
-    width: 18px;
-    height: 18px;
-  }
+  /* Color option responsive styles removed */
 }
 
 .note-content-input {
@@ -1779,6 +1747,11 @@ Dashboard Specific Styles - Google Drive-like Layout */
   content: attr(placeholder);
   color: var(--text-muted);
   pointer-events: none;
+}
+
+/* Set caret color to white for better visibility */
+.note-content-input[contenteditable="true"] {
+  caret-color: white;
 }
 
 /* Support extension formatting in editor */
