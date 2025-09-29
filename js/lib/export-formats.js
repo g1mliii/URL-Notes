@@ -4,10 +4,10 @@
 class ExportFormats {
   constructor() {
     this.supportedFormats = {
-      'json': { name: 'Anchored', extension: '.json', mimeType: 'application/json' },
+      'json': { name: 'Anchored Backup', extension: '.json', mimeType: 'application/json' },
       'markdown': { name: 'Markdown', extension: '.md', mimeType: 'text/markdown' },
-      'obsidian': { name: 'Obsidian', extension: '.md', mimeType: 'text/markdown' },
-      'notion': { name: 'Notion', extension: '.html', mimeType: 'text/html' },
+      'obsidian': { name: 'Obsidian Vault', extension: '.json', mimeType: 'application/json' },
+      'notion': { name: 'Notion CSV', extension: '.csv', mimeType: 'text/csv' },
       'txt': { name: 'Plain Text', extension: '.txt', mimeType: 'text/plain' },
       'docx': { name: 'Google Docs', extension: '.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
     };
@@ -16,13 +16,13 @@ class ExportFormats {
   // Clean note data by removing encryption fields
   cleanNoteData(note) {
     const cleanNote = { ...note };
-    
+
     // Remove encryption-related fields
     delete cleanNote.title_encrypted;
     delete cleanNote.content_encrypted;
     delete cleanNote.tags_encrypted;
     delete cleanNote.content_hash;
-    
+
     // Ensure we have plain text versions
     if (!cleanNote.title && cleanNote.title_encrypted) {
       cleanNote.title = 'Encrypted Title';
@@ -33,25 +33,25 @@ class ExportFormats {
     if (!cleanNote.tags && cleanNote.tags_encrypted) {
       cleanNote.tags = [];
     }
-    
+
     // Ensure tags is always an array
     if (!Array.isArray(cleanNote.tags)) {
       cleanNote.tags = [];
     }
-    
+
     return cleanNote;
   }
 
   // Convert notes data to JSON format (existing format, cleaned)
   toJSON(notesData) {
     const cleanedData = {};
-    
+
     for (const domain in notesData) {
       if (Array.isArray(notesData[domain])) {
         cleanedData[domain] = notesData[domain].map(note => this.cleanNoteData(note));
       }
     }
-    
+
     return JSON.stringify(cleanedData, null, 2);
   }
 
@@ -59,278 +59,815 @@ class ExportFormats {
   toMarkdown(notesData) {
     let markdown = `# URL Notes Export\n\n`;
     markdown += `*Exported on ${new Date().toLocaleString()}*\n\n`;
+
+    // Calculate totals for overview
+    const totalDomains = Object.keys(notesData).length;
+    const totalNotes = Object.values(notesData).reduce((sum, notes) =>
+      sum + (Array.isArray(notes) ? notes.length : 0), 0
+    );
+
+    markdown += `> **Export Summary**  \n`;
+    markdown += `> 📁 ${totalDomains} domains  \n`;
+    markdown += `> 📝 ${totalNotes} notes  \n`;
+    markdown += `> 📅 ${new Date().toLocaleDateString()}\n\n`;
     markdown += `---\n\n`;
+
+    // Sort domains by note count (most active first)
+    const sortedDomains = Object.entries(notesData)
+      .filter(([, notes]) => Array.isArray(notes) && notes.length > 0)
+      .sort(([, a], [, b]) => b.length - a.length);
+
+    // Create table of contents
+    markdown += `## Table of Contents\n\n`;
+    sortedDomains.forEach(([domain, notes]) => {
+      markdown += `- [${domain}](#${domain.replace(/\./g, '')}) (${notes.length} notes)\n`;
+    });
+    markdown += `\n---\n\n`;
+
+    // Process each domain
+    sortedDomains.forEach(([domain, notes]) => {
+      markdown += `## ${domain}\n\n`;
+      markdown += `*${notes.length} note${notes.length !== 1 ? 's' : ''} from this domain*\n\n`;
+
+      // Sort notes by creation date (newest first)
+      const sortedNotes = [...notes].sort((a, b) =>
+        new Date(b.createdAt) - new Date(a.createdAt)
+      );
+
+      // Group notes by month for better organization
+      const notesByMonth = {};
+      sortedNotes.forEach(note => {
+        const monthKey = new Date(note.createdAt).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long'
+        });
+        if (!notesByMonth[monthKey]) notesByMonth[monthKey] = [];
+        notesByMonth[monthKey].push(note);
+      });
+
+      // Sort months in reverse chronological order
+      const sortedMonths = Object.keys(notesByMonth).sort((a, b) =>
+        new Date(b + ' 1') - new Date(a + ' 1')
+      );
+
+      sortedMonths.forEach(month => {
+        if (sortedMonths.length > 1) {
+          markdown += `### ${month}\n\n`;
+        }
+
+        notesByMonth[month].forEach(note => {
+          const cleanNote = this.cleanNoteData(note);
+
+          markdown += `#### ${cleanNote.title || 'Untitled Note'}\n\n`;
+
+          // Metadata box
+          markdown += `| Field | Value |\n`;
+          markdown += `|-------|-------|\n`;
+          if (cleanNote.url) {
+            markdown += `| 🔗 URL | [${cleanNote.url}](${cleanNote.url}) |\n`;
+          }
+          if (cleanNote.pageTitle) {
+            markdown += `| 📄 Page | ${cleanNote.pageTitle} |\n`;
+          }
+          markdown += `| 🌐 Domain | ${domain} |\n`;
+          if (cleanNote.tags && cleanNote.tags.length > 0) {
+            markdown += `| 🏷️ Tags | ${cleanNote.tags.map(tag => `\`${tag}\``).join(', ')} |\n`;
+          }
+          markdown += `| 📅 Created | ${new Date(cleanNote.createdAt).toLocaleString()} |\n`;
+          markdown += `| ✏️ Updated | ${new Date(cleanNote.updatedAt).toLocaleString()} |\n`;
+          markdown += `\n`;
+
+          // Content
+          if (cleanNote.content) {
+            markdown += `**Content:**\n\n`;
+            markdown += `${cleanNote.content}\n\n`;
+          }
+
+          markdown += `---\n\n`;
+        });
+      });
+    });
+
+    // Add footer with export info
+    markdown += `## Export Information\n\n`;
+    markdown += `- **Generated by:** URL Notes Extension\n`;
+    markdown += `- **Export Date:** ${new Date().toLocaleString()}\n`;
+    markdown += `- **Format:** Markdown\n`;
+    markdown += `- **Organization:** Domain-first, chronologically sorted\n`;
+
+    return markdown;
+  }
+
+  // Convert notes data to Obsidian format with hierarchical domain organization
+  toObsidian(notesData) {
+    const obsidianFiles = [];
+    const domainHubs = {};
+
+    // Sort notes by date within each domain
+    const sortedNotesData = {};
+    for (const domain in notesData) {
+      if (Array.isArray(notesData[domain]) && notesData[domain].length > 0) {
+        sortedNotesData[domain] = [...notesData[domain]].sort((a, b) =>
+          new Date(b.createdAt) - new Date(a.createdAt)
+        );
+      }
+    }
+
+    // Create individual note files and collect domain info
+    for (const domain in sortedNotesData) {
+      const domainNotes = [];
+
+      sortedNotesData[domain].forEach(note => {
+        const cleanNote = this.cleanNoteData(note);
+
+        // Create safe filename with date prefix for chronological sorting
+        const datePrefix = new Date(cleanNote.createdAt).toISOString().split('T')[0];
+        const safeTitle = (cleanNote.title || 'Untitled Note')
+          .replace(/[<>:"/\\|?*]/g, '-')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .substring(0, 80);
+
+        const filename = `${domain}/${datePrefix} - ${safeTitle}.md`;
+
+        // Create note content with enhanced YAML frontmatter
+        let noteContent = '';
+        noteContent += `---\n`;
+        noteContent += `title: "${cleanNote.title || 'Untitled Note'}"\n`;
+        noteContent += `domain: "${domain}"\n`;
+        noteContent += `domain_hub: "[[${domain} - Domain Hub]]"\n`;
+        if (cleanNote.url) noteContent += `url: "${cleanNote.url}"\n`;
+        if (cleanNote.pageTitle) noteContent += `page_title: "${cleanNote.pageTitle}"\n`;
+        if (cleanNote.tags && cleanNote.tags.length > 0) {
+          noteContent += `tags:\n`;
+          cleanNote.tags.forEach(tag => {
+            noteContent += `  - "${tag}"\n`;
+          });
+          // Add domain tag for organization
+          noteContent += `  - "domain/${domain}"\n`;
+        } else {
+          noteContent += `tags:\n  - "domain/${domain}"\n`;
+        }
+        noteContent += `created: "${cleanNote.createdAt}"\n`;
+        noteContent += `updated: "${cleanNote.updatedAt}"\n`;
+        noteContent += `source: "URL Notes"\n`;
+        noteContent += `---\n\n`;
+
+        // Add navigation links
+        noteContent += `← [[${domain} - Domain Hub|Back to ${domain}]] | [[URL Notes - Master Index|🏠 Home]]\n\n`;
+
+        // Add source information as callout
+        if (cleanNote.url) {
+          noteContent += `> [!info] Source Information\n`;
+          noteContent += `> **URL:** [${cleanNote.url}](${cleanNote.url})\n`;
+          if (cleanNote.pageTitle) {
+            noteContent += `> **Page:** ${cleanNote.pageTitle}\n`;
+          }
+          noteContent += `> **Domain:** ${domain}\n`;
+          noteContent += `> **Created:** ${new Date(cleanNote.createdAt).toLocaleDateString()}\n\n`;
+        }
+
+        // Main content
+        if (cleanNote.content) {
+          noteContent += `## Content\n\n`;
+          noteContent += `${cleanNote.content}\n\n`;
+        }
+
+        // Add related notes section (placeholder for future enhancement)
+        noteContent += `## Related Notes\n\n`;
+        noteContent += `*Use Obsidian's graph view to discover related notes by tags and domain.*\n\n`;
+
+        // Add metadata footer
+        noteContent += `---\n\n`;
+        noteContent += `**Metadata**  \n`;
+        noteContent += `Created: ${new Date(cleanNote.createdAt).toLocaleString()}  \n`;
+        noteContent += `Updated: ${new Date(cleanNote.updatedAt).toLocaleString()}  \n`;
+        noteContent += `Source: URL Notes Extension\n`;
+
+        obsidianFiles.push({
+          filename: filename,
+          content: noteContent,
+          domain: domain,
+          createdAt: cleanNote.createdAt,
+          title: cleanNote.title || 'Untitled Note'
+        });
+
+        // Collect info for domain hub
+        domainNotes.push({
+          filename: filename,
+          title: cleanNote.title || 'Untitled Note',
+          createdAt: cleanNote.createdAt,
+          url: cleanNote.url,
+          tags: cleanNote.tags || []
+        });
+      });
+
+      domainHubs[domain] = domainNotes;
+    }
+
+    // Create domain hub files (MOC - Map of Content pattern)
+    for (const domain in domainHubs) {
+      const notes = domainHubs[domain];
+      let hubContent = '';
+
+      // YAML frontmatter for domain hub
+      hubContent += `---\n`;
+      hubContent += `title: "${domain} - Domain Hub"\n`;
+      hubContent += `type: "domain_hub"\n`;
+      hubContent += `domain: "${domain}"\n`;
+      hubContent += `note_count: ${notes.length}\n`;
+      hubContent += `tags:\n  - "hub"\n  - "domain/${domain}"\n`;
+      hubContent += `created: "${new Date().toISOString()}"\n`;
+      hubContent += `source: "URL Notes"\n`;
+      hubContent += `---\n\n`;
+
+      // Hub header
+      hubContent += `# ${domain} - Domain Hub\n\n`;
+      hubContent += `← [[URL Notes - Master Index|🏠 Back to Master Index]]\n\n`;
+
+      hubContent += `> [!abstract] Domain Overview\n`;
+      hubContent += `> **Domain:** ${domain}\n`;
+      hubContent += `> **Total Notes:** ${notes.length}\n`;
+      hubContent += `> **Date Range:** ${new Date(Math.min(...notes.map(n => new Date(n.createdAt)))).toLocaleDateString()} - ${new Date(Math.max(...notes.map(n => new Date(n.createdAt)))).toLocaleDateString()}\n\n`;
+
+      // Group notes by month for better organization
+      const notesByMonth = {};
+      notes.forEach(note => {
+        const monthKey = new Date(note.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+        if (!notesByMonth[monthKey]) notesByMonth[monthKey] = [];
+        notesByMonth[monthKey].push(note);
+      });
+
+      hubContent += `## Notes by Month\n\n`;
+
+      // Sort months in reverse chronological order
+      const sortedMonths = Object.keys(notesByMonth).sort((a, b) =>
+        new Date(b + ' 1') - new Date(a + ' 1')
+      );
+
+      sortedMonths.forEach(month => {
+        hubContent += `### ${month}\n\n`;
+        notesByMonth[month].forEach(note => {
+          const noteLink = note.filename.replace('.md', '');
+          const dateStr = new Date(note.createdAt).toLocaleDateString();
+          hubContent += `- [[${noteLink}|${note.title}]] *(${dateStr})*\n`;
+          if (note.url) {
+            hubContent += `  - 🔗 [${note.url}](${note.url})\n`;
+          }
+          if (note.tags && note.tags.length > 0) {
+            hubContent += `  - 🏷️ ${note.tags.map(tag => `#${tag.replace(/\s+/g, '_')}`).join(' ')}\n`;
+          }
+        });
+        hubContent += `\n`;
+      });
+
+      // Add tag cloud for this domain
+      const allTags = notes.flatMap(note => note.tags || []);
+      const tagCounts = {};
+      allTags.forEach(tag => {
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+      });
+
+      if (Object.keys(tagCounts).length > 0) {
+        hubContent += `## Tag Cloud\n\n`;
+        const sortedTags = Object.entries(tagCounts)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 20); // Top 20 tags
+
+        sortedTags.forEach(([tag, count]) => {
+          hubContent += `#${tag.replace(/\s+/g, '_')} (${count}) `;
+        });
+        hubContent += `\n\n`;
+      }
+
+      // Add quick actions
+      hubContent += `## Quick Actions\n\n`;
+      hubContent += `- 📊 Use graph view to explore connections\n`;
+      hubContent += `- 🔍 Search within domain: \`tag:#domain/${domain}\`\n`;
+      hubContent += `- 📅 View by date: Sort by creation date\n`;
+      hubContent += `- 🏷️ Filter by tags: Use tag search\n\n`;
+
+      hubContent += `---\n\n`;
+      hubContent += `*This hub was generated from URL Notes export on ${new Date().toLocaleString()}*\n`;
+
+      obsidianFiles.push({
+        filename: `${domain} - Domain Hub.md`,
+        content: hubContent,
+        domain: domain,
+        type: 'hub'
+      });
+    }
+
+    // Create master index file
+    let masterIndex = '';
+    masterIndex += `---\n`;
+    masterIndex += `title: "URL Notes - Master Index"\n`;
+    masterIndex += `type: "master_index"\n`;
+    masterIndex += `total_domains: ${Object.keys(domainHubs).length}\n`;
+    masterIndex += `total_notes: ${obsidianFiles.filter(f => f.type !== 'hub').length}\n`;
+    masterIndex += `tags:\n  - "index"\n  - "url-notes"\n`;
+    masterIndex += `created: "${new Date().toISOString()}"\n`;
+    masterIndex += `source: "URL Notes"\n`;
+    masterIndex += `---\n\n`;
+
+    masterIndex += `# URL Notes - Master Index\n\n`;
+    masterIndex += `*Exported on ${new Date().toLocaleString()}*\n\n`;
+
+    masterIndex += `> [!tip] Welcome to Your URL Notes Vault\n`;
+    masterIndex += `> This vault contains ${obsidianFiles.filter(f => f.type !== 'hub').length} notes from ${Object.keys(domainHubs).length} domains.\n`;
+    masterIndex += `> Each domain has its own hub for easy navigation.\n\n`;
+
+    masterIndex += `## Domain Hubs\n\n`;
+
+    // Sort domains by note count
+    const sortedDomains = Object.entries(domainHubs)
+      .sort(([, a], [, b]) => b.length - a.length);
+
+    sortedDomains.forEach(([domain, notes]) => {
+      masterIndex += `### [[${domain} - Domain Hub|${domain}]] (${notes.length} notes)\n\n`;
+
+      // Show recent notes from this domain
+      const recentNotes = notes.slice(0, 3);
+      masterIndex += `**Recent notes:**\n`;
+      recentNotes.forEach(note => {
+        const noteLink = note.filename.replace('.md', '');
+        const dateStr = new Date(note.createdAt).toLocaleDateString();
+        masterIndex += `- [[${noteLink}|${note.title}]] *(${dateStr})*\n`;
+      });
+
+      if (notes.length > 3) {
+        masterIndex += `- *...and ${notes.length - 3} more notes*\n`;
+      }
+      masterIndex += `\n`;
+    });
+
+    masterIndex += `## Quick Navigation\n\n`;
+    masterIndex += `- 🏷️ **By Tags:** Use the tag pane to browse by topic\n`;
+    masterIndex += `- 📅 **By Date:** Sort files by creation date\n`;
+    masterIndex += `- 🌐 **By Domain:** Use the domain hubs above\n`;
+    masterIndex += `- 📊 **Graph View:** Explore connections between notes\n`;
+    masterIndex += `- 🔍 **Search:** Use global search to find specific content\n\n`;
+
+    masterIndex += `## Import Instructions\n\n`;
+    masterIndex += `1. Create a new Obsidian vault or open an existing one\n`;
+    masterIndex += `2. Copy the folder structure and files from this export\n`;
+    masterIndex += `3. Maintain the domain-based folder structure for best organization\n`;
+    masterIndex += `4. Use the domain hubs as starting points for exploration\n\n`;
+
+    masterIndex += `---\n\n`;
+    masterIndex += `*Generated by URL Notes Extension - ${new Date().toLocaleString()}*\n`;
+
+    obsidianFiles.unshift({
+      filename: 'URL Notes - Master Index.md',
+      content: masterIndex,
+      type: 'master_index'
+    });
+
+    // For single note export (fallback)
+    if (obsidianFiles.filter(f => !f.type).length === 1) {
+      const singleNote = obsidianFiles.find(f => !f.type);
+      return singleNote.content;
+    }
+
+    // Return structured format for multiple files
+    return JSON.stringify({
+      type: 'obsidian-vault',
+      files: obsidianFiles.map(f => ({
+        filename: f.filename,
+        content: f.content
+      })),
+      structure: {
+        domains: Object.keys(domainHubs),
+        totalNotes: obsidianFiles.filter(f => !f.type).length,
+        totalHubs: Object.keys(domainHubs).length
+      }
+    }, null, 2);
+  }
+
+  // Convert notes data to Notion-compatible CSV format with domain organization
+  toNotion(notesData) {
+    // Enhanced CSV format optimized for Notion database import
+    // Columns: Title, Content, Tags, URL, Domain, Page Title, Created, Updated, Domain Group, Month Created, Year Created
+
+    let csv = 'Title,Content,Tags,URL,Domain,Page Title,Created,Updated,Domain Group,Month Created,Year Created\n';
+
+    // Collect all notes and sort by domain, then by date
+    const allNotes = [];
+
+    for (const domain in notesData) {
+      if (Array.isArray(notesData[domain]) && notesData[domain].length > 0) {
+        // Sort notes within domain by creation date (newest first)
+        const sortedNotes = [...notesData[domain]].sort((a, b) =>
+          new Date(b.createdAt) - new Date(a.createdAt)
+        );
+
+        sortedNotes.forEach(note => {
+          const cleanNote = this.cleanNoteData(note);
+          allNotes.push({
+            ...cleanNote,
+            domain: domain
+          });
+        });
+      }
+    }
+
+    // Sort all notes by domain, then by date
+    allNotes.sort((a, b) => {
+      if (a.domain !== b.domain) {
+        return a.domain.localeCompare(b.domain);
+      }
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+    // Generate CSV rows
+    allNotes.forEach(note => {
+      // Escape CSV values and handle quotes
+      const escapeCSV = (value) => {
+        if (!value) return '';
+        const stringValue = String(value);
+        // Escape quotes by doubling them and wrap in quotes if contains comma, quote, or newline
+        if (stringValue.includes('"') || stringValue.includes(',') || stringValue.includes('\n')) {
+          return '"' + stringValue.replace(/"/g, '""') + '"';
+        }
+        return stringValue;
+      };
+
+      const createdDate = new Date(note.createdAt);
+      const updatedDate = new Date(note.updatedAt);
+
+      // Enhanced tags with domain tag
+      const allTags = [...(note.tags || []), `domain-${note.domain}`];
+
+      const title = escapeCSV(note.title || 'Untitled Note');
+      const content = escapeCSV(note.content || '');
+      const tags = escapeCSV(allTags.join(', '));
+      const url = escapeCSV(note.url || '');
+      const domain = escapeCSV(note.domain);
+      const pageTitle = escapeCSV(note.pageTitle || '');
+      const created = escapeCSV(createdDate.toISOString());
+      const updated = escapeCSV(updatedDate.toISOString());
+
+      // Additional organization columns for Notion
+      const domainGroup = escapeCSV(`📁 ${note.domain}`); // Emoji for visual grouping
+      const monthCreated = escapeCSV(createdDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' }));
+      const yearCreated = escapeCSV(createdDate.getFullYear().toString());
+
+      csv += `${title},${content},${tags},${url},${domain},${pageTitle},${created},${updated},${domainGroup},${monthCreated},${yearCreated}\n`;
+    });
+
+    return csv;
+  }
+
+  // Alternative Notion format: Markdown with proper structure
+  toNotionMarkdown(notesData) {
+    let markdown = `# URL Notes Export\n\n`;
+    markdown += `*Exported on ${new Date().toLocaleString()}*\n\n`;
 
     for (const domain in notesData) {
       if (Array.isArray(notesData[domain]) && notesData[domain].length > 0) {
         markdown += `## ${domain}\n\n`;
-        
+
         notesData[domain].forEach(note => {
           const cleanNote = this.cleanNoteData(note);
-          
+
+          // Use Notion-style page structure
           markdown += `### ${cleanNote.title || 'Untitled Note'}\n\n`;
-          
+
+          // Add properties as a table (Notion recognizes this format)
+          markdown += `| Property | Value |\n`;
+          markdown += `|----------|-------|\n`;
           if (cleanNote.url) {
-            markdown += `**URL:** [${cleanNote.url}](${cleanNote.url})\n\n`;
+            markdown += `| URL | [${cleanNote.url}](${cleanNote.url}) |\n`;
           }
-          
           if (cleanNote.pageTitle) {
-            markdown += `**Page Title:** ${cleanNote.pageTitle}\n\n`;
+            markdown += `| Page Title | ${cleanNote.pageTitle} |\n`;
           }
-          
+          markdown += `| Domain | ${domain} |\n`;
           if (cleanNote.tags && cleanNote.tags.length > 0) {
-            markdown += `**Tags:** ${cleanNote.tags.map(tag => `\`${tag}\``).join(', ')}\n\n`;
+            markdown += `| Tags | ${cleanNote.tags.join(', ')} |\n`;
           }
-          
+          markdown += `| Created | ${new Date(cleanNote.createdAt).toLocaleString()} |\n`;
+          markdown += `| Updated | ${new Date(cleanNote.updatedAt).toLocaleString()} |\n`;
+          markdown += `\n`;
+
+          // Content section
           if (cleanNote.content) {
+            markdown += `**Content:**\n\n`;
             markdown += `${cleanNote.content}\n\n`;
           }
-          
-          markdown += `*Created: ${new Date(cleanNote.createdAt).toLocaleString()}*\n`;
-          markdown += `*Updated: ${new Date(cleanNote.updatedAt).toLocaleString()}*\n\n`;
+
           markdown += `---\n\n`;
         });
       }
     }
-    
+
     return markdown;
-  }
-
-  // Convert notes data to Obsidian format with YAML frontmatter
-  toObsidian(notesData) {
-    let markdown = `# URL Notes Export\n\n`;
-    markdown += `*Exported on ${new Date().toLocaleString()}*\n\n`;
-    markdown += `---\n\n`;
-
-    for (const domain in notesData) {
-      if (Array.isArray(notesData[domain]) && notesData[domain].length > 0) {
-        notesData[domain].forEach(note => {
-          const cleanNote = this.cleanNoteData(note);
-          
-          // YAML frontmatter
-          markdown += `---\n`;
-          markdown += `title: "${cleanNote.title || 'Untitled Note'}"\n`;
-          markdown += `domain: "${domain}"\n`;
-          if (cleanNote.url) markdown += `url: "${cleanNote.url}"\n`;
-          if (cleanNote.pageTitle) markdown += `pageTitle: "${cleanNote.pageTitle}"\n`;
-          if (cleanNote.tags && cleanNote.tags.length > 0) {
-            markdown += `tags: [${cleanNote.tags.map(tag => `"${tag}"`).join(', ')}]\n`;
-          }
-          markdown += `created: "${cleanNote.createdAt}"\n`;
-          markdown += `updated: "${cleanNote.updatedAt}"\n`;
-          markdown += `---\n\n`;
-          
-          // Content
-          if (cleanNote.content) {
-            markdown += `${cleanNote.content}\n\n`;
-          }
-          
-          markdown += `---\n\n`;
-        });
-      }
-    }
-    
-    return markdown;
-  }
-
-  // Convert notes data to Notion-compatible HTML
-  toNotion(notesData) {
-    let html = `<!DOCTYPE html>\n<html>\n<head>\n`;
-    html += `<meta charset="UTF-8">\n`;
-    html += `<title>URL Notes Export</title>\n`;
-    html += `<style>\n`;
-    html += `body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }\n`;
-    html += `h1 { color: #37352f; border-bottom: 1px solid #e3e2e0; padding-bottom: 10px; }\n`;
-    html += `h2 { color: #37352f; margin-top: 30px; }\n`;
-    html += `h3 { color: #37352f; margin-top: 25px; }\n`;
-    html += `.note { background: #f7f6f3; border-left: 3px solid #9b9a97; padding: 15px; margin: 15px 0; border-radius: 3px; }\n`;
-    html += `.metadata { font-size: 14px; color: #787774; margin: 10px 0; }\n`;
-    html += `.tags { display: flex; gap: 5px; flex-wrap: wrap; margin: 10px 0; }\n`;
-    html += `.tag { background: #e3e2e0; padding: 2px 8px; border-radius: 3px; font-size: 12px; }\n`;
-    html += `a { color: #0d6efd; text-decoration: none; }\n`;
-    html += `a:hover { text-decoration: underline; }\n`;
-    html += `</style>\n</head>\n<body>\n`;
-    
-    html += `<h1>URL Notes Export</h1>\n`;
-    html += `<p><em>Exported on ${new Date().toLocaleString()}</em></p>\n\n`;
-
-    for (const domain in notesData) {
-      if (Array.isArray(notesData[domain]) && notesData[domain].length > 0) {
-        html += `<h2>${domain}</h2>\n\n`;
-        
-        notesData[domain].forEach(note => {
-          const cleanNote = this.cleanNoteData(note);
-          
-          html += `<div class="note">\n`;
-          html += `<h3>${cleanNote.title || 'Untitled Note'}</h3>\n`;
-          
-          if (cleanNote.url) {
-            html += `<p><strong>URL:</strong> <a href="${cleanNote.url}" target="_blank">${cleanNote.url}</a></p>\n`;
-          }
-          
-          if (cleanNote.pageTitle) {
-            html += `<p><strong>Page Title:</strong> ${cleanNote.pageTitle}</p>\n`;
-          }
-          
-          if (cleanNote.tags && cleanNote.tags.length > 0) {
-            html += `<div class="tags">\n`;
-            cleanNote.tags.forEach(tag => {
-              html += `<span class="tag">${tag}</span>\n`;
-            });
-            html += `</div>\n`;
-          }
-          
-          if (cleanNote.content) {
-            html += `<div>${cleanNote.content.replace(/\n/g, '<br>')}</div>\n`;
-          }
-          
-          html += `<div class="metadata">\n`;
-          html += `<p>Created: ${new Date(cleanNote.createdAt).toLocaleString()}</p>\n`;
-          html += `<p>Updated: ${new Date(cleanNote.updatedAt).toLocaleString()}</p>\n`;
-          html += `</div>\n`;
-          html += `</div>\n\n`;
-        });
-      }
-    }
-    
-    html += `</body>\n</html>`;
-    return html;
   }
 
   // Convert notes data to plain text format
   toTXT(notesData, isSingleNote = false) {
     let text = '';
-    
+
     // For single note export, use minimal formatting
     if (isSingleNote) {
       for (const domain in notesData) {
         if (Array.isArray(notesData[domain]) && notesData[domain].length > 0) {
           const note = notesData[domain][0]; // Single note
           const cleanNote = this.cleanNoteData(note);
-          
+
           text += `${cleanNote.title || 'Untitled Note'}\n`;
           text += `${'='.repeat(50)}\n\n`;
-          
+
           if (cleanNote.content) {
             text += `${cleanNote.content}\n\n`;
           }
-          
+
           if (cleanNote.url) {
             text += `Source: ${cleanNote.url}\n`;
           }
-          
+
           if (cleanNote.tags && cleanNote.tags.length > 0) {
             text += `Tags: ${cleanNote.tags.join(', ')}\n`;
           }
-          
+
           text += `Created: ${new Date(cleanNote.createdAt).toLocaleDateString()}\n`;
           text += `Updated: ${new Date(cleanNote.updatedAt).toLocaleDateString()}\n`;
         }
       }
       return text;
     }
-    
-    // For multiple notes export, use full formatting
-    text = `URL Notes Export\n`;
-    text += `Exported on ${new Date().toLocaleString()}\n`;
-    text += `==========================================\n\n`;
 
-    for (const domain in notesData) {
-      if (Array.isArray(notesData[domain]) && notesData[domain].length > 0) {
-        text += `DOMAIN: ${domain}\n`;
-        text += `==========================================\n\n`;
-        
-        notesData[domain].forEach(note => {
-          const cleanNote = this.cleanNoteData(note);
-          
-          text += `TITLE: ${cleanNote.title || 'Untitled Note'}\n`;
-          text += `------------------------------------------\n`;
-          
-          if (cleanNote.url) {
-            text += `URL: ${cleanNote.url}\n`;
-          }
-          
-          if (cleanNote.pageTitle) {
-            text += `PAGE TITLE: ${cleanNote.pageTitle}\n`;
-          }
-          
-          if (cleanNote.tags && cleanNote.tags.length > 0) {
-            text += `TAGS: ${cleanNote.tags.join(', ')}\n`;
-          }
-          
-          if (cleanNote.content) {
-            text += `\nCONTENT:\n${cleanNote.content}\n`;
-          }
-          
-          text += `\nCreated: ${new Date(cleanNote.createdAt).toLocaleString()}\n`;
-          text += `Updated: ${new Date(cleanNote.updatedAt).toLocaleString()}\n`;
-          text += `\n==========================================\n\n`;
+    // For multiple notes export, use enhanced domain-organized formatting
+    const totalDomains = Object.keys(notesData).length;
+    const totalNotes = Object.values(notesData).reduce((sum, notes) =>
+      sum + (Array.isArray(notes) ? notes.length : 0), 0
+    );
+
+    text = `URL NOTES EXPORT\n`;
+    text += `${'='.repeat(60)}\n\n`;
+    text += `Export Date: ${new Date().toLocaleString()}\n`;
+    text += `Total Domains: ${totalDomains}\n`;
+    text += `Total Notes: ${totalNotes}\n`;
+    text += `Organization: Domain-first, chronologically sorted\n\n`;
+    text += `${'='.repeat(60)}\n\n`;
+
+    // Sort domains by note count (most active first)
+    const sortedDomains = Object.entries(notesData)
+      .filter(([, notes]) => Array.isArray(notes) && notes.length > 0)
+      .sort(([, a], [, b]) => b.length - a.length);
+
+    // Table of contents
+    text += `TABLE OF CONTENTS\n`;
+    text += `${'-'.repeat(30)}\n`;
+    sortedDomains.forEach(([domain, notes], index) => {
+      text += `${index + 1}. ${domain} (${notes.length} notes)\n`;
+    });
+    text += `\n${'='.repeat(60)}\n\n`;
+
+    // Process each domain
+    sortedDomains.forEach(([domain, notes], domainIndex) => {
+      text += `${domainIndex + 1}. DOMAIN: ${domain.toUpperCase()}\n`;
+      text += `${'='.repeat(60)}\n`;
+      text += `Notes in this domain: ${notes.length}\n\n`;
+
+      // Sort notes by creation date (newest first)
+      const sortedNotes = [...notes].sort((a, b) =>
+        new Date(b.createdAt) - new Date(a.createdAt)
+      );
+
+      // Group notes by month for better organization
+      const notesByMonth = {};
+      sortedNotes.forEach(note => {
+        const monthKey = new Date(note.createdAt).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long'
         });
-      }
-    }
-    
+        if (!notesByMonth[monthKey]) notesByMonth[monthKey] = [];
+        notesByMonth[monthKey].push(note);
+      });
+
+      // Sort months in reverse chronological order
+      const sortedMonths = Object.keys(notesByMonth).sort((a, b) =>
+        new Date(b + ' 1') - new Date(a + ' 1')
+      );
+
+      sortedMonths.forEach(month => {
+        if (sortedMonths.length > 1) {
+          text += `   ${month}\n`;
+          text += `   ${'-'.repeat(month.length)}\n`;
+        }
+
+        notesByMonth[month].forEach((note, noteIndex) => {
+          const cleanNote = this.cleanNoteData(note);
+
+          text += `\n   ${noteIndex + 1}. ${cleanNote.title || 'Untitled Note'}\n`;
+          text += `      ${'-'.repeat(40)}\n`;
+
+          if (cleanNote.url) {
+            text += `      URL: ${cleanNote.url}\n`;
+          }
+
+          if (cleanNote.pageTitle) {
+            text += `      Page: ${cleanNote.pageTitle}\n`;
+          }
+
+          if (cleanNote.tags && cleanNote.tags.length > 0) {
+            text += `      Tags: ${cleanNote.tags.join(', ')}\n`;
+          }
+
+          text += `      Created: ${new Date(cleanNote.createdAt).toLocaleString()}\n`;
+          text += `      Updated: ${new Date(cleanNote.updatedAt).toLocaleString()}\n`;
+
+          if (cleanNote.content) {
+            text += `\n      CONTENT:\n`;
+            // Indent content for better readability
+            const indentedContent = cleanNote.content
+              .split('\n')
+              .map(line => `      ${line}`)
+              .join('\n');
+            text += `${indentedContent}\n`;
+          }
+
+          text += `\n      ${'-'.repeat(40)}\n`;
+        });
+
+        if (sortedMonths.length > 1) {
+          text += `\n`;
+        }
+      });
+
+      text += `\n${'='.repeat(60)}\n\n`;
+    });
+
+    // Footer
+    text += `EXPORT INFORMATION\n`;
+    text += `${'-'.repeat(30)}\n`;
+    text += `Generated by: URL Notes Extension\n`;
+    text += `Export Format: Plain Text\n`;
+    text += `Character Encoding: UTF-8\n`;
+    text += `Organization: Domain-first, chronologically sorted\n`;
+    text += `\nEnd of Export\n`;
+
     return text;
   }
 
   // Convert notes data to DOCX format (simplified HTML that can be opened in Word/Google Docs)
+  // HTML escaping function to prevent XSS
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   toDOCX(notesData) {
+    // Calculate totals for overview
+    const totalDomains = Object.keys(notesData).length;
+    const totalNotes = Object.values(notesData).reduce((sum, notes) =>
+      sum + (Array.isArray(notes) ? notes.length : 0), 0
+    );
+
     let html = `<!DOCTYPE html>\n<html>\n<head>\n`;
     html += `<meta charset="UTF-8">\n`;
     html += `<title>URL Notes Export</title>\n`;
     html += `<style>\n`;
-    html += `body { font-family: 'Times New Roman', serif; line-height: 1.5; margin: 1in; }\n`;
-    html += `h1 { color: #000; text-align: center; font-size: 18pt; margin-bottom: 20pt; }\n`;
-    html += `h2 { color: #000; font-size: 14pt; margin-top: 20pt; margin-bottom: 10pt; }\n`;
-    html += `h3 { color: #000; font-size: 12pt; margin-top: 15pt; margin-bottom: 8pt; }\n`;
-    html += `.note { margin: 15pt 0; padding: 10pt; border: 1px solid #ccc; }\n`;
-    html += `.metadata { font-size: 10pt; color: #666; margin: 5pt 0; }\n`;
-    html += `.tags { margin: 5pt 0; }\n`;
-    html += `.tag { background: #f0f0f0; padding: 2pt 6pt; margin-right: 5pt; font-size: 9pt; }\n`;
-    html += `a { color: #0000ff; }\n`;
+    html += `body { font-family: 'Calibri', 'Arial', sans-serif; line-height: 1.6; margin: 1in; color: #333; }\n`;
+    html += `h1 { color: #2c3e50; text-align: center; font-size: 24pt; margin-bottom: 20pt; border-bottom: 3pt solid #3498db; padding-bottom: 10pt; }\n`;
+    html += `h2 { color: #2980b9; font-size: 18pt; margin-top: 30pt; margin-bottom: 15pt; border-left: 4pt solid #3498db; padding-left: 10pt; }\n`;
+    html += `h3 { color: #34495e; font-size: 14pt; margin-top: 20pt; margin-bottom: 10pt; }\n`;
+    html += `h4 { color: #7f8c8d; font-size: 12pt; margin-top: 15pt; margin-bottom: 8pt; }\n`;
+    html += `.summary { background: #ecf0f1; padding: 15pt; border-radius: 5pt; margin: 20pt 0; }\n`;
+    html += `.toc { background: #f8f9fa; padding: 15pt; border-left: 4pt solid #3498db; margin: 20pt 0; }\n`;
+    html += `.toc ul { margin: 0; padding-left: 20pt; }\n`;
+    html += `.toc li { margin: 5pt 0; }\n`;
+    html += `.note { margin: 20pt 0; padding: 15pt; border: 1pt solid #bdc3c7; border-radius: 5pt; background: #fdfdfd; }\n`;
+    html += `.note-header { background: #3498db; color: white; padding: 8pt 12pt; margin: -15pt -15pt 10pt -15pt; border-radius: 5pt 5pt 0 0; }\n`;
+    html += `.metadata-table { width: 100%; border-collapse: collapse; margin: 10pt 0; font-size: 10pt; }\n`;
+    html += `.metadata-table td { padding: 5pt 8pt; border: 1pt solid #ddd; }\n`;
+    html += `.metadata-table td:first-child { background: #f8f9fa; font-weight: bold; width: 100pt; }\n`;
+    html += `.content { margin: 15pt 0; padding: 10pt; background: #fafafa; border-left: 3pt solid #95a5a6; }\n`;
+    html += `.tags { margin: 10pt 0; }\n`;
+    html += `.tag { background: #e8f4fd; color: #2980b9; padding: 3pt 8pt; margin-right: 5pt; border-radius: 3pt; font-size: 9pt; display: inline-block; }\n`;
+    html += `.month-section { margin: 25pt 0; }\n`;
+    html += `.month-header { background: #34495e; color: white; padding: 8pt 12pt; font-size: 12pt; }\n`;
+    html += `a { color: #3498db; text-decoration: none; }\n`;
+    html += `a:hover { text-decoration: underline; }\n`;
+    html += `.footer { margin-top: 40pt; padding-top: 20pt; border-top: 2pt solid #bdc3c7; font-size: 10pt; color: #7f8c8d; }\n`;
     html += `</style>\n</head>\n<body>\n`;
-    
-    html += `<h1>URL Notes Export</h1>\n`;
-    html += `<p style="text-align: center; font-style: italic;">Exported on ${new Date().toLocaleString()}</p>\n\n`;
 
-    for (const domain in notesData) {
-      if (Array.isArray(notesData[domain]) && notesData[domain].length > 0) {
-        html += `<h2>${domain}</h2>\n\n`;
-        
-        notesData[domain].forEach(note => {
+    html += `<h1>URL Notes Export</h1>\n`;
+
+    // Summary section
+    html += `<div class="summary">\n`;
+    html += `<h3>Export Summary</h3>\n`;
+    html += `<p><strong>Export Date:</strong> ${new Date().toLocaleString()}</p>\n`;
+    html += `<p><strong>Total Domains:</strong> ${totalDomains}</p>\n`;
+    html += `<p><strong>Total Notes:</strong> ${totalNotes}</p>\n`;
+    html += `<p><strong>Organization:</strong> Domain-first, chronologically sorted</p>\n`;
+    html += `</div>\n\n`;
+
+    // Sort domains by note count (most active first)
+    const sortedDomains = Object.entries(notesData)
+      .filter(([, notes]) => Array.isArray(notes) && notes.length > 0)
+      .sort(([, a], [, b]) => b.length - a.length);
+
+    // Table of contents
+    html += `<div class="toc">\n`;
+    html += `<h3>Table of Contents</h3>\n`;
+    html += `<ul>\n`;
+    sortedDomains.forEach(([domain, notes]) => {
+      html += `<li><a href="#${domain.replace(/\./g, '')}">${domain}</a> (${notes.length} notes)</li>\n`;
+    });
+    html += `</ul>\n`;
+    html += `</div>\n\n`;
+
+    // Process each domain
+    sortedDomains.forEach(([domain, notes]) => {
+      html += `<h2 id="${domain.replace(/\./g, '')}">${domain}</h2>\n`;
+      html += `<p><em>${notes.length} note${notes.length !== 1 ? 's' : ''} from this domain</em></p>\n\n`;
+
+      // Sort notes by creation date (newest first)
+      const sortedNotes = [...notes].sort((a, b) =>
+        new Date(b.createdAt) - new Date(a.createdAt)
+      );
+
+      // Group notes by month for better organization
+      const notesByMonth = {};
+      sortedNotes.forEach(note => {
+        const monthKey = new Date(note.createdAt).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long'
+        });
+        if (!notesByMonth[monthKey]) notesByMonth[monthKey] = [];
+        notesByMonth[monthKey].push(note);
+      });
+
+      // Sort months in reverse chronological order
+      const sortedMonths = Object.keys(notesByMonth).sort((a, b) =>
+        new Date(b + ' 1') - new Date(a + ' 1')
+      );
+
+      sortedMonths.forEach(month => {
+        if (sortedMonths.length > 1) {
+          html += `<div class="month-section">\n`;
+          html += `<div class="month-header">${month}</div>\n`;
+        }
+
+        notesByMonth[month].forEach(note => {
           const cleanNote = this.cleanNoteData(note);
-          
+
           html += `<div class="note">\n`;
-          html += `<h3>${cleanNote.title || 'Untitled Note'}</h3>\n`;
-          
+          html += `<div class="note-header">${this.escapeHtml(cleanNote.title || 'Untitled Note')}</div>\n`;
+
+          // Metadata table
+          html += `<table class="metadata-table">\n`;
           if (cleanNote.url) {
-            html += `<p><strong>URL:</strong> <a href="${cleanNote.url}">${cleanNote.url}</a></p>\n`;
+            html += `<tr><td>🔗 URL</td><td><a href="${this.escapeHtml(cleanNote.url)}">${this.escapeHtml(cleanNote.url)}</a></td></tr>\n`;
           }
-          
           if (cleanNote.pageTitle) {
-            html += `<p><strong>Page Title:</strong> ${cleanNote.pageTitle}</p>\n`;
+            html += `<tr><td>📄 Page Title</td><td>${this.escapeHtml(cleanNote.pageTitle)}</td></tr>\n`;
           }
-          
+          html += `<tr><td>🌐 Domain</td><td>${this.escapeHtml(domain)}</td></tr>\n`;
+          html += `<tr><td>📅 Created</td><td>${this.escapeHtml(new Date(cleanNote.createdAt).toLocaleString())}</td></tr>\n`;
+          html += `<tr><td>✏️ Updated</td><td>${this.escapeHtml(new Date(cleanNote.updatedAt).toLocaleString())}</td></tr>\n`;
+          html += `</table>\n`;
+
+          // Tags
           if (cleanNote.tags && cleanNote.tags.length > 0) {
             html += `<div class="tags">\n`;
+            html += `<strong>Tags:</strong> `;
             cleanNote.tags.forEach(tag => {
-              html += `<span class="tag">${tag}</span>\n`;
+              html += `<span class="tag">${this.escapeHtml(tag)}</span>\n`;
             });
             html += `</div>\n`;
           }
-          
+
+          // Content
           if (cleanNote.content) {
-            html += `<div>${cleanNote.content.replace(/\n/g, '<br>')}</div>\n`;
+            html += `<div class="content">\n`;
+            html += `<strong>Content:</strong><br>\n`;
+            html += `${this.escapeHtml(cleanNote.content).replace(/\n/g, '<br>')}\n`;
+            html += `</div>\n`;
           }
-          
-          html += `<div class="metadata">\n`;
-          html += `<p>Created: ${new Date(cleanNote.createdAt).toLocaleString()}</p>\n`;
-          html += `<p>Updated: ${new Date(cleanNote.updatedAt).toLocaleString()}</p>\n`;
-          html += `</div>\n`;
+
           html += `</div>\n\n`;
         });
-      }
-    }
-    
+
+        if (sortedMonths.length > 1) {
+          html += `</div>\n\n`;
+        }
+      });
+    });
+
+    // Footer
+    html += `<div class="footer">\n`;
+    html += `<h4>Export Information</h4>\n`;
+    html += `<p><strong>Generated by:</strong> URL Notes Extension</p>\n`;
+    html += `<p><strong>Export Format:</strong> DOCX-compatible HTML</p>\n`;
+    html += `<p><strong>Recommended Use:</strong> Import into Microsoft Word or Google Docs</p>\n`;
+    html += `<p><strong>Organization:</strong> Domain-first, chronologically sorted within each domain</p>\n`;
+    html += `</div>\n`;
+
     html += `</body>\n</html>`;
     return html;
   }
@@ -342,7 +879,7 @@ class ExportFormats {
       if (!content) {
         throw new Error('No content to export');
       }
-      
+
       if (!filename) {
         throw new Error('Invalid filename');
       }
@@ -356,31 +893,81 @@ class ExportFormats {
         throw new Error('Your browser does not support file downloads');
       }
 
+      // Handle special Obsidian vault format (multiple files)
+      if (mimeType === 'application/json' && filename.includes('obsidian')) {
+        try {
+          const vaultData = JSON.parse(content);
+          if (vaultData.type === 'obsidian-vault' && vaultData.files) {
+            // For Obsidian vault with multiple files, create a ZIP-like download
+            // Since we can't create actual ZIP files in browser without libraries,
+            // we'll download the index file and provide instructions
+            const indexFile = vaultData.files.find(f => f.filename.includes('Index'));
+            if (indexFile) {
+              // Add instructions to the index file
+              let indexContent = indexFile.content;
+              indexContent += `\n\n## Import Instructions for Obsidian\n\n`;
+              indexContent += `This export contains ${vaultData.files.length} files. To import into Obsidian:\n\n`;
+              indexContent += `1. Create a new vault or open an existing one\n`;
+              indexContent += `2. Copy each note below into separate .md files\n`;
+              indexContent += `3. Use the filenames provided for each note\n\n`;
+              indexContent += `## Individual Note Files\n\n`;
+
+              vaultData.files.forEach(file => {
+                if (!file.filename.includes('Index')) {
+                  indexContent += `### File: ${file.filename}\n\n`;
+                  indexContent += '```markdown\n';
+                  indexContent += file.content;
+                  indexContent += '\n```\n\n';
+                }
+              });
+
+              const blob = new Blob([indexContent], { type: 'text/markdown' });
+              const url = URL.createObjectURL(blob);
+
+              const downloadLink = document.createElement('a');
+              downloadLink.href = url;
+              downloadLink.download = filename.replace('.json', '.md');
+              downloadLink.style.display = 'none';
+
+              document.body.appendChild(downloadLink);
+              downloadLink.click();
+              document.body.removeChild(downloadLink);
+
+              setTimeout(() => URL.revokeObjectURL(url), 100);
+              return true;
+            }
+          }
+        } catch (parseError) {
+          // If it's not valid JSON or not the expected format, fall through to regular download
+          console.warn('Could not parse Obsidian vault format, using regular download');
+        }
+      }
+
       // Create blob with the content
       const blob = new Blob([content], { type: mimeType });
-      
+
       // Check blob size (warn if very large)
       if (blob.size > 50 * 1024 * 1024) { // 50MB
         console.warn('Large export file detected:', blob.size, 'bytes');
       }
-      
+
       // Create download URL
       const url = URL.createObjectURL(blob);
-      
+
       // Create temporary download link
       const downloadLink = document.createElement('a');
       downloadLink.href = url;
       downloadLink.download = filename;
       downloadLink.style.display = 'none';
-      
+
       // Add to DOM, click, and remove
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);
-      
+
       // Clean up the URL object
       setTimeout(() => URL.revokeObjectURL(url), 100);
-      
+
       return true;
     } catch (error) {
       console.error('Download failed:', error);
@@ -445,7 +1032,7 @@ class ExportFormats {
     const timestamp = new Date().toISOString().split('T')[0];
     const noteCountSuffix = totalNotes > 1 ? `-${totalNotes}notes` : '';
     const filename = `url-notes-export-${timestamp}${noteCountSuffix}${formatInfo.extension}`;
-    
+
     return {
       content,
       filename,
@@ -459,14 +1046,14 @@ class ExportFormats {
     try {
       // Add a small delay to allow UI updates
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       const exportResult = this.exportToFormat(notesData, format, isSingleNote);
-      
+
       // Add another small delay before download
       await new Promise(resolve => setTimeout(resolve, 200));
-      
+
       this.downloadFile(exportResult.content, exportResult.filename, exportResult.mimeType);
-      
+
       return {
         ...exportResult,
         success: true,
@@ -474,7 +1061,7 @@ class ExportFormats {
       };
     } catch (error) {
       console.error('Export and download failed:', error);
-      
+
       // Provide more specific error messages
       let userMessage = error.message;
       if (error.message.includes('browser does not support')) {
@@ -484,7 +1071,7 @@ class ExportFormats {
       } else if (error.message.includes('Invalid notes data')) {
         userMessage = 'There was an issue with the note data. Please try refreshing the page and selecting your notes again.';
       }
-      
+
       throw new Error(userMessage);
     }
   }

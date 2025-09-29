@@ -186,20 +186,7 @@
     - these changes musth be implemented while mainting xss security that we already have in place.
     - for mobile i think we can keep the note editor as is since we dont have the extra screen realestate to mobe around the ntoes, thats includign ipad this should probably be only for desktop.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+- [x] 21 - make aure our exporting feature for different platofrms is in the correect format both in extensoin and webpage so that when we import into the apps the text comes into different notes in a way tahtmakes sense or is organized correctlky will be differnt for each app but maiun focus should be obsidian and notion. If already in correct format dont make any chanegs.
 
 
 - [x] 20. supabase rls policy security audit ✅

@@ -79,6 +79,7 @@ scripts/
 supabase/migrations/
 webhook-server/
 specs/
+marketing/
 
 # Keep essential files visible in public repo:
 # - Core web app files (HTML, CSS, JS)
