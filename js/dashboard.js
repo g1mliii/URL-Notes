@@ -2318,13 +2318,22 @@ class Dashboard {
     }
   }
 
-  // ISO timestamp validation
+  // ISO timestamp validation (flexible for different ISO formats)
   isValidTimestamp(timestamp) {
     if (!timestamp || typeof timestamp !== 'string') return false;
-
+    
     try {
       const date = new Date(timestamp);
-      return date.toISOString() === timestamp;
+      // Check if it's a valid date
+      if (isNaN(date.getTime())) return false;
+      
+      // Allow various ISO 8601 formats:
+      // - 2024-01-16T16:00:00Z
+      // - 2024-01-16T16:00:00.000Z  
+      // - 2024-01-16T16:00:00+00:00
+      // - 2024-01-16T16:00:00.646882+00:00
+      const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$/;
+      return isoRegex.test(timestamp);
     } catch {
       return false;
     }
@@ -2459,6 +2468,7 @@ class Dashboard {
       let updatedCount = 0;
       let skippedCount = 0;
       const totalNotes = this.importFileInfo.totalNotes;
+      const importedNotes = []; // Collect imported notes for bulk sync
 
       // Import notes domain by domain
       let processedNotes = 0;
@@ -2497,13 +2507,16 @@ class Dashboard {
 
               if (existingNote) {
                 // Update existing note (including overwriting deleted ones)
-                await window.storage.saveNote(noteData);
+                await window.storage.saveNoteWithoutSync(noteData);
                 updatedCount++;
               } else {
                 // Import new note
-                await window.storage.saveNote(noteData);
+                await window.storage.saveNoteWithoutSync(noteData);
                 importedCount++;
               }
+
+              // Collect note for bulk sync
+              importedNotes.push(noteData);
 
               processedNotes++;
 
@@ -2521,6 +2534,20 @@ class Dashboard {
               skippedCount++;
             }
           }
+        }
+      }
+
+      // Update progress
+      this.updateImportProgress(90, 'Syncing imported notes...');
+
+      // Add all imported notes to sync queue and trigger sync
+      if (importedNotes.length > 0) {
+        try {
+          window.storage.addNotesToSyncQueue(importedNotes);
+          await window.storage.processSyncQueue();
+        } catch (error) {
+          console.warn('Sync after import failed:', error);
+          // Don't fail the import if sync fails
         }
       }
 

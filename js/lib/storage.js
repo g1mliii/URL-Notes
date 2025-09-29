@@ -583,6 +583,64 @@ class WebStorage {
     return note;
   }
 
+  // Save note without triggering individual sync (for bulk operations like import)
+  async saveNoteWithoutSync(note) {
+    if (!note || !note.id) {
+      throw new Error('Invalid note data');
+    }
+    if (!note.createdAt) {
+      note.createdAt = new Date().toISOString();
+    }
+    note.updatedAt = new Date().toISOString();
+    
+    // Ensure URL and domain are present for compatibility with extension
+    if (!note.url) {
+      note.url = '';
+    }
+    if (!note.domain) {
+      note.domain = '';
+    }
+    if (!note.tags) {
+      note.tags = [];
+    }
+
+    // Save to cache immediately (but don't add to sync queue)
+    this.saveNoteToCache(note);
+    
+    return note;
+  }
+
+  // Add multiple notes to sync queue in bulk (for import)
+  addNotesToSyncQueue(notes) {
+    try {
+      const queue = JSON.parse(localStorage.getItem(this.syncQueueKey) || '[]');
+      
+      // Remove any existing entries for these notes to avoid duplicates
+      const noteIds = notes.map(note => note.id);
+      const filteredQueue = queue.filter(item => !noteIds.includes(item.noteId));
+      
+      // Add all notes to queue
+      notes.forEach(note => {
+        filteredQueue.push({
+          noteId: note.id,
+          note: note,
+          operation: 'update',
+          timestamp: Date.now(),
+          retries: 0
+        });
+      });
+      
+      localStorage.setItem(this.syncQueueKey, JSON.stringify(filteredQueue));
+      
+      // Update change count
+      const changeCount = parseInt(localStorage.getItem(this.changeCountKey) || '0') + notes.length;
+      localStorage.setItem(this.changeCountKey, changeCount.toString());
+      
+    } catch (error) {
+      console.error('Failed to add notes to sync queue:', error);
+    }
+  }
+
   // Public API - Delete note (remove from cache, queue for sync)
   async deleteNote(noteId) {
     // Remove from cache immediately
