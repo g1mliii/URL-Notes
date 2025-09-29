@@ -975,14 +975,36 @@ class SettingsManager {
         return { isValid: false, error: 'Import file is empty' };
       }
 
+      // Check for Anchored export identifier
+      if (!importData._anchored) {
+        return { 
+          isValid: false, 
+          error: 'This file does not appear to be an Anchored notes export. Please ensure you are importing a file exported from Anchored.' 
+        };
+      }
+
+      // Validate Anchored metadata
+      const anchored = importData._anchored;
+      if (!anchored.version || !anchored.format || anchored.format !== 'anchored-notes') {
+        return { 
+          isValid: false, 
+          error: 'Invalid Anchored export format. Please ensure you are importing a valid Anchored notes file.' 
+        };
+      }
+
       let totalNotes = 0;
       let validDomains = 0;
 
-      // Validate each domain
+      // Validate each domain (skip the _anchored metadata)
       for (const [domain, notes] of Object.entries(importData)) {
-        // Skip non-note data (like themeMode)
-        if (domain === 'themeMode' || !Array.isArray(notes)) {
+        // Skip metadata and non-note data
+        if (domain === '_anchored' || domain === 'themeMode' || !Array.isArray(notes)) {
           continue;
+        }
+
+        // Validate domain format
+        if (!this.isValidDomain(domain)) {
+          return { isValid: false, error: `Invalid domain format: ${domain}` };
         }
 
         validDomains++;
@@ -990,31 +1012,12 @@ class SettingsManager {
         // Validate notes array
         for (let i = 0; i < notes.length; i++) {
           const note = notes[i];
+          const noteLocation = `${domain}[${i}]`;
 
-          // Check required fields
-          if (!note || typeof note !== 'object') {
-            return { isValid: false, error: `Invalid note at ${domain}[${i}]: not an object` };
-          }
-
-          if (!note.id || typeof note.id !== 'string') {
-            return { isValid: false, error: `Invalid note at ${domain}[${i}]: missing or invalid ID` };
-          }
-
-          if (!note.domain || typeof note.domain !== 'string') {
-            return { isValid: false, error: `Invalid note at ${domain}[${i}]: missing or invalid domain` };
-          }
-
-          // Validate optional fields if present
-          if (note.title && typeof note.title !== 'string') {
-            return { isValid: false, error: `Invalid note at ${domain}[${i}]: title must be a string` };
-          }
-
-          if (note.content && typeof note.content !== 'string') {
-            return { isValid: false, error: `Invalid note at ${domain}[${i}]: content must be a string` };
-          }
-
-          if (note.tags && !Array.isArray(note.tags)) {
-            return { isValid: false, error: `Invalid note at ${domain}[${i}]: tags must be an array` };
+          // Validate note structure
+          const noteValidation = this.validateNoteStructure(note, noteLocation);
+          if (!noteValidation.isValid) {
+            return noteValidation;
           }
 
           totalNotes++;
@@ -1031,9 +1034,144 @@ class SettingsManager {
         return { isValid: false, error: `Too many notes (${totalNotes}). Maximum is 10,000 notes per import.` };
       }
 
-      return { isValid: true, totalNotes, validDomains };
+      return { 
+        isValid: true, 
+        totalNotes, 
+        validDomains,
+        version: anchored.version,
+        source: anchored.source,
+        exportedAt: anchored.exportedAt
+      };
     } catch (error) {
       return { isValid: false, error: `Validation error: ${error.message}` };
+    }
+  }
+
+  // Enhanced note structure validation
+  validateNoteStructure(note, location) {
+    // Check if note is an object
+    if (!note || typeof note !== 'object') {
+      return { isValid: false, error: `Invalid note at ${location}: not an object` };
+    }
+
+    // Validate required ID field with UUID format
+    if (!note.id || typeof note.id !== 'string') {
+      return { isValid: false, error: `Invalid note at ${location}: missing or invalid ID` };
+    }
+
+    if (!this.isValidUUID(note.id)) {
+      return { isValid: false, error: `Invalid note at ${location}: ID must be a valid UUID format` };
+    }
+
+    // Validate required domain field
+    if (!note.domain || typeof note.domain !== 'string') {
+      return { isValid: false, error: `Invalid note at ${location}: missing or invalid domain` };
+    }
+
+    if (!this.isValidDomain(note.domain)) {
+      return { isValid: false, error: `Invalid note at ${location}: invalid domain format` };
+    }
+
+    // Validate string fields (all optional except id and domain)
+    const stringFields = ['title', 'content', 'url', 'pageTitle'];
+    for (const field of stringFields) {
+      if (note[field] !== undefined && typeof note[field] !== 'string') {
+        return { isValid: false, error: `Invalid note at ${location}: ${field} must be a string` };
+      }
+    }
+
+    // Validate URL format if present
+    if (note.url && !this.isValidURL(note.url)) {
+      return { isValid: false, error: `Invalid note at ${location}: invalid URL format` };
+    }
+
+    // Validate tags array
+    if (note.tags !== undefined) {
+      if (!Array.isArray(note.tags)) {
+        return { isValid: false, error: `Invalid note at ${location}: tags must be an array` };
+      }
+      
+      // Validate each tag is a string
+      for (let j = 0; j < note.tags.length; j++) {
+        if (typeof note.tags[j] !== 'string') {
+          return { isValid: false, error: `Invalid note at ${location}: tag[${j}] must be a string` };
+        }
+        
+        // Validate tag length and format
+        if (note.tags[j].length === 0 || note.tags[j].length > 50) {
+          return { isValid: false, error: `Invalid note at ${location}: tag[${j}] must be 1-50 characters` };
+        }
+      }
+
+      // Check for duplicate tags
+      const uniqueTags = new Set(note.tags);
+      if (uniqueTags.size !== note.tags.length) {
+        return { isValid: false, error: `Invalid note at ${location}: duplicate tags not allowed` };
+      }
+    }
+
+    // Validate timestamp fields
+    const timestampFields = ['createdAt', 'updatedAt'];
+    for (const field of timestampFields) {
+      if (note[field] !== undefined) {
+        if (typeof note[field] !== 'string') {
+          return { isValid: false, error: `Invalid note at ${location}: ${field} must be a string` };
+        }
+        
+        if (!this.isValidTimestamp(note[field])) {
+          return { isValid: false, error: `Invalid note at ${location}: ${field} must be a valid ISO timestamp` };
+        }
+      }
+    }
+
+    // Validate content length limits (reasonable limits for import)
+    if (note.title && note.title.length > 500) {
+      return { isValid: false, error: `Invalid note at ${location}: title too long (max 500 characters)` };
+    }
+
+    if (note.content && note.content.length > 100000) {
+      return { isValid: false, error: `Invalid note at ${location}: content too long (max 100,000 characters)` };
+    }
+
+    return { isValid: true };
+  }
+
+  // UUID validation (RFC 4122 format)
+  isValidUUID(uuid) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  }
+
+  // Domain validation
+  isValidDomain(domain) {
+    if (!domain || typeof domain !== 'string') return false;
+    
+    // Basic domain format validation
+    const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    return domainRegex.test(domain) && domain.length <= 253;
+  }
+
+  // URL validation
+  isValidURL(url) {
+    if (!url || typeof url !== 'string') return false;
+    
+    try {
+      const urlObj = new URL(url);
+      return ['http:', 'https:'].includes(urlObj.protocol);
+    } catch {
+      return false;
+    }
+  }
+
+  // ISO timestamp validation
+  isValidTimestamp(timestamp) {
+    if (!timestamp || typeof timestamp !== 'string') return false;
+    
+    try {
+      const date = new Date(timestamp);
+      return date.toISOString() === timestamp;
+    } catch {
+      return false;
     }
   }
 

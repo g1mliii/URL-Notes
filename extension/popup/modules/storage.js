@@ -153,7 +153,18 @@ class StorageManager {
         notesData[note.domain].push(note);
       }
 
-      return notesData;
+      // Add Anchored export identifier and metadata
+      const exportData = {
+        _anchored: {
+          version: "1.0.0",
+          exportedAt: new Date().toISOString(),
+          source: "extension",
+          format: "anchored-notes"
+        },
+        ...notesData
+      };
+
+      return exportData;
     } catch (error) {
       throw error;
     }
@@ -169,7 +180,8 @@ class StorageManager {
 
       // Merge data, imported notes will overwrite existing notes with the same ID
       for (const domain in importedData) {
-        if (domain === 'themeMode' || !Array.isArray(importedData[domain])) continue;
+        // Skip metadata and non-note data
+        if (domain === '_anchored' || domain === 'themeMode' || !Array.isArray(importedData[domain])) continue;
 
         const existingNotes = currentData[domain] || [];
         const importedNotes = importedData[domain];
@@ -184,9 +196,10 @@ class StorageManager {
             if (!note.createdAt) {
               note.createdAt = new Date().toISOString();
             }
-            if (!note.updatedAt) {
-              note.updatedAt = new Date().toISOString();
-            }
+            
+            // CRITICAL: Force fresh timestamp for imported notes to ensure they sync
+            // This ensures imported notes are newer than lastSyncTime
+            note.updatedAt = new Date().toISOString();
 
             notesMap.set(note.id, note);
 

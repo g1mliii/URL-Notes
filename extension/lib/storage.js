@@ -247,6 +247,9 @@ class NotesStorage {
       note.version = 1;
     }
 
+    // Note: sync_pending flag is handled by the sync system, not here
+    // Imported notes set this flag explicitly in importNotes method
+
     // Remove verbose logging
 
     return new Promise((resolve, reject) => {
@@ -1336,7 +1339,18 @@ class NotesStorage {
         notesByDomain[note.domain].push(note);
       });
 
-      return notesByDomain;
+      // Add Anchored export identifier and metadata
+      const exportData = {
+        _anchored: {
+          version: "1.0.0",
+          exportedAt: new Date().toISOString(),
+          source: "extension",
+          format: "anchored-notes"
+        },
+        ...notesByDomain
+      };
+
+      return exportData;
     } catch (error) {
       console.error('Error exporting notes:', error);
       throw error;
@@ -1350,7 +1364,8 @@ class NotesStorage {
 
       // Import notes from domain-based structure
       for (const domain in importedData) {
-        if (!Array.isArray(importedData[domain])) continue;
+        // Skip metadata and non-note data
+        if (domain === '_anchored' || !Array.isArray(importedData[domain])) continue;
 
         const domainNotes = importedData[domain];
         for (const note of domainNotes) {
@@ -1358,7 +1373,10 @@ class NotesStorage {
             // Ensure the note is not marked as deleted
             note.is_deleted = false;
             note.deleted_at = null;
-            note.updatedAt = note.updatedAt || new Date().toISOString();
+            
+            // CRITICAL: Force fresh timestamp for imported notes to ensure they sync
+            // This ensures imported notes are newer than lastSyncTime
+            note.updatedAt = new Date().toISOString();
 
             await this.saveNote(note);
             notesImportedCount++;

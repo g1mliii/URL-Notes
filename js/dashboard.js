@@ -40,7 +40,7 @@ class Dashboard {
 
       // Use centralized subscription check instead of separate call
       this.listenForSubscriptionUpdates();
-      
+
       // Initialize rich text editor if elements are available
       this.initializeRichTextEditor();
     } catch (error) {
@@ -398,7 +398,7 @@ class Dashboard {
       if (now - lastAutoSave > 3000) { // Minimum 3 seconds between auto-saves (increased from 1s)
         lastAutoSave = now;
         pendingChanges = false;
-        
+
         // Use requestIdleCallback for non-critical auto-saves
         if (window.requestIdleCallback) {
           requestIdleCallback(() => this.handleAutoSave());
@@ -575,7 +575,7 @@ class Dashboard {
         window.location.href = '/?message=session-expired';
         return;
       }
-      
+
       this.showErrorState(error.message);
     } finally {
       this.isLoading = false;
@@ -694,47 +694,47 @@ class Dashboard {
   // Sanitize color values to prevent XSS (same as rich text editor)
   sanitizeColor(color) {
     if (!color) return null;
-    
+
     const trimmedColor = color.trim();
-    
+
     // Allow hex colors (#fff, #ffffff)
     if (/^#[0-9a-fA-F]{3}$|^#[0-9a-fA-F]{6}$/.test(trimmedColor)) {
       return trimmedColor;
     }
-    
+
     // Allow rgb/rgba colors
     if (/^rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(?:,\s*[0-9.]+\s*)?\)$/.test(trimmedColor)) {
       return trimmedColor;
     }
-    
+
     // Allow hsl/hsla colors
     if (/^hsla?\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*(?:,\s*[0-9.]+\s*)?\)$/.test(trimmedColor)) {
       return trimmedColor;
     }
-    
+
     // Allow CSS variables (for theme colors)
     if (/^var\(--[a-zA-Z0-9-]+\)$/.test(trimmedColor)) {
       return trimmedColor;
     }
-    
+
     // Allow common named colors (basic set for safety)
     const safeNamedColors = [
-      'black', 'white', 'red', 'green', 'blue', 'yellow', 'orange', 'purple', 
+      'black', 'white', 'red', 'green', 'blue', 'yellow', 'orange', 'purple',
       'pink', 'brown', 'gray', 'grey', 'cyan', 'magenta', 'lime', 'navy',
       'maroon', 'olive', 'teal', 'silver', 'gold'
     ];
-    
+
     if (safeNamedColors.includes(trimmedColor.toLowerCase())) {
       return trimmedColor;
     }
-    
+
     return null; // Unsafe color
   }
 
   // Sanitize URLs to prevent XSS (same as rich text editor)
   sanitizeUrl(url) {
     if (!url) return null;
-    
+
     try {
       const urlObj = new URL(url);
       // Only allow http and https protocols
@@ -744,7 +744,7 @@ class Dashboard {
     } catch (e) {
       // Invalid URL
     }
-    
+
     return null; // Unsafe URL
   }
 
@@ -921,7 +921,7 @@ class Dashboard {
     // Create card structure safely using DOM methods
     const selectionDiv = document.createElement('div');
     selectionDiv.className = 'note-card-selection';
-    
+
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.className = 'note-checkbox';
@@ -965,14 +965,14 @@ class Dashboard {
     if (note.tags && note.tags.length > 0) {
       const tagsDiv = document.createElement('div');
       tagsDiv.className = 'note-card-tags';
-      
+
       note.tags.forEach(tag => {
         const tagSpan = document.createElement('span');
         tagSpan.className = 'tag';
         tagSpan.textContent = tag;
         tagsDiv.appendChild(tagSpan);
       });
-      
+
       contentDiv.appendChild(tagsDiv);
     }
 
@@ -1009,7 +1009,7 @@ class Dashboard {
     // Create card structure safely using DOM methods (optimized version)
     const selectionDiv = document.createElement('div');
     selectionDiv.className = 'note-card-selection';
-    
+
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.className = 'note-checkbox';
@@ -1053,14 +1053,14 @@ class Dashboard {
     if (note.tags && note.tags.length > 0) {
       const tagsDiv = document.createElement('div');
       tagsDiv.className = 'note-card-tags';
-      
+
       note.tags.forEach(tag => {
         const tagSpan = document.createElement('span');
         tagSpan.className = 'tag';
         tagSpan.textContent = tag;
         tagsDiv.appendChild(tagSpan);
       });
-      
+
       contentDiv.appendChild(tagsDiv);
     }
 
@@ -1149,10 +1149,10 @@ class Dashboard {
 
   async validateAndSanitizeTags(tagsString) {
     if (!tagsString) return [];
-    
+
     const tags = tagsString.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
     const sanitizedTags = [];
-    
+
     for (const tag of tags) {
       if (tag.length <= 100) { // Max tag length
         const sanitized = await this.validateAndSanitizeInput(tag, 'tag');
@@ -1161,18 +1161,18 @@ class Dashboard {
         }
       }
     }
-    
+
     return sanitizedTags.slice(0, 20); // Max 20 tags
   }
 
   basicInputValidation(input, type) {
     if (!input) return '';
-    
+
     // Basic HTML escaping
     const div = document.createElement('div');
     div.textContent = input;
     let sanitized = div.innerHTML;
-    
+
     // Length limits
     const maxLengths = {
       title: 500,
@@ -1180,12 +1180,12 @@ class Dashboard {
       tag: 100,
       url: 2000
     };
-    
+
     const maxLength = maxLengths[type] || maxLengths.content;
     if (sanitized.length > maxLength) {
       sanitized = sanitized.substring(0, maxLength);
     }
-    
+
     return sanitized;
   }
 
@@ -1202,13 +1202,13 @@ class Dashboard {
       emptyState.innerHTML = '';
       const loadingDiv = document.createElement('div');
       loadingDiv.className = 'loading';
-      
+
       const title = document.createElement('h3');
       title.textContent = 'Loading notes...';
-      
+
       const message = document.createElement('p');
       message.textContent = 'Please wait while we fetch your notes.';
-      
+
       loadingDiv.appendChild(title);
       loadingDiv.appendChild(message);
       emptyState.appendChild(loadingDiv);
@@ -1232,26 +1232,26 @@ class Dashboard {
       title.textContent = 'No notes found';
 
       const message = document.createElement('p');
-      
+
       if (hasFilters) {
         message.textContent = 'No notes match your current filters. Try adjusting your search or filters.';
-        
+
         const clearButton = document.createElement('button');
         clearButton.className = 'btn-secondary';
         clearButton.textContent = 'Clear Filters';
         clearButton.addEventListener('click', () => this.clearFilters());
-        
+
         emptyState.appendChild(title);
         emptyState.appendChild(message);
         emptyState.appendChild(clearButton);
       } else {
         message.textContent = 'Start taking notes with the browser extension or create your first note here.';
-        
+
         const createButton = document.createElement('button');
         createButton.className = 'btn-primary';
         createButton.textContent = 'Create First Note';
         createButton.addEventListener('click', () => this.showNoteEditor());
-        
+
         emptyState.appendChild(title);
         emptyState.appendChild(message);
         emptyState.appendChild(createButton);
@@ -1268,18 +1268,18 @@ class Dashboard {
       emptyState.classList.remove('hidden');
       // Create error state safely
       emptyState.innerHTML = '';
-      
+
       const title = document.createElement('h3');
       title.textContent = 'Error loading notes';
-      
+
       const errorMessage = document.createElement('p');
       errorMessage.textContent = message;
-      
+
       const retryButton = document.createElement('button');
       retryButton.className = 'btn-primary';
       retryButton.textContent = 'Try Again';
       retryButton.addEventListener('click', () => this.loadNotes());
-      
+
       emptyState.appendChild(title);
       emptyState.appendChild(errorMessage);
       emptyState.appendChild(retryButton);
@@ -1367,7 +1367,7 @@ class Dashboard {
       urlLink.target = '_blank';
       urlLink.rel = 'noopener noreferrer';
       urlLink.className = 'note-url-link';
-      
+
       // Create SVG icon
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('width', '16');
@@ -1376,16 +1376,16 @@ class Dashboard {
       svg.setAttribute('fill', 'none');
       svg.setAttribute('stroke', 'currentColor');
       svg.setAttribute('stroke-width', '2');
-      
+
       const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path1.setAttribute('d', 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71');
-      
+
       const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path2.setAttribute('d', 'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71');
-      
+
       svg.appendChild(path1);
       svg.appendChild(path2);
-      
+
       urlLink.appendChild(svg);
       urlLink.appendChild(document.createTextNode(' ' + this.truncateUrl(note.url, 40)));
       urlEl.appendChild(urlLink);
@@ -1506,10 +1506,10 @@ class Dashboard {
       panel.classList.add('hidden');
     }
     document.body.style.overflow = '';
-    
+
     // Clean up rich text editor reference (it will be recreated when needed)
     this.richTextEditor = null;
-    
+
     this.currentNote = null;
   }
 
@@ -1559,7 +1559,7 @@ class Dashboard {
     if (this.currentNote) {
       titleInput.value = this.currentNote.title || '';
       urlInput.value = this.currentNote.url || '';
-      
+
       // Use rich text editor to set content
       if (this.richTextEditor) {
         this.richTextEditor.setContent(this.currentNote.content || '');
@@ -1567,7 +1567,7 @@ class Dashboard {
         // Fallback to safe HTML setting
         this.safeSetInnerHTML(contentInput, this.buildContentHtml(this.currentNote.content || ''), 'richText').catch(console.error);
       }
-      
+
       tagsInput.value = (this.currentNote.tags || []).join(', ');
     } else {
       // Clear form for new note
@@ -1701,7 +1701,7 @@ class Dashboard {
     // Validate and sanitize inputs
     const title = await this.validateAndSanitizeInput(noteTitle.value.trim(), 'title');
     const url = await this.validateAndSanitizeInput(noteUrl.value.trim(), 'url');
-    
+
     // Get content from rich text editor if available, otherwise fallback to HTML conversion
     let content;
     if (this.richTextEditor) {
@@ -1709,7 +1709,7 @@ class Dashboard {
     } else {
       content = await this.htmlToMarkdown(noteContentInput.innerHTML);
     }
-    
+
     const tags = await this.validateAndSanitizeTags(noteTags.value);
 
     if (!title && !content) {
@@ -2130,14 +2130,36 @@ class Dashboard {
         return { isValid: false, error: 'Import file is empty' };
       }
 
+      // Check for Anchored export identifier
+      if (!importData._anchored) {
+        return { 
+          isValid: false, 
+          error: 'This file does not appear to be an Anchored notes export. Please ensure you are importing a file exported from Anchored.' 
+        };
+      }
+
+      // Validate Anchored metadata
+      const anchored = importData._anchored;
+      if (!anchored.version || !anchored.format || anchored.format !== 'anchored-notes') {
+        return { 
+          isValid: false, 
+          error: 'Invalid Anchored export format. Please ensure you are importing a valid Anchored notes file.' 
+        };
+      }
+
       let totalNotes = 0;
       let validDomains = 0;
 
-      // Validate each domain
+      // Validate each domain (skip the _anchored metadata)
       for (const [domain, notes] of Object.entries(importData)) {
-        // Skip non-note data (like themeMode)
-        if (domain === 'themeMode' || !Array.isArray(notes)) {
+        // Skip metadata and non-note data
+        if (domain === '_anchored' || domain === 'themeMode' || !Array.isArray(notes)) {
           continue;
+        }
+
+        // Validate domain format
+        if (!this.isValidDomain(domain)) {
+          return { isValid: false, error: `Invalid domain format: ${domain}` };
         }
 
         validDomains++;
@@ -2145,27 +2167,12 @@ class Dashboard {
         // Validate notes array
         for (let i = 0; i < notes.length; i++) {
           const note = notes[i];
+          const noteLocation = `${domain}[${i}]`;
 
-          // Check required fields
-          if (!note || typeof note !== 'object') {
-            return { isValid: false, error: `Invalid note at ${domain}[${i}]: not an object` };
-          }
-
-          if (!note.id || typeof note.id !== 'string') {
-            return { isValid: false, error: `Invalid note at ${domain}[${i}]: missing or invalid ID` };
-          }
-
-          // Validate optional fields if present
-          if (note.title && typeof note.title !== 'string') {
-            return { isValid: false, error: `Invalid note at ${domain}[${i}]: title must be a string` };
-          }
-
-          if (note.content && typeof note.content !== 'string') {
-            return { isValid: false, error: `Invalid note at ${domain}[${i}]: content must be a string` };
-          }
-
-          if (note.tags && !Array.isArray(note.tags)) {
-            return { isValid: false, error: `Invalid note at ${domain}[${i}]: tags must be an array` };
+          // Validate note structure
+          const noteValidation = this.validateNoteStructure(note, noteLocation);
+          if (!noteValidation.isValid) {
+            return noteValidation;
           }
 
           totalNotes++;
@@ -2182,9 +2189,144 @@ class Dashboard {
         return { isValid: false, error: `Too many notes (${totalNotes}). Maximum is 10,000 notes per import.` };
       }
 
-      return { isValid: true, totalNotes, validDomains };
+      return { 
+        isValid: true, 
+        totalNotes, 
+        validDomains,
+        version: anchored.version,
+        source: anchored.source,
+        exportedAt: anchored.exportedAt
+      };
     } catch (error) {
       return { isValid: false, error: `Validation error: ${error.message}` };
+    }
+  }
+
+  // Enhanced note structure validation
+  validateNoteStructure(note, location) {
+    // Check if note is an object
+    if (!note || typeof note !== 'object') {
+      return { isValid: false, error: `Invalid note at ${location}: not an object` };
+    }
+
+    // Validate required ID field with UUID format
+    if (!note.id || typeof note.id !== 'string') {
+      return { isValid: false, error: `Invalid note at ${location}: missing or invalid ID` };
+    }
+
+    if (!this.isValidUUID(note.id)) {
+      return { isValid: false, error: `Invalid note at ${location}: ID must be a valid UUID format` };
+    }
+
+    // Validate required domain field
+    if (!note.domain || typeof note.domain !== 'string') {
+      return { isValid: false, error: `Invalid note at ${location}: missing or invalid domain` };
+    }
+
+    if (!this.isValidDomain(note.domain)) {
+      return { isValid: false, error: `Invalid note at ${location}: invalid domain format` };
+    }
+
+    // Validate string fields (all optional except id and domain)
+    const stringFields = ['title', 'content', 'url', 'pageTitle'];
+    for (const field of stringFields) {
+      if (note[field] !== undefined && typeof note[field] !== 'string') {
+        return { isValid: false, error: `Invalid note at ${location}: ${field} must be a string` };
+      }
+    }
+
+    // Validate URL format if present
+    if (note.url && !this.isValidURL(note.url)) {
+      return { isValid: false, error: `Invalid note at ${location}: invalid URL format` };
+    }
+
+    // Validate tags array
+    if (note.tags !== undefined) {
+      if (!Array.isArray(note.tags)) {
+        return { isValid: false, error: `Invalid note at ${location}: tags must be an array` };
+      }
+
+      // Validate each tag is a string
+      for (let j = 0; j < note.tags.length; j++) {
+        if (typeof note.tags[j] !== 'string') {
+          return { isValid: false, error: `Invalid note at ${location}: tag[${j}] must be a string` };
+        }
+
+        // Validate tag length and format
+        if (note.tags[j].length === 0 || note.tags[j].length > 50) {
+          return { isValid: false, error: `Invalid note at ${location}: tag[${j}] must be 1-50 characters` };
+        }
+      }
+
+      // Check for duplicate tags
+      const uniqueTags = new Set(note.tags);
+      if (uniqueTags.size !== note.tags.length) {
+        return { isValid: false, error: `Invalid note at ${location}: duplicate tags not allowed` };
+      }
+    }
+
+    // Validate timestamp fields
+    const timestampFields = ['createdAt', 'updatedAt'];
+    for (const field of timestampFields) {
+      if (note[field] !== undefined) {
+        if (typeof note[field] !== 'string') {
+          return { isValid: false, error: `Invalid note at ${location}: ${field} must be a string` };
+        }
+
+        if (!this.isValidTimestamp(note[field])) {
+          return { isValid: false, error: `Invalid note at ${location}: ${field} must be a valid ISO timestamp` };
+        }
+      }
+    }
+
+    // Validate content length limits (reasonable limits for import)
+    if (note.title && note.title.length > 500) {
+      return { isValid: false, error: `Invalid note at ${location}: title too long (max 500 characters)` };
+    }
+
+    if (note.content && note.content.length > 100000) {
+      return { isValid: false, error: `Invalid note at ${location}: content too long (max 100,000 characters)` };
+    }
+
+    return { isValid: true };
+  }
+
+  // UUID validation (RFC 4122 format)
+  isValidUUID(uuid) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  }
+
+  // Domain validation
+  isValidDomain(domain) {
+    if (!domain || typeof domain !== 'string') return false;
+
+    // Basic domain format validation
+    const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    return domainRegex.test(domain) && domain.length <= 253;
+  }
+
+  // URL validation
+  isValidURL(url) {
+    if (!url || typeof url !== 'string') return false;
+
+    try {
+      const urlObj = new URL(url);
+      return ['http:', 'https:'].includes(urlObj.protocol);
+    } catch {
+      return false;
+    }
+  }
+
+  // ISO timestamp validation
+  isValidTimestamp(timestamp) {
+    if (!timestamp || typeof timestamp !== 'string') return false;
+
+    try {
+      const date = new Date(timestamp);
+      return date.toISOString() === timestamp;
+    } catch {
+      return false;
     }
   }
 
@@ -2204,24 +2346,24 @@ class Dashboard {
 
     // Create file info safely
     fileInfo.innerHTML = '';
-    
+
     const createInfoItem = (label, value) => {
       const item = document.createElement('div');
       item.className = 'file-info-item';
-      
+
       const labelSpan = document.createElement('span');
       labelSpan.className = 'file-info-label';
       labelSpan.textContent = label;
-      
+
       const valueSpan = document.createElement('span');
       valueSpan.className = 'file-info-value';
       valueSpan.textContent = value;
-      
+
       item.appendChild(labelSpan);
       item.appendChild(valueSpan);
       return item;
     };
-    
+
     fileInfo.appendChild(createInfoItem('File Name:', this.importFileInfo.name));
     fileInfo.appendChild(createInfoItem('File Size:', formatFileSize(this.importFileInfo.size)));
     fileInfo.appendChild(createInfoItem('Total Notes:', this.importFileInfo.totalNotes));
@@ -2321,7 +2463,8 @@ class Dashboard {
       // Import notes domain by domain
       let processedNotes = 0;
       for (const [domain, notes] of Object.entries(this.importData)) {
-        if (!Array.isArray(notes)) continue;
+        // Skip metadata and non-note data
+        if (domain === '_anchored' || !Array.isArray(notes)) continue;
 
         for (const note of notes) {
           if (note && note.id) {
@@ -2467,10 +2610,10 @@ class Dashboard {
     if (this.filteredNotes.length === 0) {
       const emptyState = document.createElement('div');
       emptyState.className = 'export-empty-state';
-      
+
       const message = document.createElement('p');
       message.textContent = 'No notes available for export.';
-      
+
       emptyState.appendChild(message);
       exportNotesList.appendChild(emptyState);
       return;
@@ -2503,36 +2646,36 @@ class Dashboard {
     checkbox.className = 'export-note-checkbox';
     checkbox.checked = isSelected;
     checkbox.setAttribute('data-note-id', note.id);
-    
+
     const contentDiv = document.createElement('div');
     contentDiv.className = 'export-note-content';
-    
+
     const titleDiv = document.createElement('div');
     titleDiv.className = 'export-note-title';
     titleDiv.textContent = note.title;
-    
+
     const metaDiv = document.createElement('div');
     metaDiv.className = 'export-note-meta';
-    
+
     const domainSpan = document.createElement('span');
     domainSpan.className = 'export-note-domain';
     domainSpan.textContent = note.domain;
-    
+
     const dateSpan = document.createElement('span');
     dateSpan.className = 'export-note-date';
     dateSpan.textContent = note.formattedDate;
-    
+
     metaDiv.appendChild(domainSpan);
     metaDiv.appendChild(dateSpan);
-    
+
     const previewDiv = document.createElement('div');
     previewDiv.className = 'export-note-preview';
     previewDiv.textContent = note.preview;
-    
+
     contentDiv.appendChild(titleDiv);
     contentDiv.appendChild(metaDiv);
     contentDiv.appendChild(previewDiv);
-    
+
     item.appendChild(checkbox);
     item.appendChild(contentDiv);
 
@@ -2865,10 +3008,10 @@ class Dashboard {
       this.updateExportProgress(30, 'Organizing notes by domain...');
 
       // Organize notes by domain (same format as extension)
-      const notesData = {};
+      const notesByDomain = {};
       selectedNotes.forEach(note => {
-        if (!notesData[note.domain]) {
-          notesData[note.domain] = [];
+        if (!notesByDomain[note.domain]) {
+          notesByDomain[note.domain] = [];
         }
         // Clean the note data for export (remove any UI-specific fields)
         const cleanNote = {
@@ -2882,8 +3025,19 @@ class Dashboard {
           updatedAt: note.updatedAt,
           pageTitle: note.pageTitle || ''
         };
-        notesData[note.domain].push(cleanNote);
+        notesByDomain[note.domain].push(cleanNote);
       });
+
+      // Add Anchored export identifier and metadata
+      const notesData = {
+        _anchored: {
+          version: "1.0.0",
+          exportedAt: new Date().toISOString(),
+          source: "dashboard",
+          format: "anchored-notes"
+        },
+        ...notesByDomain
+      };
 
       this.updateExportProgress(60, 'Converting to export format...');
 
