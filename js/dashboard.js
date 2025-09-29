@@ -11,6 +11,7 @@ class Dashboard {
     };
     this.isLoading = false;
     this.currentNote = null;
+    this.richTextEditor = null; // Initialize rich text editor reference
     this.init();
   }
 
@@ -30,14 +31,33 @@ class Dashboard {
   }
 
   async initializeAfterAuth() {
-    // Initialize storage first
-    await this.initializeStorage();
+    try {
+      // Initialize storage first
+      await this.initializeStorage();
 
-    this.setupEventListeners();
-    await this.loadNotes();
+      this.setupEventListeners();
+      await this.loadNotes();
 
-    // Use centralized subscription check instead of separate call
-    this.listenForSubscriptionUpdates();
+      // Use centralized subscription check instead of separate call
+      this.listenForSubscriptionUpdates();
+      
+      // Initialize rich text editor if elements are available
+      this.initializeRichTextEditor();
+    } catch (error) {
+      console.error('Dashboard initialization error:', error);
+      this.showErrorState('Failed to initialize dashboard');
+    }
+  }
+
+  initializeRichTextEditor() {
+    // This will be called when the editor elements are available
+    // The actual initialization happens in populateNoteEditForm
+    if (window.RichTextEditor) {
+      // Rich text editor class is available
+      console.log('Rich text editor available');
+    } else {
+      console.warn('Rich text editor not available');
+    }
   }
 
   async initializeStorage() {
@@ -669,6 +689,63 @@ class Dashboard {
       const v = c == 'x' ? r : (r & 0x3 | 0x8);
       return v.toString(16);
     });
+  }
+
+  // Sanitize color values to prevent XSS (same as rich text editor)
+  sanitizeColor(color) {
+    if (!color) return null;
+    
+    const trimmedColor = color.trim();
+    
+    // Allow hex colors (#fff, #ffffff)
+    if (/^#[0-9a-fA-F]{3}$|^#[0-9a-fA-F]{6}$/.test(trimmedColor)) {
+      return trimmedColor;
+    }
+    
+    // Allow rgb/rgba colors
+    if (/^rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(?:,\s*[0-9.]+\s*)?\)$/.test(trimmedColor)) {
+      return trimmedColor;
+    }
+    
+    // Allow hsl/hsla colors
+    if (/^hsla?\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*(?:,\s*[0-9.]+\s*)?\)$/.test(trimmedColor)) {
+      return trimmedColor;
+    }
+    
+    // Allow CSS variables (for theme colors)
+    if (/^var\(--[a-zA-Z0-9-]+\)$/.test(trimmedColor)) {
+      return trimmedColor;
+    }
+    
+    // Allow common named colors (basic set for safety)
+    const safeNamedColors = [
+      'black', 'white', 'red', 'green', 'blue', 'yellow', 'orange', 'purple', 
+      'pink', 'brown', 'gray', 'grey', 'cyan', 'magenta', 'lime', 'navy',
+      'maroon', 'olive', 'teal', 'silver', 'gold'
+    ];
+    
+    if (safeNamedColors.includes(trimmedColor.toLowerCase())) {
+      return trimmedColor;
+    }
+    
+    return null; // Unsafe color
+  }
+
+  // Sanitize URLs to prevent XSS (same as rich text editor)
+  sanitizeUrl(url) {
+    if (!url) return null;
+    
+    try {
+      const urlObj = new URL(url);
+      // Only allow http and https protocols
+      if (urlObj.protocol === 'http:' || urlObj.protocol === 'https:') {
+        return url;
+      }
+    } catch (e) {
+      // Invalid URL
+    }
+    
+    return null; // Unsafe URL
   }
 
   extractDomain(url) {
@@ -1337,20 +1414,27 @@ class Dashboard {
       let text = content || '';
 
       // Convert formatting markers to HTML (process in order to avoid conflicts)
-      // Bold: **text** -> <b>text</b>
-      text = text.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+      // Bold: **text** -> <b>text</b> (process first - outermost)
+      text = text.replace(/\*\*([^*]*(?:\*(?!\*)[^*]*)*)\*\*/g, '<b>$1</b>');
 
-      // Italics: *text* -> <i>text</i> (process after bold to avoid conflicts)
+      // Italics: *text* -> <i>text</i> (avoid conflict with bold)
       text = text.replace(/\*([^*]+)\*/g, '<i>$1</i>');
 
       // Underline: __text__ -> <u>text</u>
-      text = text.replace(/__([^_]+)__/g, '<u>$1</u>');
+      text = text.replace(/__([^_]*(?:_(?!_)[^_]*)*?)__/g, '<u>$1</u>');
 
-      // Strikethrough: ~~text~~ -> <s>text</s>
-      text = text.replace(/~~([^~]+)~~/g, '<s>$1</s>');
+      // Strikethrough: ~~text~~ -> <s>text</s> (process last - innermost)
+      text = text.replace(/~~([^~]*(?:~(?!~)[^~]*)*?)~~/g, '<s>$1</s>');
 
       // Color: {color:#ff0000}text{/color} -> <span style="color:#ff0000">text</span>
-      text = text.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, '<span style="color:$1">$2</span>');
+      // Sanitize color values to prevent XSS
+      text = text.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, (match, color, content) => {
+        const safeColor = this.sanitizeColor(color);
+        if (safeColor) {
+          return `<span style="color:${safeColor}">${content}</span>`;
+        }
+        return content; // If color is unsafe, just return the content without styling
+      });
 
       // Citation: {citation}text{/citation} -> <span style="font-style: italic; color: var(--text-secondary)">text</span>
       text = text.replace(/\{citation\}([^{]*)\{\/citation\}/g, '<span style="font-style: italic; color: var(--text-secondary)">$1</span>');
@@ -1365,9 +1449,13 @@ class Dashboard {
           // Don't escape the part that might contain our HTML tags
           const beforeLink = line.slice(lastIndex, match.index);
           out += this.escapeHtmlExceptTags(beforeLink);
-          const text = escapeHtml(match[1]);
-          const href = match[2];
-          out += `<a href="${href}" target="_blank" rel="noopener noreferrer" style="cursor: pointer;" title="Click to open: ${href}">${text}</a>`;
+          const linkText = escapeHtml(match[1]);
+          const href = this.sanitizeUrl(match[2]); // Sanitize URL for XSS protection
+          if (href) {
+            out += `<a href="${href}" target="_blank" rel="noopener noreferrer" style="cursor: pointer;" title="Click to open: ${href}">${linkText}</a>`;
+          } else {
+            out += linkText; // If URL is unsafe, just show the text
+          }
           lastIndex = mdLink.lastIndex;
         }
         const afterLink = line.slice(lastIndex);
@@ -1418,6 +1506,10 @@ class Dashboard {
       panel.classList.add('hidden');
     }
     document.body.style.overflow = '';
+    
+    // Clean up rich text editor reference (it will be recreated when needed)
+    this.richTextEditor = null;
+    
     this.currentNote = null;
   }
 
@@ -1448,13 +1540,45 @@ class Dashboard {
     const urlInput = document.getElementById('noteUrl');
     const contentInput = document.getElementById('noteContentInput');
     const tagsInput = document.getElementById('noteTags');
+    const toolbar = document.getElementById('editorToolbar');
+
+    // Initialize rich text editor if not already done
+    if (!this.richTextEditor && contentInput && toolbar) {
+      try {
+        if (window.RichTextEditor) {
+          this.richTextEditor = new window.RichTextEditor(contentInput, toolbar);
+          console.log('Rich text editor initialized successfully');
+        } else {
+          console.warn('RichTextEditor class not available');
+        }
+      } catch (error) {
+        console.error('Failed to initialize rich text editor:', error);
+      }
+    }
 
     if (this.currentNote) {
       titleInput.value = this.currentNote.title || '';
       urlInput.value = this.currentNote.url || '';
-      // Set content safely using DOMSanitizer
-      this.safeSetInnerHTML(contentInput, this.buildContentHtml(this.currentNote.content || ''), 'richText').catch(console.error);
+      
+      // Use rich text editor to set content
+      if (this.richTextEditor) {
+        this.richTextEditor.setContent(this.currentNote.content || '');
+      } else {
+        // Fallback to safe HTML setting
+        this.safeSetInnerHTML(contentInput, this.buildContentHtml(this.currentNote.content || ''), 'richText').catch(console.error);
+      }
+      
       tagsInput.value = (this.currentNote.tags || []).join(', ');
+    } else {
+      // Clear form for new note
+      titleInput.value = '';
+      urlInput.value = '';
+      if (this.richTextEditor) {
+        this.richTextEditor.setContent('');
+      } else {
+        contentInput.innerHTML = '';
+      }
+      tagsInput.value = '';
     }
 
     // Ensure link handling is set up for the contenteditable area
@@ -1577,7 +1701,15 @@ class Dashboard {
     // Validate and sanitize inputs
     const title = await this.validateAndSanitizeInput(noteTitle.value.trim(), 'title');
     const url = await this.validateAndSanitizeInput(noteUrl.value.trim(), 'url');
-    const content = await this.htmlToMarkdown(noteContentInput.innerHTML);
+    
+    // Get content from rich text editor if available, otherwise fallback to HTML conversion
+    let content;
+    if (this.richTextEditor) {
+      content = this.richTextEditor.getContent();
+    } else {
+      content = await this.htmlToMarkdown(noteContentInput.innerHTML);
+    }
+    
     const tags = await this.validateAndSanitizeTags(noteTags.value);
 
     if (!title && !content) {

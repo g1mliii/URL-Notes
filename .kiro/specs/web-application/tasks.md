@@ -177,16 +177,19 @@
 
 
 
-
-- [ ] 18. webpage feature parity for note editor, and improvment of note editor ui
+- [x] 18. webpage feature parity for note editor, and improvment of note editor ui
     - currenly note editor is showsn on right side of screen as note with very few editing feautes
     - lets bring up to parity whiule mainting xss safety, to our extension level with support for, adding and removing strikthrough, bold, underline, list, color change, and italics, we may be able to reuses extension editor code for this, to simplify implementation but it shouldnt be too much of a problem regardless.
+
+
 
 - [ ] 19. - lets also update our note view to look different instead of showing up on the side of the screen why not have it popout like a small new windows that can be moved arounds so the note can be edited like a tiny windows so that you can still access the rest of the site. we may need to adjust the saving mechanism for this and add it to the popup the save button to the popup and make sure we can have mutiple open and still save/sync as well as the dashboard may need functionality to open muitple notes if thats not possible already since i dont think we have a restriction on how many notes we can open except the ui elementt is limited to opening 1 and saving 1 currenly. 
     - these changes musth be implemented while mainting xss security that we already have in place.
     - for mobile i think we can keep the note editor as is since we dont have the extra screen realestate to mobe around the ntoes, thats includign ipad this should probably be only for desktop.
 
-- [x] 21 - make aure our exporting feature for different platofrms is in the correect format both in extensoin and webpage so that when we import into the apps the text comes into different notes in a way tahtmakes sense or is organized correctlky will be differnt for each app but maiun focus should be obsidian and notion. If already in correct format dont make any chanegs.
+
+
+
 
 
 - [x] 20. supabase rls policy security audit ✅

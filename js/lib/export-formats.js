@@ -42,6 +42,261 @@ class ExportFormats {
     return cleanNote;
   }
 
+  // Convert internal formatting to target format
+  convertContentForFormat(content, targetFormat) {
+    if (!content) return '';
+
+    switch (targetFormat) {
+      case 'markdown':
+      case 'obsidian':
+        return this.convertToMarkdown(content);
+      case 'html':
+      case 'docx':
+        return this.convertToHtml(content);
+      case 'plain':
+      case 'txt':
+        return this.convertToPlainText(content);
+      case 'notion':
+        return this.convertToNotionMarkdown(content);
+      default:
+        return content; // Return as-is for JSON and other formats
+    }
+  }
+
+  // Convert internal formatting to Markdown
+  convertToMarkdown(content) {
+    if (!content) return '';
+
+    let text = content;
+
+    // Convert our internal formatting to standard Markdown
+    // Bold: **text** -> **text** (already correct)
+    // Italic: *text* -> *text* (already correct)
+    // Underline: __text__ -> <u>text</u> (Markdown doesn't have underline, use HTML)
+    text = text.replace(/__([^_]*(?:_(?!_)[^_]*)*?)__/g, (match, content) => {
+      return `<u>${this.escapeHtml(content)}</u>`;
+    });
+    
+    // Strikethrough: ~~text~~ -> ~~text~~ (already correct)
+    // Color: {color:#ff0000}text{/color} -> <span style="color:#ff0000">text</span>
+    // Sanitize color values to prevent XSS
+    text = text.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, (match, color, content) => {
+      const safeColor = this.sanitizeColor(color);
+      if (safeColor) {
+        return `<span style="color:${safeColor}">${this.escapeHtml(content)}</span>`;
+      }
+      return this.escapeHtml(content); // If color is unsafe, just return escaped content
+    });
+    
+    // Citation: {citation}text{/citation} -> > text (blockquote style)
+    text = text.replace(/\{citation\}([^{]*)\{\/citation\}/g, '> *$1*');
+    
+    // Links: [text](url) -> [text](url) - validate URLs for safety
+    text = text.replace(/\[(.+?)\]\(([^\s)]+)\)/g, (match, linkText, url) => {
+      const safeUrl = this.sanitizeUrl(url);
+      if (safeUrl) {
+        return `[${linkText}](${safeUrl})`;
+      }
+      return linkText; // If URL is unsafe, just show the text
+    });
+
+    return text;
+  }
+
+  // Convert internal formatting to HTML
+  convertToHtml(content) {
+    if (!content) return '';
+
+    let text = content;
+
+    // First escape all HTML to prevent XSS
+    text = this.escapeHtml(text);
+
+    // Convert our internal formatting to HTML (now safe since content is escaped)
+    // Bold: **text** -> <strong>text</strong>
+    text = text.replace(/\*\*([^*]*(?:\*(?!\*)[^*]*)*)\*\*/g, '<strong>$1</strong>');
+    
+    // Italic: *text* -> <em>text</em>
+    text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    
+    // Underline: __text__ -> <u>text</u>
+    text = text.replace(/__([^_]*(?:_(?!_)[^_]*)*?)__/g, '<u>$1</u>');
+    
+    // Strikethrough: ~~text~~ -> <s>text</s>
+    text = text.replace(/~~([^~]*(?:~(?!~)[^~]*)*?)~~/g, '<s>$1</s>');
+    
+    // Color: {color:#ff0000}text{/color} -> <span style="color:#ff0000">text</span>
+    // Sanitize color values to prevent XSS
+    text = text.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, (match, color, content) => {
+      const safeColor = this.sanitizeColor(color);
+      if (safeColor) {
+        return `<span style="color:${safeColor}">${content}</span>`;
+      }
+      return content; // If color is unsafe, just return the content without styling
+    });
+    
+    // Citation: {citation}text{/citation} -> <blockquote><em>text</em></blockquote>
+    text = text.replace(/\{citation\}([^{]*)\{\/citation\}/g, '<blockquote><em>$1</em></blockquote>');
+    
+    // Links: [text](url) -> <a href="url" target="_blank" rel="noopener noreferrer">text</a>
+    // Sanitize URLs to prevent XSS
+    text = text.replace(/\[(.+?)\]\(([^\s)]+)\)/g, (match, linkText, url) => {
+      const safeUrl = this.sanitizeUrl(url);
+      if (safeUrl) {
+        return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
+      }
+      return linkText; // If URL is unsafe, just show the text
+    });
+    
+    // Convert line breaks to <br>
+    text = text.replace(/\n/g, '<br>');
+
+    return text;
+  }
+
+  // Convert internal formatting to plain text
+  convertToPlainText(content) {
+    if (!content) return '';
+
+    let text = content;
+
+    // Remove all formatting markers, keeping just the text
+    // Bold: **text** -> text
+    text = text.replace(/\*\*([^*]*(?:\*(?!\*)[^*]*)*)\*\*/g, '$1');
+    
+    // Italic: *text* -> text
+    text = text.replace(/\*([^*]+)\*/g, '$1');
+    
+    // Underline: __text__ -> text
+    text = text.replace(/__([^_]*(?:_(?!_)[^_]*)*?)__/g, '$1');
+    
+    // Strikethrough: ~~text~~ -> text
+    text = text.replace(/~~([^~]*(?:~(?!~)[^~]*)*?)~~/g, '$1');
+    
+    // Color: {color:#ff0000}text{/color} -> text
+    text = text.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, '$2');
+    
+    // Citation: {citation}text{/citation} -> "text"
+    text = text.replace(/\{citation\}([^{]*)\{\/citation\}/g, '"$1"');
+    
+    // Links: [text](url) -> text (url) - validate URLs for safety
+    text = text.replace(/\[(.+?)\]\(([^\s)]+)\)/g, (match, linkText, url) => {
+      const safeUrl = this.sanitizeUrl(url);
+      if (safeUrl) {
+        return `${linkText} (${safeUrl})`;
+      }
+      return linkText; // If URL is unsafe, just show the text
+    });
+
+    return text;
+  }
+
+  // Convert internal formatting to Notion-compatible Markdown
+  convertToNotionMarkdown(content) {
+    if (!content) return '';
+
+    let text = content;
+
+    // Notion supports standard Markdown formatting
+    // Bold: **text** -> **text** (already correct)
+    // Italic: *text* -> *text* (already correct)
+    // Strikethrough: ~~text~~ -> ~~text~~ (already correct)
+    
+    // Underline: __text__ -> <u>text</u> (Notion supports HTML underline)
+    text = text.replace(/__([^_]*(?:_(?!_)[^_]*)*?)__/g, (match, content) => {
+      return `<u>${this.escapeHtml(content)}</u>`;
+    });
+    
+    // Color: {color:#ff0000}text{/color} -> <span style="color:#ff0000">text</span>
+    // Notion has limited color support, but supports HTML spans
+    text = text.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, (match, color, content) => {
+      const safeColor = this.sanitizeColor(color);
+      if (safeColor) {
+        return `<span style="color:${safeColor}">${this.escapeHtml(content)}</span>`;
+      }
+      return this.escapeHtml(content);
+    });
+    
+    // Citation: {citation}text{/citation} -> > text (Notion supports blockquotes)
+    text = text.replace(/\{citation\}([^{]*)\{\/citation\}/g, '> *$1*');
+    
+    // Links: [text](url) -> [text](url) (Notion supports Markdown links)
+    text = text.replace(/\[(.+?)\]\(([^\s)]+)\)/g, (match, linkText, url) => {
+      const safeUrl = this.sanitizeUrl(url);
+      if (safeUrl) {
+        return `[${linkText}](${safeUrl})`;
+      }
+      return linkText;
+    });
+
+    return text;
+  }
+
+  // Security helper functions
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // Sanitize color values to prevent XSS
+  sanitizeColor(color) {
+    if (!color) return null;
+    
+    const trimmedColor = color.trim();
+    
+    // Allow hex colors (#fff, #ffffff)
+    if (/^#[0-9a-fA-F]{3}$|^#[0-9a-fA-F]{6}$/.test(trimmedColor)) {
+      return trimmedColor;
+    }
+    
+    // Allow rgb/rgba colors
+    if (/^rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(?:,\s*[0-9.]+\s*)?\)$/.test(trimmedColor)) {
+      return trimmedColor;
+    }
+    
+    // Allow hsl/hsla colors
+    if (/^hsla?\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*(?:,\s*[0-9.]+\s*)?\)$/.test(trimmedColor)) {
+      return trimmedColor;
+    }
+    
+    // Allow CSS variables (for theme colors)
+    if (/^var\(--[a-zA-Z0-9-]+\)$/.test(trimmedColor)) {
+      return trimmedColor;
+    }
+    
+    // Allow common named colors (basic set for safety)
+    const safeNamedColors = [
+      'black', 'white', 'red', 'green', 'blue', 'yellow', 'orange', 'purple', 
+      'pink', 'brown', 'gray', 'grey', 'cyan', 'magenta', 'lime', 'navy',
+      'maroon', 'olive', 'teal', 'silver', 'gold'
+    ];
+    
+    if (safeNamedColors.includes(trimmedColor.toLowerCase())) {
+      return trimmedColor;
+    }
+    
+    return null; // Unsafe color
+  }
+
+  // Sanitize URLs to prevent XSS
+  sanitizeUrl(url) {
+    if (!url) return null;
+    
+    try {
+      const urlObj = new URL(url);
+      // Only allow http and https protocols
+      if (urlObj.protocol === 'http:' || urlObj.protocol === 'https:') {
+        return url;
+      }
+    } catch (e) {
+      // Invalid URL
+    }
+    
+    return null; // Unsafe URL
+  }
+
   // Convert notes data to JSON format (existing format, cleaned)
   toJSON(notesData) {
     const cleanedData = {};
@@ -140,7 +395,7 @@ class ExportFormats {
           // Content
           if (cleanNote.content) {
             markdown += `**Content:**\n\n`;
-            markdown += `${cleanNote.content}\n\n`;
+            markdown += `${this.convertContentForFormat(cleanNote.content, 'markdown')}\n\n`;
           }
 
           markdown += `---\n\n`;
@@ -230,7 +485,7 @@ class ExportFormats {
         // Main content
         if (cleanNote.content) {
           noteContent += `## Content\n\n`;
-          noteContent += `${cleanNote.content}\n\n`;
+          noteContent += `${this.convertContentForFormat(cleanNote.content, 'obsidian')}\n\n`;
         }
 
         // Add related notes section (placeholder for future enhancement)
@@ -499,7 +754,7 @@ class ExportFormats {
       const allTags = [...(note.tags || []), `domain-${note.domain}`];
 
       const title = escapeCSV(note.title || 'Untitled Note');
-      const content = escapeCSV(note.content || '');
+      const content = escapeCSV(this.convertContentForFormat(note.content || '', 'notion'));
       const tags = escapeCSV(allTags.join(', '));
       const url = escapeCSV(note.url || '');
       const domain = escapeCSV(note.domain);
@@ -553,7 +808,7 @@ class ExportFormats {
           // Content section
           if (cleanNote.content) {
             markdown += `**Content:**\n\n`;
-            markdown += `${cleanNote.content}\n\n`;
+            markdown += `${this.convertContentForFormat(cleanNote.content, 'markdown')}\n\n`;
           }
 
           markdown += `---\n\n`;
@@ -579,7 +834,7 @@ class ExportFormats {
           text += `${'='.repeat(50)}\n\n`;
 
           if (cleanNote.content) {
-            text += `${cleanNote.content}\n\n`;
+            text += `${this.convertContentForFormat(cleanNote.content, 'plain')}\n\n`;
           }
 
           if (cleanNote.url) {
@@ -681,7 +936,8 @@ class ExportFormats {
           if (cleanNote.content) {
             text += `\n      CONTENT:\n`;
             // Indent content for better readability
-            const indentedContent = cleanNote.content
+            const convertedContent = this.convertContentForFormat(cleanNote.content, 'plain');
+            const indentedContent = convertedContent
               .split('\n')
               .map(line => `      ${line}`)
               .join('\n');
@@ -846,7 +1102,7 @@ class ExportFormats {
           if (cleanNote.content) {
             html += `<div class="content">\n`;
             html += `<strong>Content:</strong><br>\n`;
-            html += `${this.escapeHtml(cleanNote.content).replace(/\n/g, '<br>')}\n`;
+            html += `${this.convertContentForFormat(cleanNote.content, 'html')}\n`;
             html += `</div>\n`;
           }
 

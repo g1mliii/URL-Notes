@@ -221,7 +221,14 @@ class EditorManager {
       text = text.replace(/~~([^~]*(?:~(?!~)[^~]*)*?)~~/g, '<s>$1</s>');
 
       // Color: {color:#ff0000}text{/color} -> <span style="color:#ff0000">text</span>
-      text = text.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, '<span style="color:$1">$2</span>');
+      // Sanitize color values to prevent XSS
+      text = text.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, (match, color, content) => {
+        const safeColor = this.sanitizeColor(color);
+        if (safeColor) {
+          return `<span style="color:${safeColor}">${content}</span>`;
+        }
+        return content; // If color is unsafe, just return the content without styling
+      });
 
       // Citation: {citation}text{/citation} -> <span style="font-style: italic; color: var(--text-secondary)">text</span>
       text = text.replace(/\{citation\}([^{]*)\{\/citation\}/g, '<span style="font-style: italic; color: var(--text-secondary)">$1</span>');
@@ -236,9 +243,13 @@ class EditorManager {
           // Don't escape the part that might contain our HTML tags
           const beforeLink = line.slice(lastIndex, match.index);
           out += this.escapeHtmlExceptTags(beforeLink);
-          const text = escapeHtml(match[1]);
-          const href = match[2];
-          out += `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+          const linkText = escapeHtml(match[1]);
+          const href = this.sanitizeUrl(match[2]); // Sanitize URL for XSS protection
+          if (href) {
+            out += `<a href="${href}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
+          } else {
+            out += linkText; // If URL is unsafe, just show the text
+          }
           lastIndex = mdLink.lastIndex;
         }
         const afterLink = line.slice(lastIndex);
@@ -265,6 +276,63 @@ class EditorManager {
       .replace(/&lt;span style=&quot;([^&]*)&quot;&gt;/gi, '<span style="$1">');
 
     return escaped;
+  }
+
+  // Sanitize color values to prevent XSS (matches web app implementation)
+  sanitizeColor(color) {
+    if (!color) return null;
+    
+    const trimmedColor = color.trim();
+    
+    // Allow hex colors (#fff, #ffffff)
+    if (/^#[0-9a-fA-F]{3}$|^#[0-9a-fA-F]{6}$/.test(trimmedColor)) {
+      return trimmedColor;
+    }
+    
+    // Allow rgb/rgba colors
+    if (/^rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(?:,\s*[0-9.]+\s*)?\)$/.test(trimmedColor)) {
+      return trimmedColor;
+    }
+    
+    // Allow hsl/hsla colors
+    if (/^hsla?\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*(?:,\s*[0-9.]+\s*)?\)$/.test(trimmedColor)) {
+      return trimmedColor;
+    }
+    
+    // Allow CSS variables (for theme colors)
+    if (/^var\(--[a-zA-Z0-9-]+\)$/.test(trimmedColor)) {
+      return trimmedColor;
+    }
+    
+    // Allow common named colors (basic set for safety)
+    const safeNamedColors = [
+      'black', 'white', 'red', 'green', 'blue', 'yellow', 'orange', 'purple', 
+      'pink', 'brown', 'gray', 'grey', 'cyan', 'magenta', 'lime', 'navy',
+      'maroon', 'olive', 'teal', 'silver', 'gold'
+    ];
+    
+    if (safeNamedColors.includes(trimmedColor.toLowerCase())) {
+      return trimmedColor;
+    }
+    
+    return null; // Unsafe color
+  }
+
+  // Sanitize URLs to prevent XSS (matches web app implementation)
+  sanitizeUrl(url) {
+    if (!url) return null;
+    
+    try {
+      const urlObj = new URL(url);
+      // Only allow http and https protocols
+      if (urlObj.protocol === 'http:' || urlObj.protocol === 'https:') {
+        return url;
+      }
+    } catch (e) {
+      // Invalid URL
+    }
+    
+    return null; // Unsafe URL
   }
 
   // Convert limited HTML back to markdown-like plain text for storage
