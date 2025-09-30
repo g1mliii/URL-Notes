@@ -1386,10 +1386,8 @@ class Dashboard {
 
     // Initialize popup content
     if (note) {
-      console.log('Populating popup view with note:', note);
       this.populatePopupView(popup, note);
     } else {
-      console.log('Creating new note in popup');
       this.createNewNoteInPopup(popup);
     }
 
@@ -1603,52 +1601,66 @@ class Dashboard {
   makePopupDraggable(popup) {
     const header = popup.querySelector('.note-popup-header');
     let isDragging = false;
-    let currentX;
-    let currentY;
-    let initialX;
-    let initialY;
-    let xOffset = 0;
-    let yOffset = 0;
+    let currentX = 0;
+    let currentY = 0;
+    let initialX = 0;
+    let initialY = 0;
 
-    header.addEventListener('mousedown', (e) => {
+    const startDrag = (e) => {
       // Don't drag if clicking on buttons
       if (e.target.closest('.note-popup-btn')) return;
 
-      initialX = e.clientX - xOffset;
-      initialY = e.clientY - yOffset;
+      isDragging = true;
+      initialX = e.clientX - currentX;
+      initialY = e.clientY - currentY;
 
-      if (e.target === header || header.contains(e.target)) {
-        isDragging = true;
-        this.focusPopup(popup);
-      }
-    });
+      this.focusPopup(popup);
 
-    document.addEventListener('mousemove', (e) => {
-      if (isDragging) {
-        e.preventDefault();
-        currentX = e.clientX - initialX;
-        currentY = e.clientY - initialY;
+      // Add dragging class for visual feedback
+      popup.classList.add('dragging');
+      document.body.style.userSelect = 'none';
 
-        xOffset = currentX;
-        yOffset = currentY;
+      e.preventDefault();
+    };
 
-        // Keep popup within viewport bounds
-        const rect = popup.getBoundingClientRect();
-        const maxX = window.innerWidth - rect.width;
-        const maxY = window.innerHeight - rect.height;
+    const drag = (e) => {
+      if (!isDragging) return;
 
-        currentX = Math.max(0, Math.min(currentX, maxX));
-        currentY = Math.max(0, Math.min(currentY, maxY));
+      e.preventDefault();
 
-        popup.style.transform = `translate(${currentX}px, ${currentY}px)`;
-      }
-    });
+      currentX = e.clientX - initialX;
+      currentY = e.clientY - initialY;
 
-    document.addEventListener('mouseup', () => {
-      initialX = currentX;
-      initialY = currentY;
+      // Keep popup within viewport bounds
+      const rect = popup.getBoundingClientRect();
+      const maxX = window.innerWidth - rect.width;
+      const maxY = window.innerHeight - rect.height;
+
+      currentX = Math.max(0, Math.min(currentX, maxX));
+      currentY = Math.max(0, Math.min(currentY, maxY));
+
+      // Use transform for better performance
+      popup.style.transform = `translate(${currentX}px, ${currentY}px)`;
+    };
+
+    const endDrag = () => {
+      if (!isDragging) return;
+
       isDragging = false;
-    });
+      popup.classList.remove('dragging');
+      document.body.style.userSelect = '';
+    };
+
+    // Store handlers for cleanup
+    header._dragHandlers = { drag, endDrag };
+
+    // Use passive: false for better performance and preventDefault capability
+    header.addEventListener('mousedown', startDrag, { passive: false });
+    document.addEventListener('mousemove', drag, { passive: false });
+    document.addEventListener('mouseup', endDrag, { passive: true });
+
+    // Handle mouse leave to stop dragging
+    document.addEventListener('mouseleave', endDrag, { passive: true });
   }
 
   positionPopup(popup) {
@@ -1676,7 +1688,7 @@ class Dashboard {
   populatePopupView(popup, note) {
     // Extract the form ID from the popup's dataset or note ID
     const formId = popup.dataset.noteId || popup.id.replace('note-popup-', '');
-    console.log('PopulatePopupView - formId:', formId, 'note:', note);
+
 
     const titleEl = popup.querySelector(`#noteViewTitle-${formId}`);
     const dateEl = popup.querySelector(`#noteViewDate-${formId}`);
@@ -1685,7 +1697,7 @@ class Dashboard {
     const urlEl = popup.querySelector(`#noteUrlDisplay-${formId}`);
     const tagsEl = popup.querySelector(`#noteTagsDisplay-${formId}`);
 
-    console.log('Found elements:', { titleEl, dateEl, domainEl, contentEl, urlEl, tagsEl });
+
 
     // Update popup title safely (using textContent to prevent XSS)
     const headerTitle = popup.querySelector('.note-popup-title');
@@ -1765,7 +1777,7 @@ class Dashboard {
       updatedAt: new Date().toISOString()
     };
 
-    console.log('Creating new note in popup:', newNote);
+
 
     // Store note reference in popup
     popup.dataset.noteId = newNote.id;
@@ -2030,6 +2042,15 @@ class Dashboard {
 
   closePopup(popup) {
     popup.classList.add('closing');
+
+    // Clean up event listeners to prevent memory leaks
+    const header = popup.querySelector('.note-popup-header');
+    if (header && header._dragHandlers) {
+      document.removeEventListener('mousemove', header._dragHandlers.drag);
+      document.removeEventListener('mouseup', header._dragHandlers.endDrag);
+      document.removeEventListener('mouseleave', header._dragHandlers.endDrag);
+    }
+
     setTimeout(() => {
       popup.remove();
     }, 200);
@@ -2046,12 +2067,14 @@ class Dashboard {
     const debouncedAutoSave = () => {
       clearTimeout(autoSaveTimeout);
       autoSaveTimeout = setTimeout(() => {
-        // Only auto-save if in edit mode
-        const noteEdit = popup.querySelector(`#noteEdit-${popupId}`);
-        if (noteEdit && !noteEdit.classList.contains('hidden')) {
-          this.autoSavePopupNote(popup);
+        // Only auto-save if in edit mode and popup still exists
+        if (document.body.contains(popup)) {
+          const noteEdit = popup.querySelector(`#noteEdit-${formId}`);
+          if (noteEdit && !noteEdit.classList.contains('hidden')) {
+            this.autoSavePopupNote(popup);
+          }
         }
-      }, 3000); // 3 second delay
+      }, 5000); // Increased to 5 seconds to reduce performance impact
     };
 
     // Add event listeners for auto-save

@@ -1415,11 +1415,24 @@ Dashboard Specific Styles - Google Drive-like Layout */
     overflow: hidden;
     min-width: 300px;
     max-width: 800px;
+    /* Optimize performance */
+    will-change: transform;
+    contain: layout style paint;
   }
 
   .note-popup-window.active {
     z-index: 1001;
     box-shadow: 0 12px 48px var(--shadow-dark);
+  }
+
+  .note-popup-window.dragging {
+    z-index: 1002;
+    box-shadow: 0 16px 64px var(--shadow-dark);
+    transition: none;
+  }
+
+  .note-popup-window.dragging .note-popup-header {
+    cursor: grabbing;
   }
 
   .note-popup-header {
@@ -1430,13 +1443,18 @@ Dashboard Specific Styles - Google Drive-like Layout */
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border-color);
     border-radius: 12px 12px 0 0;
-    cursor: move;
+    cursor: grab;
     user-select: none;
     position: relative;
+    transition: background-color 0.2s ease;
   }
 
   .note-popup-header:hover {
     background: var(--bg-tertiary);
+  }
+
+  .note-popup-header:active {
+    cursor: grabbing;
   }
 
   .note-popup-title {
