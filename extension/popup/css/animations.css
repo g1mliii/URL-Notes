@@ -3,16 +3,16 @@
 /* Nebulous background animation */
 @keyframes nebulous-flow {
   0%, 100% {
-    transform: translate(-10px, -10px) rotate(0deg) scale(1);
+    transform: translate(-10px, -10px) rotate(0deg) scale(1) translateZ(0);
   }
   25% {
-    transform: translate(10px, -15px) rotate(1deg) scale(1.02);
+    transform: translate(10px, -15px) rotate(1deg) scale(1.02) translateZ(0);
   }
   50% {
-    transform: translate(15px, 10px) rotate(-1deg) scale(0.98);
+    transform: translate(15px, 10px) rotate(-1deg) scale(0.98) translateZ(0);
   }
   75% {
-    transform: translate(-15px, 15px) rotate(0.5deg) scale(1.01);
+    transform: translate(-15px, 15px) rotate(0.5deg) scale(1.01) translateZ(0);
   }
 }
 
@@ -32,6 +32,10 @@
   filter: blur(34px) saturate(125%);
   opacity: 1;
   animation: nebulous-flow 40s ease-in-out infinite;
+  /* GPU acceleration for smooth background animation */
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -52,11 +56,11 @@
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(4px) translateZ(0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) translateZ(0);
   }
 }
 
@@ -75,11 +79,11 @@
 /* Slide in from right */
 @keyframes slide-in-right {
   from {
-    transform: translateX(100%);
+    transform: translateX(100%) translateZ(0);
     opacity: 0;
   }
   to {
-    transform: translateX(0);
+    transform: translateX(0) translateZ(0);
     opacity: 1;
   }
 }
@@ -87,11 +91,11 @@
 /* Slide out to right */
 @keyframes slide-out-right {
   from {
-    transform: translateX(0);
+    transform: translateX(0) translateZ(0);
     opacity: 1;
   }
   to {
-    transform: translateX(100%);
+    transform: translateX(100%) translateZ(0);
     opacity: 0;
   }
 }

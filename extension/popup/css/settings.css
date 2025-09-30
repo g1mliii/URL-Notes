@@ -16,6 +16,11 @@
   /* Ensure proper height constraints */
   max-height: 600px;
   /* Match popup height */
+  /* GPU acceleration for smooth settings panel overlay */
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style paint;
 }
 
 /* Add scroll indicator shadows */
@@ -88,6 +93,10 @@
   max-height: calc(100vh - 80px);
   /* Account for header */
   min-height: 0;
+  /* GPU acceleration for smooth settings scrolling */
+  will-change: scroll-position, contents;
+  transform: translateZ(0);
+  contain: layout style paint;
   /* Allow flex shrinking */
 }
 
@@ -597,24 +606,24 @@
 
 @keyframes slideIn {
   from {
-    transform: translateX(100%);
+    transform: translateX(100%) translateZ(0);
     opacity: 0;
   }
 
   to {
-    transform: translateX(0);
+    transform: translateX(0) translateZ(0);
     opacity: 1;
   }
 }
 
 @keyframes slideOut {
   from {
-    transform: translateX(0);
+    transform: translateX(0) translateZ(0);
     opacity: 1;
   }
 
   to {
-    transform: translateX(100%);
+    transform: translateX(100%) translateZ(0);
     opacity: 0;
   }
 }

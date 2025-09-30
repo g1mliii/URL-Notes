@@ -13,6 +13,11 @@
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s, visibility 0.3s;
+    /* GPU acceleration for smooth dialog overlay animations */
+    will-change: opacity, visibility;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    contain: layout style paint;
 }
 
 .dialog-overlay.show {
@@ -29,10 +34,14 @@
     text-align: center;
     transform: scale(0.9);
     transition: transform 0.3s;
+    /* GPU acceleration for smooth dialog box animations */
+    will-change: transform;
+    backface-visibility: hidden;
+    contain: layout style paint;
 }
 
 .dialog-overlay.show .dialog-box {
-    transform: scale(1);
+    transform: scale(1) translateZ(0);
 }
 
 .dialog-box p {

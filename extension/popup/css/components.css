@@ -281,6 +281,10 @@ body {
   overflow: hidden;
   position: relative;
   contain: layout paint;
+  /* GPU acceleration for smooth extension popup performance */
+  will-change: contents;
+  transform: translateZ(0);
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Subtle gradient overlay to reduce flatness */
@@ -304,6 +308,10 @@ body {
   border-bottom: 1px solid var(--border-color);
   padding: 8px 0;
   /* full-bleed background */
+  /* GPU acceleration for smooth header interactions */
+  will-change: contents;
+  transform: translateZ(0);
+  contain: layout style;
 }
 
 .header-content {
@@ -421,6 +429,10 @@ body {
   box-shadow: var(--glass-inset), var(--glass-shadow);
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  /* GPU acceleration for smooth icon button interactions */
+  will-change: transform, background-color;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 /* Normalize icon sizes and centering */
@@ -494,6 +506,10 @@ body {
   /* full-bleed background */
   /* Differentiate search band from rest of UI */
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+  /* GPU acceleration for smooth search interactions */
+  will-change: contents;
+  transform: translateZ(0);
+  contain: layout style;
 }
 
 .search-wrapper {
@@ -507,6 +523,10 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 16px;
   box-shadow: inset 0 1px 0 var(--shadow-light);
+  /* GPU acceleration for smooth search interactions */
+  will-change: contents;
+  transform: translateZ(0);
+  contain: layout style;
 }
 
 .search-wrapper:hover {
@@ -535,6 +555,10 @@ body {
   outline: none;
   transition: box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
   box-shadow: inset 0 1px 0 var(--shadow-light);
+  /* GPU acceleration for smooth search input typing */
+  will-change: contents;
+  transform: translateZ(0);
+  contain: layout style;
 }
 
 .search-input:focus {
@@ -593,6 +617,10 @@ body {
   box-sizing: border-box;
   position: relative;
   isolation: isolate;
+  /* GPU acceleration for smooth filter switching */
+  will-change: contents;
+  transform: translateZ(0);
+  contain: layout style;
 }
 
 .filter-wrapper:hover {
@@ -618,6 +646,10 @@ body {
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
   font-size: 13px;
   /* original size */
+  /* GPU acceleration for smooth filter option interactions */
+  will-change: transform, background-color;
+  transform: translateZ(0);
+  backface-visibility: hidden;
   font-weight: 500;
   cursor: pointer;
   transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
@@ -1271,6 +1303,10 @@ body {
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   /* iOS smooth scrolling */
+  /* GPU acceleration for smooth note list scrolling */
+  will-change: scroll-position, contents;
+  transform: translateZ(0);
+  contain: layout style paint;
   overscroll-behavior: contain;
   /* Prevent scroll chaining */
 }
@@ -1395,6 +1431,10 @@ html[data-compact="1"] .notes-list {
   align-items: center;
   height: 100%;
   position: relative;
+  /* GPU acceleration for smooth note content rendering */
+  will-change: contents;
+  transform: translateZ(0);
+  contain: layout style;
 }
 
 .note-main {
@@ -2708,12 +2748,16 @@ html[data-view="site"] .note-item:hover::after {
   z-index: 99999999;
   margin-top: 8px;
   pointer-events: auto;
+  /* GPU acceleration for smooth AI dropdown animations */
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  contain: layout style paint;
 }
 
 .ai-dropdown-menu.show {
   opacity: 1 !important;
   visibility: visible !important;
-  transform: translateY(0) !important;
+  transform: translateY(0) translateZ(0) !important;
 }
 
 /* AI Summary Modal Styles */
