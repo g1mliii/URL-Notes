@@ -238,6 +238,11 @@ class Dashboard {
       this.handlePageUnload();
     });
 
+    // Handle window resize to switch between popup and panel modes
+    window.addEventListener('resize', () => {
+      this.handleWindowResize();
+    });
+
     // Setup contenteditable link handling
     this.setupContentEditableLinkHandling();
 
@@ -1308,13 +1313,866 @@ class Dashboard {
   }
 
   showNoteEditor(noteId = null) {
-    this.currentNote = noteId ? this.notes.find(n => n.id === noteId) : null;
-
-    if (this.currentNote) {
-      this.showNotePanel(this.currentNote);
+    // Check if we're on desktop (1025px+) to use popup windows
+    if (window.innerWidth >= 1025) {
+      this.showNotePopup(noteId);
     } else {
-      this.createNewNote();
+      // Use traditional side panel for mobile/tablet
+      this.currentNote = noteId ? this.notes.find(n => n.id === noteId) : null;
+
+      if (this.currentNote) {
+        this.showNotePanel(this.currentNote);
+      } else {
+        this.createNewNote();
+      }
     }
+  }
+
+  // New popup window functionality for desktop
+  showNotePopup(noteId = null) {
+    const note = noteId ? this.notes.find(n => n.id === noteId) : null;
+
+    // Create a unique popup ID
+    const popupId = `note-popup-${noteId || 'new'}-${Date.now()}`;
+
+    // Check if this note is already open in a popup
+    if (noteId && document.getElementById(`note-popup-${noteId}`)) {
+      // Focus existing popup
+      const existingPopup = document.getElementById(`note-popup-${noteId}`);
+      this.focusPopup(existingPopup);
+      return;
+    }
+
+    // Create popup window
+    const popup = this.createNotePopup(popupId, note);
+    document.body.appendChild(popup);
+
+    // Position popup (cascade if multiple windows)
+    this.positionPopup(popup);
+
+    // Initialize popup content
+    if (note) {
+      this.populatePopupView(popup, note);
+    } else {
+      this.createNewNoteInPopup(popup);
+    }
+
+    // Focus the popup
+    this.focusPopup(popup);
+  }
+
+  createNotePopup(popupId, note = null) {
+    const popup = document.createElement('div');
+    popup.className = 'note-popup-window';
+    popup.id = note ? `note-popup-${note.id}` : popupId;
+    popup.dataset.noteId = note?.id || '';
+
+    const title = note?.title || 'New Note';
+    const truncatedTitle = title.length > 30 ? title.substring(0, 30) + '...' : title;
+
+    popup.innerHTML = `
+      <div class="note-popup-header">
+        <h4 class="note-popup-title">${this.escapeHtml(truncatedTitle)}</h4>
+        <div class="note-popup-controls">
+          <button class="note-popup-btn save-btn" title="Save" style="display: none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17,21 17,13 7,13 7,21"></polyline>
+              <polyline points="7,3 7,8 15,8"></polyline>
+            </svg>
+          </button>
+          <button class="note-popup-btn edit-btn" title="Edit">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+          </button>
+          <button class="note-popup-btn delete-btn" title="Delete" style="display: ${note ? 'flex' : 'none'};">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3,6 5,6 21,6"></polyline>
+              <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"></path>
+            </svg>
+          </button>
+          <button class="note-popup-btn close-btn" title="Close">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="note-popup-content">
+        <!-- View Mode -->
+        <div class="note-view" id="noteView-${popupId}">
+          <div class="note-header">
+            <h3 id="noteViewTitle-${popupId}">Note Title</h3>
+            <div class="note-meta">
+              <span id="noteViewDate-${popupId}" class="note-date"></span>
+              <span id="noteViewDomain-${popupId}" class="note-domain"></span>
+            </div>
+          </div>
+          <div class="note-content-display" id="noteContentDisplay-${popupId}">
+            <!-- Formatted note content will be displayed here -->
+          </div>
+          <div class="note-url-display" id="noteUrlDisplay-${popupId}">
+            <!-- URL will be displayed here if present -->
+          </div>
+          <div class="note-tags-display" id="noteTagsDisplay-${popupId}">
+            <!-- Tags will be displayed here -->
+          </div>
+        </div>
+
+        <!-- Edit Mode -->
+        <div class="note-edit hidden" id="noteEdit-${popupId}">
+          <form id="noteForm-${popupId}">
+            <div class="input-group">
+              <input type="text" id="noteTitle-${popupId}" placeholder="Note title...">
+            </div>
+            <div class="input-group">
+              <input type="url" id="noteUrl-${popupId}" placeholder="URL (optional)">
+            </div>
+            <div class="input-group">
+              <!-- Rich Text Editor Toolbar -->
+              <div class="editor-toolbar" id="editorToolbar-${popupId}">
+                <div class="toolbar-group">
+                  <button type="button" class="toolbar-btn" id="boldBtn-${popupId}" title="Bold (Ctrl+B)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
+                      <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
+                    </svg>
+                  </button>
+                  <button type="button" class="toolbar-btn" id="italicBtn-${popupId}" title="Italic (Ctrl+I)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="19" y1="4" x2="10" y2="4"></line>
+                      <line x1="14" y1="20" x2="5" y2="20"></line>
+                      <line x1="15" y1="4" x2="9" y2="20"></line>
+                    </svg>
+                  </button>
+                  <button type="button" class="toolbar-btn" id="underlineBtn-${popupId}" title="Underline (Ctrl+U)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"></path>
+                      <line x1="4" y1="21" x2="20" y2="21"></line>
+                    </svg>
+                  </button>
+                  <button type="button" class="toolbar-btn" id="strikethroughBtn-${popupId}" title="Strikethrough">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M16 4H9a3 3 0 0 0-2.83 4"></path>
+                      <path d="M14 12a4 4 0 0 1 0 8H6"></path>
+                      <line x1="4" y1="12" x2="20" y2="12"></line>
+                    </svg>
+                  </button>
+                  <button type="button" class="toolbar-btn" id="citationBtn-${popupId}" title="Citation">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path>
+                      <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"></path>
+                    </svg>
+                  </button>
+                </div>
+                <div class="toolbar-separator"></div>
+                <div class="toolbar-group">
+                  <button type="button" class="toolbar-btn" id="listBtn-${popupId}" title="Add List Item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="8" y1="6" x2="21" y2="6"></line>
+                      <line x1="8" y1="12" x2="21" y2="12"></line>
+                      <line x1="8" y1="18" x2="21" y2="18"></line>
+                      <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                      <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                      <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="note-content-input" id="noteContentInput-${popupId}" contenteditable="true"
+                placeholder="Write your note here..."></div>
+            </div>
+            <div class="input-group">
+              <input type="text" id="noteTags-${popupId}" placeholder="Tags (comma separated)">
+            </div>
+            <div class="edit-actions">
+              <button type="button" id="cancelEditBtn-${popupId}" class="btn-secondary">Cancel</button>
+              <button type="submit" class="btn-primary">Save Note</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    // Add event listeners
+    this.setupPopupEventListeners(popup, note);
+
+    // Make popup draggable
+    this.makePopupDraggable(popup);
+
+    return popup;
+  }
+
+  setupPopupEventListeners(popup, note) {
+    const popupId = popup.id;
+    const noteId = note?.id;
+
+    // Header buttons
+    const editBtn = popup.querySelector('.edit-btn');
+    const saveBtn = popup.querySelector('.save-btn');
+    const deleteBtn = popup.querySelector('.delete-btn');
+    const closeBtn = popup.querySelector('.close-btn');
+
+    // Form elements
+    const form = popup.querySelector(`#noteForm-${popupId.split('-').pop()}`);
+    const cancelBtn = popup.querySelector(`#cancelEditBtn-${popupId.split('-').pop()}`);
+
+    // Edit button
+    editBtn?.addEventListener('click', () => {
+      this.showPopupEditMode(popup);
+    });
+
+    // Save button
+    saveBtn?.addEventListener('click', () => {
+      this.savePopupNote(popup);
+    });
+
+    // Delete button
+    deleteBtn?.addEventListener('click', () => {
+      this.deletePopupNote(popup);
+    });
+
+    // Close button
+    closeBtn?.addEventListener('click', () => {
+      this.closePopup(popup);
+    });
+
+    // Form submission
+    form?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.savePopupNote(popup);
+    });
+
+    // Cancel edit
+    cancelBtn?.addEventListener('click', () => {
+      this.cancelPopupEdit(popup);
+    });
+
+    // Focus popup when clicked
+    popup.addEventListener('mousedown', () => {
+      this.focusPopup(popup);
+    });
+
+    // Auto-save on input changes (debounced)
+    this.setupPopupAutoSave(popup);
+  }
+
+  makePopupDraggable(popup) {
+    const header = popup.querySelector('.note-popup-header');
+    let isDragging = false;
+    let currentX;
+    let currentY;
+    let initialX;
+    let initialY;
+    let xOffset = 0;
+    let yOffset = 0;
+
+    header.addEventListener('mousedown', (e) => {
+      // Don't drag if clicking on buttons
+      if (e.target.closest('.note-popup-btn')) return;
+
+      initialX = e.clientX - xOffset;
+      initialY = e.clientY - yOffset;
+
+      if (e.target === header || header.contains(e.target)) {
+        isDragging = true;
+        this.focusPopup(popup);
+      }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        e.preventDefault();
+        currentX = e.clientX - initialX;
+        currentY = e.clientY - initialY;
+
+        xOffset = currentX;
+        yOffset = currentY;
+
+        // Keep popup within viewport bounds
+        const rect = popup.getBoundingClientRect();
+        const maxX = window.innerWidth - rect.width;
+        const maxY = window.innerHeight - rect.height;
+
+        currentX = Math.max(0, Math.min(currentX, maxX));
+        currentY = Math.max(0, Math.min(currentY, maxY));
+
+        popup.style.transform = `translate(${currentX}px, ${currentY}px)`;
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      initialX = currentX;
+      initialY = currentY;
+      isDragging = false;
+    });
+  }
+
+  positionPopup(popup) {
+    const existingPopups = document.querySelectorAll('.note-popup-window');
+    const popupCount = existingPopups.length - 1; // Exclude the current popup
+
+    // Cascade positioning
+    const offsetX = (popupCount * 30) % (window.innerWidth - 400);
+    const offsetY = (popupCount * 30) % (window.innerHeight - 300);
+
+    popup.style.left = `${100 + offsetX}px`;
+    popup.style.top = `${100 + offsetY}px`;
+  }
+
+  focusPopup(popup) {
+    // Remove active class from all popups
+    document.querySelectorAll('.note-popup-window').forEach(p => {
+      p.classList.remove('active');
+    });
+
+    // Add active class to this popup
+    popup.classList.add('active');
+  }
+
+  populatePopupView(popup, note) {
+    const popupId = popup.id.split('-').pop();
+
+    const titleEl = popup.querySelector(`#noteViewTitle-${popupId}`);
+    const dateEl = popup.querySelector(`#noteViewDate-${popupId}`);
+    const domainEl = popup.querySelector(`#noteViewDomain-${popupId}`);
+    const contentEl = popup.querySelector(`#noteContentDisplay-${popupId}`);
+    const urlEl = popup.querySelector(`#noteUrlDisplay-${popupId}`);
+    const tagsEl = popup.querySelector(`#noteTagsDisplay-${popupId}`);
+
+    // Update popup title safely (using textContent to prevent XSS)
+    const headerTitle = popup.querySelector('.note-popup-title');
+    const title = note.title || 'Untitled Note';
+    const truncatedTitle = title.length > 30 ? title.substring(0, 30) + '...' : title;
+    // Use textContent to prevent XSS (same security as main implementation)
+    headerTitle.textContent = truncatedTitle;
+
+    // Populate view elements (reuse existing methods)
+    if (titleEl) titleEl.textContent = title;
+    if (dateEl) dateEl.textContent = this.formatDate(note.updatedAt || note.createdAt);
+    if (domainEl) domainEl.textContent = note.domain || 'Unknown';
+
+    // Populate formatted content safely using DOMSanitizer (same as main panel)
+    if (contentEl) {
+      this.safeSetInnerHTML(contentEl, this.buildContentHtml(note.content || ''), 'richText').catch(console.error);
+    }
+
+    // Populate URL safely (reuse existing logic)
+    if (urlEl) {
+      urlEl.innerHTML = '';
+      if (note.url) {
+        const urlLink = document.createElement('a');
+        urlLink.href = note.url;
+        urlLink.target = '_blank';
+        urlLink.rel = 'noopener noreferrer';
+        urlLink.className = 'note-url-link';
+
+        // Create SVG icon
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('width', '16');
+        svg.setAttribute('height', '16');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('stroke-width', '2');
+
+        const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path1.setAttribute('d', 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71');
+
+        const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path2.setAttribute('d', 'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71');
+
+        svg.appendChild(path1);
+        svg.appendChild(path2);
+
+        urlLink.appendChild(svg);
+        urlLink.appendChild(document.createTextNode(' ' + this.truncateUrl(note.url, 40)));
+        urlEl.appendChild(urlLink);
+      }
+    }
+
+    // Populate tags safely (same method as main panel)
+    if (tagsEl) {
+      tagsEl.innerHTML = '';
+      if (note.tags && note.tags.length > 0) {
+        note.tags.forEach(tag => {
+          const tagSpan = document.createElement('span');
+          tagSpan.className = 'note-tag';
+          // Use textContent to prevent XSS (same as main implementation)
+          tagSpan.textContent = tag;
+          tagsEl.appendChild(tagSpan);
+        });
+      }
+    }
+  }
+
+  createNewNoteInPopup(popup) {
+    const newNote = {
+      id: this.generateId(),
+      title: '',
+      content: '',
+      url: 'chrome://extensions',
+      domain: 'general',
+      tags: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    // Store note reference in popup
+    popup.dataset.noteId = newNote.id;
+    popup.id = `note-popup-${newNote.id}`;
+
+    // Show edit mode immediately for new notes
+    this.showPopupEditMode(popup, newNote);
+  }
+
+  showPopupEditMode(popup, note = null) {
+    const popupId = popup.id.split('-').pop();
+    const noteView = popup.querySelector(`#noteView-${popupId}`);
+    const noteEdit = popup.querySelector(`#noteEdit-${popupId}`);
+    const saveBtn = popup.querySelector('.save-btn');
+    const editBtn = popup.querySelector('.edit-btn');
+
+    if (noteView && noteEdit) {
+      noteView.classList.add('hidden');
+      noteEdit.classList.remove('hidden');
+    }
+
+    // Show save button, hide edit button
+    if (saveBtn) saveBtn.style.display = 'flex';
+    if (editBtn) editBtn.style.display = 'none';
+
+    // Populate edit form
+    this.populatePopupEditForm(popup, note);
+  }
+
+  populatePopupEditForm(popup, note = null) {
+    const popupId = popup.id.split('-').pop();
+    const currentNote = note || this.notes.find(n => n.id === popup.dataset.noteId);
+
+    const titleInput = popup.querySelector(`#noteTitle-${popupId}`);
+    const urlInput = popup.querySelector(`#noteUrl-${popupId}`);
+    const contentInput = popup.querySelector(`#noteContentInput-${popupId}`);
+    const tagsInput = popup.querySelector(`#noteTags-${popupId}`);
+    const toolbar = popup.querySelector(`#editorToolbar-${popupId}`);
+
+    // Initialize rich text editor for this popup
+    if (contentInput && toolbar && !contentInput._richTextEditor) {
+      try {
+        if (window.RichTextEditor) {
+          contentInput._richTextEditor = new window.RichTextEditor(contentInput, toolbar);
+        }
+      } catch (error) {
+        console.error('Failed to initialize rich text editor for popup:', error);
+      }
+    }
+
+    if (currentNote) {
+      // Populate form inputs safely (input.value automatically escapes content)
+      if (titleInput) titleInput.value = currentNote.title || '';
+      if (urlInput) urlInput.value = currentNote.url || '';
+      if (tagsInput) tagsInput.value = (currentNote.tags || []).join(', ');
+
+      // Set content using rich text editor or fallback
+      if (contentInput) {
+        if (contentInput._richTextEditor) {
+          contentInput._richTextEditor.setContent(currentNote.content || '');
+        } else {
+          // Use the same safe HTML setting as the main editor
+          this.safeSetInnerHTML(contentInput, this.buildContentHtml(currentNote.content || ''), 'richText').catch(console.error);
+        }
+      }
+    } else {
+      // Clear form for new note
+      if (titleInput) titleInput.value = '';
+      if (urlInput) urlInput.value = '';
+      if (tagsInput) tagsInput.value = '';
+      if (contentInput) {
+        if (contentInput._richTextEditor) {
+          contentInput._richTextEditor.setContent('');
+        } else {
+          contentInput.innerHTML = '';
+        }
+      }
+    }
+
+    // Focus on title field
+    setTimeout(() => titleInput?.focus(), 100);
+
+    // Ensure link handling is set up for the contenteditable area (same as main editor)
+    this.setupContentEditableLinksForPopup(contentInput);
+  }
+
+  async savePopupNote(popup) {
+    const popupId = popup.id.split('-').pop();
+    const noteId = popup.dataset.noteId;
+
+    const titleInput = popup.querySelector(`#noteTitle-${popupId}`);
+    const urlInput = popup.querySelector(`#noteUrl-${popupId}`);
+    const contentInput = popup.querySelector(`#noteContentInput-${popupId}`);
+    const tagsInput = popup.querySelector(`#noteTags-${popupId}`);
+    const saveBtn = popup.querySelector('.save-btn');
+
+    if (!titleInput || !contentInput) return;
+
+    // Show saving state
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+        </svg>
+      `;
+      saveBtn.style.animation = 'spin 1s linear infinite';
+    }
+
+    try {
+      // Validate and sanitize inputs using the same security methods as the main editor
+      const title = await this.validateAndSanitizeInput(titleInput.value.trim(), 'title');
+      const url = await this.validateAndSanitizeInput(urlInput?.value.trim(), 'url');
+
+      // Get content from rich text editor or contenteditable
+      let content = '';
+      if (contentInput._richTextEditor) {
+        content = await contentInput._richTextEditor.getContent();
+      } else {
+        content = await this.htmlToMarkdown(contentInput.innerHTML);
+      }
+
+      // Validate and sanitize content
+      const sanitizedContent = await this.validateAndSanitizeInput(content, 'content');
+
+      // Validate and sanitize tags using the existing method
+      const tags = await this.validateAndSanitizeTags(tagsInput?.value || '');
+
+      const noteData = {
+        id: noteId || this.generateId(),
+        title: title || 'Untitled Note',
+        content: sanitizedContent,
+        url: url || 'chrome://extensions',
+        domain: this.extractDomain(url || 'chrome://extensions'),
+        tags,
+        updatedAt: new Date().toISOString()
+      };
+
+      // Find existing note or create new one
+      let existingNote = this.notes.find(n => n.id === noteData.id);
+      if (existingNote) {
+        // Update existing note
+        Object.assign(existingNote, noteData);
+        existingNote.createdAt = existingNote.createdAt || noteData.updatedAt;
+      } else {
+        // Create new note
+        noteData.createdAt = noteData.updatedAt;
+        existingNote = noteData;
+        this.notes.unshift(existingNote);
+      }
+
+      // Sync to cloud
+      await this.syncNoteToCloud(noteData);
+
+      // Update popup to view mode
+      this.showPopupViewMode(popup, existingNote);
+
+      // Refresh dashboard display
+      this.populateDomainFilter();
+      this.applyFilters();
+
+      // Show success notification
+      this.showNotification('Note saved successfully!', 'success');
+
+    } catch (error) {
+      console.error('Failed to save note:', error);
+      this.showNotification('Failed to save note. Please try again.', 'error');
+    } finally {
+      // Reset save button
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.style.animation = '';
+        saveBtn.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17,21 17,13 7,13 7,21"></polyline>
+            <polyline points="7,3 7,8 15,8"></polyline>
+          </svg>
+        `;
+      }
+    }
+  }
+
+  showPopupViewMode(popup, note) {
+    const popupId = popup.id.split('-').pop();
+    const noteView = popup.querySelector(`#noteView-${popupId}`);
+    const noteEdit = popup.querySelector(`#noteEdit-${popupId}`);
+    const saveBtn = popup.querySelector('.save-btn');
+    const editBtn = popup.querySelector('.edit-btn');
+    const deleteBtn = popup.querySelector('.delete-btn');
+
+    if (noteView && noteEdit) {
+      noteEdit.classList.add('hidden');
+      noteView.classList.remove('hidden');
+    }
+
+    // Hide save button, show edit button
+    if (saveBtn) saveBtn.style.display = 'none';
+    if (editBtn) editBtn.style.display = 'flex';
+    if (deleteBtn) deleteBtn.style.display = 'flex';
+
+    // Update popup content
+    this.populatePopupView(popup, note);
+  }
+
+  cancelPopupEdit(popup) {
+    const noteId = popup.dataset.noteId;
+    const existingNote = this.notes.find(n => n.id === noteId);
+
+    if (existingNote) {
+      // Existing note - go back to view mode
+      this.showPopupViewMode(popup, existingNote);
+    } else {
+      // New note - close popup
+      this.closePopup(popup);
+    }
+  }
+
+  async deletePopupNote(popup) {
+    const noteId = popup.dataset.noteId;
+    const note = this.notes.find(n => n.id === noteId);
+
+    if (!note) return;
+
+    const confirmed = confirm(`Are you sure you want to delete "${note.title || 'Untitled Note'}"? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      // Delete from cloud
+      if (window.api) {
+        const deletionPayload = {
+          operation: 'sync',
+          notes: [],
+          deletions: [{
+            id: noteId,
+            deletedAt: new Date().toISOString()
+          }],
+          lastSyncTime: null,
+          timestamp: Date.now()
+        };
+
+        await window.api.syncNotes(deletionPayload);
+      }
+
+      // Remove from local array
+      this.notes = this.notes.filter(n => n.id !== noteId);
+
+      // Close popup
+      this.closePopup(popup);
+
+      // Refresh display
+      this.populateDomainFilter();
+      this.applyFilters();
+
+      this.showNotification('Note deleted successfully!', 'success');
+
+    } catch (error) {
+      console.error('Failed to delete note:', error);
+      this.showNotification('Failed to delete note. Please try again.', 'error');
+    }
+  }
+
+  closePopup(popup) {
+    popup.classList.add('closing');
+    setTimeout(() => {
+      popup.remove();
+    }, 200);
+  }
+
+  setupPopupAutoSave(popup) {
+    const popupId = popup.id.split('-').pop();
+    const titleInput = popup.querySelector(`#noteTitle-${popupId}`);
+    const urlInput = popup.querySelector(`#noteUrl-${popupId}`);
+    const contentInput = popup.querySelector(`#noteContentInput-${popupId}`);
+    const tagsInput = popup.querySelector(`#noteTags-${popupId}`);
+
+    let autoSaveTimeout;
+    const debouncedAutoSave = () => {
+      clearTimeout(autoSaveTimeout);
+      autoSaveTimeout = setTimeout(() => {
+        // Only auto-save if in edit mode
+        const noteEdit = popup.querySelector(`#noteEdit-${popupId}`);
+        if (noteEdit && !noteEdit.classList.contains('hidden')) {
+          this.autoSavePopupNote(popup);
+        }
+      }, 3000); // 3 second delay
+    };
+
+    // Add event listeners for auto-save
+    [titleInput, urlInput, contentInput, tagsInput].forEach(input => {
+      if (input) {
+        input.addEventListener('input', debouncedAutoSave);
+        input.addEventListener('blur', debouncedAutoSave);
+      }
+    });
+  }
+
+  async autoSavePopupNote(popup) {
+    // Similar to savePopupNote but silent (no notifications)
+    // Uses the same validation and sanitization as savePopupNote
+    try {
+      // Only auto-save if there's actual content to prevent empty saves
+      const popupId = popup.id.split('-').pop();
+      const titleInput = popup.querySelector(`#noteTitle-${popupId}`);
+      const contentInput = popup.querySelector(`#noteContentInput-${popupId}`);
+
+      const title = titleInput?.value.trim() || '';
+      let content = '';
+
+      if (contentInput?._richTextEditor) {
+        content = await contentInput._richTextEditor.getContent();
+      } else if (contentInput) {
+        content = await this.htmlToMarkdown(contentInput.innerHTML);
+      }
+
+      // Only proceed if there's actual content
+      if (title || content) {
+        await this.savePopupNote(popup);
+      }
+    } catch (error) {
+      // Silent auto-save failure
+      console.warn('Auto-save failed:', error);
+    }
+  }
+
+  handleWindowResize() {
+    const isDesktop = window.innerWidth >= 1025;
+    const popups = document.querySelectorAll('.note-popup-window');
+    const panel = document.getElementById('notePanel');
+
+    if (!isDesktop && popups.length > 0) {
+      // Switch from desktop popups to mobile panel
+      // Close all popups and open the first one in the panel
+      const firstPopup = popups[0];
+      const noteId = firstPopup.dataset.noteId;
+
+      // Close all popups
+      popups.forEach(popup => popup.remove());
+
+      // Open in panel if we have a note ID
+      if (noteId) {
+        const note = this.notes.find(n => n.id === noteId);
+        if (note) {
+          this.showNotePanel(note);
+        }
+      }
+    } else if (isDesktop && panel && !panel.classList.contains('hidden')) {
+      // Switch from mobile panel to desktop popup
+      const noteId = this.currentNote?.id;
+
+      // Close panel
+      this.closeNotePanel();
+
+      // Open in popup if we have a note
+      if (noteId) {
+        this.showNotePopup(noteId);
+      }
+    }
+  }
+
+  // Utility method to truncate URLs for display
+  truncateUrl(url, maxLength = 40) {
+    if (!url || url.length <= maxLength) return url;
+
+    try {
+      const urlObj = new URL(url);
+      const domain = urlObj.hostname;
+      const path = urlObj.pathname + urlObj.search;
+
+      if (domain.length + path.length <= maxLength) {
+        return domain + path;
+      }
+
+      const availablePathLength = maxLength - domain.length - 3; // 3 for "..."
+      if (availablePathLength > 0) {
+        return domain + path.substring(0, availablePathLength) + '...';
+      }
+
+      return domain.substring(0, maxLength - 3) + '...';
+    } catch (e) {
+      return url.substring(0, maxLength - 3) + '...';
+    }
+  }
+
+  // Utility method to sync a single note to cloud
+  async syncNoteToCloud(noteData) {
+    if (!window.api) return;
+
+    try {
+      const syncPayload = {
+        operation: 'sync',
+        notes: [noteData],
+        deletions: [],
+        lastSyncTime: null,
+        timestamp: Date.now()
+      };
+
+      await window.api.syncNotes(syncPayload);
+    } catch (error) {
+      console.error('Failed to sync note to cloud:', error);
+      throw error;
+    }
+  }
+
+  // Setup contenteditable link handling for popup windows (same security as main editor)
+  setupContentEditableLinksForPopup(contentInput) {
+    if (!contentInput || contentInput._linkHandlersAdded) {
+      return;
+    }
+
+    // Prevent default link behavior in contenteditable and handle manually (same as main editor)
+    const clickHandler = (e) => {
+      if (e.target.tagName === 'A' && e.target.href) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Open link in new tab (same security as main editor)
+        window.open(e.target.href, '_blank', 'noopener,noreferrer');
+
+        // Prevent cursor positioning in contenteditable
+        return false;
+      }
+    };
+
+    const mousedownHandler = (e) => {
+      if (e.target.tagName === 'A' && e.target.href) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    };
+
+    contentInput.addEventListener('click', clickHandler, true);
+    contentInput.addEventListener('mousedown', mousedownHandler, true);
+
+    // Mark that handlers have been added
+    contentInput._linkHandlersAdded = true;
+
+    // Make sure all links have proper attributes for external opening (same as main editor)
+    const links = contentInput.querySelectorAll('a[href]');
+    links.forEach(link => {
+      // Ensure links have proper target and rel attributes
+      if (!link.hasAttribute('target')) {
+        link.setAttribute('target', '_blank');
+      }
+      if (!link.hasAttribute('rel')) {
+        link.setAttribute('rel', 'noopener noreferrer');
+      }
+
+      // Add a visual indicator that these are clickable links
+      link.style.cursor = 'pointer';
+      link.title = `Click to open: ${link.href}`;
+    });
   }
 
   showNotePanel(note) {
@@ -1485,19 +2343,25 @@ class Dashboard {
   }
 
   createNewNote() {
-    const newNote = {
-      id: this.generateId(),
-      title: '',
-      content: '',
-      url: 'chrome://extensions',
-      domain: 'general',
-      tags: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    // Check if we're on desktop to use popup windows
+    if (window.innerWidth >= 1025) {
+      this.showNotePopup(); // This will handle new note creation in popup
+    } else {
+      // Traditional panel approach for mobile/tablet
+      const newNote = {
+        id: this.generateId(),
+        title: '',
+        content: '',
+        url: 'chrome://extensions',
+        domain: 'general',
+        tags: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
 
-    this.currentNote = newNote;
-    this.showNoteEditMode();
+      this.currentNote = newNote;
+      this.showNoteEditMode();
+    }
   }
 
   closeNotePanel() {
@@ -2321,12 +3185,12 @@ class Dashboard {
   // ISO timestamp validation (flexible for different ISO formats)
   isValidTimestamp(timestamp) {
     if (!timestamp || typeof timestamp !== 'string') return false;
-    
+
     try {
       const date = new Date(timestamp);
       // Check if it's a valid date
       if (isNaN(date.getTime())) return false;
-      
+
       // Allow various ISO 8601 formats:
       // - 2024-01-16T16:00:00Z
       // - 2024-01-16T16:00:00.000Z  
