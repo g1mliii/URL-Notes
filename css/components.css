@@ -13,6 +13,11 @@
   box-shadow:
     0 4px 16px var(--shadow-dark),
     inset 0 1px 0 var(--shadow-light);
+  /* GPU acceleration for smooth navigation */
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style paint;
 }
 
 .nav-content {
@@ -292,6 +297,10 @@
   box-shadow:
     0 2px 8px var(--shadow-dark),
     inset 0 1px 0 var(--shadow-light);
+  /* GPU acceleration for smooth button interactions */
+  will-change: transform, background-color;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .btn-primary:hover {
@@ -321,6 +330,10 @@
   transition: all 0.2s ease;
   text-decoration: none;
   box-shadow: inset 0 1px 0 var(--shadow-light);
+  /* GPU acceleration for smooth button interactions */
+  will-change: transform, background-color;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .btn-secondary:hover {
@@ -497,6 +510,10 @@
   justify-content: center;
   z-index: 1000;
   padding: 1rem;
+  /* GPU acceleration for smooth modal animations */
+  will-change: opacity, backdrop-filter;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .modal-content {
@@ -512,6 +529,11 @@
   box-shadow:
     0 16px 48px var(--shadow-dark),
     inset 0 1px 0 var(--shadow-light);
+  /* GPU acceleration for smooth modal content */
+  will-change: transform;
+  transform: translateZ(0);
+  contain: layout style paint;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal-header {
@@ -605,6 +627,11 @@
   text-align: center;
   position: relative;
   z-index: 1;
+  /* GPU acceleration for smooth hero section rendering */
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style;
 }
 
 .hero-content {
@@ -650,6 +677,11 @@
     inset 0 1px 0 var(--shadow-light);
   width: 100%; /* Ensure form takes full container width */
   margin: 0; /* Remove any default margins */
+  /* GPU acceleration for smooth auth form interactions */
+  will-change: contents;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style paint;
 }
 
 .auth-form h3 {
@@ -701,6 +733,10 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 2rem;
+  /* GPU acceleration for smooth features grid rendering */
+  will-change: contents;
+  contain: layout style paint;
+  transform: translateZ(0);
 }
 
 .feature-card {
@@ -714,10 +750,15 @@
     0 4px 16px var(--shadow-dark),
     inset 0 1px 0 var(--shadow-light);
   transition: all 0.2s ease;
+  /* GPU acceleration for smooth feature card interactions */
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style paint;
 }
 
 .feature-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-4px) translateZ(0);
   box-shadow:
     0 8px 24px var(--shadow-dark),
     inset 0 1px 0 var(--shadow-light);
@@ -855,6 +896,11 @@ Dashboard Specific Styles - Google Drive-like Layout */
   box-shadow: 0 2px 8px var(--shadow-dark);
   position: relative;
   overflow: hidden;
+  /* GPU acceleration for smooth content header rendering */
+  will-change: contents;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style paint;
 }
 
 /* Removed decorative ::before element for better mobile performance */
@@ -915,6 +961,10 @@ Dashboard Specific Styles - Google Drive-like Layout */
   z-index: 1;
   margin-top: 1rem;
   padding-top: 0.75rem;
+  /* GPU acceleration for smooth filters bar interactions */
+  will-change: contents;
+  transform: translateZ(0);
+  contain: layout style;
 }
 
 .search-section {
@@ -1020,6 +1070,10 @@ Dashboard Specific Styles - Google Drive-like Layout */
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1rem;
   max-width: 100%;
+  /* GPU acceleration for smooth scrolling and rendering */
+  will-change: contents;
+  contain: layout style paint;
+  transform: translateZ(0);
 }
 
 /* Expand notes grid to fill available space - desktop/tablet only */
@@ -1059,10 +1113,15 @@ Dashboard Specific Styles - Google Drive-like Layout */
   height: 200px;
   position: relative;
   overflow: hidden;
+  /* GPU acceleration for smooth interactions */
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style paint;
 }
 
 .note-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-2px) translateZ(0);
   box-shadow:
     0 8px 24px var(--shadow-dark),
     inset 0 1px 0 var(--shadow-light);
@@ -1363,6 +1422,10 @@ Dashboard Specific Styles - Google Drive-like Layout */
   transition: transform 0.3s ease;
   display: flex;
   flex-direction: column;
+  /* GPU acceleration for mobile performance */
+  will-change: transform;
+  backface-visibility: hidden;
+  contain: layout style paint;
 }
 
 .note-panel:not(.hidden) {
@@ -1384,6 +1447,11 @@ Dashboard Specific Styles - Google Drive-like Layout */
     right: 0;
     border-left: none;
     border-top: 1px solid var(--border-color);
+    /* Enhanced GPU acceleration for mobile performance */
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
@@ -1416,8 +1484,11 @@ Dashboard Specific Styles - Google Drive-like Layout */
     min-width: 300px;
     max-width: 800px;
     /* Optimize performance */
-    will-change: transform;
+    will-change: transform, width, height;
     contain: layout style paint;
+    /* Improve resize performance */
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   .note-popup-window.active {
@@ -1433,6 +1504,12 @@ Dashboard Specific Styles - Google Drive-like Layout */
 
   .note-popup-window.dragging .note-popup-header {
     cursor: grabbing;
+  }
+
+  /* Reduce backdrop-filter during resize for better performance */
+  .note-popup-window:active {
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
   }
 
   .note-popup-header {
@@ -1520,6 +1597,9 @@ Dashboard Specific Styles - Google Drive-like Layout */
     padding: 1rem;
     display: flex;
     flex-direction: column;
+    /* Optimize scrolling performance */
+    -webkit-overflow-scrolling: touch;
+    contain: layout style paint;
   }
 
   .note-popup-window .note-view,
@@ -1534,6 +1614,9 @@ Dashboard Specific Styles - Google Drive-like Layout */
     min-height: 150px;
     max-height: none;
     resize: none;
+    /* Optimize performance during resize */
+    contain: layout style paint;
+    will-change: height;
   }
 
   .note-popup-window .edit-actions {
@@ -1669,6 +1752,10 @@ Dashboard Specific Styles - Google Drive-like Layout */
   color: var(--text-primary);
   white-space: pre-wrap;
   word-wrap: break-word;
+  /* GPU acceleration for smooth content scrolling */
+  will-change: contents;
+  transform: translateZ(0);
+  contain: layout style;
 }
 
 /* Support extension formatting in display */
@@ -1771,6 +1858,10 @@ Dashboard Specific Styles - Google Drive-like Layout */
   border-bottom: none;
   border-radius: 10px 10px 0 0;
   flex-wrap: wrap;
+  /* GPU acceleration for smooth toolbar interactions */
+  will-change: transform;
+  transform: translateZ(0);
+  contain: layout style;
 }
 
 .toolbar-group {
@@ -1799,6 +1890,10 @@ Dashboard Specific Styles - Google Drive-like Layout */
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
+  /* GPU acceleration for smooth button interactions */
+  will-change: transform, background-color;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .toolbar-btn:hover {
@@ -1905,6 +2000,11 @@ Dashboard Specific Styles - Google Drive-like Layout */
   font-family: inherit;
   word-wrap: break-word;
   white-space: pre-wrap;
+  /* GPU acceleration for smooth typing and scrolling */
+  will-change: contents;
+  transform: translateZ(0);
+  -webkit-overflow-scrolling: touch;
+  contain: layout style;
 }
 
 /* When toolbar is present, adjust the input styling */
@@ -2011,6 +2111,10 @@ Dashboard Specific Styles - Google Drive-like Layout */
   box-shadow:
     0 8px 24px var(--shadow-dark),
     inset 0 1px 0 var(--shadow-light);
+  /* GPU acceleration for smooth notification animations */
+  will-change: transform;
+  backface-visibility: hidden;
+  contain: layout style paint;
 }
 
 .notification.show {
@@ -2047,11 +2151,20 @@ Dashboard Specific Styles - Google Drive-like Layout */
   padding: 1rem;
   position: relative;
   z-index: 1;
+  /* GPU acceleration for smooth account page scrolling */
+  will-change: scroll-position;
+  transform: translateZ(0);
+  -webkit-overflow-scrolling: touch;
+  contain: layout style;
 }
 
 .account-container {
   max-width: 800px;
   margin: 0 auto;
+  /* GPU acceleration for smooth container rendering */
+  will-change: contents;
+  transform: translateZ(0);
+  contain: layout style;
 }
 
 .account-container h2 {
@@ -2072,6 +2185,11 @@ Dashboard Specific Styles - Google Drive-like Layout */
   box-shadow:
     0 4px 16px var(--shadow-dark),
     inset 0 1px 0 var(--shadow-light);
+  /* GPU acceleration for smooth section interactions */
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style paint;
 }
 
 .account-section h3 {
@@ -2115,6 +2233,10 @@ Dashboard Specific Styles - Google Drive-like Layout */
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 0;
+  /* GPU acceleration for smooth info item rendering */
+  will-change: contents;
+  transform: translateZ(0);
+  contain: layout style;
 }
 
 .info-item label {
@@ -2281,6 +2403,11 @@ Dashboard Specific Styles - Google Drive-like Layout */
   padding: 2rem 0 4rem 0;
   position: relative;
   z-index: 1;
+  /* GPU acceleration for smooth static page scrolling */
+  will-change: scroll-position;
+  transform: translateZ(0);
+  -webkit-overflow-scrolling: touch;
+  contain: layout style;
 }
 
 .privacy-container,
@@ -2297,6 +2424,11 @@ Dashboard Specific Styles - Google Drive-like Layout */
     0 4px 16px var(--shadow-dark),
     inset 0 1px 0 var(--shadow-light);
   margin-bottom: 2rem;
+  /* GPU acceleration for smooth content container rendering */
+  will-change: contents;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style paint;
 }
 
 .privacy-container h1,
@@ -2318,6 +2450,10 @@ Dashboard Specific Styles - Google Drive-like Layout */
 .privacy-section,
 .terms-section {
   margin-bottom: 2rem;
+  /* GPU acceleration for smooth section rendering */
+  will-change: contents;
+  transform: translateZ(0);
+  contain: layout style;
 }
 
 .privacy-section h2,

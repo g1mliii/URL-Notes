@@ -103,6 +103,10 @@
 html {
   margin: 0;
   padding: 0;
+  /* GPU acceleration for smooth scrolling across all pages */
+  -webkit-overflow-scrolling: touch;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 body {
@@ -121,6 +125,11 @@ body {
   margin: 0;
   padding: 0;
   /* Don't add safe area padding to body - let app-container handle it */
+  /* GPU acceleration for smooth scrolling and background rendering */
+  will-change: scroll-position;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style;
 }
 
 /* Global scrollbar styles */
@@ -198,6 +207,11 @@ html {
   min-height: 100vh;
   min-height: 100dvh;
   /* Dynamic viewport height for mobile */
+  /* GPU acceleration for smooth app container scrolling */
+  will-change: scroll-position, contents;
+  transform: translateZ(0);
+  -webkit-overflow-scrolling: touch;
+  contain: layout style paint;
   background: var(--bg-primary);
   backdrop-filter: blur(var(--backdrop-blur));
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
@@ -258,10 +272,10 @@ html {
 
 @keyframes spin {
   from {
-    transform: rotate(0deg);
+    transform: rotate(0deg) translateZ(0);
   }
   to {
-    transform: rotate(360deg);
+    transform: rotate(360deg) translateZ(0);
   }
 }
 
@@ -330,6 +344,11 @@ p {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 1rem;
+  /* GPU acceleration for smooth container scrolling */
+  will-change: contents;
+  transform: translateZ(0);
+  -webkit-overflow-scrolling: touch;
+  contain: layout style;
 }
 
 .container-sm {
@@ -733,6 +752,10 @@ p {
   align-items: center;
   gap: 1rem;
   margin-bottom: 1.5rem;
+  /* GPU acceleration for smooth subscription status updates */
+  will-change: contents;
+  transform: translateZ(0);
+  contain: layout style;
 }
 
 .status-badge {

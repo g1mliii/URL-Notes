@@ -1594,8 +1594,8 @@ class Dashboard {
       this.focusPopup(popup);
     });
 
-    // Auto-save on input changes (debounced)
-    this.setupPopupAutoSave(popup);
+    // Save on close instead of auto-save for better performance
+    this.setupPopupSaveOnClose(popup);
   }
 
   makePopupDraggable(popup) {
@@ -1939,6 +1939,15 @@ class Dashboard {
       this.populateDomainFilter();
       this.applyFilters();
 
+      // Clear unsaved changes flag
+      popup.dataset.hasUnsavedChanges = 'false';
+
+      // Remove asterisk from title
+      const popupTitleEl = popup.querySelector('.note-popup-title');
+      if (popupTitleEl && popupTitleEl.textContent.includes('*')) {
+        popupTitleEl.textContent = popupTitleEl.textContent.replace(' *', '');
+      }
+
       // Show success notification
       this.showNotification('Note saved successfully!', 'success');
 
@@ -2040,7 +2049,16 @@ class Dashboard {
     }
   }
 
-  closePopup(popup) {
+  async closePopup(popup) {
+    // Save if there are unsaved changes
+    if (popup.dataset.hasUnsavedChanges === 'true') {
+      try {
+        await this.savePopupNote(popup);
+      } catch (error) {
+        console.warn('Failed to save on close:', error);
+      }
+    }
+
     popup.classList.add('closing');
 
     // Clean up event listeners to prevent memory leaks
@@ -2051,66 +2069,77 @@ class Dashboard {
       document.removeEventListener('mouseleave', header._dragHandlers.endDrag);
     }
 
+    // Clean up save on unload listener
+    if (popup._saveOnUnload) {
+      window.removeEventListener('beforeunload', popup._saveOnUnload);
+    }
+
     setTimeout(() => {
       popup.remove();
     }, 200);
   }
 
-  setupPopupAutoSave(popup) {
+  setupPopupSaveOnClose(popup) {
+    // Mark popup as having unsaved changes when user types
     const formId = popup.dataset.noteId || popup.id.replace('note-popup-', '');
     const titleInput = popup.querySelector(`#noteTitle-${formId}`);
     const urlInput = popup.querySelector(`#noteUrl-${formId}`);
     const contentInput = popup.querySelector(`#noteContentInput-${formId}`);
     const tagsInput = popup.querySelector(`#noteTags-${formId}`);
 
-    let autoSaveTimeout;
-    const debouncedAutoSave = () => {
-      clearTimeout(autoSaveTimeout);
-      autoSaveTimeout = setTimeout(() => {
-        // Only auto-save if in edit mode and popup still exists
-        if (document.body.contains(popup)) {
-          const noteEdit = popup.querySelector(`#noteEdit-${formId}`);
-          if (noteEdit && !noteEdit.classList.contains('hidden')) {
-            this.autoSavePopupNote(popup);
-          }
-        }
-      }, 5000); // Increased to 5 seconds to reduce performance impact
+    const markAsModified = () => {
+      popup.dataset.hasUnsavedChanges = 'true';
+      // Add visual indicator for unsaved changes
+      const popupTitleEl = popup.querySelector('.note-popup-title');
+      if (popupTitleEl && !popupTitleEl.textContent.includes('*')) {
+        popupTitleEl.textContent = popupTitleEl.textContent + ' *';
+      }
     };
 
-    // Add event listeners for auto-save
+    // Add event listeners to track changes
     [titleInput, urlInput, contentInput, tagsInput].forEach(input => {
       if (input) {
-        input.addEventListener('input', debouncedAutoSave);
-        input.addEventListener('blur', debouncedAutoSave);
+        input.addEventListener('input', markAsModified, { passive: true });
       }
     });
+
+    // Save on window beforeunload
+    const saveOnUnload = () => {
+      if (popup.dataset.hasUnsavedChanges === 'true') {
+        this.savePopupNoteSync(popup);
+      }
+    };
+
+    window.addEventListener('beforeunload', saveOnUnload);
+
+    // Store reference for cleanup
+    popup._saveOnUnload = saveOnUnload;
   }
 
-  async autoSavePopupNote(popup) {
-    // Similar to savePopupNote but silent (no notifications)
-    // Uses the same validation and sanitization as savePopupNote
+  savePopupNoteSync(popup) {
+    // Synchronous save for beforeunload - simplified version
     try {
-      // Only auto-save if there's actual content to prevent empty saves
       const formId = popup.dataset.noteId || popup.id.replace('note-popup-', '');
       const titleInput = popup.querySelector(`#noteTitle-${formId}`);
       const contentInput = popup.querySelector(`#noteContentInput-${formId}`);
 
       const title = titleInput?.value.trim() || '';
-      let content = '';
+      const content = contentInput?.innerHTML || '';
 
-      if (contentInput?._richTextEditor) {
-        content = await contentInput._richTextEditor.getContent();
-      } else if (contentInput) {
-        content = await this.htmlToMarkdown(contentInput.innerHTML);
-      }
-
-      // Only proceed if there's actual content
+      // Only save if there's actual content
       if (title || content) {
-        await this.savePopupNote(popup);
+        // Store in localStorage as backup
+        const noteData = {
+          id: popup.dataset.noteId || this.generateId(),
+          title: title || 'Untitled Note',
+          content: content,
+          timestamp: Date.now()
+        };
+
+        localStorage.setItem(`popup-draft-${noteData.id}`, JSON.stringify(noteData));
       }
     } catch (error) {
-      // Silent auto-save failure
-      console.warn('Auto-save failed:', error);
+      console.warn('Save on close failed:', error);
     }
   }
 
