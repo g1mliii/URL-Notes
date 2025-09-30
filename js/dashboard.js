@@ -766,7 +766,41 @@ class Dashboard {
 
   generatePreview(content, maxLength = 150) {
     if (!content) return 'No content';
-    const plainText = content.replace(/<[^>]*>/g, '').replace(/\n/g, ' ').trim();
+
+    // First convert all extension formatting to HTML (same logic as in rich text editor)
+    let processedContent = content;
+
+    // Convert formatting markers to HTML (process in order to avoid conflicts)
+    // Bold: **text** -> <b>text</b> (process first - outermost)
+    processedContent = processedContent.replace(/\*\*([^*]*(?:\*(?!\*)[^*]*)*)\*\*/g, '<b>$1</b>');
+
+    // Italics: *text* -> <i>text</i> (avoid conflict with bold)
+    processedContent = processedContent.replace(/\*([^*]+)\*/g, '<i>$1</i>');
+
+    // Underline: __text__ -> <u>text</u>
+    processedContent = processedContent.replace(/__([^_]*(?:_(?!_)[^_]*)*?)__/g, '<u>$1</u>');
+
+    // Strikethrough: ~~text~~ -> <s>text</s> (process last - innermost)
+    processedContent = processedContent.replace(/~~([^~]*(?:~(?!~)[^~]*)*?)~~/g, '<s>$1</s>');
+
+    // Color: {color:#ff0000}text{/color} -> <span style="color:#ff0000">text</span>
+    processedContent = processedContent.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, (match, color, text) => {
+      const safeColor = this.sanitizeColor(color);
+      if (safeColor) {
+        return `<span style="color:${safeColor}">${text}</span>`;
+      }
+      return text; // If color is unsafe, just return the text without styling
+    });
+
+    // Citation: {citation}text{/citation} -> <span>text</span>
+    processedContent = processedContent.replace(/\{citation\}([^{]*)\{\/citation\}/g, '$1');
+
+    // Convert markdown-style links: [text](url) -> text
+    processedContent = processedContent.replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '$1');
+
+    // Now strip all HTML tags to get clean plain text
+    const plainText = processedContent.replace(/<[^>]*>/g, '').replace(/\n/g, ' ').trim();
+
     return plainText.length > maxLength
       ? plainText.substring(0, maxLength) + '...'
       : plainText;

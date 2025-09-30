@@ -223,8 +223,27 @@
 
 
 
+- [x] 22. We improved and added featues for note to be displayed an converted from our extensoin format to the editor version in webpage however the issue is now that the preview text for the note is showing the test and differenr font color Testing various colors: {color:#ff0000}red text{/color} and {color:#00ff00}green text{/color} and {color:#0000ff}blue text{/color}. RGB colors: instead of how we see it in the note itself, thats the note preview text that oocurs on the note card in the dashboard per note, we need the conversoin for the preview as well. while mainting xss security protection. this is specificall for the note content preview not the screen when we open a note.
+
+    **✅ IMPLEMENTATION COMPLETED**
+    - ✅ Updated `generatePreview()` function to handle all extension formatting patterns
+    - ✅ Added conversion for bold (`**text**`), italics (`*text*`), underline (`__text__`), strikethrough (`~~text~~`)
+    - ✅ Added conversion for color formatting (`{color:#ff0000}text{/color}`)
+    - ✅ Added conversion for citation formatting (`{citation}text{/citation}`)
+    - ✅ Added conversion for markdown-style links (`[text](url)`)
+    - ✅ Maintained XSS security protection using existing `sanitizeColor()` function
+    - ✅ Processes formatting in correct order to avoid conflicts (same as rich text editor)
+    - ✅ Converts extension format to HTML, then strips HTML tags for clean plain text preview
+    - ✅ Preview now shows clean text like "red text and green text" instead of raw `{color:#ff0000}red text{/color}`
+    
+    **Security Measures Maintained:**
+    - ✅ Uses existing `sanitizeColor()` function to validate color values
+    - ✅ Strips all HTML tags after conversion to prevent XSS
+    - ✅ Uses `textContent` for display (not `innerHTML`) to maintain security
+    - ✅ Unsafe colors are stripped, showing only the text content 
 
 
+ 
 
 - [x] 20. supabase rls policy security audit ✅
 
