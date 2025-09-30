@@ -197,9 +197,9 @@ serve(async (req) => {
       }
     }
 
-    // Call Gemini API (using Flash model for cost efficiency)
+    // Call Gemini API (using Gemini 2.5 Flash Lite model)
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash-lite:generateContent?key=${geminiApiKey}`,
       {
         method: 'POST',
         headers: {
@@ -262,7 +262,7 @@ Return ONLY a comma-separated list of tags, no explanations or other text. Examp
         };
 
         const tagResponse = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+          `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash-lite:generateContent?key=${geminiApiKey}`,
           {
             method: 'POST',
             headers: {
@@ -338,7 +338,7 @@ CRITICAL INSTRUCTION: You MUST preserve ALL placeholders like [LINK_PLACEHOLDER_
         };
 
         const summaryResponse = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+          `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash-lite:generateContent?key=${geminiApiKey}`,
           {
             method: 'POST',
             headers: {

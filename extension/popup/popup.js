@@ -3920,14 +3920,7 @@ class URLNotesApp {
           errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
         }
 
-        console.error('AI rewrite API error response:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorData: errorData,
-          errorMessage: errorData.error,
-          remainingCalls: errorData.remainingCalls,
-          resetDate: errorData.resetDate
-        });
+
 
         // Show user-friendly error message
         if (response.status === 401) {
@@ -3942,8 +3935,6 @@ class URLNotesApp {
       }
 
       const data = await response.json();
-
-
 
       // Track local AI usage (1 credit for rewrite)
       await this.trackLocalAIUsage(1);
@@ -3962,11 +3953,7 @@ class URLNotesApp {
       return data.rewrittenContent;
     } catch (error) {
       console.error('AI rewrite API call failed:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
+
 
       // Show helpful message for authentication errors
       if (error.message.includes('create an account')) {
