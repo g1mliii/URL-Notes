@@ -1528,6 +1528,12 @@ Dashboard Specific Styles - Google Drive-like Layout */
   .note-popup-window::-webkit-resizer {
     background: var(--bg-tertiary);
     border-radius: 0 0 12px 0;
+    background-image: 
+      linear-gradient(-45deg, transparent 0px, transparent 2px, var(--border-color) 2px, var(--border-color) 4px, transparent 4px, transparent 6px, var(--border-color) 6px, var(--border-color) 8px, transparent 8px),
+      linear-gradient(-45deg, transparent 4px, transparent 6px, var(--border-color) 6px, var(--border-color) 8px, transparent 8px, transparent 10px, var(--border-color) 10px, var(--border-color) 12px, transparent 12px);
+    background-size: 8px 8px;
+    background-position: bottom right;
+    background-repeat: no-repeat;
   }
 
   /* Popup window animations */

@@ -1386,8 +1386,10 @@ class Dashboard {
 
     // Initialize popup content
     if (note) {
+      console.log('Populating popup view with note:', note);
       this.populatePopupView(popup, note);
     } else {
+      console.log('Creating new note in popup');
       this.createNewNoteInPopup(popup);
     }
 
@@ -1403,6 +1405,9 @@ class Dashboard {
 
     const title = note?.title || 'New Note';
     const truncatedTitle = title.length > 30 ? title.substring(0, 30) + '...' : title;
+
+    // Use a simple ID for form elements
+    const formId = note?.id || `new-${Date.now()}`;
 
     popup.innerHTML = `
       <div class="note-popup-header">
@@ -1437,65 +1442,65 @@ class Dashboard {
       </div>
       <div class="note-popup-content">
         <!-- View Mode -->
-        <div class="note-view" id="noteView-${popupId}">
+        <div class="note-view" id="noteView-${formId}">
           <div class="note-header">
-            <h3 id="noteViewTitle-${popupId}">Note Title</h3>
+            <h3 id="noteViewTitle-${formId}">Note Title</h3>
             <div class="note-meta">
-              <span id="noteViewDate-${popupId}" class="note-date"></span>
-              <span id="noteViewDomain-${popupId}" class="note-domain"></span>
+              <span id="noteViewDate-${formId}" class="note-date"></span>
+              <span id="noteViewDomain-${formId}" class="note-domain"></span>
             </div>
           </div>
-          <div class="note-content-display" id="noteContentDisplay-${popupId}">
+          <div class="note-content-display" id="noteContentDisplay-${formId}">
             <!-- Formatted note content will be displayed here -->
           </div>
-          <div class="note-url-display" id="noteUrlDisplay-${popupId}">
+          <div class="note-url-display" id="noteUrlDisplay-${formId}">
             <!-- URL will be displayed here if present -->
           </div>
-          <div class="note-tags-display" id="noteTagsDisplay-${popupId}">
+          <div class="note-tags-display" id="noteTagsDisplay-${formId}">
             <!-- Tags will be displayed here -->
           </div>
         </div>
 
         <!-- Edit Mode -->
-        <div class="note-edit hidden" id="noteEdit-${popupId}">
-          <form id="noteForm-${popupId}">
+        <div class="note-edit hidden" id="noteEdit-${formId}">
+          <form id="noteForm-${formId}">
             <div class="input-group">
-              <input type="text" id="noteTitle-${popupId}" placeholder="Note title...">
+              <input type="text" id="noteTitle-${formId}" placeholder="Note title...">
             </div>
             <div class="input-group">
-              <input type="url" id="noteUrl-${popupId}" placeholder="URL (optional)">
+              <input type="url" id="noteUrl-${formId}" placeholder="URL (optional)">
             </div>
             <div class="input-group">
               <!-- Rich Text Editor Toolbar -->
-              <div class="editor-toolbar" id="editorToolbar-${popupId}">
+              <div class="editor-toolbar" id="editorToolbar-${formId}">
                 <div class="toolbar-group">
-                  <button type="button" class="toolbar-btn" id="boldBtn-${popupId}" title="Bold (Ctrl+B)">
+                  <button type="button" class="toolbar-btn" id="boldBtn-${formId}" title="Bold (Ctrl+B)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
                       <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
                     </svg>
                   </button>
-                  <button type="button" class="toolbar-btn" id="italicBtn-${popupId}" title="Italic (Ctrl+I)">
+                  <button type="button" class="toolbar-btn" id="italicBtn-${formId}" title="Italic (Ctrl+I)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <line x1="19" y1="4" x2="10" y2="4"></line>
                       <line x1="14" y1="20" x2="5" y2="20"></line>
                       <line x1="15" y1="4" x2="9" y2="20"></line>
                     </svg>
                   </button>
-                  <button type="button" class="toolbar-btn" id="underlineBtn-${popupId}" title="Underline (Ctrl+U)">
+                  <button type="button" class="toolbar-btn" id="underlineBtn-${formId}" title="Underline (Ctrl+U)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"></path>
                       <line x1="4" y1="21" x2="20" y2="21"></line>
                     </svg>
                   </button>
-                  <button type="button" class="toolbar-btn" id="strikethroughBtn-${popupId}" title="Strikethrough">
+                  <button type="button" class="toolbar-btn" id="strikethroughBtn-${formId}" title="Strikethrough">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M16 4H9a3 3 0 0 0-2.83 4"></path>
                       <path d="M14 12a4 4 0 0 1 0 8H6"></path>
                       <line x1="4" y1="12" x2="20" y2="12"></line>
                     </svg>
                   </button>
-                  <button type="button" class="toolbar-btn" id="citationBtn-${popupId}" title="Citation">
+                  <button type="button" class="toolbar-btn" id="citationBtn-${formId}" title="Citation">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path>
                       <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"></path>
@@ -1504,7 +1509,7 @@ class Dashboard {
                 </div>
                 <div class="toolbar-separator"></div>
                 <div class="toolbar-group">
-                  <button type="button" class="toolbar-btn" id="listBtn-${popupId}" title="Add List Item">
+                  <button type="button" class="toolbar-btn" id="listBtn-${formId}" title="Add List Item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <line x1="8" y1="6" x2="21" y2="6"></line>
                       <line x1="8" y1="12" x2="21" y2="12"></line>
@@ -1516,14 +1521,14 @@ class Dashboard {
                   </button>
                 </div>
               </div>
-              <div class="note-content-input" id="noteContentInput-${popupId}" contenteditable="true"
+              <div class="note-content-input" id="noteContentInput-${formId}" contenteditable="true"
                 placeholder="Write your note here..."></div>
             </div>
             <div class="input-group">
-              <input type="text" id="noteTags-${popupId}" placeholder="Tags (comma separated)">
+              <input type="text" id="noteTags-${formId}" placeholder="Tags (comma separated)">
             </div>
             <div class="edit-actions">
-              <button type="button" id="cancelEditBtn-${popupId}" class="btn-secondary">Cancel</button>
+              <button type="button" id="cancelEditBtn-${formId}" class="btn-secondary">Cancel</button>
               <button type="submit" class="btn-primary">Save Note</button>
             </div>
           </form>
@@ -1551,8 +1556,9 @@ class Dashboard {
     const closeBtn = popup.querySelector('.close-btn');
 
     // Form elements
-    const form = popup.querySelector(`#noteForm-${popupId.split('-').pop()}`);
-    const cancelBtn = popup.querySelector(`#cancelEditBtn-${popupId.split('-').pop()}`);
+    const formId = popup.dataset.noteId || popup.id.replace('note-popup-', '');
+    const form = popup.querySelector(`#noteForm-${formId}`);
+    const cancelBtn = popup.querySelector(`#cancelEditBtn-${formId}`);
 
     // Edit button
     editBtn?.addEventListener('click', () => {
@@ -1668,14 +1674,18 @@ class Dashboard {
   }
 
   populatePopupView(popup, note) {
-    const popupId = popup.id.split('-').pop();
+    // Extract the form ID from the popup's dataset or note ID
+    const formId = popup.dataset.noteId || popup.id.replace('note-popup-', '');
+    console.log('PopulatePopupView - formId:', formId, 'note:', note);
 
-    const titleEl = popup.querySelector(`#noteViewTitle-${popupId}`);
-    const dateEl = popup.querySelector(`#noteViewDate-${popupId}`);
-    const domainEl = popup.querySelector(`#noteViewDomain-${popupId}`);
-    const contentEl = popup.querySelector(`#noteContentDisplay-${popupId}`);
-    const urlEl = popup.querySelector(`#noteUrlDisplay-${popupId}`);
-    const tagsEl = popup.querySelector(`#noteTagsDisplay-${popupId}`);
+    const titleEl = popup.querySelector(`#noteViewTitle-${formId}`);
+    const dateEl = popup.querySelector(`#noteViewDate-${formId}`);
+    const domainEl = popup.querySelector(`#noteViewDomain-${formId}`);
+    const contentEl = popup.querySelector(`#noteContentDisplay-${formId}`);
+    const urlEl = popup.querySelector(`#noteUrlDisplay-${formId}`);
+    const tagsEl = popup.querySelector(`#noteTagsDisplay-${formId}`);
+
+    console.log('Found elements:', { titleEl, dateEl, domainEl, contentEl, urlEl, tagsEl });
 
     // Update popup title safely (using textContent to prevent XSS)
     const headerTitle = popup.querySelector('.note-popup-title');
@@ -1755,6 +1765,8 @@ class Dashboard {
       updatedAt: new Date().toISOString()
     };
 
+    console.log('Creating new note in popup:', newNote);
+
     // Store note reference in popup
     popup.dataset.noteId = newNote.id;
     popup.id = `note-popup-${newNote.id}`;
@@ -1764,9 +1776,9 @@ class Dashboard {
   }
 
   showPopupEditMode(popup, note = null) {
-    const popupId = popup.id.split('-').pop();
-    const noteView = popup.querySelector(`#noteView-${popupId}`);
-    const noteEdit = popup.querySelector(`#noteEdit-${popupId}`);
+    const formId = popup.dataset.noteId || popup.id.replace('note-popup-', '');
+    const noteView = popup.querySelector(`#noteView-${formId}`);
+    const noteEdit = popup.querySelector(`#noteEdit-${formId}`);
     const saveBtn = popup.querySelector('.save-btn');
     const editBtn = popup.querySelector('.edit-btn');
 
@@ -1784,14 +1796,14 @@ class Dashboard {
   }
 
   populatePopupEditForm(popup, note = null) {
-    const popupId = popup.id.split('-').pop();
+    const formId = popup.dataset.noteId || popup.id.replace('note-popup-', '');
     const currentNote = note || this.notes.find(n => n.id === popup.dataset.noteId);
 
-    const titleInput = popup.querySelector(`#noteTitle-${popupId}`);
-    const urlInput = popup.querySelector(`#noteUrl-${popupId}`);
-    const contentInput = popup.querySelector(`#noteContentInput-${popupId}`);
-    const tagsInput = popup.querySelector(`#noteTags-${popupId}`);
-    const toolbar = popup.querySelector(`#editorToolbar-${popupId}`);
+    const titleInput = popup.querySelector(`#noteTitle-${formId}`);
+    const urlInput = popup.querySelector(`#noteUrl-${formId}`);
+    const contentInput = popup.querySelector(`#noteContentInput-${formId}`);
+    const tagsInput = popup.querySelector(`#noteTags-${formId}`);
+    const toolbar = popup.querySelector(`#editorToolbar-${formId}`);
 
     // Initialize rich text editor for this popup
     if (contentInput && toolbar && !contentInput._richTextEditor) {
@@ -1841,13 +1853,13 @@ class Dashboard {
   }
 
   async savePopupNote(popup) {
-    const popupId = popup.id.split('-').pop();
+    const formId = popup.dataset.noteId || popup.id.replace('note-popup-', '');
     const noteId = popup.dataset.noteId;
 
-    const titleInput = popup.querySelector(`#noteTitle-${popupId}`);
-    const urlInput = popup.querySelector(`#noteUrl-${popupId}`);
-    const contentInput = popup.querySelector(`#noteContentInput-${popupId}`);
-    const tagsInput = popup.querySelector(`#noteTags-${popupId}`);
+    const titleInput = popup.querySelector(`#noteTitle-${formId}`);
+    const urlInput = popup.querySelector(`#noteUrl-${formId}`);
+    const contentInput = popup.querySelector(`#noteContentInput-${formId}`);
+    const tagsInput = popup.querySelector(`#noteTags-${formId}`);
     const saveBtn = popup.querySelector('.save-btn');
 
     if (!titleInput || !contentInput) return;
@@ -1938,9 +1950,9 @@ class Dashboard {
   }
 
   showPopupViewMode(popup, note) {
-    const popupId = popup.id.split('-').pop();
-    const noteView = popup.querySelector(`#noteView-${popupId}`);
-    const noteEdit = popup.querySelector(`#noteEdit-${popupId}`);
+    const formId = popup.dataset.noteId || popup.id.replace('note-popup-', '');
+    const noteView = popup.querySelector(`#noteView-${formId}`);
+    const noteEdit = popup.querySelector(`#noteEdit-${formId}`);
     const saveBtn = popup.querySelector('.save-btn');
     const editBtn = popup.querySelector('.edit-btn');
     const deleteBtn = popup.querySelector('.delete-btn');
@@ -2024,11 +2036,11 @@ class Dashboard {
   }
 
   setupPopupAutoSave(popup) {
-    const popupId = popup.id.split('-').pop();
-    const titleInput = popup.querySelector(`#noteTitle-${popupId}`);
-    const urlInput = popup.querySelector(`#noteUrl-${popupId}`);
-    const contentInput = popup.querySelector(`#noteContentInput-${popupId}`);
-    const tagsInput = popup.querySelector(`#noteTags-${popupId}`);
+    const formId = popup.dataset.noteId || popup.id.replace('note-popup-', '');
+    const titleInput = popup.querySelector(`#noteTitle-${formId}`);
+    const urlInput = popup.querySelector(`#noteUrl-${formId}`);
+    const contentInput = popup.querySelector(`#noteContentInput-${formId}`);
+    const tagsInput = popup.querySelector(`#noteTags-${formId}`);
 
     let autoSaveTimeout;
     const debouncedAutoSave = () => {
@@ -2056,9 +2068,9 @@ class Dashboard {
     // Uses the same validation and sanitization as savePopupNote
     try {
       // Only auto-save if there's actual content to prevent empty saves
-      const popupId = popup.id.split('-').pop();
-      const titleInput = popup.querySelector(`#noteTitle-${popupId}`);
-      const contentInput = popup.querySelector(`#noteContentInput-${popupId}`);
+      const formId = popup.dataset.noteId || popup.id.replace('note-popup-', '');
+      const titleInput = popup.querySelector(`#noteTitle-${formId}`);
+      const contentInput = popup.querySelector(`#noteContentInput-${formId}`);
 
       const title = titleInput?.value.trim() || '';
       let content = '';
