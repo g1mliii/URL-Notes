@@ -1,6 +1,8 @@
 // Context menu now uses the same storage system as the main extension
 // No separate storage abstraction needed
 
+// Background script loaded
+
 // Keyboard commands
 try {
   chrome.commands.onCommand.addListener(async (command) => {
@@ -423,16 +425,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       break;
     case 'auth-changed':
       // Handle auth changes for sync timer management
+      console.log(`🔐 [SYNC TIMER] Auth changed at: ${new Date().toLocaleTimeString()}`);
       if (request.user) {
-        // User signed in - initializing timer
+        console.log(`👤 [SYNC TIMER] User signed in, initializing timer`);
         // User signed in - initialize lastSyncTime and start timer
         // Premium check will happen at sync execution time
         lastSyncTime = Date.now();
         saveLastSyncTime(); // Save the current time as last sync
+        console.log(`📊 [SYNC TIMER] Set lastSyncTime to: ${new Date(lastSyncTime).toLocaleTimeString()}`);
         startSyncTimer();
 
       } else {
-        // User signed out - stopping timer
+        console.log(`👤 [SYNC TIMER] User signed out, stopping timer`);
         // User signed out, stop timer
         stopSyncTimer();
       }
@@ -440,9 +444,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       break;
     case 'restart-sync-timer':
       // Restart timer for next sync cycle
-
+      console.log(`🔄 [SYNC TIMER] Restart requested from popup at: ${new Date().toLocaleTimeString()}`);
+      console.log(`📊 [SYNC TIMER] Previous lastSyncTime: ${new Date(lastSyncTime).toLocaleTimeString()}`);
+      
       lastSyncTime = Date.now(); // Mark that we just synced
       saveLastSyncTime(); // Save the updated time
+      
+      console.log(`📊 [SYNC TIMER] New lastSyncTime: ${new Date(lastSyncTime).toLocaleTimeString()}`);
       startSyncTimer();
       sendResponse({ success: true });
       break;
@@ -478,10 +486,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       // Popup opened, check if sync is overdue
       const now = Date.now();
       const timeSinceLastSync = now - lastSyncTime;
+      const minutesSinceSync = Math.round(timeSinceLastSync / (60 * 1000));
+      const intervalMinutes = Math.round(syncInterval / (60 * 1000));
+      
+      console.log(`🔍 [SYNC TIMER] Popup opened at: ${new Date(now).toLocaleTimeString()}`);
+      console.log(`📊 [SYNC TIMER] Last sync: ${new Date(lastSyncTime).toLocaleTimeString()}`);
+      console.log(`⏱️ [SYNC TIMER] Time since last sync: ${minutesSinceSync} minutes (interval: ${intervalMinutes} minutes)`);
 
       if (timeSinceLastSync >= syncInterval) {
+        console.log(`🚨 [SYNC TIMER] Sync is OVERDUE - telling popup to sync`);
         sendResponse({ shouldSync: true, timeSinceLastSync });
       } else {
+        const remainingMinutes = Math.round((syncInterval - timeSinceLastSync) / (60 * 1000));
+        console.log(`✅ [SYNC TIMER] Sync not needed yet - ${remainingMinutes} minutes remaining`);
         sendResponse({ shouldSync: false, timeRemaining: syncInterval - timeSinceLastSync });
       }
       break;
@@ -1107,7 +1124,11 @@ function startDebugStatusLogging() {
     const minutesSinceSync = Math.floor(timeSinceLastSync / (60 * 1000));
     const isTimerActive = syncTimer !== null;
 
-    // Sync status check
+    console.log(`📊 [SYNC DEBUG] Status at ${now.toLocaleTimeString()}:`);
+    console.log(`   ⏱️  Timer Active: ${isTimerActive}`);
+    console.log(`   📅 Last Sync: ${lastSyncTime ? new Date(lastSyncTime).toLocaleTimeString() : 'Never'}`);
+    console.log(`   ⏰ Minutes Since Sync: ${minutesSinceSync}`);
+    console.log(`   🎯 Sync Interval: ${syncInterval / (60 * 1000)} minutes`);
   }, 60 * 1000); // Log every minute
 }
 
@@ -1116,47 +1137,63 @@ function stopDebugStatusLogging() {
   if (debugStatusTimer) {
     clearInterval(debugStatusTimer);
     debugStatusTimer = null;
-    console.log(`🔇 [SYNC STATUS] Debug logging stopped`);
+    console.log(`🛑 [SYNC DEBUG] Status logging stopped`);
   }
 }
 
 // Start debug logging when background script loads
+console.log(`🚀 [BACKGROUND] Script loaded at: ${new Date().toLocaleTimeString()}`);
 startDebugStatusLogging();
 
 // Load lastSyncTime from storage on startup
 async function loadLastSyncTime() {
+  const loadId = Math.random().toString(36).substr(2, 9);
+  
   try {
     const result = await chrome.storage.local.get(['lastSyncTime']);
+    const now = Date.now();
+    
+    console.log(`📚 [SYNC TIMER-${loadId}] Loading from storage at ${new Date(now).toLocaleTimeString()} (${now})`);
 
     if (result.lastSyncTime) {
       const storedTime = result.lastSyncTime;
-      const now = Date.now();
+      console.log(`📚 [SYNC TIMER-${loadId}] Found stored time: ${new Date(storedTime).toLocaleTimeString()} (${storedTime})`);
 
       // Validate that the stored time is reasonable
       // Check for obviously invalid timestamps (future dates, extremely old dates, or NaN)
       const currentYear = new Date().getFullYear();
       const storedYear = new Date(storedTime).getFullYear();
+      
+      console.log(`📚 [SYNC TIMER-${loadId}] Validation - Current year: ${currentYear}, Stored year: ${storedYear}`);
+      console.log(`📚 [SYNC TIMER-${loadId}] Validation - isNaN: ${isNaN(storedTime)}, <= 0: ${storedTime <= 0}, > now: ${storedTime > now}, year > current: ${storedYear > currentYear}`);
 
       // Check if the stored timestamp is from a future year (like 2025 when we're in 2024)
       if (isNaN(storedTime) || storedTime <= 0 || storedTime > now || storedYear > currentYear) {
+        console.log(`❌ [SYNC TIMER-${loadId}] Invalid stored time detected, resetting to current time`);
         lastSyncTime = now;
         await chrome.storage.local.set({ lastSyncTime: lastSyncTime });
       } else if (storedTime < (now - (24 * 60 * 60 * 1000))) { // More than 24 hours ago
+        console.log(`⏰ [SYNC TIMER-${loadId}] Stored time is more than 24 hours old, resetting to current time`);
         lastSyncTime = now;
         await chrome.storage.local.set({ lastSyncTime: lastSyncTime });
       } else {
+        console.log(`✅ [SYNC TIMER-${loadId}] Using valid stored time: ${new Date(storedTime).toLocaleTimeString()}`);
         lastSyncTime = storedTime;
       }
     } else {
+      console.log(`📚 [SYNC TIMER-${loadId}] No stored time found, initializing to current time`);
       // Initialize to current time if no stored value
       lastSyncTime = Date.now();
       await chrome.storage.local.set({ lastSyncTime: lastSyncTime });
     }
+    
+    console.log(`📚 [SYNC TIMER-${loadId}] Final lastSyncTime: ${new Date(lastSyncTime).toLocaleTimeString()} (${lastSyncTime})`);
   } catch (error) {
-    console.error('🕐 Background: Error loading lastSyncTime:', error);
+    console.error(`🕐 [SYNC TIMER-${loadId}] Error loading lastSyncTime:`, error);
     // Fallback to current time
     lastSyncTime = Date.now();
     await saveLastSyncTime(); // Save the fallback time
+    console.log(`🔄 [SYNC TIMER-${loadId}] Fallback to current time: ${new Date(lastSyncTime).toLocaleTimeString()}`);
   }
 }
 
@@ -1204,23 +1241,43 @@ async function forceResetSyncTimer() {
 }
 
 function startSyncTimer() {
+  const startId = Math.random().toString(36).substr(2, 9);
+  
   if (syncTimer) {
+    console.log(`🔄 [SYNC TIMER-${startId}] Clearing existing timer ${syncTimer} before starting new one`);
     clearTimeout(syncTimer);
+    syncTimer = null;
   }
 
   const now = new Date();
   const nextSyncTime = new Date(now.getTime() + syncInterval);
-
+  const intervalMinutes = syncInterval / (60 * 1000);
+  
+  console.log(`🚀 [SYNC TIMER-${startId}] Starting timer at: ${now.toLocaleTimeString()} (${now.getTime()})`);
+  console.log(`⏰ [SYNC TIMER] Next sync scheduled for: ${nextSyncTime.toLocaleTimeString()} (in ${intervalMinutes} minutes)`);
+  console.log(`📊 [SYNC TIMER] Last sync was at: ${new Date(lastSyncTime).toLocaleTimeString()}`);
 
   // Set a one-time timeout instead of interval
   syncTimer = setTimeout(() => {
-    console.log(`⏰ [SYNC TIMER] Triggered at: ${new Date().toLocaleTimeString()}`);
+    const triggerTime = new Date();
+    const triggerId = Math.random().toString(36).substr(2, 9);
+    const actualInterval = triggerTime.getTime() - now.getTime();
+    const expectedInterval = syncInterval;
+    
+    console.log(`⏰ [SYNC TIMER-${triggerId}] *** TIMER TRIGGERED *** at: ${triggerTime.toLocaleTimeString()} (${triggerTime.getTime()})`);
+    console.log(`📈 [SYNC TIMER-${triggerId}] Time since last sync: ${Math.round((triggerTime.getTime() - lastSyncTime) / (60 * 1000))} minutes (${triggerTime.getTime() - lastSyncTime}ms)`);
+    console.log(`⏱️ [SYNC TIMER-${triggerId}] Timer fired after: ${Math.round(actualInterval / (60 * 1000))} minutes (expected: ${Math.round(expectedInterval / (60 * 1000))} minutes)`);
+    
+    // Validate that the timer didn't fire too early (allow 10 second tolerance)
+    if (actualInterval < (expectedInterval - 10000)) {
+      console.log(`🚨 [SYNC TIMER-${triggerId}] WARNING: Timer fired ${Math.round((expectedInterval - actualInterval) / 1000)} seconds early!`);
+    }
 
     // Send message to popup to trigger sync
     chrome.runtime.sendMessage({ action: 'sync-timer-triggered' }).then(() => {
-      console.log(`✅ [SYNC TIMER] Message sent to popup successfully`);
+      console.log(`✅ [SYNC TIMER-${triggerId}] Message sent to popup successfully at ${new Date().toLocaleTimeString()}`);
     }).catch(() => {
-      console.log(`📭 [SYNC TIMER] Popup not available for sync at: ${new Date().toLocaleTimeString()}`);
+      console.log(`📭 [SYNC TIMER-${triggerId}] Popup not available for sync at: ${triggerTime.toLocaleTimeString()} - will sync when popup opens`);
       // Popup might be closed, that's okay
       // Mark that we need to sync when popup opens
       // Don't set lastSyncTime here - let the popup handle it when it opens
@@ -1229,42 +1286,44 @@ function startSyncTimer() {
 
     // Clear the timer after it fires
     syncTimer = null;
-    console.log(`🔄 [SYNC TIMER] Timer cleared, waiting for restart`);
+    console.log(`🔄 [SYNC TIMER-${triggerId}] Timer cleared, waiting for restart`);
 
   }, syncInterval);
+  
+  console.log(`✅ [SYNC TIMER-${startId}] Timer set with ID: ${syncTimer} - will fire in ${intervalMinutes} minutes at ${nextSyncTime.toLocaleTimeString()}`);
 }
 
 function stopSyncTimer() {
+  console.log(`🛑 [SYNC TIMER] Stop requested at: ${new Date().toLocaleTimeString()}`);
   if (syncTimer) {
     clearTimeout(syncTimer);
     syncTimer = null;
-    // Sync timer stopped
+    console.log(`✅ [SYNC TIMER] Timer stopped and cleared`);
   } else {
     console.log(`⚪ [SYNC TIMER] Stop called but no timer was running`);
   }
   // Reset lastSyncTime when stopping timer (e.g., user signs out)
   lastSyncTime = 0;
   saveLastSyncTime();
+  console.log(`🔄 [SYNC TIMER] lastSyncTime reset to 0`);
 }
 
 // Initialize sync timer management when extension loads
 // Note: Don't start timer automatically - wait for auth and premium status
+console.log(`🚀 [SYNC TIMER] Background script initializing at: ${new Date().toLocaleTimeString()}`);
 setTimeout(() => {
+  const initLoadId = Math.random().toString(36).substr(2, 9);
+  console.log(`📚 [SYNC TIMER-${initLoadId}] Loading lastSyncTime from storage...`);
   loadLastSyncTime().then(() => {
+    console.log(`✅ [SYNC TIMER-${initLoadId}] Loaded lastSyncTime: ${new Date(lastSyncTime).toLocaleTimeString()} (${lastSyncTime})`);
 
-
-    // Force reset if the timestamp is corrupted, but don't start timer
-    const currentYear = new Date().getFullYear();
-    const storedYear = new Date(lastSyncTime).getFullYear();
-
-    if (lastSyncTime > Date.now() || storedYear > currentYear) {
-
-      lastSyncTime = 0;
-      saveLastSyncTime();
-    }
+    // Remove duplicate validation - loadLastSyncTime() already handles this
+    // The validation inside loadLastSyncTime() is sufficient and more comprehensive
+    
+    console.log(`⏳ [SYNC TIMER-${initLoadId}] Initialization complete, waiting for auth/premium status`);
     // Note: Don't start timer here - wait for tier-changed event with premium status
   }).catch(error => {
-
+    console.error(`❌ [SYNC TIMER-${initLoadId}] Error during initialization:`, error);
     // Don't start timer on error - wait for proper auth/premium status
   });
 }, 100);

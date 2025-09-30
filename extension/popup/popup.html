@@ -44,11 +44,10 @@
             <div><span style="opacity:.85;">New note:</span> <span id="shortcutNewValue"
                 style="font-weight:600;"></span></div>
           </div>
-          <button class="icon-btn multi-highlight-btn" id="multiHighlightBtn" 
-                  title="Toggle Multi-Highlight Mode" 
-                  aria-label="Toggle Multi-Highlight Mode"
-                  role="button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <button class="icon-btn multi-highlight-btn" id="multiHighlightBtn" title="Toggle Multi-Highlight Mode"
+            aria-label="Toggle Multi-Highlight Mode" role="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
               <path d="M9 11l3 3l8 -8" />
               <path d="M21 12v7a2 2 0 0 1 -2 2H5a2 2 0 0 1 -2 -2V5a2 2 0 0 1 2 -2h11" />
             </svg>
@@ -384,7 +383,8 @@
       <div class="dialog-content">
         <div class="rewrite-options" id="rewriteOptions">
           <div class="usage-info" id="usageInfo" style="display: none;">
-            <p class="usage-text">You have <span id="aiDialogRemainingCalls">0</span> AI rewrites remaining this month</p>
+            <p class="usage-text">You have <span id="aiDialogRemainingCalls">0</span> AI rewrites remaining this month
+            </p>
             <p class="usage-reset">Resets on <span id="resetDate">-</span></p>
           </div>
           <div class="context-info" id="contextInfo" style="display: none;">
@@ -420,7 +420,7 @@
     </div>
 
     <!-- Advertising Disclosure Dialog (Hidden by default) -->
-    <div class="ai-rewrite-dialog" id="adDisclosureDialog" style="display: none;">
+    <div class="ad-disclosure-dialog" id="adDisclosureDialog" style="display: none;">
       <div class="dialog-header">
         <h3>Advertising Disclosure</h3>
         <button class="close-btn" id="adDisclosureCloseBtn">
@@ -505,8 +505,8 @@
             <!-- Forgot Password Button -->
             <button id="authForgotPwBtn" class="settings-btn-compact" style="display:none; margin-top: 8px;">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-                <path d="M12 17h.01"/>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                <path d="M12 17h.01" />
               </svg>
               <span>Forgot Password?</span>
             </button>
@@ -517,10 +517,18 @@
               </div>
               <button id="authGoogleBtn" class="settings-btn-full oauth-btn">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                  <path
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    fill="#4285F4" />
+                  <path
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    fill="#34A853" />
+                  <path
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    fill="#FBBC05" />
+                  <path
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    fill="#EA4335" />
                 </svg>
                 <span>Continue with Google</span>
               </button>
@@ -529,7 +537,8 @@
             <!-- Premium Status and Sign Out Controls -->
             <div class="premium-status-controls" style="margin-top: 10px;">
               <div class="button-row">
-                <button class="settings-btn-half" id="refreshPremiumStatusBtn" title="Refresh premium status from server">
+                <button class="settings-btn-half" id="refreshPremiumStatusBtn"
+                  title="Refresh premium status from server">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                     <path d="M12 3v9l3 3" />
@@ -626,13 +635,22 @@
               <option value="Courier New">Courier</option>
             </select>
             <span class="sep" aria-hidden="true">•</span>
-            <span>Size</span>
-            <span class="font-size-label">A</span>
-            <input type="range" id="fontSizeSlider" min="8" max="18" step="1" value="12" class="font-size-slider"
-              title="Adjust font size">
-            <span class="font-size-label large">A</span>
-            <span id="fontSizeValue" class="font-size-value" aria-live="polite"
-              style="margin-left:6px;opacity:.8;">12px</span>
+            <div class="font-size-control">
+              <span>Size:</span>
+              <select id="fontSizeSelect" class="font-size-select">
+                <option value="8">8px</option>
+                <option value="9">9px</option>
+                <option value="10">10px</option>
+                <option value="11">11px</option>
+                <option value="12" selected>12px</option>
+                <option value="13">13px</option>
+                <option value="14">14px</option>
+                <option value="15">15px</option>
+                <option value="16">16px</option>
+                <option value="17">17px</option>
+                <option value="18">18px</option>
+              </select>
+            </div>
           </div>
         </div>
         <div class="settings-section">
@@ -698,13 +716,13 @@
 
   <script src="../lib/premium.js"></script>
   <script src="../lib/ads.js"></script>
-  
+
   <!-- XSS Prevention -->
   <script src="../lib/dompurify.min.js"></script>
   <script src="../lib/xss-prevention.js"></script>
   <script src="../lib/safe-dom.js"></script>
   <script src="../lib/input-validation.js"></script>
-  
+
   <!-- Ensure encryption and Supabase client are available in popup context -->
   <script src="../lib/encryption.js"></script>
   <script src="../lib/api.js"></script>

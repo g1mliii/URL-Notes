@@ -136,8 +136,31 @@
     document.addEventListener('mouseup', handleMouseUp);
     document.addEventListener('keydown', handleKeyDown);
 
-    // Add visual indicator
+    // Add visual indicator with GPU acceleration
     document.body.style.cursor = 'crosshair';
+    document.body.classList.add('url-notes-multi-highlight-mode');
+    
+    // Inject body GPU acceleration styles if not already present
+    if (!document.getElementById('url-notes-body-style')) {
+      const bodyStyle = document.createElement('style');
+      bodyStyle.id = 'url-notes-body-style';
+      bodyStyle.textContent = `
+        body.url-notes-multi-highlight-mode {
+          will-change: cursor;
+          cursor: crosshair !important;
+        }
+        
+        /* GPU optimization for selection interactions */
+        .url-notes-selection-feedback {
+          will-change: transform, opacity;
+          transform: translateZ(0);
+          backface-visibility: hidden;
+          transition: all 0.15s ease;
+          pointer-events: none;
+        }
+      `;
+      document.head.appendChild(bodyStyle);
+    }
 
     // Add visual overlay indicator
     addMultiHighlightIndicator();
@@ -152,8 +175,9 @@
     document.removeEventListener('mouseup', handleMouseUp);
     document.removeEventListener('keydown', handleKeyDown);
 
-    // Remove visual indicator
+    // Remove visual indicator and GPU acceleration class
     document.body.style.cursor = '';
+    document.body.classList.remove('url-notes-multi-highlight-mode');
 
     // Remove visual overlay indicator
     removeMultiHighlightIndicator();
@@ -449,27 +473,36 @@
     }
   }
 
-  // Remove a highlight
+  // Remove a highlight with smooth GPU-accelerated animation
   function removeHighlight(index) {
     if (index < 0 || index >= highlights.length) return;
 
     const highlight = highlights[index];
 
-    // Remove visual element
+    // Remove visual element with animation
     if (highlight.element && highlight.element.parentNode) {
       const parent = highlight.element.parentNode;
-      while (highlight.element.firstChild) {
-        parent.insertBefore(highlight.element.firstChild, highlight.element);
-      }
-      parent.removeChild(highlight.element);
-      parent.normalize();
+      
+      // Add removal animation class for smooth GPU-accelerated exit
+      highlight.element.classList.add('removing');
+      
+      // Wait for animation to complete before removing element
+      setTimeout(() => {
+        if (highlight.element && highlight.element.parentNode) {
+          while (highlight.element.firstChild) {
+            parent.insertBefore(highlight.element.firstChild, highlight.element);
+          }
+          parent.removeChild(highlight.element);
+          parent.normalize();
+        }
+      }, 300); // Match animation duration
     }
 
-    // Remove from array
+    // Remove from array immediately (don't wait for animation)
     highlights.splice(index, 1);
 
-    // Update toolbar
-    updateHighlightToolbar();
+    // Update toolbar with count animation
+    updateHighlightToolbarWithAnimation();
   }
 
   // Clear all highlights
@@ -510,7 +543,77 @@
       font-size: 14px;
       min-width: 200px;
       backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      
+      /* GPU acceleration for smooth toolbar interactions */
+      will-change: transform, opacity;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      contain: layout style paint;
+      
+      /* Smooth entrance animation */
+      animation: toolbar-slide-in 0.3s ease-out;
     `;
+
+    // Inject toolbar-specific GPU acceleration styles
+    if (!document.getElementById('url-notes-toolbar-style')) {
+      const toolbarStyle = document.createElement('style');
+      toolbarStyle.id = 'url-notes-toolbar-style';
+      toolbarStyle.textContent = `
+        @keyframes toolbar-slide-in {
+          from {
+            transform: translateX(100%) translateZ(0);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0) translateZ(0);
+            opacity: 1;
+          }
+        }
+
+        #url-notes-highlight-toolbar button {
+          will-change: transform, background-color, box-shadow;
+          transform: translateZ(0);
+          backface-visibility: hidden;
+          transition: all 0.2s ease;
+        }
+
+        #url-notes-highlight-toolbar button:hover:not(:disabled) {
+          transform: translateZ(0) translateY(-1px);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        #url-notes-highlight-toolbar button:active:not(:disabled) {
+          transform: translateZ(0) translateY(0);
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+          #url-notes-highlight-toolbar button {
+            min-height: 44px;
+            padding: 12px 16px;
+            touch-action: manipulation;
+          }
+        }
+
+        /* GPU acceleration for toolbar count updates */
+        #url-notes-highlight-toolbar .highlight-count {
+          will-change: transform;
+          transform: translateZ(0);
+          transition: all 0.2s ease;
+        }
+
+        .highlight-count.updating {
+          animation: count-update 0.4s ease-out;
+        }
+
+        @keyframes count-update {
+          0% { transform: translateZ(0) scale(1); }
+          50% { transform: translateZ(0) scale(1.2); }
+          100% { transform: translateZ(0) scale(1); }
+        }
+      `;
+      document.head.appendChild(toolbarStyle);
+    }
 
     updateHighlightToolbar();
     document.body.appendChild(highlightToolbar);
@@ -570,6 +673,22 @@
     if (count === 0) {
       addBtn.disabled = true;
       clearBtn.disabled = true;
+    }
+  }
+
+  // Update toolbar content with count animation
+  function updateHighlightToolbarWithAnimation() {
+    updateHighlightToolbar();
+    
+    // Add animation to count display
+    const countElement = highlightToolbar.querySelector('div[style*="margin-bottom: 12px"]');
+    if (countElement) {
+      countElement.classList.add('highlight-count', 'updating');
+      
+      // Remove animation class after animation completes
+      setTimeout(() => {
+        countElement.classList.remove('updating');
+      }, 400);
     }
   }
 
@@ -660,18 +779,42 @@
       height: 4px;
       background: linear-gradient(90deg, #3b82f6, #10b981, #f59e0b, #ef4444);
       z-index: 9999;
+      
+      /* GPU acceleration for smooth animation */
+      will-change: opacity, transform;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      
+      /* Enhanced animation with GPU optimization */
       animation: multi-highlight-pulse 2s ease-in-out infinite;
     `;
 
-    // Add CSS animation
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes multi-highlight-pulse {
-        0%, 100% { opacity: 0.8; }
-        50% { opacity: 1; }
-      }
-    `;
-    document.head.appendChild(style);
+    // Add GPU-accelerated CSS animation
+    if (!document.getElementById('url-notes-indicator-style')) {
+      const style = document.createElement('style');
+      style.id = 'url-notes-indicator-style';
+      style.textContent = `
+        @keyframes multi-highlight-pulse {
+          0%, 100% { 
+            opacity: 0.8;
+            transform: translateZ(0) scaleX(1);
+          }
+          50% { 
+            opacity: 1;
+            transform: translateZ(0) scaleX(1.02);
+          }
+        }
+
+        /* Reduce motion for accessibility */
+        @media (prefers-reduced-motion: reduce) {
+          #multi-highlight-indicator {
+            animation: none !important;
+            transform: translateZ(0) !important;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
 
     document.body.appendChild(indicator);
   }
@@ -745,14 +888,80 @@
 
   function injectHighlightStyle() {
     if (document.getElementById('url-notes-highlight-style')) return;
+    
+    // Inject GPU-accelerated CSS for multi-highlight functionality
     const style = document.createElement('style');
     style.id = 'url-notes-highlight-style';
     style.textContent = `
+      /* GPU-accelerated highlight elements */
       mark[data-url-notes-highlight] {
         background: #ffeb3b99;
         padding: 0 .1em;
         border-radius: 2px;
         box-shadow: 0 0 0 2px rgba(255,235,59,0.35);
+        
+        /* GPU acceleration for smooth highlight interactions */
+        will-change: background-color, box-shadow, transform;
+        transform: translateZ(0);
+        backface-visibility: hidden;
+        
+        /* Smooth transitions for hover effects */
+        transition: all 0.2s ease;
+        cursor: pointer;
+      }
+
+      /* Enhanced hover effects for highlights */
+      mark[data-url-notes-highlight]:hover {
+        background: #ffeb3bcc;
+        box-shadow: 0 0 0 3px rgba(255,235,59,0.5);
+        transform: translateZ(0) scale(1.02);
+      }
+
+      /* Active state for highlights */
+      mark[data-url-notes-highlight]:active {
+        transform: translateZ(0) scale(0.98);
+      }
+
+      /* GPU optimization for highlight removal animation */
+      mark[data-url-notes-highlight].removing {
+        will-change: transform, opacity;
+        animation: highlight-remove 0.3s ease-out forwards;
+      }
+
+      @keyframes highlight-remove {
+        0% {
+          transform: translateZ(0) scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: translateZ(0) scale(1.1);
+          opacity: 0.5;
+        }
+        100% {
+          transform: translateZ(0) scale(0.8);
+          opacity: 0;
+        }
+      }
+
+      /* Mobile touch optimization */
+      @media (hover: none) and (pointer: coarse) {
+        mark[data-url-notes-highlight] {
+          padding: 2px 4px;
+          min-height: 44px;
+          display: inline-block;
+          -webkit-overflow-scrolling: touch;
+          touch-action: manipulation;
+        }
+      }
+
+      /* Reduce motion for accessibility */
+      @media (prefers-reduced-motion: reduce) {
+        mark[data-url-notes-highlight],
+        mark[data-url-notes-highlight]:hover {
+          animation: none !important;
+          transition: none !important;
+          transform: none !important;
+        }
       }
     `;
     document.documentElement.appendChild(style);

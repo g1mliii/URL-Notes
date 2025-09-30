@@ -862,10 +862,19 @@ body {
   cursor: pointer;
   outline: none;
   transition: border-color 0.2s ease;
+  /* GPU acceleration for smooth dropdown interactions */
+  will-change: border-color, background-color;
+  transform: translateZ(0);
 }
 
 .domain-select:focus {
   border-color: var(--accent-color);
+}
+
+.domain-select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  padding: 8px 12px;
 }
 
 .domain-info {
@@ -1077,8 +1086,8 @@ body {
 .toast {
   position: fixed;
   left: 50%;
-  top: 16px;
-  transform: translate(-50%, -20px);
+  bottom: 16px;
+  transform: translate(-50%, 20px);
   z-index: 10001;
   max-width: calc(100% - 32px);
   min-width: 220px;
@@ -1126,20 +1135,20 @@ body {
   opacity: 1;
   transform: translate(-50%, 0);
   pointer-events: auto;
-  animation: toast-slide-in 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  animation: toast-slide-up 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 /* Premium slide-in animation for sync notifications */
-@keyframes toast-slide-in {
+@keyframes toast-slide-up {
   0% {
     opacity: 0;
-    transform: translate(-50%, -30px) scale(0.95);
+    transform: translate(-50%, 30px) scale(0.95);
     filter: blur(2px);
   }
 
   60% {
     opacity: 0.8;
-    transform: translate(-50%, 2px) scale(1.02);
+    transform: translate(-50%, -2px) scale(1.02);
     filter: blur(0px);
   }
 
@@ -1727,6 +1736,11 @@ html[data-compact="1"] .domain-notes-list {
   /* prevent inner abs elements from poking past rounding */
   z-index: 1;
   /* Ensure glass outline is above */
+  /* GPU acceleration for smooth note item interactions - optimize INP */
+  will-change: background-color, border-color;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style;
 }
 
 /* Use lighter element background for cards */
@@ -2400,12 +2414,17 @@ html[data-view="site"] .note-item:hover::after {
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(8px);
-  z-index: 10000;
-  /* Higher than settings panel (5000) and ad container (1000) */
+  /* Ensure AI rewrite dialog is above note editor (9999) */
+  z-index: 2147483646;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  /* GPU acceleration for smooth AI rewrite dialog */
+  will-change: opacity, backdrop-filter;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style paint;
 }
 
 .ai-rewrite-dialog .dialog-header {
@@ -2440,6 +2459,79 @@ html[data-view="site"] .note-item:hover::after {
 }
 
 .ai-rewrite-dialog .dialog-content {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 500px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  /* Ensure dialog content has proper stacking */
+  position: relative;
+  z-index: 2147483647;
+  /* Force new stacking context */
+  isolation: isolate;
+  /* GPU acceleration for smooth dialog content */
+  will-change: contents;
+  transform: translateZ(0);
+  contain: layout style paint;
+}
+
+/* Ad Disclosure Dialog - Separate from AI Rewrite Dialog */
+.ad-disclosure-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  /* GPU acceleration for smooth ad disclosure dialog */
+  will-change: opacity, backdrop-filter;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style paint;
+}
+
+.ad-disclosure-dialog .dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ad-disclosure-dialog .dialog-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.ad-disclosure-dialog .close-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.ad-disclosure-dialog .close-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.ad-disclosure-dialog .dialog-content {
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 12px;
@@ -2702,7 +2794,32 @@ html[data-view="site"] .note-item:hover::after {
 .ai-dropdown-container {
   position: relative;
   display: inline-block;
-  z-index: 99999;
+  /* Ensure dropdown container has highest z-index in extension */
+  z-index: 2147483646;
+  /* GPU acceleration for smooth dropdown interactions */
+  will-change: contents;
+  transform: translateZ(0);
+  contain: layout style;
+}
+
+/* Special handling for AI dropdown in editor header */
+.editor-header .ai-dropdown-container {
+  /* Override any stacking context issues from editor header */
+  z-index: 2147483647;
+  /* Force new stacking context above editor */
+  isolation: isolate;
+  position: relative;
+}
+
+.editor-header .ai-dropdown-menu {
+  /* Ensure editor AI dropdown is above everything */
+  z-index: 2147483647 !important;
+  /* Override positioning to prevent off-screen issues */
+  right: 10px !important;
+  left: auto !important;
+  width: 220px !important;
+  /* Position relative to the editor header container */
+  top: 100% !important;
 }
 
 .ai-dropdown-trigger {
@@ -2743,22 +2860,35 @@ html[data-view="site"] .note-item:hover::after {
   -webkit-backdrop-filter: blur(20px);
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-8px);
+  transform: translateY(-8px) translateZ(0);
   transition: all 0.2s ease;
-  z-index: 99999999;
+  /* Maximum z-index to ensure it's above everything */
+  z-index: 2147483647;
   margin-top: 8px;
   pointer-events: auto;
-  /* GPU acceleration for smooth AI dropdown animations */
-  will-change: transform, opacity;
+  /* Force new stacking context */
+  isolation: isolate;
+  /* GPU acceleration for smooth dropdown animation */
+  will-change: transform, opacity, visibility;
   backface-visibility: hidden;
-  contain: layout style paint;
+
+  /* Positioning: Manual positioning for extension popup */
+  top: 100%;
+  /* Position dropdown with margin from right edge to prevent cutoff */
+  right: 10px;
+  /* Fixed width that fits comfortably in 400px extension */
+  width: 220px;
 }
 
 .ai-dropdown-menu.show {
   opacity: 1 !important;
   visibility: visible !important;
   transform: translateY(0) translateZ(0) !important;
+  /* Ensure shown dropdown is at the very top */
+  z-index: 2147483647 !important;
 }
+
+/* No media queries needed - fixed positioning for extension */
 
 /* AI Summary Modal Styles */
 .ai-summary-modal {
@@ -2892,6 +3022,10 @@ html[data-view="site"] .note-item:hover::after {
   -moz-appearance: none;
   appearance: none;
   cursor: pointer;
+  /* GPU acceleration for smooth dropdown interactions */
+  will-change: border-color, background-color;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .summary-domain-select:focus {
@@ -2901,8 +3035,8 @@ html[data-view="site"] .note-item:hover::after {
 }
 
 .summary-domain-select option {
-  background: var(--glass-bg);
-  color: white;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
   padding: 8px 12px;
 }
 
@@ -3049,6 +3183,13 @@ html[data-view="site"] .note-item:hover::after {
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: center;
+  /* Ensure style options are properly layered */
+  position: relative;
+  z-index: 1;
+  /* GPU acceleration for smooth style option interactions */
+  will-change: transform, background-color, border-color;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .style-option:hover {
@@ -3330,6 +3471,7 @@ html[data-view="site"] .note-item:hover::after {
 
 body:has(.ad-container.show) .notes-container {
   /* margin-bottom: 70px; - removed as requested */
+  margin-bottom: 0;
 }
 
 /* Responsive ad styles */

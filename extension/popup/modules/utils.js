@@ -78,8 +78,8 @@ class Utils {
     // Show toast with smooth animation
     toast.classList.add('show');
 
-    // Auto-hide after 4 seconds for sync notifications (longer to read)
-    const hideDelay = message.toLowerCase().includes('sync') ? 4000 : 3000;
+    // Auto-hide after shorter duration to avoid blocking UI
+    const hideDelay = message.toLowerCase().includes('sync') ? 2500 : 2000;
     setTimeout(() => {
       toast.classList.remove('show');
     }, hideDelay);

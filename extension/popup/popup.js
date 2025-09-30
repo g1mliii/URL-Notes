@@ -1639,12 +1639,11 @@ class URLNotesApp {
     const importNotesBtn = document.getElementById('importNotesBtn');
     const importNotesInput = document.getElementById('importNotesInput');
     const fontSelector = document.getElementById('fontSelector');
-    const fontSizeSlider = document.getElementById('fontSizeSlider');
+    const fontSizeSelect = document.getElementById('fontSizeSelect');
     const fontSizeValue = document.getElementById('fontSizeValue');
     const fontPreviewText = document.getElementById('fontPreviewText');
 
     const updateFontPreview = (fontName, sizePx) => {
-      if (fontSizeValue) fontSizeValue.textContent = `${sizePx}px`;
       if (fontPreviewText) {
         const previewFontFamily = (fontName === 'Default' || fontName === 'System')
           ? '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
@@ -1658,7 +1657,7 @@ class URLNotesApp {
     // Keep this binding here so it's wired once
     settingsBackBtn.addEventListener('click', () => {
       const fontName = fontSelector.value;
-      const size = fontSizeSlider.value;
+      const size = fontSizeSelect.value;
       this.applyFont(fontName, size);
       this.closeSettings();
     });
@@ -1666,20 +1665,18 @@ class URLNotesApp {
     // Font controls
     fontSelector.addEventListener('change', (e) => {
       const fontName = e.target.value;
-      const size = fontSizeSlider.value;
+      const size = fontSizeSelect.value;
       // Do not apply to editor while settings is open; preview only
       updateFontPreview(fontName, size);
       chrome.storage.local.set({ editorFont: fontName });
     });
 
-    fontSizeSlider.addEventListener('input', (e) => {
+    fontSizeSelect.addEventListener('change', (e) => {
       let size = parseInt(e.target.value, 10);
       if (Number.isNaN(size)) size = 12;
       // Clamp to [8, 18]
       size = Math.max(8, Math.min(18, size));
       const fontName = fontSelector.value;
-      // Keep the slider visually clamped
-      fontSizeSlider.value = String(size);
       // Do not apply to editor while settings is open; preview only
       updateFontPreview(fontName, size);
       chrome.storage.local.set({ editorFontSize: String(size) });
@@ -1694,10 +1691,10 @@ class URLNotesApp {
         chrome.storage.local.set({ editorFont: 'Default' });
       }
       // Determine size with default 12 and clamp within [8, 18]
-      let sizeToUse = parseInt(editorFontSize || fontSizeSlider.value || '12', 10);
+      let sizeToUse = parseInt(editorFontSize || fontSizeSelect.value || '12', 10);
       if (Number.isNaN(sizeToUse)) sizeToUse = 12;
       sizeToUse = Math.max(8, Math.min(18, sizeToUse));
-      fontSizeSlider.value = String(sizeToUse);
+      fontSizeSelect.value = String(sizeToUse);
       this.applyFont(fontSelector.value, sizeToUse);
       updateFontPreview(fontSelector.value, sizeToUse);
     });
