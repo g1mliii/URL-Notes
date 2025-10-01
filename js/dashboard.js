@@ -54,7 +54,6 @@ class Dashboard {
     // The actual initialization happens in populateNoteEditForm
     if (window.RichTextEditor) {
       // Rich text editor class is available
-      console.log('Rich text editor available');
     } else {
       console.warn('Rich text editor not available');
     }
@@ -261,7 +260,7 @@ class Dashboard {
       // Skip if value hasn't changed (prevents unnecessary processing)
       if (value === lastSearchValue) return;
       lastSearchValue = value;
-      
+
       clearTimeout(searchTimeout);
       searchTimeout = setTimeout(() => {
         // Use requestIdleCallback for non-critical search operations
@@ -285,7 +284,7 @@ class Dashboard {
         input.addEventListener('input', (e) => {
           debouncedSearch(e.target.value);
         }, { passive: true });
-        
+
         // Add immediate visual feedback
         input.addEventListener('focus', () => {
           input.style.transform = 'translateZ(0)'; // Force GPU acceleration
@@ -792,7 +791,7 @@ class Dashboard {
     // This prevents formatting markers from being processed inside link text
     const linkMap = new Map();
     let linkCounter = 0;
-    
+
     // Extract links and replace with placeholders
     processedContent = processedContent.replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, (match, linkText, url) => {
       const placeholder = `__LINK_${linkCounter}__`;
@@ -997,25 +996,25 @@ class Dashboard {
 
     const batchSize = 20;
     const remainingNotes = this.filteredNotes.slice(startIndex);
-    
+
     const loadBatch = (batchStart) => {
       if (batchStart >= remainingNotes.length) return;
-      
+
       // Use requestIdleCallback for non-critical rendering
       if (window.requestIdleCallback) {
         requestIdleCallback(() => {
           const batch = remainingNotes.slice(batchStart, batchStart + batchSize);
           const fragment = document.createDocumentFragment();
-          
+
           batch.forEach(note => {
             const noteCard = this.createNoteCard(note);
             noteCard.style.transform = 'translateZ(0)';
             noteCard.style.willChange = 'transform, opacity';
             fragment.appendChild(noteCard);
           });
-          
+
           notesGrid.appendChild(fragment);
-          
+
           // Load next batch
           loadBatch(batchStart + batchSize);
         }, { timeout: 1000 });
@@ -1024,22 +1023,22 @@ class Dashboard {
         setTimeout(() => {
           const batch = remainingNotes.slice(batchStart, batchStart + batchSize);
           const fragment = document.createDocumentFragment();
-          
+
           batch.forEach(note => {
             const noteCard = this.createNoteCard(note);
             noteCard.style.transform = 'translateZ(0)';
             noteCard.style.willChange = 'transform, opacity';
             fragment.appendChild(noteCard);
           });
-          
+
           notesGrid.appendChild(fragment);
-          
+
           // Load next batch
           loadBatch(batchStart + batchSize);
         }, 16); // ~60fps
       }
     };
-    
+
     loadBatch(0);
   }
 
@@ -2631,7 +2630,6 @@ class Dashboard {
       try {
         if (window.RichTextEditor) {
           this.richTextEditor = new window.RichTextEditor(contentInput, toolbar);
-          console.log('Rich text editor initialized successfully');
         } else {
           console.warn('RichTextEditor class not available');
         }
