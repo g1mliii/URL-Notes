@@ -1036,6 +1036,46 @@
     outline: 2px solid var(--accent-primary);
     outline-offset: 2px;
   }
+
+  /* Mobile Performance Optimizations */
+  .note-card,
+  .note-card-preview {
+    /* Optimize for touch interactions */
+    touch-action: manipulation;
+    /* Reduce paint complexity */
+    will-change: transform;
+    /* Hardware acceleration */
+    transform: translateZ(0);
+    /* Reduce reflow/repaint */
+    contain: layout style paint;
+  }
+
+  /* Optimize button interactions for mobile */
+  .btn-icon,
+  .icon-btn,
+  #editNoteBtn {
+    /* Faster touch response */
+    touch-action: manipulation;
+    /* Prevent double-tap zoom */
+    user-select: none;
+    -webkit-user-select: none;
+    /* Hardware acceleration */
+    transform: translateZ(0);
+    /* Reduce layout thrashing */
+    contain: layout style;
+  }
+
+  /* Optimize note grid for mobile scrolling */
+  .notes-grid {
+    /* Smooth scrolling */
+    -webkit-overflow-scrolling: touch;
+    /* Reduce paint complexity */
+    will-change: scroll-position;
+    /* Hardware acceleration */
+    transform: translateZ(0);
+    /* Optimize for scrolling */
+    contain: layout style paint;
+  }
 }
 
 /* High DPI Displays */

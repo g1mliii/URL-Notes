@@ -207,55 +207,92 @@ class EditorManager {
 
       let text = content || '';
 
-      // Convert formatting markers to HTML (process outermost first to handle nesting)
-      // Bold: **text** -> <b>text</b> (process first - outermost)
-      text = text.replace(/\*\*([^*]*(?:\*(?!\*)[^*]*)*)\*\*/g, '<b>$1</b>');
-
-      // Italics: *text* -> <i>text</i> (avoid conflict with bold)
-      text = text.replace(/\*([^*]+)\*/g, '<i>$1</i>');
-
-      // Underline: __text__ -> <u>text</u>
-      text = text.replace(/__([^_]*(?:_(?!_)[^_]*)*?)__/g, '<u>$1</u>');
-
-      // Strikethrough: ~~text~~ -> <s>text</s> (process last - innermost)
-      text = text.replace(/~~([^~]*(?:~(?!~)[^~]*)*?)~~/g, '<s>$1</s>');
-
-      // Color: {color:#ff0000}text{/color} -> <span style="color:#ff0000">text</span>
-      // Sanitize color values to prevent XSS
-      text = text.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, (match, color, content) => {
-        const safeColor = this.sanitizeColor(color);
-        if (safeColor) {
-          return `<span style="color:${safeColor}">${content}</span>`;
-        }
-        return content; // If color is unsafe, just return the content without styling
-      });
-
-      // Citation: {citation}text{/citation} -> <span style="font-style: italic; color: var(--text-secondary)">text</span>
-      text = text.replace(/\{citation\}([^{]*)\{\/citation\}/g, '<span style="font-style: italic; color: var(--text-secondary)">$1</span>');
-
+      // Process line by line to handle links with formatting properly
       const lines = text.split(/\r?\n/);
       const mdLink = /\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g;
+      
       const htmlLines = lines.map(line => {
-        let out = '';
-        let lastIndex = 0;
-        let match;
-        while ((match = mdLink.exec(line)) !== null) {
-          // Don't escape the part that might contain our HTML tags
-          const beforeLink = line.slice(lastIndex, match.index);
-          out += this.escapeHtmlExceptTags(beforeLink);
-          const linkText = escapeHtml(match[1]);
-          const href = this.sanitizeUrl(match[2]); // Sanitize URL for XSS protection
+        let processedLine = line;
+        
+        // First, extract and process links to handle formatting within link text
+        const linkReplacements = [];
+        let linkMatch;
+        mdLink.lastIndex = 0; // Reset regex
+        
+        while ((linkMatch = mdLink.exec(line)) !== null) {
+          const linkText = linkMatch[1];
+          const url = linkMatch[2];
+          const href = this.sanitizeUrl(url);
+          
           if (href) {
-            out += `<a href="${href}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
+            // Process formatting within link text
+            let formattedLinkText = linkText;
+            
+            // Apply formatting to link text (same order as below)
+            formattedLinkText = formattedLinkText.replace(/\*\*([^*]*(?:\*(?!\*)[^*]*)*)\*\*/g, '<b>$1</b>');
+            formattedLinkText = formattedLinkText.replace(/\*([^*]+)\*/g, '<i>$1</i>');
+            formattedLinkText = formattedLinkText.replace(/__([^_]*(?:_(?!_)[^_]*)*?)__/g, '<u>$1</u>');
+            formattedLinkText = formattedLinkText.replace(/~~([^~]*(?:~(?!~)[^~]*)*?)~~/g, '<s>$1</s>');
+            
+            // Handle color formatting in link text
+            formattedLinkText = formattedLinkText.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, (match, color, content) => {
+              const safeColor = this.sanitizeColor(color);
+              if (safeColor) {
+                return `<span style="color:${safeColor}">${content}</span>`;
+              }
+              return content;
+            });
+            
+            // Handle citation formatting in link text
+            formattedLinkText = formattedLinkText.replace(/\{citation\}([^{]*)\{\/citation\}/g, '<span style="font-style: italic; color: var(--text-secondary)">$1</span>');
+            
+            const placeholder = `__LINK_PLACEHOLDER_${linkReplacements.length}__`;
+            linkReplacements.push({
+              placeholder,
+              replacement: `<a href="${href}" target="_blank" rel="noopener noreferrer">${formattedLinkText}</a>`
+            });
+            
+            processedLine = processedLine.replace(linkMatch[0], placeholder);
           } else {
-            out += linkText; // If URL is unsafe, just show the text
+            // If URL is unsafe, just show the text
+            processedLine = processedLine.replace(linkMatch[0], escapeHtml(linkText));
           }
-          lastIndex = mdLink.lastIndex;
         }
-        const afterLink = line.slice(lastIndex);
-        out += this.escapeHtmlExceptTags(afterLink);
-        return out;
+        
+        // Now apply formatting to the rest of the line (outside of links)
+        // Bold: **text** -> <b>text</b> (process first - outermost)
+        processedLine = processedLine.replace(/\*\*([^*]*(?:\*(?!\*)[^*]*)*)\*\*/g, '<b>$1</b>');
+
+        // Italics: *text* -> <i>text</i> (avoid conflict with bold)
+        processedLine = processedLine.replace(/\*([^*]+)\*/g, '<i>$1</i>');
+
+        // Underline: __text__ -> <u>text</u>
+        processedLine = processedLine.replace(/__([^_]*(?:_(?!_)[^_]*)*?)__/g, '<u>$1</u>');
+
+        // Strikethrough: ~~text~~ -> <s>text</s> (process last - innermost)
+        processedLine = processedLine.replace(/~~([^~]*(?:~(?!~)[^~]*)*?)~~/g, '<s>$1</s>');
+
+        // Color: {color:#ff0000}text{/color} -> <span style="color:#ff0000">text</span>
+        processedLine = processedLine.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, (match, color, content) => {
+          const safeColor = this.sanitizeColor(color);
+          if (safeColor) {
+            return `<span style="color:${safeColor}">${content}</span>`;
+          }
+          return content;
+        });
+
+        // Citation: {citation}text{/citation} -> <span style="font-style: italic; color: var(--text-secondary)">text</span>
+        processedLine = processedLine.replace(/\{citation\}([^{]*)\{\/citation\}/g, '<span style="font-style: italic; color: var(--text-secondary)">$1</span>');
+        
+        // Restore processed links
+        linkReplacements.forEach(({ placeholder, replacement }) => {
+          processedLine = processedLine.replace(placeholder, replacement);
+        });
+        
+        // Escape any remaining HTML in non-link, non-formatted content
+        return this.escapeHtmlExceptTags(processedLine);
       });
+      
       return htmlLines.join('<br>');
     } catch (e) {
       return (content || '').replace(/\n/g, '<br>');

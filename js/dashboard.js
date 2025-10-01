@@ -254,23 +254,41 @@ class Dashboard {
   setupOptimizedSearch() {
     const searchInputs = ['mainSearchInput', 'searchInput'];
     let searchTimeout;
+    let lastSearchValue = '';
 
-    // Single debounced handler for all search inputs
+    // Single debounced handler for all search inputs with value caching
     const debouncedSearch = (value) => {
+      // Skip if value hasn't changed (prevents unnecessary processing)
+      if (value === lastSearchValue) return;
+      lastSearchValue = value;
+      
       clearTimeout(searchTimeout);
       searchTimeout = setTimeout(() => {
-        // Use requestAnimationFrame for smooth UI updates
-        requestAnimationFrame(() => {
-          this.handleSearch(value);
-        });
-      }, 150); // Reduced debounce time for better responsiveness
+        // Use requestIdleCallback for non-critical search operations
+        if (window.requestIdleCallback) {
+          requestIdleCallback(() => {
+            this.handleSearch(value);
+          }, { timeout: 100 });
+        } else {
+          // Fallback to requestAnimationFrame for smooth UI updates
+          requestAnimationFrame(() => {
+            this.handleSearch(value);
+          });
+        }
+      }, 100); // Reduced debounce time for better responsiveness
     };
 
     searchInputs.forEach(inputId => {
       const input = document.getElementById(inputId);
       if (input) {
+        // Use passive listeners for better scroll performance
         input.addEventListener('input', (e) => {
           debouncedSearch(e.target.value);
+        }, { passive: true });
+        
+        // Add immediate visual feedback
+        input.addEventListener('focus', () => {
+          input.style.transform = 'translateZ(0)'; // Force GPU acceleration
         }, { passive: true });
       }
     });
@@ -770,7 +788,20 @@ class Dashboard {
     // First convert all extension formatting to HTML (same logic as in rich text editor)
     let processedContent = content;
 
-    // Convert formatting markers to HTML (process in order to avoid conflicts)
+    // Process markdown links FIRST to extract link text before applying formatting
+    // This prevents formatting markers from being processed inside link text
+    const linkMap = new Map();
+    let linkCounter = 0;
+    
+    // Extract links and replace with placeholders
+    processedContent = processedContent.replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, (match, linkText, url) => {
+      const placeholder = `__LINK_${linkCounter}__`;
+      linkMap.set(placeholder, linkText);
+      linkCounter++;
+      return placeholder;
+    });
+
+    // Now process formatting markers on the content without links
     // Bold: **text** -> <b>text</b> (process first - outermost)
     processedContent = processedContent.replace(/\*\*([^*]*(?:\*(?!\*)[^*]*)*)\*\*/g, '<b>$1</b>');
 
@@ -795,8 +826,10 @@ class Dashboard {
     // Citation: {citation}text{/citation} -> <span>text</span>
     processedContent = processedContent.replace(/\{citation\}([^{]*)\{\/citation\}/g, '$1');
 
-    // Convert markdown-style links: [text](url) -> text
-    processedContent = processedContent.replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '$1');
+    // Restore link text (now with any formatting applied to the link text)
+    linkMap.forEach((linkText, placeholder) => {
+      processedContent = processedContent.replace(placeholder, linkText);
+    });
 
     // Now strip all HTML tags to get clean plain text
     const plainText = processedContent.replace(/<[^>]*>/g, '').replace(/\n/g, ' ').trim();
@@ -924,25 +957,90 @@ class Dashboard {
       return;
     }
 
-    // Hide empty state and show notes grid
-    emptyState.classList.add('hidden');
-    notesGrid.classList.remove('hidden');
+    // Use requestAnimationFrame for smooth rendering
+    requestAnimationFrame(() => {
+      // Hide empty state and show notes grid
+      emptyState.classList.add('hidden');
+      notesGrid.classList.remove('hidden');
 
-    // Use DocumentFragment for efficient DOM manipulation
-    const fragment = document.createDocumentFragment();
+      // Use DocumentFragment for efficient DOM manipulation
+      const fragment = document.createDocumentFragment();
 
-    // Create note cards with individual event listeners (more reliable)
-    this.filteredNotes.forEach(note => {
-      const noteCard = this.createNoteCard(note);
-      fragment.appendChild(noteCard);
+      // Batch DOM operations and use virtual scrolling for large lists
+      const maxVisibleNotes = 50; // Limit initial render for performance
+      const notesToRender = this.filteredNotes.slice(0, maxVisibleNotes);
+
+      // Create note cards with individual event listeners (more reliable)
+      notesToRender.forEach(note => {
+        const noteCard = this.createNoteCard(note);
+        // Add GPU acceleration immediately
+        noteCard.style.transform = 'translateZ(0)';
+        noteCard.style.willChange = 'transform, opacity';
+        fragment.appendChild(noteCard);
+      });
+
+      // Single DOM update
+      notesGrid.innerHTML = '';
+      notesGrid.appendChild(fragment);
+
+      // Load remaining notes asynchronously if there are more
+      if (this.filteredNotes.length > maxVisibleNotes) {
+        this.loadRemainingNotes(maxVisibleNotes);
+      }
     });
+  }
 
-    // Single DOM update
-    notesGrid.innerHTML = '';
-    notesGrid.appendChild(fragment);
+  // Load remaining notes asynchronously for better performance
+  loadRemainingNotes(startIndex) {
+    const notesGrid = document.getElementById('notesGrid');
+    if (!notesGrid) return;
 
-    // Don't set up event delegation here - it causes issues
-    // Individual event listeners are more reliable for now
+    const batchSize = 20;
+    const remainingNotes = this.filteredNotes.slice(startIndex);
+    
+    const loadBatch = (batchStart) => {
+      if (batchStart >= remainingNotes.length) return;
+      
+      // Use requestIdleCallback for non-critical rendering
+      if (window.requestIdleCallback) {
+        requestIdleCallback(() => {
+          const batch = remainingNotes.slice(batchStart, batchStart + batchSize);
+          const fragment = document.createDocumentFragment();
+          
+          batch.forEach(note => {
+            const noteCard = this.createNoteCard(note);
+            noteCard.style.transform = 'translateZ(0)';
+            noteCard.style.willChange = 'transform, opacity';
+            fragment.appendChild(noteCard);
+          });
+          
+          notesGrid.appendChild(fragment);
+          
+          // Load next batch
+          loadBatch(batchStart + batchSize);
+        }, { timeout: 1000 });
+      } else {
+        // Fallback for browsers without requestIdleCallback
+        setTimeout(() => {
+          const batch = remainingNotes.slice(batchStart, batchStart + batchSize);
+          const fragment = document.createDocumentFragment();
+          
+          batch.forEach(note => {
+            const noteCard = this.createNoteCard(note);
+            noteCard.style.transform = 'translateZ(0)';
+            noteCard.style.willChange = 'transform, opacity';
+            fragment.appendChild(noteCard);
+          });
+          
+          notesGrid.appendChild(fragment);
+          
+          // Load next batch
+          loadBatch(batchStart + batchSize);
+        }, 16); // ~60fps
+      }
+    };
+    
+    loadBatch(0);
   }
 
 
@@ -951,6 +1049,11 @@ class Dashboard {
     const card = document.createElement('div');
     card.className = 'note-card';
     card.dataset.noteId = note.id;
+
+    // Add performance optimizations immediately
+    card.style.transform = 'translateZ(0)';
+    card.style.willChange = 'transform, opacity';
+    card.style.contain = 'layout style paint';
 
     const isSelected = this.selectedNotes.has(note.id);
     if (isSelected) {
@@ -966,6 +1069,9 @@ class Dashboard {
     checkbox.className = 'note-checkbox';
     checkbox.checked = isSelected;
     checkbox.setAttribute('data-note-id', note.id);
+    // Optimize checkbox for touch
+    checkbox.style.touchAction = 'manipulation';
+    checkbox.style.transform = 'translateZ(0)';
     selectionDiv.appendChild(checkbox);
 
     const contentDiv = document.createElement('div');
@@ -988,6 +1094,8 @@ class Dashboard {
     const previewDiv = document.createElement('div');
     previewDiv.className = 'note-card-preview';
     previewDiv.textContent = note.preview;
+    // Optimize preview for performance
+    previewDiv.style.contain = 'layout style';
 
     contentDiv.appendChild(headerDiv);
     contentDiv.appendChild(previewDiv);
@@ -1018,18 +1126,32 @@ class Dashboard {
     card.appendChild(selectionDiv);
     card.appendChild(contentDiv);
 
-    // Add checkbox event listener
+    // Use passive event listeners for better performance
     checkbox.addEventListener('change', (e) => {
       e.stopPropagation();
       this.toggleNoteSelection(note.id);
-    });
+    }, { passive: false }); // Need to prevent default for checkboxes
 
-    // Add click handler to open note editor (but not on checkbox)
+    // Optimize click handler for mobile performance
     card.addEventListener('click', (e) => {
       if (!e.target.matches('.note-checkbox')) {
-        this.showNoteEditor(note.id);
+        // Use requestAnimationFrame for smooth interaction
+        requestAnimationFrame(() => {
+          this.showNoteEditor(note.id);
+        });
       }
-    });
+    }, { passive: true });
+
+    // Add touch optimization for mobile
+    card.addEventListener('touchstart', () => {
+      // Immediate visual feedback
+      card.style.transform = 'translateZ(0) scale(0.98)';
+    }, { passive: true });
+
+    card.addEventListener('touchend', () => {
+      // Reset transform
+      card.style.transform = 'translateZ(0) scale(1)';
+    }, { passive: true });
 
     return card;
   }

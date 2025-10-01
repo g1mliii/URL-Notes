@@ -1,0 +1,337 @@
+/* Mobile Performance Optimizations */
+/* This file contains aggressive performance optimizations for mobile devices */
+
+/* Force hardware acceleration on all interactive elements */
+@media (max-width: 768px) {
+  
+  /* Critical Performance Base Rules */
+  * {
+    /* Remove 300ms click delay on mobile */
+    touch-action: manipulation;
+    /* Optimize box model calculations */
+    box-sizing: border-box;
+  }
+
+  /* GPU Acceleration for All Interactive Elements */
+  .note-card,
+  .note-card-preview,
+  .note-item,
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .btn-icon,
+  .icon-btn,
+  button,
+  input,
+  textarea,
+  select {
+    /* Force hardware acceleration like PC */
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-perspective: 1000px;
+    perspective: 1000px;
+    /* Optimize for interactions */
+    will-change: transform, opacity;
+    /* Reduce paint complexity */
+    contain: layout style paint;
+  }
+
+  /* Optimize Note Cards for Mobile Performance */
+  .note-card,
+  .note-card-preview,
+  .note-item {
+    /* Aggressive GPU acceleration */
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    /* Fast touch response */
+    touch-action: manipulation;
+    /* Prevent text selection lag */
+    -webkit-user-select: none;
+    user-select: none;
+    /* Optimize transitions for 60fps */
+    transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
+    /* Force compositing layer */
+    will-change: transform, opacity, box-shadow;
+    /* Optimize paint operations */
+    contain: strict;
+  }
+
+  /* Active State Optimizations */
+  .note-card:active,
+  .note-card-preview:active,
+  .note-item:active {
+    /* Immediate visual feedback */
+    transform: translate3d(0, 1px, 0) scale(0.98);
+    transition: none; /* Remove transition delay on active */
+  }
+
+  /* Button Performance Optimizations */
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .btn-icon,
+  .icon-btn,
+  button {
+    /* Force hardware acceleration */
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    /* Fast touch response */
+    touch-action: manipulation;
+    /* Prevent selection lag */
+    -webkit-user-select: none;
+    user-select: none;
+    /* Optimize for clicks */
+    will-change: transform, background-color;
+    contain: layout style;
+    /* Faster transitions */
+    transition: all 0.08s ease-out;
+  }
+
+  /* Button Active States */
+  .btn-primary:active,
+  .btn-secondary:active,
+  .btn-danger:active,
+  .btn-icon:active,
+  .icon-btn:active,
+  button:active {
+    /* Immediate visual feedback */
+    transform: translate3d(0, 1px, 0) scale(0.95);
+    transition: none;
+  }
+
+  /* Input Performance Optimizations */
+  input,
+  textarea,
+  select,
+  .search-input,
+  [contenteditable] {
+    /* Fast input response */
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    /* Optimize for typing */
+    will-change: contents;
+    contain: layout style;
+    /* Prevent zoom on focus */
+    font-size: 16px;
+    /* Fast text rendering */
+    text-rendering: optimizeSpeed;
+    -webkit-font-smoothing: subpixel-antialiased;
+  }
+
+  /* Scrolling Performance */
+  .notes-grid,
+  .notes-container,
+  .app-container,
+  .modal-content {
+    /* GPU acceleration for scrolling */
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    /* Smooth scrolling */
+    -webkit-overflow-scrolling: touch;
+    /* Optimize for scroll performance */
+    will-change: scroll-position, contents;
+    contain: layout style paint;
+    /* Reduce layout thrashing */
+    overflow-anchor: none;
+  }
+
+  /* Modal Performance */
+  .modal,
+  .note-panel,
+  .version-history-dialog {
+    /* GPU acceleration for modal animations */
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    /* Optimize for show/hide */
+    will-change: opacity, visibility, transform;
+    contain: layout style paint;
+  }
+
+  /* Text Rendering Optimizations */
+  .note-title,
+  .note-content,
+  .note-preview,
+  .note-card-title,
+  .note-card-preview {
+    /* Fast text rendering */
+    text-rendering: optimizeSpeed;
+    -webkit-font-smoothing: subpixel-antialiased;
+    /* Optimize text layout */
+    contain: layout style;
+  }
+
+  /* Reduce Glassmorphism Complexity on Mobile */
+  .glassmorphism,
+  .card,
+  .auth-form,
+  .modal-content,
+  .note-panel {
+    /* Simplify effects for performance */
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    /* Reduce shadow complexity */
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Animation Performance */
+  @keyframes mobileSlideIn {
+    from {
+      transform: translate3d(100%, 0, 0);
+      opacity: 0;
+    }
+    to {
+      transform: translate3d(0, 0, 0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes mobileFadeIn {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 10px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  /* Apply optimized animations */
+  .note-card.animate-in,
+  .note-item.animate-in {
+    animation: mobileFadeIn 0.15s ease-out forwards;
+  }
+
+  .note-panel.slide-in,
+  .modal.slide-in {
+    animation: mobileSlideIn 0.2s ease-out forwards;
+  }
+
+  /* Critical Rendering Path Optimizations */
+  .notes-grid {
+    /* Optimize for large lists */
+    contain: strict;
+    /* Force GPU layer */
+    will-change: contents, scroll-position;
+    /* Optimize paint */
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+  }
+
+  /* Reduce Paint Complexity */
+  .note-card::before,
+  .note-card::after,
+  .btn-primary::before,
+  .btn-primary::after {
+    /* Remove pseudo-elements that cause paint issues */
+    display: none;
+  }
+
+  /* Optimize for High Refresh Rate Displays */
+  @media (min-resolution: 120dpi) {
+    .note-card,
+    .btn-primary,
+    .btn-secondary {
+      /* Smoother animations on high refresh displays */
+      transition-duration: 0.06s;
+    }
+  }
+
+  /* Memory and CPU Optimizations */
+  .hidden {
+    /* Optimize hidden elements */
+    display: none !important;
+    /* Remove from paint tree */
+    visibility: hidden;
+    /* Remove from layout */
+    position: absolute;
+    left: -9999px;
+  }
+
+  /* Reduce Motion for Performance */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Force Hardware Acceleration on Specific Problem Elements */
+  #editNoteBtn,
+  .note-card-preview,
+  .open-page-btn,
+  .delete-note-btn,
+  .version-history-btn {
+    /* Aggressive GPU acceleration for problem elements */
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-perspective: 1000px;
+    perspective: 1000px;
+    /* Force compositing layer */
+    will-change: transform, opacity;
+    /* Optimize paint */
+    contain: strict;
+    /* Fast touch response */
+    touch-action: manipulation;
+  }
+
+  /* Optimize Event Handling */
+  .note-card,
+  .note-item,
+  button {
+    /* Prevent event bubbling issues */
+    pointer-events: auto;
+    /* Optimize touch events */
+    touch-action: manipulation;
+  }
+
+  /* Critical Performance for Extension Popup */
+  .popup-container,
+  .extension-popup {
+    /* Optimize popup rendering */
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    contain: strict;
+    will-change: contents;
+  }
+}
+
+/* Ultra-high performance mode for very slow devices */
+@media (max-width: 480px) and (max-resolution: 150dpi) {
+  /* Disable all animations on very slow devices */
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Simplify all effects */
+  .glassmorphism,
+  .card,
+  .modal-content {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  /* Force simple rendering */
+  .note-card,
+  .note-item {
+    border-radius: 4px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  }
+}
