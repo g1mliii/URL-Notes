@@ -1896,6 +1896,9 @@ Dashboard Specific Styles - Google Drive-like Layout */
   will-change: transform;
   transform: translateZ(0);
   contain: layout style;
+  /* Maintain glassmorphism effect */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .toolbar-group {
@@ -1928,6 +1931,13 @@ Dashboard Specific Styles - Google Drive-like Layout */
   will-change: transform, background-color;
   transform: translateZ(0);
   backface-visibility: hidden;
+  /* Enhanced touch target for mobile - invisible padding extends touch area */
+  -webkit-tap-highlight-color: transparent;
+  /* Prevent text selection on mobile */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .toolbar-btn:hover {
@@ -1965,25 +1975,50 @@ Dashboard Specific Styles - Google Drive-like Layout */
 
 /* Color palette removed for simplification - colors from imported notes still display */
 
-/* Mobile responsive toolbar */
+/* Mobile responsive toolbar - Enhanced for touch accessibility */
 @media (max-width: 768px) {
   .editor-toolbar {
-    padding: 0.5rem;
-    gap: 0.375rem;
+    padding: 0.75rem 0.5rem;
+    gap: 0.5rem;
+    /* Slightly increase toolbar height for better touch targets */
+    min-height: 60px;
   }
 
   .toolbar-btn {
-    width: 28px;
-    height: 28px;
+    /* Increase to Apple's recommended 44px minimum touch target */
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    /* Add more visual feedback for mobile */
+    transition: all 0.15s ease;
+  }
+
+  .toolbar-btn:hover,
+  .toolbar-btn:active {
+    /* Enhanced mobile feedback */
+    transform: scale(0.95) translateZ(0);
+    background: var(--bg-secondary);
+  }
+
+  .toolbar-btn.active {
+    /* Maintain active state styling */
+    transform: scale(1) translateZ(0);
   }
 
   .toolbar-btn svg {
-    width: 14px;
-    height: 14px;
+    /* Larger icons for better visibility */
+    width: 20px;
+    height: 20px;
+    stroke-width: 2;
   }
 
   .toolbar-separator {
-    height: 16px;
+    height: 24px;
+    margin: 0 0.125rem;
+  }
+
+  .toolbar-group {
+    gap: 0.375rem;
   }
 
   .color-palette {
@@ -1998,24 +2033,89 @@ Dashboard Specific Styles - Google Drive-like Layout */
   }
 }
 
-/* Very small mobile screens */
+/* Very small mobile screens - Maintain large touch targets */
 @media (max-width: 480px) {
   .editor-toolbar {
-    padding: 0.375rem;
-    gap: 0.25rem;
+    padding: 0.625rem 0.375rem;
+    gap: 0.375rem;
+    /* Ensure toolbar doesn't get too cramped */
+    min-height: 56px;
+    /* Allow wrapping if needed on very small screens */
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   .toolbar-btn {
-    width: 24px;
-    height: 24px;
+    /* Keep 44px minimum for accessibility */
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
   }
 
   .toolbar-btn svg {
-    width: 12px;
-    height: 12px;
+    /* Slightly smaller but still readable */
+    width: 18px;
+    height: 18px;
+    stroke-width: 2.2;
   }
 
-  /* Color option responsive styles removed */
+  .toolbar-separator {
+    /* Hide separators on very small screens to save space */
+    display: none;
+  }
+
+  .toolbar-group {
+    gap: 0.25rem;
+  }
+}
+
+/* Mobile-specific enhancements for better touch experience */
+@media (hover: none) and (pointer: coarse) {
+
+  /* Target touch devices specifically */
+  .toolbar-btn {
+    /* Add subtle visual feedback for touch */
+    transition: all 0.1s ease;
+  }
+
+  .toolbar-btn:active {
+    /* Immediate feedback on touch */
+    background: var(--bg-secondary);
+    transform: scale(0.92) translateZ(0);
+  }
+
+  .toolbar-btn.active:active {
+    /* Maintain active state even when pressed */
+    background: var(--accent-primary);
+    transform: scale(0.95) translateZ(0);
+  }
+
+  /* Increase touch area without changing visual size */
+  .toolbar-btn::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    /* Invisible but increases touch target by 8px on all sides */
+  }
+}
+
+/* Ensure toolbar remains performant on mobile */
+@media (max-width: 768px) {
+  .editor-toolbar {
+    /* Optimize for mobile performance */
+    contain: layout style paint;
+    /* Reduce repaints during scrolling */
+    position: relative;
+    z-index: 1;
+  }
+
+  .toolbar-btn {
+    /* Optimize button rendering */
+    contain: layout style;
+  }
 }
 
 .note-content-input {

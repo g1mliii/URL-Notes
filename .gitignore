@@ -74,12 +74,26 @@ _site/
 
 # Development and internal files (keep local, hide from public repo)
 .kiro/
+.serena/
+dev-tools/
 guide files/
-scripts/
-supabase/migrations/
-webhook-server/
 specs/
-marketing/
+supabase/migrations/
+
+# AI tool traces and development artifacts
+test-*.json
+test-*.html
+*-backup.json
+debug-*.js
+
+# Documentation that should be organized (move to /docs)
+DEVELOPMENT.md
+EXPORT_FORMATS_GUIDE.md
+GOOGLE_AUTH_SETUP.md
+GPU_ACCELERATION_PROJECT_SUMMARY.md
+IMPORT_SYNC_FIX_SUMMARY.md
+PERFORMANCE_OPTIMIZATIONS.md
+SECURITY_AUDIT_REPORT.md
 
 # Keep essential files visible in public repo:
 # - Core web app files (HTML, CSS, JS)

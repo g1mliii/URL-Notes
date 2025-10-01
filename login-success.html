@@ -43,10 +43,13 @@ title: Extension Login Success
     }
 
     @keyframes pulse {
-        0%, 100% {
+
+        0%,
+        100% {
             transform: scale(1);
             opacity: 1;
         }
+
         50% {
             transform: scale(1.05);
             opacity: 0.8;
@@ -96,76 +99,7 @@ title: Extension Login Success
         color: var(--text-secondary);
     }
 
-    .action-buttons {
-        display: flex;
-        gap: 1rem;
-        justify-content: center;
-        margin-top: 2rem;
-        flex-wrap: wrap;
-    }
 
-    .close-btn {
-        background: var(--accent-primary);
-        border: 1px solid var(--accent-primary);
-        color: var(--text-invert);
-        padding: 0.75rem 1.5rem;
-        border-radius: 10px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        font-size: 1rem;
-        text-decoration: none;
-        display: inline-block;
-    }
-
-    .close-btn:hover {
-        background: var(--accent-secondary);
-        border-color: var(--accent-secondary);
-        transform: translateY(-2px);
-    }
-
-    .back-btn {
-        background: transparent;
-        border: 1px solid var(--border-color);
-        color: var(--text-primary);
-        padding: 0.75rem 1.5rem;
-        border-radius: 10px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        font-size: 1rem;
-        text-decoration: none;
-        display: inline-block;
-    }
-
-    .back-btn:hover {
-        background: var(--bg-tertiary);
-        transform: translateY(-2px);
-    }
-
-    .auto-close {
-        font-size: 0.9rem;
-        color: var(--text-muted);
-        margin-top: 1.5rem;
-    }
-
-    .close-info {
-        font-size: 0.85rem;
-        color: var(--text-muted);
-        margin-top: 1rem;
-        font-style: italic;
-    }
-
-    .browser-warning {
-        margin-top: 1rem;
-        padding: 1rem;
-        background: rgba(255, 193, 7, 0.1);
-        border: 1px solid rgba(255, 193, 7, 0.3);
-        border-radius: 8px;
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-        display: none;
-    }
 
     @media (max-width: 768px) {
         .success-card {
@@ -176,23 +110,14 @@ title: Extension Login Success
         .success-title {
             font-size: 1.5rem;
         }
-
-        .action-buttons {
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .close-btn, .back-btn {
-            width: 100%;
-            max-width: 200px;
-        }
     }
 </style>
 
 <div class="success-container">
     <div class="success-card">
         <div class="success-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                stroke-linejoin="round">
                 <polyline points="20,6 9,17 4,12"></polyline>
             </svg>
         </div>
@@ -203,7 +128,8 @@ title: Extension Login Success
         <div class="instruction-card">
             <div class="instruction-text">
                 <svg class="extension-icon" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                    <path
+                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                 </svg>
                 Please open the Anchored extension
             </div>
@@ -212,111 +138,6 @@ title: Extension Login Success
             </div>
         </div>
 
-        <div class="action-buttons">
-            <button class="close-btn" onclick="attemptCloseTab()">Try to Close Tab</button>
-            <a href="/" class="back-btn">Back to Home</a>
-        </div>
 
-        <div class="close-info">
-            Note: Some browsers may prevent automatic tab closing for security reasons.
-        </div>
-
-        <div class="auto-close" id="auto-close-message">
-            This tab will attempt to close automatically in <span id="countdown">10</span> seconds
-        </div>
-
-        <div class="browser-warning" id="browser-warning">
-            ⚠️ Your browser prevented automatic tab closing. You can safely close this tab manually or use the "Back to Home" button.
-        </div>
     </div>
 </div>
-
-<script>
-    // Check if this is an extension OAuth callback
-    const isExtensionOAuth = window.location.hash && window.location.hash.includes('access_token');
-
-    if (isExtensionOAuth) {
-        console.log('Extension OAuth detected - showing static success page');
-    }
-
-    // Auto-close functionality with longer delay
-    let countdown = 10;
-    const countdownElement = document.getElementById('countdown');
-    const autoCloseMessage = document.getElementById('auto-close-message');
-    const browserWarning = document.getElementById('browser-warning');
-
-    const timer = setInterval(() => {
-        countdown--;
-        if (countdownElement) {
-            countdownElement.textContent = countdown;
-        }
-
-        if (countdown <= 0) {
-            clearInterval(timer);
-            attemptCloseTab();
-        }
-    }, 1000);
-
-    function attemptCloseTab() {
-        // Clear the timer first
-        clearInterval(timer);
-        
-        // Hide the auto-close message
-        if (autoCloseMessage) {
-            autoCloseMessage.style.display = 'none';
-        }
-
-        // Try multiple methods to close the tab
-        try {
-            // Method 1: Standard window.close()
-            window.close();
-            
-            // Method 2: If that doesn't work, try with a slight delay
-            setTimeout(() => {
-                if (!window.closed) {
-                    window.close();
-                }
-            }, 100);
-            
-            // Method 3: Try to navigate back if possible
-            setTimeout(() => {
-                if (!window.closed && window.history.length > 1) {
-                    window.history.back();
-                }
-            }, 500);
-            
-        } catch (error) {
-            console.log('Tab close blocked by browser - this is normal for security reasons');
-        }
-        
-        // Show warning if tab couldn't be closed
-        setTimeout(() => {
-            if (!window.closed && browserWarning) {
-                browserWarning.style.display = 'block';
-            }
-        }, 1000);
-    }
-
-    // Stop countdown if user interacts with the page
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.close-btn')) {
-            clearInterval(timer);
-            if (autoCloseMessage) {
-                autoCloseMessage.style.display = 'none';
-            }
-        }
-    });
-
-    document.addEventListener('keydown', () => {
-        clearInterval(timer);
-        if (autoCloseMessage) {
-            autoCloseMessage.style.display = 'none';
-        }
-    });
-
-    // Handle OAuth tokens in the URL hash
-    if (window.location.hash) {
-        console.log('OAuth callback detected:', window.location.hash);
-        // The extension will handle the token extraction
-    }
-</script>
