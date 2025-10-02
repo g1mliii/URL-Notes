@@ -843,14 +843,14 @@
     display: inline;
   }
 
-  /* Tablet header container adjustments */
+  /* Tablet header container adjustments - remove bubble styling */
   .nav-content {
-    background: rgba(255, 255, 255, 0.06);
-    border-radius: 18px;
+    background: none;
+    border-radius: 0;
     margin: 0 1rem;
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: none;
   }
 
   /* Show footer on tablet and larger */
