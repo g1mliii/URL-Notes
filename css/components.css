@@ -295,22 +295,12 @@
   color: var(--text-secondary);
   text-decoration: none;
   font-weight: 500;
-  transition: all 0.2s ease;
-  padding: 0.75rem 1rem;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 0.875rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
+  transition: color 0.2s ease;
+  padding: 0.5rem 0;
 }
 
 .nav-link:hover {
   color: var(--text-primary);
-  background: var(--bg-tertiary);
-  transform: translateY(-1px);
 }
 
 /* Buttons */
@@ -414,35 +404,26 @@
   transform: translateY(0);
 }
 
-/* Logout Button - Unified Design */
+/* Logout Button - Invisible Button Style (matches Account link) */
 .logout-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  padding: 0.5rem 0;
+  background: none;
+  color: var(--text-secondary);
+  border: none;
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease;
   text-decoration: none;
-  min-width: auto;
   white-space: nowrap;
-  /* GPU acceleration for smooth logout button interactions - INP optimization */
-  will-change: transform, background-color;
-  transform: translateZ(0);
-  backface-visibility: hidden;
 }
 
 .logout-btn:hover {
-  background: var(--error-color);
-  color: var(--text-invert);
-  border-color: var(--error-color);
-  transform: translateY(-1px) translateZ(0);
+  color: var(--text-primary);
 }
 
 .logout-btn svg {
@@ -459,7 +440,7 @@
 /* Hide logout text on mobile, show icon only */
 @media (max-width: 767px) {
   .logout-btn {
-    padding: 0.75rem;
+    padding: 0.5rem;
     min-width: 44px;
     min-height: 44px;
     gap: 0;
