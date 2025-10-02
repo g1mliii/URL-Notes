@@ -128,18 +128,7 @@
     white-space: nowrap;
   }
 
-  /* Specific styling for logout button on mobile */
-  .logout-btn {
-    padding: 0.5rem 0.75rem !important;
-    font-size: 0.8rem !important;
-    min-width: auto;
-    gap: 0.375rem;
-  }
 
-  .logout-btn svg {
-    width: 14px;
-    height: 14px;
-  }
 
   /* Very small mobile screens - further optimizations */
   @media (max-width: 480px) {
@@ -167,17 +156,19 @@
     }
 
     .logout-btn {
-      padding: 0.375rem 0.5rem !important;
+      padding: 0.375rem !important;
       font-size: 0.75rem !important;
+      min-width: 36px !important;
+      min-height: 36px !important;
     }
 
     .logout-btn .logout-text {
-      display: none;
+      display: none !important;
     }
 
     .logout-btn svg {
-      width: 12px;
-      height: 12px;
+      width: 14px !important;
+      height: 14px !important;
     }
   }
 
@@ -211,8 +202,19 @@
     }
 
     .logout-btn {
-      padding: 0.25rem 0.375rem !important;
+      padding: 0.25rem !important;
       font-size: 0.7rem !important;
+      min-width: 32px !important;
+      min-height: 32px !important;
+    }
+
+    .logout-btn .logout-text {
+      display: none !important;
+    }
+
+    .logout-btn svg {
+      width: 12px !important;
+      height: 12px !important;
     }
   }
 }
@@ -246,8 +248,19 @@
   }
 
   .logout-btn {
-    padding: 0.375rem 0.625rem !important;
+    padding: 0.375rem !important;
     font-size: 0.75rem !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+  }
+
+  .logout-btn .logout-text {
+    display: none !important;
+  }
+
+  .logout-btn svg {
+    width: 14px !important;
+    height: 14px !important;
   }
 }
 
@@ -282,12 +295,22 @@
   color: var(--text-secondary);
   text-decoration: none;
   font-weight: 500;
-  transition: color 0.2s ease;
-  padding: 0.5rem 0;
+  transition: all 0.2s ease;
+  padding: 0.75rem 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .nav-link:hover {
   color: var(--text-primary);
+  background: var(--bg-tertiary);
+  transform: translateY(-1px);
 }
 
 /* Buttons */
@@ -391,10 +414,11 @@
   transform: translateY(0);
 }
 
-/* Logout Button */
+/* Logout Button - Unified Design */
 .logout-btn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
   background: var(--bg-secondary);
@@ -406,6 +430,8 @@
   cursor: pointer;
   transition: all 0.2s ease;
   text-decoration: none;
+  min-width: auto;
+  white-space: nowrap;
   /* GPU acceleration for smooth logout button interactions - INP optimization */
   will-change: transform, background-color;
   transform: translateZ(0);
@@ -423,10 +449,37 @@
   width: 16px;
   height: 16px;
   transition: transform 0.2s ease;
+  flex-shrink: 0;
 }
 
 .logout-btn:hover svg {
   transform: translateX(2px);
+}
+
+/* Hide logout text on mobile, show icon only */
+@media (max-width: 767px) {
+  .logout-btn {
+    padding: 0.75rem;
+    min-width: 44px;
+    min-height: 44px;
+    gap: 0;
+  }
+  
+  .logout-btn .logout-text {
+    display: none;
+  }
+  
+  .logout-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* Show both icon and text on tablet and desktop */
+@media (min-width: 768px) {
+  .logout-btn .logout-text {
+    display: inline;
+  }
 }
 
 /* Form Elements */
@@ -3846,5 +3899,62 @@ select,
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+/* Sync 
+Subscription Section Styles */
+.sync-subscription-section {
+  text-align: center;
+}
+
+.sync-description {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-top: 0.75rem;
+  margin-bottom: 0;
+  line-height: 1.4;
+}
+
+.sync-data-source {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+/* Ensure sync subscription button is properly sized */
+#syncSubscriptionBtn {
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto;
+  display: block;
+  white-space: normal;
+  word-wrap: break-word;
+  text-align: center;
+  padding: 0.875rem 1rem;
+  min-height: 44px;
+}
+
+/* Mobile specific adjustments */
+@media (max-width: 767px) {
+  .sync-subscription-section {
+    margin-bottom: 2rem !important;
+  }
+  
+  #syncSubscriptionBtn {
+    max-width: none;
+    width: 100%;
+  }
+  
+  .sync-description {
+    font-size: 0.85rem;
+    text-align: left;
+  }
+}
+
+/* Tablet specific adjustments */
+@media (min-width: 768px) and (max-width: 1023px) {
+  #syncSubscriptionBtn {
+    max-width: 400px;
   }
 }

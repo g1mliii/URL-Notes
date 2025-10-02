@@ -640,7 +640,23 @@
     gap: 0.25rem;
   }
 
-  /* Mobile logout button styling - handled in components.css for consistency */
+  /* Mobile logout button - icon only for better space usage */
+  .logout-btn {
+    padding: 0.5rem !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    gap: 0 !important;
+    justify-content: center !important;
+  }
+
+  .logout-btn .logout-text {
+    display: none !important;
+  }
+
+  .logout-btn svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
 
   /* Show footer on mobile by default (main page) */
   .site-footer {
@@ -793,6 +809,8 @@
     /* Fix for tablet - prevents notes from being hidden behind header */
   }
 
+
+
   /* Fix dashboard header buttons on tablet */
   .header-right {
     gap: 0.875rem;
@@ -910,6 +928,8 @@
     padding: 1rem;
   }
 
+
+
   /* Force proper spacing between account sections on mobile */
   .account-section {
     margin-bottom: 2.5rem !important;
@@ -948,7 +968,20 @@
   }
 
   .subscription-actions button {
-    width: 100%;
+    width: 100% !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    min-height: 44px !important;
+  }
+
+  /* Ensure all buttons in account page are properly sized on mobile */
+  .account-container button {
+    width: 100% !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    text-align: center !important;
+    padding: 0.875rem 1rem !important;
+    min-height: 44px !important;
   }
 
   .data-actions {
