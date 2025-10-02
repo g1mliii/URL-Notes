@@ -827,7 +827,7 @@ class Dashboard {
 
     // Restore link text (now with any formatting applied to the link text)
     linkMap.forEach((linkText, placeholder) => {
-      processedContent = processedContent.replace(placeholder, linkText);
+      processedContent = processedContent.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), linkText);
     });
 
     // Now strip all HTML tags to get clean plain text

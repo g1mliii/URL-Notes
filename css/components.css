@@ -756,6 +756,7 @@
   align-items: center;
   padding: 0 1rem;
   /* Add padding for proper centering */
+  width: 100%;
 }
 
 .auth-form {
@@ -777,6 +778,12 @@
   transform: translateZ(0);
   backface-visibility: hidden;
   contain: layout style paint;
+}
+
+/* Ensure auth form buttons extend properly */
+.auth-form .btn-primary {
+  width: 100%;
+  justify-content: center;
 }
 
 .auth-form h3 {

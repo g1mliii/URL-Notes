@@ -390,7 +390,7 @@
   .auth-container {
     max-width: 100%;
     margin: 0 auto;
-    padding: 0 1rem;
+    padding: 0 2rem;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -401,7 +401,14 @@
     padding: 2rem;
     margin: 0 auto;
     width: 100%;
-    max-width: 380px;
+    max-width: 420px;
+  }
+
+  /* Fix sign in button extending properly on tablet */
+  .auth-form .btn-primary {
+    width: 100%;
+    padding: 0.875rem 1.5rem;
+    margin-top: 1.5rem;
   }
 
   /* Auth form specific spacing on tablet - force override */
@@ -418,10 +425,6 @@
   .dashboard-content .input-group,
   .modal .input-group {
     margin-bottom: 1.5rem;
-  }
-
-  .btn-primary {
-    margin-top: 1.5rem;
   }
 
   .features-section {
