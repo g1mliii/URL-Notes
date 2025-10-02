@@ -45,8 +45,14 @@ class SettingsManager {
     // Website link button
     this.websiteLinkBtn = document.getElementById('websiteLinkBtn');
 
+    // Export reminder elements
+    this.exportReminderBtn = document.getElementById('exportReminderBtn');
+
     this.currentFont = 'Default';
     this.currentFontSize = 12;
+
+    // Initialize backup reminder system
+    this.initBackupReminders();
 
     this.setupEventListeners();
   }
@@ -977,18 +983,18 @@ class SettingsManager {
 
       // Check for Anchored export identifier
       if (!importData._anchored) {
-        return { 
-          isValid: false, 
-          error: 'This file does not appear to be an Anchored notes export. Please ensure you are importing a file exported from Anchored.' 
+        return {
+          isValid: false,
+          error: 'This file does not appear to be an Anchored notes export. Please ensure you are importing a file exported from Anchored.'
         };
       }
 
       // Validate Anchored metadata
       const anchored = importData._anchored;
       if (!anchored.version || !anchored.format || anchored.format !== 'anchored-notes') {
-        return { 
-          isValid: false, 
-          error: 'Invalid Anchored export format. Please ensure you are importing a valid Anchored notes file.' 
+        return {
+          isValid: false,
+          error: 'Invalid Anchored export format. Please ensure you are importing a valid Anchored notes file.'
         };
       }
 
@@ -1034,9 +1040,9 @@ class SettingsManager {
         return { isValid: false, error: `Too many notes (${totalNotes}). Maximum is 10,000 notes per import.` };
       }
 
-      return { 
-        isValid: true, 
-        totalNotes, 
+      return {
+        isValid: true,
+        totalNotes,
         validDomains,
         version: anchored.version,
         source: anchored.source,
@@ -1090,13 +1096,13 @@ class SettingsManager {
       if (!Array.isArray(note.tags)) {
         return { isValid: false, error: `Invalid note at ${location}: tags must be an array` };
       }
-      
+
       // Validate each tag is a string
       for (let j = 0; j < note.tags.length; j++) {
         if (typeof note.tags[j] !== 'string') {
           return { isValid: false, error: `Invalid note at ${location}: tag[${j}] must be a string` };
         }
-        
+
         // Validate tag length and format
         if (note.tags[j].length === 0 || note.tags[j].length > 50) {
           return { isValid: false, error: `Invalid note at ${location}: tag[${j}] must be 1-50 characters` };
@@ -1117,7 +1123,7 @@ class SettingsManager {
         if (typeof note[field] !== 'string') {
           return { isValid: false, error: `Invalid note at ${location}: ${field} must be a string` };
         }
-        
+
         if (!this.isValidTimestamp(note[field])) {
           return { isValid: false, error: `Invalid note at ${location}: ${field} must be a valid ISO timestamp` };
         }
@@ -1145,7 +1151,7 @@ class SettingsManager {
   // Domain validation
   isValidDomain(domain) {
     if (!domain || typeof domain !== 'string') return false;
-    
+
     // Basic domain format validation
     const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
     return domainRegex.test(domain) && domain.length <= 253;
@@ -1154,7 +1160,7 @@ class SettingsManager {
   // URL validation
   isValidURL(url) {
     if (!url || typeof url !== 'string') return false;
-    
+
     try {
       const urlObj = new URL(url);
       return ['http:', 'https:'].includes(urlObj.protocol);
@@ -1166,12 +1172,12 @@ class SettingsManager {
   // ISO timestamp validation (flexible for different ISO formats)
   isValidTimestamp(timestamp) {
     if (!timestamp || typeof timestamp !== 'string') return false;
-    
+
     try {
       const date = new Date(timestamp);
       // Check if it's a valid date
       if (isNaN(date.getTime())) return false;
-      
+
       // Allow various ISO 8601 formats:
       // - 2024-01-16T16:00:00Z
       // - 2024-01-16T16:00:00.000Z  
@@ -1222,6 +1228,145 @@ class SettingsManager {
       content.style.fontFamily = fontFamily;
       content.style.fontSize = fontSize;
     });
+  }
+
+  // Initialize backup reminder system
+  async initBackupReminders() {
+    try {
+      // Check if user has notes and hasn't backed up recently
+      await this.checkBackupReminder();
+
+      // Set up periodic backup reminders (every 30 days)
+      chrome.alarms.create('backupReminder', {
+        delayInMinutes: 60 * 24 * 30, // 30 days
+        periodInMinutes: 60 * 24 * 30  // Repeat every 30 days
+      });
+
+      // Listen for backup reminder alarms
+      chrome.alarms.onAlarm.addListener((alarm) => {
+        if (alarm.name === 'backupReminder') {
+          this.showBackupReminder();
+        }
+      });
+    } catch (error) {
+      console.warn('Failed to initialize backup reminders:', error);
+    }
+  }
+
+  // Check if user needs a backup reminder
+  async checkBackupReminder() {
+    try {
+      // Only show backup reminders for FREE users
+      const premiumStatus = await getPremiumStatus();
+      if (premiumStatus.isPremium) {
+        return; // Premium users have cloud sync, no backup needed
+      }
+
+      const notes = await this.storageManager.getAllNotes();
+      const activeNotes = notes.filter(note => !note.is_deleted);
+
+      if (activeNotes.length === 0) return; // No notes to backup
+
+      // Check last backup date
+      const { lastBackupDate } = await chrome.storage.local.get(['lastBackupDate']);
+      const now = Date.now();
+      const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+
+      // Show reminder if never backed up or last backup was over 30 days ago
+      if (!lastBackupDate || lastBackupDate < thirtyDaysAgo) {
+        // Don't show immediately on first install, wait 7 days
+        const { installDate } = await chrome.storage.local.get(['installDate']);
+        const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
+
+        if (installDate && installDate < sevenDaysAgo) {
+          this.showBackupReminder();
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to check backup reminder:', error);
+    }
+  }
+
+  // Show backup reminder notification (FREE USERS ONLY)
+  async showBackupReminder() {
+    try {
+      // Double-check this is a free user
+      const premiumStatus = await getPremiumStatus();
+      if (premiumStatus.isPremium) {
+        return; // Premium users don't need backup reminders
+      }
+
+      const notes = await this.storageManager.getAllNotes();
+      const activeNotes = notes.filter(note => !note.is_deleted);
+
+      if (activeNotes.length === 0) return;
+
+      // Create notification for FREE users
+      chrome.notifications.create('backupReminder', {
+        type: 'basic',
+        iconUrl: '../assets/icons/icon128x128.png',
+        title: 'Backup Your Notes (Free User)',
+        message: `You have ${activeNotes.length} local notes. Export them to prevent data loss, or upgrade to Premium for automatic cloud sync!`,
+        buttons: [
+          { title: 'Open Extension Settings' },
+          { title: 'Get Premium' }
+        ]
+      });
+
+      // Handle notification clicks
+      chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
+        if (notificationId === 'backupReminder') {
+          if (buttonIndex === 0) {
+            // Open Extension Settings - open popup and navigate to settings
+            chrome.action.openPopup();
+            // Set flag to show settings panel with export highlighted
+            chrome.storage.local.set({
+              showSettingsOnOpen: true,
+              highlightExport: true
+            });
+          } else {
+            // Get Premium - open website
+            chrome.tabs.create({ url: 'https://anchored.site/?upgrade=true' });
+          }
+          chrome.notifications.clear(notificationId);
+        }
+      });
+
+    } catch (error) {
+      console.warn('Failed to show backup reminder:', error);
+    }
+  }
+
+  // Mark backup as completed (call this after successful export)
+  async markBackupCompleted() {
+    try {
+      await chrome.storage.local.set({
+        lastBackupDate: Date.now()
+      });
+    } catch (error) {
+      console.warn('Failed to mark backup completed:', error);
+    }
+  }
+
+  // Enhanced export function that marks backup as completed
+  async exportNotesWithBackupTracking() {
+    try {
+      // Call the existing export function
+      await this.exportNotes();
+
+      // Mark backup as completed
+      await this.markBackupCompleted();
+
+      // Show success message
+      if (window.showToast) {
+        window.showToast('Notes exported and backup recorded!', 'success');
+      }
+    } catch (error) {
+      console.error('Export with backup tracking failed:', error);
+      if (window.showToast) {
+        window.showToast('Export failed. Please try again.', 'error');
+      }
+    }
   }
 }
 
