@@ -101,71 +101,91 @@ class OnboardingTooltips {
 
         this.tooltipContainer = document.createElement('div');
         this.tooltipContainer.id = 'onboarding-tooltip-container';
-        
+
         // Create tooltip elements using DOM methods to avoid XSS issues
         const tooltip = document.createElement('div');
         tooltip.className = 'onboarding-tooltip';
         tooltip.id = 'onboarding-tooltip';
         tooltip.style.display = 'none';
-        
+
         const content = document.createElement('div');
         content.className = 'tooltip-content';
-        
+
         // Header
         const header = document.createElement('div');
         header.className = 'tooltip-header';
-        
+
         const title = document.createElement('h4');
         title.className = 'tooltip-title';
         title.id = 'tooltip-title';
-        
+
         const closeBtn = document.createElement('button');
         closeBtn.className = 'tooltip-close';
         closeBtn.id = 'tooltip-close';
         closeBtn.title = 'Skip onboarding';
-        closeBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>`;
-        
+        // Create SVG using DOM methods for XSS safety
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('width', '12');
+        svg.setAttribute('height', '12');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('stroke-width', '2');
+
+        const line1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line1.setAttribute('x1', '18');
+        line1.setAttribute('y1', '6');
+        line1.setAttribute('x2', '6');
+        line1.setAttribute('y2', '18');
+
+        const line2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line2.setAttribute('x1', '6');
+        line2.setAttribute('y1', '6');
+        line2.setAttribute('x2', '18');
+        line2.setAttribute('y2', '18');
+
+        svg.appendChild(line1);
+        svg.appendChild(line2);
+        closeBtn.appendChild(svg);
+
         header.appendChild(title);
         header.appendChild(closeBtn);
-        
+
         // Text
         const text = document.createElement('p');
         text.className = 'tooltip-text';
         text.id = 'tooltip-text';
-        
+
         // Actions
         const actions = document.createElement('div');
         actions.className = 'tooltip-actions';
-        
+
         const skipBtn = document.createElement('button');
         skipBtn.className = 'tooltip-btn tooltip-skip';
         skipBtn.id = 'tooltip-skip';
         skipBtn.textContent = 'Skip Tour';
-        
+
         const progress = document.createElement('div');
         progress.className = 'tooltip-progress';
         const progressText = document.createElement('span');
         progressText.id = 'tooltip-progress-text';
         progressText.textContent = `1 of ${this.tooltipConfigs.length}`;
         progress.appendChild(progressText);
-        
+
         const nextBtn = document.createElement('button');
         nextBtn.className = 'tooltip-btn tooltip-next';
         nextBtn.id = 'tooltip-next';
         nextBtn.textContent = 'Next';
-        
+
         actions.appendChild(skipBtn);
         actions.appendChild(progress);
         actions.appendChild(nextBtn);
-        
+
         // Arrow
         const arrow = document.createElement('div');
         arrow.className = 'tooltip-arrow';
         arrow.id = 'tooltip-arrow';
-        
+
         // Assemble
         content.appendChild(header);
         content.appendChild(text);
@@ -443,6 +463,89 @@ class OnboardingTooltips {
                 }
             }
         });
+
+        // Listen for panel navigation changes to hide tooltips
+        this.setupPanelNavigationListeners();
+    }
+
+    // Setup listeners for panel navigation to hide tooltips when switching views
+    setupPanelNavigationListeners() {
+        // Listen for settings panel opening
+        const settingsBtn = document.getElementById('settingsBtn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', () => {
+                if (this.isActive) {
+                    this.hideTooltipTemporarily();
+                }
+            });
+        }
+
+        // Listen for editor opening (note clicks)
+        document.addEventListener('click', (e) => {
+            // Check if clicking on a note item or add note button
+            if (this.isActive && (
+                e.target.closest('.note-item') ||
+                e.target.closest('#addNoteBtn') ||
+                e.target.closest('.add-note-btn')
+            )) {
+                this.hideTooltipTemporarily();
+            }
+        });
+
+        // Listen for back button clicks to potentially restore tooltips
+        const settingsBackBtn = document.getElementById('settingsBackBtn');
+        const editorBackBtn = document.getElementById('backBtn');
+
+        if (settingsBackBtn) {
+            settingsBackBtn.addEventListener('click', () => {
+                if (this.isActive) {
+                    // Small delay to let panel transition complete
+                    setTimeout(() => this.showTooltipIfActive(), 100);
+                }
+            });
+        }
+
+        if (editorBackBtn) {
+            editorBackBtn.addEventListener('click', () => {
+                if (this.isActive) {
+                    // Small delay to let panel transition complete
+                    setTimeout(() => this.showTooltipIfActive(), 100);
+                }
+            });
+        }
+    }
+
+    // Hide tooltip temporarily (but keep onboarding active)
+    hideTooltipTemporarily() {
+        const tooltip = document.getElementById('onboarding-tooltip');
+        if (tooltip) {
+            tooltip.style.display = 'none';
+        }
+
+        // Remove highlights
+        const highlighted = document.querySelector('.onboarding-highlight');
+        if (highlighted) {
+            highlighted.classList.remove('onboarding-highlight');
+        }
+    }
+
+    // Show tooltip again if onboarding is still active
+    showTooltipIfActive() {
+        if (this.isActive) {
+            // Check if we're back on the main notes view
+            const notesList = document.querySelector('.notes-container');
+            const settingsPanel = document.getElementById('settingsPanel');
+            const noteEditor = document.getElementById('noteEditor');
+
+            const isMainView = notesList &&
+                notesList.style.display !== 'none' &&
+                (!settingsPanel || settingsPanel.style.display === 'none') &&
+                (!noteEditor || noteEditor.style.display === 'none');
+
+            if (isMainView) {
+                this.showCurrentTooltip();
+            }
+        }
     }
 
     // Start the onboarding process

@@ -781,6 +781,16 @@ class URLNotesApp {
     } catch (error) {
       console.warn('Failed to initialize onboarding tooltips:', error);
     }
+
+    // Initialize user engagement system for account creation prompts
+    try {
+      if (window.UserEngagement) {
+        this.userEngagement = new window.UserEngagement();
+        await this.userEngagement.init();
+      }
+    } catch (error) {
+      console.warn('Failed to initialize user engagement:', error);
+    }
   }
 
   // NEW: Restore cached UI state immediately to prevent visual shifts
@@ -2922,6 +2932,11 @@ class URLNotesApp {
 
       // NO automatic sync - notes are saved locally only
       // Sync will happen on timer (every 5 minutes) or manual button press
+
+      // Check for user engagement opportunities after successful save
+      if (this.userEngagement) {
+        this.userEngagement.checkAndShowPrompt().catch(() => {});
+      }
 
     } catch (error) {
       console.error('Save failed:', error);

@@ -826,6 +826,8 @@ class SettingsManager {
     }
   }
 
+
+
   // Show notification helper
   showNotification(message, type = 'info') {
     try {
