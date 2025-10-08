@@ -1,7 +1,7 @@
 // URL Notes Extension - Content Script
 // This script runs on every webpage to detect page information
 
-(function() {
+(function () {
   'use strict';
 
   // Multi-highlight state
@@ -45,81 +45,72 @@
   // Listen for messages from popup
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     try {
-      console.log('Content script received message:', request.action);
-      
-    if (request.action === 'getPageInfo') {
+      if (request.action === 'getPageInfo') {
         const pageInfo = getCurrentPageInfo();
-        console.log('Sending page info:', pageInfo);
         sendResponse(pageInfo);
         return false; // No async response needed
       }
-      
+
       // Check if content script is ready
       if (request.action === 'ping') {
-        console.log('Ping received, responding with pong');
         sendResponse({ status: 'ready', timestamp: Date.now() });
         return false; // No async response needed
       }
-      
-    // Highlight requested text on the page
-    if (request.action === 'highlightText') {
-      const fragText = extractTextFragment(request.href || '');
-      const text = (fragText || request.text || '').trim();
-      if (text) scheduleHighlightAttempts(text);
-      // No response needed
-      return false;
-    }
-      
+
+      // Highlight requested text on the page
+      if (request.action === 'highlightText') {
+        const fragText = extractTextFragment(request.href || '');
+        const text = (fragText || request.text || '').trim();
+        if (text) {
+          scheduleHighlightAttempts(text);
+          sendResponse({ success: true, text: text });
+        } else {
+          sendResponse({ success: false, error: 'No text to highlight' });
+        }
+        return false;
+      }
+
       // Toggle multi-highlight mode
       if (request.action === 'toggleMultiHighlight') {
         try {
-          console.log('Toggling multi-highlight mode');
           toggleMultiHighlightMode();
           const response = { enabled: multiHighlightMode };
-          console.log('Sending toggle response:', response);
           sendResponse(response);
         } catch (error) {
-          console.error('Error toggling multi-highlight mode:', error);
           sendResponse({ enabled: false, error: error.message });
         }
         return true; // Keep message channel open for async response
       }
-      
+
       // Get current multi-highlight state
       if (request.action === 'getMultiHighlightState') {
         try {
-          const response = { 
-            enabled: multiHighlightMode, 
-            highlightCount: highlights.length 
+          const response = {
+            enabled: multiHighlightMode,
+            highlightCount: highlights.length
           };
-          console.log('Sending state response:', response);
           sendResponse(response);
         } catch (error) {
-          console.error('Error getting multi-highlight state:', error);
           sendResponse({ enabled: false, highlightCount: 0, error: error.message });
         }
         return false; // No async response needed
       }
-      
+
       // Extract page content for AI summarization
       if (request.action === 'extractPageContent') {
         try {
           const content = extractPageContent();
-          console.log('Extracted page content, length:', content.length);
           sendResponse({ success: true, content });
         } catch (error) {
-          console.error('Error extracting page content:', error);
           sendResponse({ success: false, error: error.message });
         }
         return true; // Keep message channel open for async response
       }
-      
+
       // Unknown action
-      console.warn('Unknown action:', request.action);
       sendResponse({ error: 'Unknown action' });
       return false;
     } catch (error) {
-      console.error('Error in message handler:', error);
       sendResponse({ error: error.message });
       return false;
     }
@@ -128,13 +119,13 @@
   // Toggle multi-highlight mode
   function toggleMultiHighlightMode() {
     multiHighlightMode = !multiHighlightMode;
-    
+
     if (multiHighlightMode) {
       enableMultiHighlightMode();
     } else {
       disableMultiHighlightMode();
     }
-    
+
     // Update extension badge
     updateExtensionBadge();
   }
@@ -144,17 +135,38 @@
     document.addEventListener('mousedown', handleMouseDown);
     document.addEventListener('mouseup', handleMouseUp);
     document.addEventListener('keydown', handleKeyDown);
-    
-    // Add visual indicator
+
+    // Add visual indicator with GPU acceleration
     document.body.style.cursor = 'crosshair';
+    document.body.classList.add('url-notes-multi-highlight-mode');
     
+    // Inject body GPU acceleration styles if not already present
+    if (!document.getElementById('url-notes-body-style')) {
+      const bodyStyle = document.createElement('style');
+      bodyStyle.id = 'url-notes-body-style';
+      bodyStyle.textContent = `
+        body.url-notes-multi-highlight-mode {
+          will-change: cursor;
+          cursor: crosshair !important;
+        }
+        
+        /* GPU optimization for selection interactions */
+        .url-notes-selection-feedback {
+          will-change: transform, opacity;
+          transform: translateZ(0);
+          backface-visibility: hidden;
+          transition: all 0.15s ease;
+          pointer-events: none;
+        }
+      `;
+      document.head.appendChild(bodyStyle);
+    }
+
     // Add visual overlay indicator
     addMultiHighlightIndicator();
-    
+
     // Show floating toolbar
     showHighlightToolbar();
-    
-    console.log('Multi-highlight mode enabled');
   }
 
   // Disable multi-highlight mode
@@ -162,23 +174,22 @@
     document.removeEventListener('mousedown', handleMouseDown);
     document.removeEventListener('mouseup', handleMouseUp);
     document.removeEventListener('keydown', handleKeyDown);
-    
-    // Remove visual indicator
+
+    // Remove visual indicator and GPU acceleration class
     document.body.style.cursor = '';
-    
+    document.body.classList.remove('url-notes-multi-highlight-mode');
+
     // Remove visual overlay indicator
     removeMultiHighlightIndicator();
-    
+
     // Hide floating toolbar
     hideHighlightToolbar();
-    
-    console.log('Multi-highlight mode disabled');
   }
 
   // Handle mouse down for text selection
   function handleMouseDown(e) {
     if (!multiHighlightMode || e.button !== 0) return; // Only left click
-    
+
     const selection = window.getSelection();
     if (selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
@@ -193,78 +204,74 @@
   // Handle mouse up for text selection
   function handleMouseUp(e) {
     if (!multiHighlightMode || !isSelecting) return;
-    
+
     isSelecting = false;
-    
+
     const selection = window.getSelection();
     if (selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
       const selectedText = selection.toString().trim();
-      
+
       if (selectedText && selectedText.length > 0) {
         // Validate range before proceeding
         try {
           // Check if range is valid and contains text nodes
           const contents = range.cloneContents();
           if (!contents.textContent || contents.textContent.trim().length === 0) {
-            console.warn('Range contains no text content');
             return;
           }
-          
+
           // Check if range boundaries are valid
           if (!range.startContainer || !range.endContainer) {
-            console.warn('Invalid range boundaries');
             return;
           }
-          
+
           // Allow cross-element selections but skip problematic elements
           // Only skip if selection includes script, style, or other non-content elements
           const rangeContainer = range.commonAncestorContainer;
           const skipTags = ['SCRIPT', 'STYLE', 'NOSCRIPT', 'IFRAME', 'OBJECT', 'EMBED'];
-          
+
           // Check if the range contains any problematic elements
           if (rangeContainer.nodeType === Node.ELEMENT_NODE) {
-            const hasProblematicElements = skipTags.some(tag => 
+            const hasProblematicElements = skipTags.some(tag =>
               rangeContainer.tagName === tag || rangeContainer.querySelector(tag)
             );
             if (hasProblematicElements) {
-              console.warn('Range contains non-content elements, skipping selection');
               return;
             }
           }
-          
+
           // Additional safety check: ensure we have meaningful text content
           if (selectedText.length < 2) {
-            console.warn('Selected text too short, skipping');
             return;
           }
-          
+
           addHighlight(range, selectedText);
         } catch (error) {
-          console.warn('Invalid range for highlighting:', error);
+          // Invalid range for highlighting - silently handled
         }
       }
     }
-    
+
     selectionStart = null;
   }
 
   // Handle keyboard shortcuts
   function handleKeyDown(e) {
     if (!multiHighlightMode) return;
-    
+
     // Escape to exit mode
     if (e.key === 'Escape') {
       toggleMultiHighlightMode();
       e.preventDefault();
     }
-    
+
     // Ctrl+Enter to add all highlights to note
     if (e.ctrlKey && e.key === 'Enter') {
       addAllHighlightsToNote();
       e.preventDefault();
     }
-    
+
     // Ctrl+Shift+H to toggle multi-highlight mode
     if (e.ctrlKey && e.shiftKey && e.key === 'H') {
       toggleMultiHighlightMode();
@@ -275,35 +282,35 @@
   // Add a new highlight
   function addHighlight(range, text) {
     if (text.length < 3) return; // Skip very short selections
-    
+
     // Check if this exact text is already highlighted at the same location
     // We allow the same text to be highlighted multiple times if it's in different locations
     const existingIndex = highlights.findIndex(h => {
       // Check if text matches AND if the range overlaps significantly
       if (h.text !== text) return false;
-      
+
       try {
         // Check if ranges overlap by comparing their boundaries
         const hRange = h.range;
         if (!hRange || !range) return false;
-        
+
         // If ranges are at the same position, consider it a duplicate
-        if (hRange.startContainer === range.startContainer && 
-            hRange.startOffset === range.startOffset &&
-            hRange.endContainer === range.endContainer && 
-            hRange.endOffset === range.endOffset) {
+        if (hRange.startContainer === range.startContainer &&
+          hRange.startOffset === range.startOffset &&
+          hRange.endContainer === range.endContainer &&
+          hRange.endOffset === range.endOffset) {
           return true;
         }
-        
+
         // If ranges overlap significantly, consider it a duplicate
         const hStart = hRange.startOffset;
         const hEnd = hRange.endOffset;
         const newStart = range.startOffset;
         const newEnd = range.endOffset;
-        
+
         // Check if ranges overlap (simplified overlap detection)
-        if (hRange.startContainer === range.startContainer && 
-            hRange.endContainer === range.endContainer) {
+        if (hRange.startContainer === range.startContainer &&
+          hRange.endContainer === range.endContainer) {
           const overlap = Math.min(hEnd, newEnd) - Math.max(hStart, newStart);
           if (overlap > 0) {
             // If overlap is more than 50% of either range, consider it a duplicate
@@ -314,58 +321,52 @@
             }
           }
         }
-        
+
         return false;
       } catch (error) {
-        console.warn('Error checking range overlap:', error);
         return false;
       }
     });
-    
+
     if (existingIndex !== -1) {
-      console.log('Duplicate highlight detected at same location, skipping');
       return;
     }
-    
+
     // Check if the range contains or is within existing highlights
     try {
       const startNode = range.startContainer;
       const endNode = range.endContainer;
-      
+
       // Check if we're trying to highlight within an existing highlight
-      if (startNode.nodeType === Node.ELEMENT_NODE && 
-          startNode.hasAttribute('data-url-notes-highlight')) {
-        console.warn('Cannot highlight within existing highlight');
+      if (startNode.nodeType === Node.ELEMENT_NODE &&
+        startNode.hasAttribute('data-url-notes-highlight')) {
         return;
       }
-      
-      if (endNode.nodeType === Node.ELEMENT_NODE && 
-          endNode.hasAttribute('data-url-notes-highlight')) {
-        console.warn('Cannot highlight within existing highlight');
+
+      if (endNode.nodeType === Node.ELEMENT_NODE &&
+        endNode.hasAttribute('data-url-notes-highlight')) {
         return;
       }
-      
+
       // Check if any parent nodes are highlights
       let parent = startNode.parentNode;
       while (parent && parent !== document.body) {
         if (parent.hasAttribute && parent.hasAttribute('data-url-notes-highlight')) {
-          console.warn('Cannot highlight within existing highlight');
           return;
         }
         parent = parent.parentNode;
       }
-      
+
       // Check if the selection is too close to existing highlights
       const existingHighlights = document.querySelectorAll('[data-url-notes-highlight]');
       for (const existing of existingHighlights) {
         try {
           const existingRect = existing.getBoundingClientRect();
           const selectionRect = range.getBoundingClientRect();
-          
+
           // If highlights are very close to each other (within 5px), skip this one
-          if (Math.abs(existingRect.left - selectionRect.left) < 5 && 
-              Math.abs(existingRect.top - selectionRect.top) < 5) {
-            console.warn('Selection too close to existing highlight, skipping');
+          if (Math.abs(existingRect.left - selectionRect.left) < 5 &&
+            Math.abs(existingRect.top - selectionRect.top) < 5) {
             return;
           }
         } catch (error) {
@@ -373,10 +374,9 @@
         }
       }
     } catch (error) {
-      console.warn('Error checking highlight boundaries:', error);
       return;
     }
-    
+
     // Create highlight object
     const highlight = {
       id: Date.now() + Math.random(),
@@ -385,14 +385,13 @@
       element: null,
       timestamp: Date.now()
     };
-    
+
     // Create visual highlight element
     let highlightElement = null;
-    
+
     try {
       // Check if range is valid and can be wrapped
       if (!range || range.collapsed) {
-        console.warn('Invalid range for highlighting');
         return;
       }
 
@@ -407,7 +406,7 @@
         mark.style.borderRadius = '3px';
         mark.style.boxShadow = '0 0 0 2px rgba(255,235,59,0.35)';
         mark.style.cursor = 'pointer';
-        
+
         // Add click to remove functionality
         mark.addEventListener('click', () => {
           const index = highlights.findIndex(h => h.id === highlight.id);
@@ -415,27 +414,25 @@
             removeHighlight(index);
           }
         });
-        
+
         // Validate range before attempting to wrap
-        if (range.startContainer.nodeType === Node.TEXT_NODE && 
-            range.endContainer.nodeType === Node.TEXT_NODE &&
-            range.startContainer.parentNode === range.endContainer.parentNode) {
+        if (range.startContainer.nodeType === Node.TEXT_NODE &&
+          range.endContainer.nodeType === Node.TEXT_NODE &&
+          range.startContainer.parentNode === range.endContainer.parentNode) {
           // Simple case: same text node, can wrap safely
           range.surroundContents(mark);
           highlightElement = mark;
-          console.log('Standard highlight created successfully');
         } else {
           // Complex case: range crosses element boundaries
           throw new Error('Range crosses element boundaries');
         }
-        
+
       } catch (wrapError) {
-        console.warn('Standard wrap failed, trying alternative approach:', wrapError);
-        
+        // Standard wrap failed, trying alternative approach
+
         // For complex selections, use a simpler approach that doesn't manipulate the original content
         try {
-          console.log('Using non-destructive highlighting approach for complex selection');
-          
+
           // Create a simple span element with the text content
           const span = document.createElement('span');
           span.setAttribute('data-url-notes-highlight', '');
@@ -452,57 +449,60 @@
               removeHighlight(index);
             }
           });
-          
+
           // Insert the span at the start of the selection
           range.collapse(true);
           range.insertNode(span);
-          
+
           highlightElement = span;
-          console.log('Non-destructive highlight created successfully');
-          
+
         } catch (simpleError) {
-          console.error('Non-destructive highlighting also failed:', simpleError);
           return; // Give up on this highlight
         }
       }
-      
+
       // If we successfully created a highlight element, add it to the highlights array
       if (highlightElement) {
         highlight.element = highlightElement;
         highlights.push(highlight);
         updateHighlightToolbar();
-        console.log('Added highlight:', text.substring(0, 50) + '...', 'Total highlights:', highlights.length);
       }
-      
+
     } catch (error) {
-      console.error('Failed to add highlight:', error);
       // Don't add to highlights array if visual creation failed
     }
   }
 
-  // Remove a highlight
+  // Remove a highlight with smooth GPU-accelerated animation
   function removeHighlight(index) {
     if (index < 0 || index >= highlights.length) return;
-    
+
     const highlight = highlights[index];
-    
-    // Remove visual element
+
+    // Remove visual element with animation
     if (highlight.element && highlight.element.parentNode) {
       const parent = highlight.element.parentNode;
-      while (highlight.element.firstChild) {
-        parent.insertBefore(highlight.element.firstChild, highlight.element);
-      }
-      parent.removeChild(highlight.element);
-      parent.normalize();
+      
+      // Add removal animation class for smooth GPU-accelerated exit
+      highlight.element.classList.add('removing');
+      
+      // Wait for animation to complete before removing element
+      setTimeout(() => {
+        if (highlight.element && highlight.element.parentNode) {
+          while (highlight.element.firstChild) {
+            parent.insertBefore(highlight.element.firstChild, highlight.element);
+          }
+          parent.removeChild(highlight.element);
+          parent.normalize();
+        }
+      }, 300); // Match animation duration
     }
-    
-    // Remove from array
+
+    // Remove from array immediately (don't wait for animation)
     highlights.splice(index, 1);
-    
-    // Update toolbar
-    updateHighlightToolbar();
-    
-    console.log('Removed highlight, remaining:', highlights.length, 'Highlight text was:', highlight.text.substring(0, 50) + '...');
+
+    // Update toolbar with count animation
+    updateHighlightToolbarWithAnimation();
   }
 
   // Clear all highlights
@@ -518,16 +518,15 @@
         parent.normalize();
       }
     });
-    
+
     highlights = [];
     updateHighlightToolbar();
-    console.log('Cleared all highlights, was clearing', count, 'highlights');
   }
 
   // Show floating toolbar
   function showHighlightToolbar() {
     if (highlightToolbar) return;
-    
+
     highlightToolbar = document.createElement('div');
     highlightToolbar.id = 'url-notes-highlight-toolbar';
     highlightToolbar.style.cssText = `
@@ -544,8 +543,78 @@
       font-size: 14px;
       min-width: 200px;
       backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      
+      /* GPU acceleration for smooth toolbar interactions */
+      will-change: transform, opacity;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      contain: layout style paint;
+      
+      /* Smooth entrance animation */
+      animation: toolbar-slide-in 0.3s ease-out;
     `;
-    
+
+    // Inject toolbar-specific GPU acceleration styles
+    if (!document.getElementById('url-notes-toolbar-style')) {
+      const toolbarStyle = document.createElement('style');
+      toolbarStyle.id = 'url-notes-toolbar-style';
+      toolbarStyle.textContent = `
+        @keyframes toolbar-slide-in {
+          from {
+            transform: translateX(100%) translateZ(0);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0) translateZ(0);
+            opacity: 1;
+          }
+        }
+
+        #url-notes-highlight-toolbar button {
+          will-change: transform, background-color, box-shadow;
+          transform: translateZ(0);
+          backface-visibility: hidden;
+          transition: all 0.2s ease;
+        }
+
+        #url-notes-highlight-toolbar button:hover:not(:disabled) {
+          transform: translateZ(0) translateY(-1px);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        #url-notes-highlight-toolbar button:active:not(:disabled) {
+          transform: translateZ(0) translateY(0);
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+          #url-notes-highlight-toolbar button {
+            min-height: 44px;
+            padding: 12px 16px;
+            touch-action: manipulation;
+          }
+        }
+
+        /* GPU acceleration for toolbar count updates */
+        #url-notes-highlight-toolbar .highlight-count {
+          will-change: transform;
+          transform: translateZ(0);
+          transition: all 0.2s ease;
+        }
+
+        .highlight-count.updating {
+          animation: count-update 0.4s ease-out;
+        }
+
+        @keyframes count-update {
+          0% { transform: translateZ(0) scale(1); }
+          50% { transform: translateZ(0) scale(1.2); }
+          100% { transform: translateZ(0) scale(1); }
+        }
+      `;
+      document.head.appendChild(toolbarStyle);
+    }
+
     updateHighlightToolbar();
     document.body.appendChild(highlightToolbar);
   }
@@ -561,8 +630,13 @@
   // Update toolbar content
   function updateHighlightToolbar() {
     if (!highlightToolbar) return;
-    
+
     const count = highlights.length;
+
+    // Create toolbar content safely (content script doesn't have access to safeDOM)
+    // Since this is a content script with trusted static content, we can use innerHTML directly
+    // but we should validate the count to prevent any potential issues
+    const safeCount = Math.max(0, Math.min(1000, parseInt(count) || 0)); // Limit count to reasonable range
     
     highlightToolbar.innerHTML = `
       <div style="margin-bottom: 8px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
@@ -570,11 +644,11 @@
         <button id="exit-highlight-mode" style="background: #e74c3c; border: none; color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Exit</button>
       </div>
       <div style="margin-bottom: 12px; color: #bdc3c7;">
-        ${count} highlight${count !== 1 ? 's' : ''} selected
+        ${safeCount} highlight${safeCount !== 1 ? 's' : ''} selected
       </div>
       <div style="display: flex; gap: 8px;">
-        <button id="add-highlights-to-note" style="background: #3498db; border: none; color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; flex: 1; ${count === 0 ? 'opacity: 0.5; cursor: not-allowed;' : ''}">Add to Note</button>
-        <button id="clear-all-highlights" style="background: #95a5a6; border: none; color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; ${count === 0 ? 'opacity: 0.5; cursor: not-allowed;' : ''}">Clear All</button>
+        <button id="add-highlights-to-note" style="background: #3498db; border: none; color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; flex: 1; ${safeCount === 0 ? 'opacity: 0.5; cursor: not-allowed;' : ''}">Add to Note</button>
+        <button id="clear-all-highlights" style="background: #95a5a6; border: none; color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; ${safeCount === 0 ? 'opacity: 0.5; cursor: not-allowed;' : ''}">Clear All</button>
       </div>
       <div style="margin-top: 8px; font-size: 12px; color: #bdc3c7;">
         <div>• Click and drag to highlight text</div>
@@ -583,19 +657,18 @@
         <div>• Ctrl+Shift+H or Escape to exit mode</div>
       </div>
     `;
-    
+
     // Add event listeners
     const exitBtn = highlightToolbar.querySelector('#exit-highlight-mode');
     const addBtn = highlightToolbar.querySelector('#add-highlights-to-note');
     const clearBtn = highlightToolbar.querySelector('#clear-all-highlights');
-    
+
     exitBtn.addEventListener('click', toggleMultiHighlightMode);
     addBtn.addEventListener('click', () => {
-      console.log('Add to Note button clicked');
       addAllHighlightsToNote();
     });
     clearBtn.addEventListener('click', clearAllHighlights);
-    
+
     // Disable buttons if no highlights
     if (count === 0) {
       addBtn.disabled = true;
@@ -603,66 +676,65 @@
     }
   }
 
+  // Update toolbar content with count animation
+  function updateHighlightToolbarWithAnimation() {
+    updateHighlightToolbar();
+    
+    // Add animation to count display
+    const countElement = highlightToolbar.querySelector('div[style*="margin-bottom: 12px"]');
+    if (countElement) {
+      countElement.classList.add('highlight-count', 'updating');
+      
+      // Remove animation class after animation completes
+      setTimeout(() => {
+        countElement.classList.remove('updating');
+      }, 400);
+    }
+  }
+
   // Add all highlights to a note
   function addAllHighlightsToNote() {
-    console.log('addAllHighlightsToNote function called');
-    
+
     if (highlights.length === 0) {
-      console.log('No highlights to add');
       return;
     }
-    
-    console.log('Adding', highlights.length, 'highlights to note');
-    
+
     const pageInfo = getCurrentPageInfo();
     const highlightData = highlights.map(h => ({
       text: h.text,
       timestamp: h.timestamp
     }));
-    
-    console.log('Page info:', pageInfo);
-    console.log('Highlight data:', highlightData);
-    
+
     // Send message to background script to create note
-    console.log('Sending addHighlightsToNote message to background script');
-    
+
     // First check if background script is responsive
     chrome.runtime.sendMessage({ action: 'ping' }, (pingResponse) => {
       if (chrome.runtime.lastError) {
-        console.error('Background script not responding to ping:', chrome.runtime.lastError);
         return;
       }
-      
-      console.log('Background script ping successful, sending addHighlightsToNote message');
-      
+
       // Add a timeout to the message sending
       const messageTimeout = setTimeout(() => {
-        console.error('Message timeout - background script may not be responding');
+        // Message timeout - background script may not be responding
       }, 5000);
-      
+
       chrome.runtime.sendMessage({
         action: 'addHighlightsToNote',
         pageInfo: pageInfo,
         highlights: highlightData
       }, (response) => {
         clearTimeout(messageTimeout);
-        
+
         // Handle response using callback to avoid message channel issues
         if (chrome.runtime.lastError) {
-          console.error('Runtime error:', chrome.runtime.lastError);
           return;
         }
-        
-        console.log('Received response from background:', response);
-        
+
         if (response && response.success) {
-          console.log('Successfully added highlights to note, clearing highlights and exiting mode');
           // Clear highlights after adding to note
           clearAllHighlights();
           // Exit multi-highlight mode
           toggleMultiHighlightMode();
-        } else {
-          console.error('Failed to add highlights to note:', response?.error || 'Unknown error');
         }
       });
     });
@@ -677,7 +749,7 @@
         color: '#3498db'
       }, () => {
         if (chrome.runtime.lastError) {
-          console.warn('Badge update error:', chrome.runtime.lastError);
+          // Badge update error - silently handled
         }
       });
     } else {
@@ -687,7 +759,7 @@
         color: ''
       }, () => {
         if (chrome.runtime.lastError) {
-          console.warn('Badge update error:', chrome.runtime.lastError);
+          // Badge update error - silently handled
         }
       });
     }
@@ -696,7 +768,7 @@
   // Add visual indicator overlay
   function addMultiHighlightIndicator() {
     if (document.getElementById('multi-highlight-indicator')) return;
-    
+
     const indicator = document.createElement('div');
     indicator.id = 'multi-highlight-indicator';
     indicator.style.cssText = `
@@ -707,19 +779,43 @@
       height: 4px;
       background: linear-gradient(90deg, #3b82f6, #10b981, #f59e0b, #ef4444);
       z-index: 9999;
+      
+      /* GPU acceleration for smooth animation */
+      will-change: opacity, transform;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      
+      /* Enhanced animation with GPU optimization */
       animation: multi-highlight-pulse 2s ease-in-out infinite;
     `;
-    
-    // Add CSS animation
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes multi-highlight-pulse {
-        0%, 100% { opacity: 0.8; }
-        50% { opacity: 1; }
-      }
-    `;
-    document.head.appendChild(style);
-    
+
+    // Add GPU-accelerated CSS animation
+    if (!document.getElementById('url-notes-indicator-style')) {
+      const style = document.createElement('style');
+      style.id = 'url-notes-indicator-style';
+      style.textContent = `
+        @keyframes multi-highlight-pulse {
+          0%, 100% { 
+            opacity: 0.8;
+            transform: translateZ(0) scaleX(1);
+          }
+          50% { 
+            opacity: 1;
+            transform: translateZ(0) scaleX(1.02);
+          }
+        }
+
+        /* Reduce motion for accessibility */
+        @media (prefers-reduced-motion: reduce) {
+          #multi-highlight-indicator {
+            animation: none !important;
+            transform: translateZ(0) !important;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
     document.body.appendChild(indicator);
   }
 
@@ -738,7 +834,7 @@
       const maybePromise = chrome.runtime.sendMessage(message);
       // In MV3 this returns a promise; attach a no-op catch
       if (maybePromise && typeof maybePromise.then === 'function') {
-        maybePromise.catch(() => {});
+        maybePromise.catch(() => { });
       }
     } catch (_) {
       // Swallow errors when context is gone (navigation/reload)
@@ -752,7 +848,6 @@
   });
 
   // Also notify that we're ready for multi-highlight messages
-  console.log('Content script initialized and ready for multi-highlight messages');
 
   // Monitor for URL changes (for SPAs)
   let currentUrl = window.location.href;
@@ -772,8 +867,8 @@
     subtree: true
   });
 
-  // Clean up observer when page unloads
-  window.addEventListener('beforeunload', () => {
+  // Clean up observer when page hides (better for back/forward cache)
+  window.addEventListener('pagehide', () => {
     observer.disconnect();
   });
 
@@ -793,14 +888,80 @@
 
   function injectHighlightStyle() {
     if (document.getElementById('url-notes-highlight-style')) return;
+    
+    // Inject GPU-accelerated CSS for multi-highlight functionality
     const style = document.createElement('style');
     style.id = 'url-notes-highlight-style';
     style.textContent = `
+      /* GPU-accelerated highlight elements */
       mark[data-url-notes-highlight] {
         background: #ffeb3b99;
         padding: 0 .1em;
         border-radius: 2px;
         box-shadow: 0 0 0 2px rgba(255,235,59,0.35);
+        
+        /* GPU acceleration for smooth highlight interactions */
+        will-change: background-color, box-shadow, transform;
+        transform: translateZ(0);
+        backface-visibility: hidden;
+        
+        /* Smooth transitions for hover effects */
+        transition: all 0.2s ease;
+        cursor: pointer;
+      }
+
+      /* Enhanced hover effects for highlights */
+      mark[data-url-notes-highlight]:hover {
+        background: #ffeb3bcc;
+        box-shadow: 0 0 0 3px rgba(255,235,59,0.5);
+        transform: translateZ(0) scale(1.02);
+      }
+
+      /* Active state for highlights */
+      mark[data-url-notes-highlight]:active {
+        transform: translateZ(0) scale(0.98);
+      }
+
+      /* GPU optimization for highlight removal animation */
+      mark[data-url-notes-highlight].removing {
+        will-change: transform, opacity;
+        animation: highlight-remove 0.3s ease-out forwards;
+      }
+
+      @keyframes highlight-remove {
+        0% {
+          transform: translateZ(0) scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: translateZ(0) scale(1.1);
+          opacity: 0.5;
+        }
+        100% {
+          transform: translateZ(0) scale(0.8);
+          opacity: 0;
+        }
+      }
+
+      /* Mobile touch optimization */
+      @media (hover: none) and (pointer: coarse) {
+        mark[data-url-notes-highlight] {
+          padding: 2px 4px;
+          min-height: 44px;
+          display: inline-block;
+          -webkit-overflow-scrolling: touch;
+          touch-action: manipulation;
+        }
+      }
+
+      /* Reduce motion for accessibility */
+      @media (prefers-reduced-motion: reduce) {
+        mark[data-url-notes-highlight],
+        mark[data-url-notes-highlight]:hover {
+          animation: none !important;
+          transition: none !important;
+          transform: none !important;
+        }
       }
     `;
     document.documentElement.appendChild(style);
@@ -808,7 +969,7 @@
 
   // Try to highlight text with retries to handle late-loading content (SPAs, async renders)
   function scheduleHighlightAttempts(text) {
-    try { clearUrlNotesHighlights(); } catch {}
+    try { clearUrlNotesHighlights(); } catch { }
     const candidates = buildCandidateTexts(text);
     const attempts = [0, 150, 350, 700, 1200, 2000, 3000];
     let done = false;
@@ -832,7 +993,7 @@
     const hlObserver = new MutationObserver(() => { tryNow(); });
     try {
       hlObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
-    } catch {}
+    } catch { }
     // Stop observing after the last attempt window
     setTimeout(() => { if (hlObserver) hlObserver.disconnect(); }, attempts[attempts.length - 1] + 500);
   }
@@ -863,6 +1024,23 @@
     if (tokens[0] && tokens[0].length <= 2) {
       out.add(tokens.slice(1).join(' '));
     }
+
+    // Add partial matches for short text (like "Also present was a 38")
+    if (tokens.length >= 2) {
+      // Try different combinations for short phrases
+      out.add(tokens.slice(0, 2).join(' ')); // First 2 words
+      out.add(tokens.slice(0, 3).join(' ')); // First 3 words
+      if (tokens.length >= 4) {
+        out.add(tokens.slice(0, 4).join(' ')); // First 4 words
+      }
+    }
+
+    // Add variations without numbers (in case numbers are formatted differently)
+    const withoutNumbers = collapsed.replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
+    if (withoutNumbers && withoutNumbers !== collapsed) {
+      out.add(withoutNumbers);
+    }
+
     return Array.from(out).filter(Boolean);
   }
 
@@ -905,7 +1083,7 @@
           mark.setAttribute('tabindex', '-1');
           // Scroll and focus to improve visibility
           mark.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-          try { mark.focus({ preventScroll: true }); } catch {}
+          try { mark.focus({ preventScroll: true }); } catch { }
           // Flash effect
           mark.animate([
             { boxShadow: '0 0 0 0 rgba(255,235,59,0.8)' },
@@ -922,7 +1100,7 @@
             range2.setEnd(node, idx + query.length);
             sel.addRange(range2);
             document.execCommand('hiliteColor', false, '#ffeb3b');
-          } catch {}
+          } catch { }
           return false;
         }
       }
@@ -935,14 +1113,14 @@
     // Remove script and style elements
     const elementsToRemove = document.querySelectorAll('script, style, nav, header, footer, aside, .sidebar, .navigation, .menu, .ads, .advertisement, .social-share, .comments');
     const tempDoc = document.cloneNode(true);
-    
+
     // Remove unwanted elements from the clone
     tempDoc.querySelectorAll('script, style, nav, header, footer, aside, .sidebar, .navigation, .menu, .ads, .advertisement, .social-share, .comments').forEach(el => el.remove());
-    
+
     // Try to find main content areas
     const contentSelectors = [
       'main',
-      'article', 
+      'article',
       '[role="main"]',
       '.content',
       '.main-content',
@@ -952,7 +1130,7 @@
       '#content',
       '#main'
     ];
-    
+
     let mainContent = null;
     for (const selector of contentSelectors) {
       const element = tempDoc.querySelector(selector);
@@ -961,26 +1139,26 @@
         break;
       }
     }
-    
+
     // Fallback to body if no main content found
     if (!mainContent) {
       mainContent = tempDoc.body || tempDoc.documentElement;
     }
-    
+
     // Extract text content
     let text = mainContent.textContent || mainContent.innerText || '';
-    
+
     // Clean up the text
     text = text
       .replace(/\s+/g, ' ') // Replace multiple whitespace with single space
       .replace(/\n\s*\n/g, '\n') // Remove empty lines
       .trim();
-    
+
     // Limit content length (approximately 8000 characters for reasonable API usage)
     if (text.length > 8000) {
       text = text.substring(0, 8000) + '...';
     }
-    
+
     return text;
   }
 
@@ -990,17 +1168,42 @@
       const u = new URL(href, window.location.origin);
       const hash = u.hash || '';
       const marker = ':~:text=';
-      const idx = hash.indexOf(marker);
-      if (idx === -1) return '';
-      // Extract substring after ':~:text='
-      let val = hash.substring(idx + marker.length);
-      // Stop at next parameter separator (&) or end
-      const amp = val.indexOf('&');
-      if (amp >= 0) val = val.substring(0, amp);
-      // The value may have comma-separated quotes; take first segment
-      const first = (val || '').split(',')[0];
-      return decodeURIComponent(first || '');
-    } catch {
+
+      // Handle multiple text fragments by finding all occurrences
+      const fragments = [];
+      let searchStart = 0;
+      let idx;
+
+      while ((idx = hash.indexOf(marker, searchStart)) !== -1) {
+        // Extract substring after ':~:text='
+        let val = hash.substring(idx + marker.length);
+        // Stop at next text fragment or parameter separator
+        const nextFragment = val.indexOf('#:~:text=');
+        const amp = val.indexOf('&');
+
+        let endIdx = val.length;
+        if (nextFragment !== -1) endIdx = Math.min(endIdx, nextFragment);
+        if (amp !== -1) endIdx = Math.min(endIdx, amp);
+
+        val = val.substring(0, endIdx);
+
+        // The value may have comma-separated quotes; take first segment
+        const first = (val || '').split(',')[0];
+        if (first) {
+          fragments.push(decodeURIComponent(first));
+        }
+
+        searchStart = idx + marker.length;
+      }
+
+      if (fragments.length === 0) {
+        return '';
+      }
+
+      // Use the last (most specific) fragment
+      return fragments[fragments.length - 1];
+
+    } catch (error) {
       return '';
     }
   }

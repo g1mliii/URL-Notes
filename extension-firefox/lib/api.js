@@ -47,7 +47,7 @@ class SupabaseClient {
           this.authUrl = `${this.supabaseUrl}/auth/v1`;
         }
       } catch (e) {
-        console.warn('Config load failed, using defaults:', e);
+        // Config load failed, using defaults - silently handled
       }
 
       // Check for stored session
@@ -62,29 +62,36 @@ class SupabaseClient {
           try {
             await this.refreshSession();
           } catch (e) {
-            console.warn('Token refresh on init failed, signing out:', e);
             await this.signOut();
           }
         }
-        
-        // Verify token is still valid
-        const isValid = await this.verifyToken();
-        if (!isValid) {
-          await this.signOut();
-        } else {
+
+        // Token validity will be checked naturally by API calls
+        {
           // Check if we need to create/update profile (only if not done recently)
           try {
             const { profileLastChecked, userTier } = await chrome.storage.local.get(['profileLastChecked', 'userTier']);
             const now = Date.now();
             const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
-            
+
             // Only check profile if we haven't done so in the last hour AND don't have userTier
             if ((!profileLastChecked || (now - profileLastChecked) > oneHour) && !userTier) {
               await this.upsertProfile(this.currentUser);
               await chrome.storage.local.set({ profileLastChecked: now });
             } else if (userTier) {
               // Use cached subscription status
-              try { window.eventBus?.emit('tier:changed', { tier: userTier, active: userTier !== 'free' }); } catch (_) {}
+              const isActive = userTier !== 'free';
+              try { window.eventBus?.emit('tier:changed', { tier: userTier, active: isActive }); } catch (_) { }
+
+              // Notify background script of tier change for sync timer management
+              try {
+                chrome.runtime.sendMessage({
+                  action: 'tier-changed',
+                  active: isActive,
+                  tier: userTier
+                }).catch(() => { });
+              } catch (_) { }
+
               if (window.adManager) {
                 if (userTier !== 'free') {
                   window.adManager.hideAdContainer?.();
@@ -93,13 +100,16 @@ class SupabaseClient {
                 }
               }
             }
+
+            // Emit auth:changed event to update UI
+            try { window.eventBus?.emit('auth:changed', { user: this.currentUser }); } catch (_) { }
           } catch (e) {
-            console.warn('Failed to handle profile on init:', e);
+            // Failed to handle profile on init - silently handled
           }
         }
       }
     } catch (error) {
-      console.error('Error initializing Supabase client:', error);
+      // Error initializing Supabase client - silently handled
     }
   }
 
@@ -216,7 +226,6 @@ class SupabaseClient {
       await this.handleAuthSuccess(data);
       return data;
     } catch (error) {
-      console.error('Sign in error:', error);
       throw error;
     }
   }
@@ -234,113 +243,71 @@ class SupabaseClient {
       }
       return data;
     } catch (error) {
-      console.error('Sign up error:', error);
       throw error;
     }
   }
 
-  // Sign in with OAuth provider using PKCE + chrome.identity.launchWebAuthFlow
+  // Sign in with OAuth provider using tab-based flow with background script handling
   async signInWithOAuth(provider) {
     try {
       const redirectUri = chrome.identity.getRedirectURL();
-      const codeVerifier = await this.generateCodeVerifier();
-      const codeChallenge = await this.generateCodeChallenge(codeVerifier);
+      console.log('Extension redirect URI:', redirectUri);
 
-      const scope = encodeURIComponent('openid email profile');
-      const authUrl = `${this.authUrl}/authorize?provider=${encodeURIComponent(provider)}&redirect_to=${encodeURIComponent(redirectUri)}&response_type=code&code_challenge=${encodeURIComponent(codeChallenge)}&code_challenge_method=S256&scope=${scope}`;
+      // Use Supabase's OAuth endpoint with the extension-specific login-success page
+      const websiteRedirectUri = 'https://anchored.site/login-success';
+      // Add access_type=offline to ensure we get refresh tokens from Google
+      const authUrl = `${this.authUrl}/authorize?provider=${encodeURIComponent(provider)}&redirect_to=${encodeURIComponent(websiteRedirectUri)}&access_type=offline&prompt=consent`;
 
-      const responseUrl = await new Promise((resolve, reject) => {
-        chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true }, (redirectedTo) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
-            return;
+      console.log('Opening OAuth URL:', authUrl);
+
+      // Open OAuth in new tab
+      const tab = await chrome.tabs.create({ url: authUrl });
+      console.log('Opened OAuth tab:', tab.id);
+
+      // Return a promise that will be resolved by the background script
+      return new Promise((resolve, reject) => {
+        console.log('🎧 Setting up OAuth completion listener...');
+
+        // Set up a one-time listener for OAuth completion
+        const handleOAuthComplete = (message, sender, sendResponse) => {
+          console.log('📨 Received message in OAuth listener:', message);
+          console.log('📨 Message sender:', sender);
+
+          if (message.action === 'oauth-complete') {
+            console.log('✅ OAuth completion message received:', message);
+            chrome.runtime.onMessage.removeListener(handleOAuthComplete);
+
+            if (message.success) {
+              console.log('🎉 OAuth successful, handling auth success...');
+              // Handle the auth success locally
+              this.handleAuthSuccess(message.data).then(() => {
+                console.log('✅ Auth success handled, resolving promise');
+                resolve(message.data);
+              }).catch((error) => {
+                console.error('❌ Auth success handling failed:', error);
+                reject(error);
+              });
+            } else {
+              console.log('❌ OAuth failed:', message.error);
+              reject(new Error(message.error || 'OAuth authentication failed'));
+            }
+          } else {
+            console.log('📨 Ignoring non-oauth message:', message.action);
           }
-          resolve(redirectedTo);
-        });
+        };
+
+        chrome.runtime.onMessage.addListener(handleOAuthComplete);
+        console.log('🎧 OAuth listener set up, waiting for completion...');
+
+        // Set timeout to reject if OAuth takes too long
+        setTimeout(() => {
+          console.log('⏰ OAuth timeout reached');
+          chrome.runtime.onMessage.removeListener(handleOAuthComplete);
+          reject(new Error('OAuth authentication timed out'));
+        }, 300000); // 5 minutes timeout
       });
-
-      const urlObj = new URL(responseUrl);
-      const code = urlObj.searchParams.get('code');
-      console.debug('[OAuth] authorize url:', authUrl);
-      console.debug('[OAuth] redirected to:', responseUrl);
-      if (!code) {
-        const errParam = urlObj.searchParams.get('error');
-        const errDesc = urlObj.searchParams.get('error_description');
-        throw new Error(`Authorization code not found. error=${errParam || ''} ${errDesc || ''}`.trim());
-      }
-
-      // Token exchange attempts with fallbacks
-      const attempts = [];
-
-      // Attempt 1: x-www-form-urlencoded with Authorization header
-      const form1 = new URLSearchParams();
-      form1.set('grant_type', 'authorization_code');
-      form1.set('code', code);
-      form1.set('code_verifier', codeVerifier);
-      form1.set('redirect_uri', redirectUri);
-      attempts.push(() => fetch(`${this.authUrl}/token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-          'apikey': this.supabaseAnonKey,
-          'Authorization': `Bearer ${this.supabaseAnonKey}`
-        },
-        body: form1.toString()
-      }));
-
-      // Attempt 2: x-www-form-urlencoded without Authorization header
-      const form2 = new URLSearchParams(form1);
-      attempts.push(() => fetch(`${this.authUrl}/token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-          'apikey': this.supabaseAnonKey
-        },
-        body: form2.toString()
-      }));
-
-      // Attempt 3: x-www-form-urlencoded with grant_type=pkce
-      const form3 = new URLSearchParams();
-      form3.set('grant_type', 'pkce');
-      form3.set('code', code);
-      form3.set('code_verifier', codeVerifier);
-      form3.set('redirect_uri', redirectUri);
-      attempts.push(() => fetch(`${this.authUrl}/token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-          'apikey': this.supabaseAnonKey
-        },
-        body: form3.toString()
-      }));
-
-      let lastStatus = 0;
-      const errors = [];
-      let tokenRes = null;
-      for (const attempt of attempts) {
-        tokenRes = await attempt();
-        if (tokenRes.ok) break;
-        lastStatus = tokenRes.status;
-        try {
-          const j = await tokenRes.json();
-          errors.push(`status ${tokenRes.status}: ${j.error_description || j.msg || JSON.stringify(j)}`);
-        } catch (_) {
-          try { errors.push(`status ${tokenRes.status}: ${await tokenRes.text()}`); } catch (_) { errors.push(`status ${tokenRes.status}`); }
-        }
-      }
-
-      if (!tokenRes || !tokenRes.ok) {
-        throw new Error(`Token exchange failed after ${attempts.length} attempts. ${errors.join(' | ')}`);
-      }
-
-      const data = await tokenRes.json();
-      await this.handleAuthSuccess(data);
-      return data;
     } catch (error) {
-      console.error('OAuth sign in error:', error);
+      console.error('OAuth error:', error);
       throw error;
     }
   }
@@ -363,9 +330,18 @@ class SupabaseClient {
     // Clear premium status cache to force refresh
     await chrome.storage.local.remove(['cachedPremiumStatus']);
 
-    // Create or update user profile
+    // Create or update user profile (this handles premium status refresh)
     await this.upsertProfile(authData.user);
-    try { window.eventBus?.emit('auth:changed', { user: this.currentUser }); } catch (_) {}
+
+    // Emit auth:changed event to update UI components
+    try {
+      window.eventBus?.emit('auth:changed', {
+        user: this.currentUser,
+        statusRefresh: true
+      });
+    } catch (_) { }
+
+    // Note: Premium refresh flag is handled separately by email/OAuth flows
   }
 
   // Sign out
@@ -378,7 +354,7 @@ class SupabaseClient {
         });
       }
     } catch (error) {
-      console.error('Sign out error:', error);
+      // Sign out error - silently handled
     } finally {
       // Clear local session
       this.accessToken = null;
@@ -390,9 +366,18 @@ class SupabaseClient {
       try {
         await chrome.storage.local.set({ userTier: 'free' });
         window.adManager?.refreshAd?.();
-      } catch (_) {}
-      try { window.eventBus?.emit('auth:changed', { user: null }); } catch (_) {}
-      try { window.eventBus?.emit('tier:changed', { tier: 'free', active: false, expiresAt: null }); } catch (_) {}
+      } catch (_) { }
+      try { window.eventBus?.emit('auth:changed', { user: null }); } catch (_) { }
+      try { window.eventBus?.emit('tier:changed', { tier: 'free', active: false, expiresAt: null }); } catch (_) { }
+
+      // Notify background script that user signed out (stop sync timer)
+      try {
+        chrome.runtime.sendMessage({
+          action: 'tier-changed',
+          active: false,
+          tier: 'free'
+        }).catch(() => { });
+      } catch (_) { }
     }
   }
 
@@ -418,30 +403,23 @@ class SupabaseClient {
 
       return true;
     } catch (error) {
-      console.error('Password reset error:', error);
       throw error;
     }
   }
 
-  // Verify token validity
-  async verifyToken() {
-    if (!this.accessToken) return false;
-
-    try {
-      const response = await this._request(`${this.authUrl}/user`, { auth: true, raw: true });
-      return response.ok;
-    } catch (error) {
-      return false;
-    }
-  }
 
   // Refresh session using refresh_token
   async refreshSession() {
     try {
       const { supabase_session } = await chrome.storage.local.get(['supabase_session']);
       const refreshToken = supabase_session?.refresh_token;
+      // Attempting to refresh session
+
       if (!refreshToken) {
-        throw new Error('No refresh token available');
+        console.error('No refresh token available for session refresh - user will need to re-authenticate');
+        // Clear the invalid session and force re-authentication
+        await this.signOut();
+        throw new Error('No refresh token available - please sign in again');
       }
 
       const response = await fetch(`${this.authUrl}/token?grant_type=refresh_token`, {
@@ -456,8 +434,17 @@ class SupabaseClient {
           const j = await response.json();
           detail = j.error_description || j.msg || j.error || JSON.stringify(j);
         } catch (_) {
-          try { detail = await response.text(); } catch (_) {}
+          try { detail = await response.text(); } catch (_) { }
         }
+
+        console.error('Refresh token failed:', detail);
+
+        // If refresh token is invalid, clear session and force re-auth
+        if (response.status === 400 || response.status === 401) {
+          console.log('Refresh token invalid, clearing session');
+          await this.signOut();
+        }
+
         throw new Error(detail);
       }
 
@@ -470,7 +457,7 @@ class SupabaseClient {
           if (ures.ok) {
             data.user = await ures.json();
           }
-        } catch (_) {}
+        } catch (_) { }
       }
 
       // If refresh_token not returned, keep existing one
@@ -478,10 +465,11 @@ class SupabaseClient {
         data.refresh_token = refreshToken;
       }
 
+      // Session refresh successful
       await this.handleAuthSuccess(data);
       return true;
     } catch (error) {
-      console.error('refreshSession error:', error);
+      console.error('Session refresh failed:', error.message);
       throw error;
     }
   }
@@ -495,7 +483,7 @@ class SupabaseClient {
         const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${user.id}&select=salt,subscription_tier,subscription_expires_at`, { auth: true });
         if (Array.isArray(arr) && arr[0]) profile = arr[0];
       } catch (error) {
-        console.warn('upsertProfile: Error checking profile existence:', error);
+        // upsertProfile: Error checking profile existence - silently handled
       }
 
       // Only create profile if it doesn't exist
@@ -507,13 +495,13 @@ class SupabaseClient {
           body: baseProfile,
           auth: true
         });
-        
+
         // Fetch the newly created profile
         try {
           const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${user.id}&select=salt,subscription_tier,subscription_expires_at`, { auth: true });
           if (Array.isArray(arr) && arr[0]) profile = arr[0];
         } catch (error) {
-          console.warn('upsertProfile: Error fetching newly created profile:', error);
+          // upsertProfile: Error fetching newly created profile - silently handled
         }
       }
 
@@ -533,15 +521,16 @@ class SupabaseClient {
 
       // Update userTier in local storage using the profile we already fetched
       if (profile) {
-        const isActive = profile.subscription_expires_at ?
-          new Date(profile.subscription_expires_at) > new Date() : false;
+        const isActive = profile.subscription_tier === 'premium' &&
+          (profile.subscription_expires_at === null ||
+            (profile.subscription_expires_at && new Date(profile.subscription_expires_at) > new Date()));
         const userTier = isActive ? (profile.subscription_tier || 'premium') : 'free';
-        
+
         await chrome.storage.local.set({ userTier });
-        
-        // Clear premium status cache to force UI refresh
-        await chrome.storage.local.remove(['cachedPremiumStatus']);
-        
+
+        // Clear premium status cache and AI usage cache to force UI refresh with updated limits
+        await chrome.storage.local.remove(['cachedPremiumStatus', 'cachedAIUsage']);
+
         // Store profile data in cache for reuse (including salt for encryption key)
         const profileData = {
           tier: profile.subscription_tier || 'free',
@@ -549,13 +538,32 @@ class SupabaseClient {
           expiresAt: profile.subscription_expires_at,
           salt: profile.salt
         };
-        
-        await chrome.storage.local.set({ 
-          subscriptionLastChecked: Date.now(), 
-          cachedSubscription: profileData 
+
+        await chrome.storage.local.set({
+          subscriptionLastChecked: Date.now(),
+          cachedSubscription: profileData
         });
-        
-        try { window.eventBus?.emit('tier:changed', { tier: userTier, active: isActive, expiresAt: profile.subscription_expires_at }); } catch (_) {}
+
+        try { window.eventBus?.emit('tier:changed', { tier: userTier, active: isActive, expiresAt: profile.subscription_expires_at }); } catch (_) { }
+
+        // Notify background script of tier change for sync timer management
+        try {
+          chrome.runtime.sendMessage({
+            action: 'tier-changed',
+            active: isActive,
+            tier: userTier
+          }).catch(() => { });
+        } catch (_) { }
+
+        // Notify background script about auth change (for login flows)
+        try {
+          chrome.runtime.sendMessage({
+            action: 'auth-changed',
+            user: this.currentUser,
+            statusRefresh: true
+          }).catch(() => { });
+        } catch (_) { }
+
         if (window.adManager) {
           if (isActive && userTier !== 'free') {
             window.adManager.hideAdContainer?.();
@@ -565,7 +573,7 @@ class SupabaseClient {
         }
       }
     } catch (error) {
-      console.error('Error upserting profile:', error);
+      // Error upserting profile - silently handled
     }
   }
 
@@ -573,6 +581,12 @@ class SupabaseClient {
   async syncNotes(syncPayload) {
     if (!this.isAuthenticated()) {
       throw new Error('User not authenticated');
+    }
+
+    // CRITICAL: Verify premium access before any sync operation
+    const subscriptionStatus = await this.getSubscriptionStatus();
+    if (!subscriptionStatus || !subscriptionStatus.active || subscriptionStatus.tier === 'free') {
+      throw new Error('Premium subscription required for cloud sync');
     }
 
     // Ensure encryption module is available
@@ -588,36 +602,20 @@ class SupabaseClient {
       }
 
       const encryptedNotes = [];
-      
+
       // Encrypt notes before uploading (only if notes exist)
       if (syncPayload.notes && Array.isArray(syncPayload.notes)) {
         for (const note of syncPayload.notes) {
           // Skip notes without title or content
           if (!note.content || !note.title) {
-            console.warn('Skipping note without title or content:', note.id);
             continue;
           }
-          
-          console.log('Encrypting note:', {
-            id: note.id,
-            titleLength: note.title?.length || 0,
-            contentLength: note.content?.length || 0,
-            hasEncryptionKey: !!encryptionKey
-          });
-          
+
           const encryptedNote = await window.noteEncryption.encryptNoteForCloud(
-            note, 
+            note,
             encryptionKey
           );
-          
-          console.log('Note encrypted successfully:', {
-            id: encryptedNote.id,
-            hasTitleEncrypted: !!encryptedNote.title_encrypted,
-            hasContentEncrypted: !!encryptedNote.content_encrypted,
-            titleEncryptedType: typeof encryptedNote.title_encrypted,
-            contentEncryptedType: typeof encryptedNote.content_encrypted
-          });
-          
+
           encryptedNotes.push(encryptedNote);
         }
       }
@@ -631,19 +629,7 @@ class SupabaseClient {
         timestamp: syncPayload.timestamp
       };
 
-      // Debug: Log edge function payload structure
-      console.log('Edge function payload structure:', {
-        operation: edgeFunctionPayload.operation,
-        noteCount: edgeFunctionPayload.notes.length,
-        encryptedNoteSample: edgeFunctionPayload.notes.length > 0 ? {
-          id: edgeFunctionPayload.notes[0].id,
-          hasTitleEncrypted: !!edgeFunctionPayload.notes[0].title_encrypted,
-          hasContentEncrypted: !!edgeFunctionPayload.notes[0].content_encrypted,
-          titleEncryptedType: typeof edgeFunctionPayload.notes[0].title_encrypted,
-          contentEncryptedType: typeof edgeFunctionPayload.notes[0].content_encrypted
-        } : null,
-        deletionCount: edgeFunctionPayload.deletions.length
-      });
+
 
       // Use Edge Function for sync
       const response = await fetch(`${this.supabaseUrl}/functions/v1/sync-notes`, {
@@ -658,7 +644,6 @@ class SupabaseClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Sync error response:', errorText);
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -671,7 +656,6 @@ class SupabaseClient {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Sync error:', error);
       throw error;
     }
   }
@@ -699,7 +683,6 @@ class SupabaseClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Fetch error response:', errorText);
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -710,27 +693,27 @@ class SupabaseClient {
       }
 
       const responseData = await response.json();
-      
+
       const { notes: encryptedNotes } = responseData;
-      
+
       if (!encryptedNotes || !Array.isArray(encryptedNotes)) {
         return [];
       }
-      
+
       const decryptedNotes = [];
 
       // Decrypt notes after downloading
       const userKey = await this.getUserEncryptionKey();
-      
+
       for (const encryptedNote of encryptedNotes) {
         try {
           let decryptedNote;
-          
+
           // Check if note is encrypted or plain text
           if (encryptedNote.title_encrypted && encryptedNote.content_encrypted && userKey) {
             // Note is encrypted, decrypt it
             decryptedNote = await window.noteEncryption.decryptNoteFromCloud(
-              encryptedNote, 
+              encryptedNote,
               userKey
             );
           } else if (encryptedNote.title && encryptedNote.content) {
@@ -743,10 +726,9 @@ class SupabaseClient {
           } else {
             continue;
           }
-          
+
           decryptedNotes.push(decryptedNote);
         } catch (error) {
-          console.error('Failed to process note:', encryptedNote.id, error);
           // Try to use the note as-is if decryption fails
           if (encryptedNote.title && encryptedNote.content) {
             decryptedNotes.push({
@@ -760,7 +742,6 @@ class SupabaseClient {
 
       return decryptedNotes;
     } catch (error) {
-      console.error('API: Fetch error:', error);
       throw error;
     }
   }
@@ -779,7 +760,6 @@ class SupabaseClient {
       });
       return true;
     } catch (error) {
-      console.error('Delete error:', error);
       throw error;
     }
   }
@@ -787,7 +767,6 @@ class SupabaseClient {
   // Get user's encryption key (with caching to prevent multiple API calls)
   async getUserEncryptionKey() {
     if (!this.currentUser) {
-      console.log('getUserEncryptionKey: No authenticated user');
       throw new Error('No authenticated user');
     }
 
@@ -804,7 +783,7 @@ class SupabaseClient {
     // Derive key from stable user material + per-user salt from profile
     const keyMaterial = `${this.currentUser.id}:${this.currentUser.email}`;
     let salt = null;
-    
+
     // Try to get salt from cached profile data first
     try {
       const { cachedSubscription } = await chrome.storage.local.get(['cachedSubscription']);
@@ -812,7 +791,7 @@ class SupabaseClient {
         salt = cachedSubscription.salt;
       }
     } catch (error) {
-      console.warn('getUserEncryptionKey: Error checking cached subscription:', error);
+      // getUserEncryptionKey: Error checking cached subscription - silently handled
     }
 
     // If no cached salt, fetch from API
@@ -821,7 +800,7 @@ class SupabaseClient {
         const arr = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=salt`, { auth: true });
         salt = arr?.[0]?.salt || null;
       } catch (error) {
-        console.warn('getUserEncryptionKey: Error fetching salt from API:', error);
+        // getUserEncryptionKey: Error fetching salt from API - silently handled
       }
     }
 
@@ -840,11 +819,11 @@ class SupabaseClient {
     }
 
     const encryptionKey = await window.noteEncryption.generateKey(keyMaterial, salt);
-    
+
     // Cache the key material and salt instead of the CryptoKey object
     // CryptoKey objects cannot be serialized to JSON
-    await chrome.storage.local.set({ 
-      encryptionKeyLastChecked: now, 
+    await chrome.storage.local.set({
+      encryptionKeyLastChecked: now,
       cachedKeyMaterial: keyMaterial,
       cachedSalt: salt
     });
@@ -875,44 +854,59 @@ class SupabaseClient {
       }
       return null;
     } catch (e) {
-      console.warn('getSession error:', e);
       return null;
     }
   }
 
+  // Clear subscription cache
+  async clearSubscriptionCache() {
+    try {
+      await chrome.storage.local.remove(['subscriptionLastChecked', 'cachedSubscription']);
+    } catch (error) {
+      console.warn('Failed to clear subscription cache:', error);
+    }
+  }
+
   // Check subscription status (with caching to prevent multiple API calls)
-  async getSubscriptionStatus() {
+  async getSubscriptionStatus(forceRefresh = false) {
     if (!this.isAuthenticated()) {
-      console.log('getSubscriptionStatus: User not authenticated, returning free tier');
       return { tier: 'free', active: false };
     }
 
     try {
-      // Check if we have cached subscription status
-      const { subscriptionLastChecked, cachedSubscription } = await chrome.storage.local.get(['subscriptionLastChecked', 'cachedSubscription']);
-      const now = Date.now();
-      const fiveMinutes = 5 * 60 * 1000; // 5 minutes cache
+      // Check if we have cached subscription status (unless force refresh)
+      if (!forceRefresh) {
+        const { subscriptionLastChecked, cachedSubscription } = await chrome.storage.local.get(['subscriptionLastChecked', 'cachedSubscription']);
+        const now = Date.now();
+        const fiveMinutes = 5 * 60 * 1000; // 5 minutes cache
 
-      // Use cached data if it's recent
-      if (subscriptionLastChecked && cachedSubscription && (now - subscriptionLastChecked) < fiveMinutes) {
-        return cachedSubscription;
+        // Use cached data if it's recent
+        if (subscriptionLastChecked && cachedSubscription && (now - subscriptionLastChecked) < fiveMinutes) {
+          return cachedSubscription;
+        }
       }
 
       // Fetch fresh data from API
+      const now = Date.now();
       const profiles = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=subscription_tier,subscription_expires_at,salt`, { auth: true });
+
       const profile = profiles?.[0];
 
       if (!profile) {
         const result = { tier: 'free', active: false };
-        await chrome.storage.local.set({ 
-          subscriptionLastChecked: now, 
-          cachedSubscription: result 
+        await chrome.storage.local.set({
+          subscriptionLastChecked: now,
+          cachedSubscription: result
         });
         return result;
       }
 
-      const isActive = profile.subscription_expires_at ?
-        new Date(profile.subscription_expires_at) > new Date() : false;
+      // Check if subscription is active
+      // If subscription_expires_at is null and tier is premium, consider it active (lifetime/never expires)
+      // If subscription_expires_at has a date, check if it's in the future
+      const isActive = profile.subscription_tier === 'premium' &&
+        (profile.subscription_expires_at === null ||
+          (profile.subscription_expires_at && new Date(profile.subscription_expires_at) > new Date()));
 
       const result = {
         tier: profile.subscription_tier || 'free',
@@ -921,14 +915,15 @@ class SupabaseClient {
         salt: profile.salt // Include salt for encryption key reuse
       };
 
-      await chrome.storage.local.set({ 
-        subscriptionLastChecked: now, 
-        cachedSubscription: result 
+      // Always update cache with fresh data
+      await chrome.storage.local.set({
+        subscriptionLastChecked: now,
+        cachedSubscription: result
       });
 
       return result;
     } catch (error) {
-      console.error('Error checking subscription:', error);
+      // Don't cache error results, let it try again next time
       return { tier: 'free', active: false };
     }
   }
@@ -956,7 +951,6 @@ class SupabaseClient {
 
       return true;
     } catch (error) {
-      console.error('Subscription update error:', error);
       throw error;
     }
   }
@@ -964,7 +958,6 @@ class SupabaseClient {
   // Get storage usage
   async getStorageUsage() {
     if (!this.isAuthenticated()) {
-      console.log('getStorageUsage: User not authenticated, returning 0 usage');
       return { used: 0, limit: 0 };
     }
 
@@ -972,18 +965,18 @@ class SupabaseClient {
       // Get both storage_used_bytes and subscription info in ONE API call
       const profiles = await this._request(`${this.apiUrl}/profiles?id=eq.${this.currentUser.id}&select=storage_used_bytes,subscription_tier,subscription_expires_at`, { auth: true });
       const profile = profiles?.[0];
-      
+
       if (!profile) {
-        console.log('getStorageUsage: No profile found, returning 0 usage');
         return { used: 0, limit: 0 };
       }
 
       // Calculate limit locally instead of calling getSubscriptionStatus()
-      const isActive = profile.subscription_expires_at ?
-        new Date(profile.subscription_expires_at) > new Date() : false;
+      const isActive = profile.subscription_tier === 'premium' &&
+        (profile.subscription_expires_at === null ||
+          (profile.subscription_expires_at && new Date(profile.subscription_expires_at) > new Date()));
       const tier = isActive ? (profile.subscription_tier || 'premium') : 'free';
-      
-      const limit = tier === 'premium' ? 
+
+      const limit = tier === 'premium' ?
         1024 * 1024 * 1024 : // 1GB for premium
         100 * 1024 * 1024;   // 100MB for free
 
@@ -994,7 +987,6 @@ class SupabaseClient {
 
       return result;
     } catch (error) {
-      console.error('getStorageUsage: Error getting storage usage:', error);
       return { used: 0, limit: 0 };
     }
   }
@@ -1024,7 +1016,6 @@ class SupabaseClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Conflict resolution error response:', errorText);
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -1037,7 +1028,6 @@ class SupabaseClient {
       const data = await response.json();
       return { success: true, data };
     } catch (error) {
-      console.error('Conflict resolution error:', error);
       return { success: false, error: error.message };
     }
   }
@@ -1065,7 +1055,6 @@ class SupabaseClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Version sync error response:', errorText);
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -1078,7 +1067,6 @@ class SupabaseClient {
       const data = await response.json();
       return { success: true, data };
     } catch (error) {
-      console.error('Version sync error:', error);
       return { success: false, error: error.message };
     }
   }
@@ -1102,7 +1090,6 @@ class SupabaseClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`RPC ${functionName} error response:`, errorText);
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -1115,8 +1102,81 @@ class SupabaseClient {
       const data = await response.json();
       return { data, error: null };
     } catch (error) {
-      console.error(`RPC ${functionName} error:`, error);
       return { data: null, error: error.message };
+    }
+  }
+
+  // Shared method for refreshing premium status and updating UI
+  // Used by both handleAuthSuccess and the manual refresh button
+  async refreshPremiumStatusAndUI() {
+    try {
+      // Clear any cached subscription status
+      if (this.clearSubscriptionCache) {
+        await this.clearSubscriptionCache();
+      }
+
+      // Force refresh subscription status from server
+      const status = await this.getSubscriptionStatus(true); // Force refresh
+
+      // Update userTier in local storage for other parts of the extension
+      const userTier = status.active ? status.tier : 'free';
+      await chrome.storage.local.set({ userTier });
+
+      // Clear AI usage cache to ensure updated limits are fetched
+      await chrome.storage.local.remove(['cachedAIUsage']);
+
+      // Emit tier change event to update all parts of the extension
+      try {
+        window.eventBus?.emit('tier:changed', {
+          tier: status.tier,
+          active: status.active,
+          expiresAt: status.expiresAt
+        });
+      } catch (_) { }
+
+      // Notify background script of tier change for sync timer management
+      try {
+        chrome.runtime.sendMessage({
+          action: 'tier-changed',
+          active: status.active,
+          tier: status.tier
+        }).catch(() => { });
+      } catch (_) { }
+
+      // Emit auth:changed event to refresh all components
+      try {
+        window.eventBus?.emit('auth:changed', {
+          user: this.currentUser,
+          statusRefresh: true // Flag to indicate this is a status refresh
+        });
+      } catch (_) { }
+
+      // Notify background script about auth change
+      try {
+        chrome.runtime.sendMessage({
+          action: 'auth-changed',
+          user: this.currentUser,
+          statusRefresh: true // Flag to indicate this is a status refresh
+        }).catch(() => { });
+      } catch (_) { }
+
+      // Update ad manager based on new status
+      try {
+        if (window.adManager) {
+          if (status.active && status.tier !== 'free') {
+            window.adManager.hideAdContainer?.();
+          } else {
+            window.adManager.refreshAd?.();
+          }
+        }
+      } catch (_) { }
+
+      return status;
+
+    } catch (error) {
+      // If comprehensive refresh fails, fall back to basic auth event
+      try { window.eventBus?.emit('auth:changed', { user: this.currentUser }); } catch (_) { }
+      throw error;
     }
   }
 }

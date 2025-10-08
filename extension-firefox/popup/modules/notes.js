@@ -4,6 +4,31 @@
 class NotesManager {
   constructor(app) {
     this.app = app; // reference to URLNotesApp
+    
+    // Listen for decryption retry success events
+    if (window.eventBus) {
+      window.eventBus.on('notes:decryption_retry_success', this.handleDecryptionRetrySuccess.bind(this));
+    }
+  }
+
+  // Handle successful decryption retry
+  handleDecryptionRetrySuccess(event) {
+    const { successful, failed, total } = event;
+    console.log(`NotesManager: Decryption retry successful for ${successful}/${total} notes`);
+    
+    // Refresh the notes display to show decrypted content
+    if (this.app && this.app.loadAllNotes) {
+      this.app.loadAllNotes().then(() => {
+        this.render();
+        
+        // Show notification about successful decryption
+        if (this.app.showNotification) {
+          this.app.showNotification(`Decrypted ${successful} notes`, 'success');
+        }
+      }).catch(error => {
+        console.error('NotesManager: Failed to refresh notes after decryption retry:', error);
+      });
+    }
   }
 
   // Public entry: render notes list based on current filter and search
@@ -11,7 +36,7 @@ class NotesManager {
     const { app } = this;
     const notesList = document.getElementById('notesList');
     const searchInput = document.getElementById('searchInput');
-    const notesCounter = document.getElementById('notesCounter');
+    const notesCount = document.getElementById('notesCount');
     if (!notesList) return;
 
     // Use DocumentFragment for smoother rendering
@@ -20,20 +45,23 @@ class NotesManager {
     // Show empty state if no notes exist
     if (!app.allNotes || app.allNotes.length === 0) {
       this.showEmptyState(notesList, 'No notes yet', 'Create your first note to get started!');
-      if (notesCounter) notesCounter.classList.add('hidden');
+      if (notesCount) notesCount.style.display = 'none';
       return;
     }
 
     // Only clear if we have notes to clear
     if (notesList.children.length > 0) {
-      notesList.innerHTML = '';
+      if (window.safeDOM) {
+        window.safeDOM.clearContent(notesList);
+      } else {
+        notesList.innerHTML = '';
+      }
     }
 
     // Safety check: ensure allNotes is available
     if (!app.allNotes || !Array.isArray(app.allNotes)) {
-      console.warn('NotesManager.render: app.allNotes is not available, showing empty state');
       this.showEmptyState(notesList, 'Loading notes...');
-      if (notesCounter) notesCounter.classList.add('hidden');
+      if (notesCount) notesCount.style.display = 'none';
       return;
     }
 
@@ -47,7 +75,6 @@ class NotesManager {
       } else {
         // If no valid currentSite, show all notes instead of empty state to prevent pop-in
         filteredNotes = app.allNotes;
-        console.log('NotesManager.render: No valid currentSite domain, showing all notes for site filter');
       }
     } else if (app.filterMode === 'page') {
       // Only filter by page if we have a valid currentSite with URL
@@ -57,7 +84,6 @@ class NotesManager {
       } else {
         // If no valid currentSite URL, show all notes instead of empty state to prevent pop-in
         filteredNotes = app.allNotes;
-        console.log('NotesManager.render: No valid currentSite URL, showing all notes for page filter');
       }
     } else {
       filteredNotes = app.allNotes;
@@ -83,18 +109,14 @@ class NotesManager {
     // 3) Render list or empty state
     if (filteredNotes.length === 0) {
       this.showEmptyState(notesList, 'No notes found', 'Try a different filter or create a new note.');
-      if (notesCounter) notesCounter.classList.add('hidden');
+      if (notesCount) notesCount.style.display = 'none';
       return;
     }
 
-    // Show counter and position it correctly
-    if (notesCounter) {
-      notesCounter.classList.remove('hidden');
-      const counterNumber = notesCounter.querySelector('#counterNumber');
-      if (counterNumber) counterNumber.textContent = filteredNotes.length;
-
-      // Check if ads are present and position counter accordingly
-      this.updateCounterPosition(notesCounter);
+    // Show counter inline with notes title
+    if (notesCount) {
+      notesCount.style.display = 'inline';
+      notesCount.textContent = `(${filteredNotes.length})`;
     }
 
     // Don't clear again - already cleared at the beginning
@@ -123,21 +145,25 @@ class NotesManager {
   // Render notes grouped by domain for 'All Notes' view
   async renderGroupedNotes(notes, container) {
     if (!notes || !Array.isArray(notes) || notes.length === 0) {
-      container.innerHTML = '<div class="empty-state">No notes found</div>';
-      const notesCounter = document.getElementById('notesCounter');
-      if (notesCounter) notesCounter.classList.add('hidden');
+      if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(container, '<div class="empty-state">No notes found</div>', false);
+      } else {
+        if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(container, '<div class="empty-state">No notes found</div>', false);
+      } else {
+        container.innerHTML = '<div class="empty-state">No notes found</div>';
+      }
+      }
+      const notesCount = document.getElementById('notesCount');
+      if (notesCount) notesCount.style.display = 'none';
       return;
     }
 
     // Show counter for grouped notes
-    const notesCounter = document.getElementById('notesCounter');
-    if (notesCounter) {
-      notesCounter.classList.remove('hidden');
-      const counterNumber = notesCounter.querySelector('#counterNumber');
-      if (counterNumber) counterNumber.textContent = notes.length;
-
-      // Check if ads are present and position counter accordingly
-      this.updateCounterPosition(notesCounter);
+    const notesCount = document.getElementById('notesCount');
+    if (notesCount) {
+      notesCount.style.display = 'inline';
+      notesCount.textContent = `(${notes.length})`;
     }
 
     // Check premium status once for all notes using cached function
@@ -148,8 +174,12 @@ class NotesManager {
     const sortedDomains = Object.keys(grouped).sort();
 
     // Clear container for new content
-    container.innerHTML = '';
-    container.classList.add('notes-fade-in');
+    if (window.safeDOM) {
+      window.safeDOM.clearContent(container);
+    } else {
+      container.innerHTML = '';
+    }
+    // Don't add container-level animation for All Notes view since individual notes have stagger animation
 
     // Load saved open domains to prevent visual shift
     let openSet = new Set();
@@ -277,6 +307,8 @@ class NotesManager {
 
     // Use passed premium status instead of checking again
     const hasVersionHistory = isPremium;
+
+
 
     // Only log debug info in development mode
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -542,7 +574,7 @@ class NotesManager {
       emptyState = document.createElement('div');
       emptyState.id = 'emptyState';
       emptyState.className = 'empty-state';
-      emptyState.innerHTML = `
+      const emptyStateHtml = `
         <div class="empty-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -555,6 +587,12 @@ class NotesManager {
         <h4>${title}</h4>
         <p>${message}</p>
       `;
+      
+      if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(emptyState, emptyStateHtml, false);
+      } else {
+        emptyState.innerHTML = emptyStateHtml;
+      }
     } else {
       // Update existing empty state
       const titleEl = emptyState.querySelector('h4');
@@ -565,7 +603,11 @@ class NotesManager {
 
     // Only clear if there are other children to prevent unnecessary clearing
     if (notesList.children.length > 0 && !notesList.querySelector('#emptyState')) {
-      notesList.innerHTML = '';
+      if (window.safeDOM) {
+        window.safeDOM.clearContent(notesList);
+      } else {
+        notesList.innerHTML = '';
+      }
     }
     notesList.appendChild(emptyState);
     emptyState.style.display = 'flex';
@@ -582,28 +624,7 @@ class NotesManager {
     } catch (_) { }
   }
 
-  // Update counter position based on ads visibility
-  updateCounterPosition(counter) {
-    if (!counter) return;
 
-    try {
-      const adContainer = document.getElementById('adContainer');
-      const isAdsVisible = adContainer &&
-        adContainer.style.display !== 'none' &&
-        !adContainer.hidden &&
-        adContainer.offsetHeight > 0;
-
-      if (isAdsVisible) {
-        counter.style.bottom = '80px'; // Above ads
-      } else {
-        counter.style.bottom = '16px'; // At bottom
-      }
-    } catch (error) {
-      console.warn('Failed to update counter position:', error);
-      // Fallback to default position
-      counter.style.bottom = '16px';
-    }
-  }
 
   // Delete domain notes individually (for simplified sync)
   async deleteDomainNotesIndividually(domainNotes) {
@@ -622,7 +643,7 @@ class NotesManager {
 
       // Show success message
       if (deletedCount > 0) {
-        this.app.showNotification(`Deleted ${deletedCount} notes`, 'success');
+        this.app.showNotification(`${deletedCount} notes deleted`, 'success');
         // Refresh the notes display
         this.render();
       }

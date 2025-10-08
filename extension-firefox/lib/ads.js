@@ -1,4 +1,4 @@
-// URL Notes Extension - CodeFuel Ads Integration
+// URL Notes Extension - Static Ads Integration
 // Handles ad loading and display for free tier users
 
 class AdManager {
@@ -6,23 +6,68 @@ class AdManager {
     this.adContainer = null;
     this.adLoaded = false;
     this.adConfig = {
-      publisherId: 'YOUR_CODEFUEL_PUBLISHER_ID', // Replace with actual ID
-      adUnitId: 'url-notes-popup-banner',
       maxAdsPerHour: 5,
       cooldownMs: 12 * 60 * 1000, // 12 minutes between ads
+      displayDurationMs: 6 * 1000, // 6 seconds display time
+      nextAdDelayMs: 30 * 1000, // 30 seconds until next ad
     };
     this.lastAdTime = 0;
     this.adsShownThisHour = 0;
     this.hourlyResetTime = Date.now() + (60 * 60 * 1000);
+    this.currentAdTimeout = null;
+    this.nextAdTimeout = null;
+    this.storageKey = 'adTrackingData';
+  }
+
+  // Load ad tracking data from storage
+  async loadAdTrackingData() {
+    try {
+      const result = await chrome.storage.local.get([this.storageKey]);
+      const data = result[this.storageKey];
+
+      if (data) {
+        this.lastAdTime = data.lastAdTime || 0;
+        this.adsShownThisHour = data.adsShownThisHour || 0;
+        this.hourlyResetTime = data.hourlyResetTime || (Date.now() + (60 * 60 * 1000));
+
+        // Check if we need to reset the hourly counter
+        const now = Date.now();
+        if (now > this.hourlyResetTime) {
+          this.adsShownThisHour = 0;
+          this.hourlyResetTime = now + (60 * 60 * 1000);
+          await this.saveAdTrackingData();
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load ad tracking data:', error);
+    }
+  }
+
+  // Save ad tracking data to storage
+  async saveAdTrackingData() {
+    try {
+      const data = {
+        lastAdTime: this.lastAdTime,
+        adsShownThisHour: this.adsShownThisHour,
+        hourlyResetTime: this.hourlyResetTime,
+        updatedAt: Date.now()
+      };
+
+      await chrome.storage.local.set({ [this.storageKey]: data });
+    } catch (error) {
+      console.warn('Failed to save ad tracking data:', error);
+    }
   }
 
   // Initialize ad system
   async init() {
     this.adContainer = document.getElementById('adContainer');
     if (!this.adContainer) {
-      console.warn('Ad container not found');
       return;
     }
+
+    // Load persistent ad tracking data first
+    await this.loadAdTrackingData();
 
     // Check if user should see ads
     const shouldShowAds = await this.shouldShowAds();
@@ -31,18 +76,21 @@ class AdManager {
       return;
     }
 
-    // Load CodeFuel SDK
-    await this.loadCodeFuelSDK();
-
     // Show first ad after a delay
-    setTimeout(() => this.showAd(), 2000);
+    setTimeout(() => this.showAd(), 3000); // 3 seconds initial delay
   }
 
-  // Check if user should see ads (free tier, ads enabled)
+  // Check if user should see ads (free tier, ads enabled, reached engagement tier)
   async shouldShowAds() {
     try {
       // Check cached premium status first to avoid API calls
-      const result = await chrome.storage.local.get(['settings', 'userTier', 'premiumStatus', 'lastPremiumCheck']);
+      const result = await chrome.storage.local.get([
+        'settings', 
+        'userTier', 
+        'premiumStatus', 
+        'lastPremiumCheck',
+        'userEngagement_noteCount'
+      ]);
       const settings = result.settings || {};
 
       // Check cached premium status
@@ -62,24 +110,20 @@ class AdManager {
         isPremium = userTier === 'premium' || userTier === 'pro';
       }
 
-      // Only show ads to free users who haven't disabled them
-      return !isPremium && settings.showAds !== false;
+      // Check if user has reached first engagement tier (3 notes)
+      const noteCount = result.userEngagement_noteCount || 0;
+      const hasReachedEngagementTier = noteCount >= 3;
+
+      // Only show ads to free users who:
+      // 1. Haven't disabled ads
+      // 2. Have reached the first engagement tier (3+ notes)
+      return !isPremium && settings.showAds !== false && hasReachedEngagementTier;
     } catch (error) {
-      console.error('Error checking ad settings:', error);
-      return true; // Default to showing ads for free users
+      return false; // Default to NOT showing ads if there's an error
     }
   }
 
-  // Load CodeFuel SDK dynamically (currently disabled)
-  async loadCodeFuelSDK() {
-    return new Promise((resolve) => {
-      // Skip CodeFuel SDK loading for now to prevent CSP errors
-      // This will be enabled when CodeFuel is properly configured
-      console.log('CodeFuel SDK loading skipped - using fallback ads');
-      window.__cf_sdk_failed = true;
-      resolve();
-    });
-  }
+
 
   // Show an ad
   async showAd() {
@@ -89,9 +133,10 @@ class AdManager {
 
     try {
       // Reset hourly counter if needed
-      if (Date.now() > this.hourlyResetTime) {
+      const now = Date.now();
+      if (now > this.hourlyResetTime) {
         this.adsShownThisHour = 0;
-        this.hourlyResetTime = Date.now() + (60 * 60 * 1000);
+        this.hourlyResetTime = now + (60 * 60 * 1000);
       }
 
       // Show ad container with animation
@@ -104,15 +149,24 @@ class AdManager {
       await this.loadAd();
 
       // Update tracking
-      this.lastAdTime = Date.now();
+      this.lastAdTime = now;
       this.adsShownThisHour++;
 
-      // Track ad impression - disabled (using NordVPN analytics)
-      // this.trackAdImpression();
+      // Save tracking data to persistent storage
+      await this.saveAdTrackingData();
+
+      // Schedule ad to hide after display duration
+      this.scheduleAdHide();
 
     } catch (error) {
-      console.error('Error showing ad:', error);
       this.showFallbackAd();
+      // Still update tracking and save for fallback ads
+      const now = Date.now();
+      this.lastAdTime = now;
+      this.adsShownThisHour++;
+      await this.saveAdTrackingData();
+      // Still schedule hide even for fallback ads
+      this.scheduleAdHide();
     }
   }
 
@@ -120,8 +174,16 @@ class AdManager {
   async canShowAd() {
     const now = Date.now();
 
-    // Check cooldown
-    if (now - this.lastAdTime < this.adConfig.cooldownMs) {
+    // Check if we need to reset the hourly counter
+    if (now > this.hourlyResetTime) {
+      this.adsShownThisHour = 0;
+      this.hourlyResetTime = now + (60 * 60 * 1000);
+      await this.saveAdTrackingData();
+    }
+
+    // Check minimum cooldown (display duration + next ad delay)
+    const minCooldown = this.adConfig.displayDurationMs + this.adConfig.nextAdDelayMs;
+    if (now - this.lastAdTime < minCooldown) {
       return false;
     }
 
@@ -139,97 +201,34 @@ class AdManager {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    // For now, skip CodeFuel integration and go directly to fallback
-    // This prevents errors when CodeFuel isn't implemented
-    try {
-      // CodeFuel integration (disabled until properly configured)
-      if (window.CodeFuel && this.adConfig.publisherId !== 'YOUR_CODEFUEL_PUBLISHER_ID') {
-        window.CodeFuel.display({
-          containerId: 'adContent',
-          publisherId: this.adConfig.publisherId,
-          adUnitId: this.adConfig.adUnitId,
-          size: '300x50',
-          targeting: await this.getTargetingData()
-        });
-      } else {
-        // Use our custom ad system (NordVPN + upgrade ads)
-        this.showFallbackAd();
-      }
-    } catch (error) {
-      console.warn('Error loading external ads, using fallback:', error);
-      this.showFallbackAd();
-    }
+    // Use our static ad system (NordVPN + upgrade ads)
+    this.showFallbackAd();
   }
 
-  // Get targeting data for contextual ads
-  async getTargetingData() {
-    try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab) return {};
 
-      const url = new URL(tab.url);
-      return {
-        domain: url.hostname,
-        category: this.categorizeWebsite(url.hostname),
-        language: navigator.language || 'en',
-        timestamp: Date.now()
-      };
-    } catch (error) {
-      console.error('Error getting targeting data:', error);
-      return {};
-    }
-  }
 
-  // Categorize website for better ad targeting
-  categorizeWebsite(domain) {
-    const categories = {
-      'github.com': 'technology',
-      'stackoverflow.com': 'technology',
-      'reddit.com': 'social',
-      'youtube.com': 'entertainment',
-      'netflix.com': 'entertainment',
-      'amazon.com': 'shopping',
-      'ebay.com': 'shopping',
-      'news.ycombinator.com': 'technology',
-      'medium.com': 'content',
-      'dev.to': 'technology'
-    };
-
-    // Check for exact matches
-    if (categories[domain]) {
-      return categories[domain];
-    }
-
-    // Check for partial matches
-    if (domain.includes('shop') || domain.includes('store')) return 'shopping';
-    if (domain.includes('news')) return 'news';
-    if (domain.includes('blog')) return 'content';
-    if (domain.includes('tech') || domain.includes('dev')) return 'technology';
-
-    return 'general';
-  }
-
-  // Show fallback ad when CodeFuel fails
+  // Show fallback ad
   showFallbackAd() {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    // Rotate between three ads: Upgrade (65%), NordVPN (17.5%), Vrbo (17.5%)
+    // Rotate between four ads: Upgrade (50%), NordVPN (16.7%), Vrbo (16.7%), New Banner (16.6%)
     const random = Math.random();
     let adType;
 
-    if (random < 0.65) {
+    if (random < 0.50) {
       adType = 'upgrade';
       this.showUpgradeAd();
-    } else if (random < 0.825) {
+    } else if (random < 0.667) {
       adType = 'nordvpn';
       this.showNordVPNAd();
-    } else {
+    } else if (random < 0.834) {
       adType = 'vrbo';
       this.showVrboAd();
+    } else {
+      adType = 'newbanner';
+      this.showNewBannerAd();
     }
-
-    console.log('Showing ad type:', adType);
   }
 
   // Show NordVPN affiliate ad
@@ -237,14 +236,22 @@ class AdManager {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    adContent.innerHTML = `
-      <div class="nordvpn-ad" id="nordvpnAdBanner">
-        <img src="../assets/affiliate-sales-campaign-nordvpn.png" 
-             alt="NordVPN - Secure Your Browsing" 
-             class="nordvpn-banner"
-             loading="lazy">
-      </div>
-    `;
+    // Clear existing content
+    adContent.innerHTML = '';
+    
+    // Create elements safely without XSS prevention (trusted extension content)
+    const adDiv = document.createElement('div');
+    adDiv.className = 'nordvpn-ad';
+    adDiv.id = 'nordvpnAdBanner';
+    
+    const img = document.createElement('img');
+    img.src = '../assets/affiliate-sales-campaign-nordvpn.png';
+    img.alt = 'NordVPN - Secure Your Browsing';
+    img.className = 'nordvpn-banner';
+    img.loading = 'lazy';
+    
+    adDiv.appendChild(img);
+    adContent.appendChild(adDiv);
 
     // Add click event listener (CSP compliant)
     const nordvpnAd = document.getElementById('nordvpnAdBanner');
@@ -262,14 +269,22 @@ class AdManager {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    adContent.innerHTML = `
-      <div class="vrbo-ad" id="vrboAdBanner">
-        <img src="../assets/vrbo.gif" 
-             alt="Vrbo - Book Your Perfect Vacation Rental" 
-             class="vrbo-banner"
-             loading="lazy">
-      </div>
-    `;
+    // Clear existing content
+    adContent.innerHTML = '';
+    
+    // Create elements safely without XSS prevention (trusted extension content)
+    const adDiv = document.createElement('div');
+    adDiv.className = 'vrbo-ad';
+    adDiv.id = 'vrboAdBanner';
+    
+    const img = document.createElement('img');
+    img.src = '../assets/vrbo.gif';
+    img.alt = 'Vrbo - Book Your Perfect Vacation Rental';
+    img.className = 'vrbo-banner';
+    img.loading = 'lazy';
+    
+    adDiv.appendChild(img);
+    adContent.appendChild(adDiv);
 
     // Add click event listener (CSP compliant)
     const vrboAd = document.getElementById('vrboAdBanner');
@@ -282,22 +297,71 @@ class AdManager {
     this.addVrboStyles();
   }
 
+  // Show new banner affiliate ad
+  showNewBannerAd() {
+    const adContent = document.getElementById('adContent');
+    if (!adContent) return;
+
+    // Clear existing content
+    adContent.innerHTML = '';
+    
+    // Create elements safely without XSS prevention (trusted extension content)
+    const adDiv = document.createElement('div');
+    adDiv.className = 'newbanner-ad';
+    adDiv.id = 'newBannerAdBanner';
+    
+    const img = document.createElement('img');
+    img.src = '../assets/15575447-1729241297568.png';
+    img.alt = 'Special Offer - Click to Learn More';
+    img.className = 'newbanner-banner';
+    img.loading = 'lazy';
+    
+    adDiv.appendChild(img);
+    adContent.appendChild(adDiv);
+
+    // Add click event listener (CSP compliant)
+    const newBannerAd = document.getElementById('newBannerAdBanner');
+    if (newBannerAd) {
+      newBannerAd.addEventListener('click', () => {
+        this.openNewBanner();
+      });
+    }
+
+    this.addNewBannerStyles();
+  }
+
   // Show upgrade ad
   showUpgradeAd() {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    adContent.innerHTML = `
-      <div class="fallback-ad">
-        <div class="ad-text">
-          <strong>Upgrade to Premium</strong>
-          <p>Remove ads and sync across devices</p>
-        </div>
-        <button class="upgrade-btn" id="upgradeAdButton">
-          Upgrade Now
-        </button>
-      </div>
-    `;
+    // Clear existing content
+    adContent.innerHTML = '';
+    
+    // Create elements safely without XSS prevention (trusted extension content)
+    const adDiv = document.createElement('div');
+    adDiv.className = 'fallback-ad';
+    
+    const textDiv = document.createElement('div');
+    textDiv.className = 'ad-text';
+    
+    const strong = document.createElement('strong');
+    strong.textContent = 'Upgrade to Premium';
+    
+    const p = document.createElement('p');
+    p.textContent = 'Remove ads and sync across devices';
+    
+    textDiv.appendChild(strong);
+    textDiv.appendChild(p);
+    
+    const button = document.createElement('button');
+    button.className = 'upgrade-btn';
+    button.id = 'upgradeAdButton';
+    button.textContent = 'Upgrade Now';
+    
+    adDiv.appendChild(textDiv);
+    adDiv.appendChild(button);
+    adContent.appendChild(adDiv);
 
     // Add click event listener (CSP compliant)
     const upgradeBtn = document.getElementById('upgradeAdButton');
@@ -380,6 +444,41 @@ class AdManager {
     document.head.appendChild(style);
   }
 
+  // Add new banner ad styles
+  addNewBannerStyles() {
+    if (document.getElementById('newbanner-ad-styles')) return;
+
+    const style = document.createElement('style');
+    style.id = 'newbanner-ad-styles';
+    style.textContent = `
+      .newbanner-ad {
+        display: block;
+        width: 100%;
+        cursor: pointer;
+        border-radius: 6px;
+        overflow: hidden;
+        transition: all 0.2s ease;
+        border: 1px solid rgba(34, 197, 94, 0.2);
+        box-shadow: 0 2px 8px rgba(34, 197, 94, 0.1);
+      }
+      .newbanner-ad:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+        border-color: rgba(34, 197, 94, 0.4);
+      }
+      .newbanner-banner {
+        width: 100%;
+        height: auto;
+        display: block;
+        max-height: 58px;
+        object-fit: contain;
+        object-position: center;
+        background: transparent;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   // Add fallback ad styles
   addFallbackStyles() {
     if (document.getElementById('fallback-ad-styles')) return;
@@ -426,6 +525,44 @@ class AdManager {
     document.head.appendChild(style);
   }
 
+  // Schedule ad to hide after display duration
+  scheduleAdHide() {
+    // Clear any existing timeout
+    if (this.currentAdTimeout) {
+      clearTimeout(this.currentAdTimeout);
+    }
+
+
+
+    // Schedule ad to hide after display duration
+    this.currentAdTimeout = setTimeout(() => {
+
+      this.hideAdContainer();
+      // Schedule next ad
+      this.scheduleNextAd();
+    }, this.adConfig.displayDurationMs);
+  }
+
+  // Schedule next ad to show
+  scheduleNextAd() {
+    // Clear any existing timeout
+    if (this.nextAdTimeout) {
+      clearTimeout(this.nextAdTimeout);
+    }
+
+
+    // Schedule next ad after delay
+    this.nextAdTimeout = setTimeout(async () => {
+
+      // Check if we can still show ads
+      if (await this.canShowAd()) {
+        this.showAd();
+      } else {
+
+      }
+    }, this.adConfig.nextAdDelayMs);
+  }
+
   // Hide ad container
   hideAdContainer() {
     if (this.adContainer) {
@@ -445,7 +582,6 @@ class AdManager {
         action: 'trackAdImpression',
         data: {
           timestamp: Date.now(),
-          adUnit: this.adConfig.adUnitId,
           domain: window.location?.hostname || 'unknown'
         }
       }).catch(() => {
@@ -453,7 +589,6 @@ class AdManager {
       });
     } catch (error) {
       // Silently ignore tracking errors to prevent breaking ad display
-      console.warn('Ad impression tracking failed:', error);
     }
   }
 
@@ -468,14 +603,12 @@ class AdManager {
         targetUrl = 'https://anchored.site/account';
       }
     } catch (error) {
-      console.warn('Error checking authentication status for upgrade redirect:', error);
       // Fall back to main page if there's an error
     }
 
     chrome.tabs.create({
       url: targetUrl
     });
-    // this.trackAdClick('upgrade'); // Disabled - using NordVPN analytics
   }
 
   // Handle NordVPN affiliate click
@@ -483,7 +616,6 @@ class AdManager {
     chrome.tabs.create({
       url: 'https://go.nordvpn.net/aff_c?offer_id=15&aff_id=130711&url_id=902'
     });
-    // this.trackAdClick('nordvpn'); // Disabled - using NordVPN analytics
   }
 
   // Handle Vrbo affiliate click
@@ -491,12 +623,18 @@ class AdManager {
     chrome.tabs.create({
       url: 'https://www.jdoqocy.com/click-101532226-13820699'
     });
-    // this.trackAdClick('vrbo'); // Disabled - using affiliate analytics
+  }
+
+  // Handle new banner affiliate click
+  openNewBanner() {
+    chrome.tabs.create({
+      url: 'https://www.tkqlhce.com/click-101532226-15575456'
+    });
   }
 
   // Handle ad click
   onAdClick(adType = 'unknown') {
-    // this.trackAdClick(adType); // Disabled - using NordVPN analytics
+    // No tracking needed for static ads
   }
 
   // Track ad click
@@ -507,7 +645,6 @@ class AdManager {
         action: 'trackAdClick',
         data: {
           timestamp: Date.now(),
-          adUnit: this.adConfig.adUnitId,
           adType: adType
         }
       }).catch(() => {
@@ -515,19 +652,41 @@ class AdManager {
       });
     } catch (error) {
       // Silently ignore tracking errors to prevent breaking ad functionality
-      console.warn('Ad click tracking failed:', error);
     }
   }
 
   // Refresh ad (called when popup is reopened)
-  refreshAd() {
-    if (this.canShowAd()) {
+  async refreshAd() {
+    // Clear any existing timeouts to avoid conflicts
+    if (this.currentAdTimeout) {
+      clearTimeout(this.currentAdTimeout);
+      this.currentAdTimeout = null;
+    }
+    if (this.nextAdTimeout) {
+      clearTimeout(this.nextAdTimeout);
+      this.nextAdTimeout = null;
+    }
+
+    // Load current tracking data
+    await this.loadAdTrackingData();
+
+    // Check if we can show an ad
+    if (await this.canShowAd()) {
       setTimeout(() => this.showAd(), 1000);
     }
   }
 
   // Clean up
   destroy() {
+    // Clear any scheduled timeouts
+    if (this.currentAdTimeout) {
+      clearTimeout(this.currentAdTimeout);
+      this.currentAdTimeout = null;
+    }
+    if (this.nextAdTimeout) {
+      clearTimeout(this.nextAdTimeout);
+      this.nextAdTimeout = null;
+    }
     this.hideAdContainer();
   }
 }

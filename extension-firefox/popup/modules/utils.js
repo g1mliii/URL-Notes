@@ -8,9 +8,9 @@ class Utils {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
       return crypto.randomUUID();
     }
-    
+
     // Fallback to UUID v4 format for older browsers
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
       const r = Math.random() * 16 | 0;
       const v = c === 'x' ? r : (r & 0x3 | 0x8);
       return v.toString(16);
@@ -24,7 +24,7 @@ class Utils {
     const now = new Date();
     const diffMs = now - date;
     const diffHours = diffMs / (1000 * 60 * 60);
-    
+
     // If within last 24 hours, show time
     if (diffHours < 24) {
       return date.toLocaleTimeString(undefined, {
@@ -33,7 +33,7 @@ class Utils {
         hour12: true
       });
     }
-    
+
     // Otherwise show date
     return date.toLocaleDateString(undefined, {
       month: 'short',
@@ -44,28 +44,45 @@ class Utils {
   // Debounce utility
   static debounce(func, delay) {
     let timeout;
-    return (...args) => {
+    const debounced = (...args) => {
       clearTimeout(timeout);
       timeout = setTimeout(() => func.apply(this, args), delay);
     };
+    debounced.cancel = () => {
+      clearTimeout(timeout);
+    };
+    return debounced;
   }
 
-  // Show a toast notification
+  // Show a toast notification with premium glassmorphism styling
+  // Optimized for sync notifications as the benchmark for all toasts
   static showToast(message, type = 'info') {
     const toast = document.getElementById('toast');
     if (!toast) return;
-    
-    // Remove any existing type classes
-    toast.classList.remove('success', 'error', 'info');
-    
+
+    // Remove any existing type classes and animations
+    toast.classList.remove('success', 'error', 'info', 'warning', 'show');
+
     // Add the appropriate type class
     toast.classList.add(type);
-    
-    toast.textContent = message;
+
+    // Clean icons without emojis for better consistency
+    let icon = '•'; // Default info icon
+    if (type === 'success') icon = '✓'; // Simple checkmark for success
+    if (type === 'error') icon = '✗'; // Simple X for errors
+    if (type === 'warning') icon = '!'; // Simple exclamation for warnings
+
+    // Set content with icon and enhanced styling
+    toast.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-message">${Utils.escapeHtml(message)}</span>`;
+
+    // Show toast with smooth animation
     toast.classList.add('show');
+
+    // Auto-hide after shorter duration to avoid blocking UI
+    const hideDelay = message.toLowerCase().includes('sync') ? 2500 : 2000;
     setTimeout(() => {
       toast.classList.remove('show');
-    }, 3000);
+    }, hideDelay);
   }
 
   // Check storage quota and update UI
@@ -82,7 +99,7 @@ class Utils {
     if (storageBar && storageText) {
       storageBar.style.width = `${percentage}%`;
       storageText.textContent = `${usageInMB} MB / ${quotaInMB} MB (${percentage}%)`;
-      
+
       if (percentage > 90) {
         storageBar.style.backgroundColor = 'var(--color-danger)';
       } else if (percentage > 70) {
@@ -199,7 +216,7 @@ class Utils {
       } catch (error) {
         lastError = error;
         if (attempt === maxAttempts) break;
-        
+
         const delay = baseDelay * Math.pow(2, attempt - 1);
         await Utils.delay(delay);
       }
@@ -256,7 +273,7 @@ class EventBus {
     const set = this._events[event];
     if (!set) return;
     for (const handler of Array.from(set)) {
-      try { handler(payload); } catch (e) { console.error(`[EventBus] handler error for ${event}:`, e); }
+      try { handler(payload); } catch (e) { /* handler error silently handled */ }
     }
   }
 }

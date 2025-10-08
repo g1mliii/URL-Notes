@@ -19,7 +19,15 @@ class CustomDialog {
 
     // Flush draft immediately when popup is deactivating to capture last keystrokes
     const flushDraft = () => {
-      try { this.saveEditorDraft(); } catch (_) {}
+      try {
+        // Only save if we have a current note, editor is open, and not during AI rewrite
+        if (window.urlNotesApp && window.urlNotesApp.saveEditorDraft && window.urlNotesApp.currentNote) {
+          const editor = document.getElementById('noteEditor');
+          if (editor && editor.style.display !== 'none' && !window.urlNotesApp._isApplyingAIRewrite) {
+            window.urlNotesApp.saveEditorDraft();
+          }
+        }
+      } catch (_) { }
     };
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') flushDraft();

@@ -5,7 +5,7 @@ class EditorManager {
   constructor(storageManager) {
     this.storageManager = storageManager;
     this.currentNote = null;
-    this.saveDraftDebounced = Utils.debounce(() => this.saveEditorDraft(), 150);
+
   }
 
   // Create a new note
@@ -60,9 +60,15 @@ class EditorManager {
         titleHeader.value = this.currentNote.title || '';
       }
 
-      // Populate content
+      // Populate content with XSS protection
       if (contentInput) {
-        contentInput.innerHTML = this.buildContentHtml(this.currentNote.content || '');
+        const safeContent = this.buildContentHtml(this.currentNote.content || '');
+        if (window.safeDOM) {
+          window.safeDOM.setInnerHTML(contentInput, safeContent, true);
+        } else {
+          // Fallback for safety
+          contentInput.textContent = this.currentNote.content || '';
+        }
       }
 
       // Populate tags
@@ -170,8 +176,8 @@ class EditorManager {
     setTimeout(() => {
       // Hide editor and show notes
       editor.style.display = 'none';
-      notesContainer.style.display = 'block';
-      searchContainer.style.display = 'block';
+      notesContainer.style.display = ''; // Remove inline style to let CSS flex take over
+      searchContainer.style.display = ''; // Remove inline style to let CSS flex take over
 
       // Remove animation classes
       editor.classList.remove('open', 'slide-in', 'slide-out', 'editor-fade-in');
@@ -183,7 +189,9 @@ class EditorManager {
         this.currentNote = null;
       } else {
         // Cache latest draft immediately on close to avoid losing unsaved edits
-        this.saveEditorDraft();
+        if (window.urlNotesApp && window.urlNotesApp.saveEditorDraft) {
+          window.urlNotesApp.saveEditorDraft();
+        }
         this.persistEditorOpen(false);
       }
     }, 240);
@@ -199,44 +207,92 @@ class EditorManager {
 
       let text = content || '';
 
-      // Convert formatting markers to HTML (process in order to avoid conflicts)
-      // Bold: **text** -> <b>text</b>
-      text = text.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
-
-      // Italics: *text* -> <i>text</i> (process after bold to avoid conflicts)
-      text = text.replace(/\*([^*]+)\*/g, '<i>$1</i>');
-
-      // Underline: __text__ -> <u>text</u>
-      text = text.replace(/__([^_]+)__/g, '<u>$1</u>');
-
-      // Strikethrough: ~~text~~ -> <s>text</s>
-      text = text.replace(/~~([^~]+)~~/g, '<s>$1</s>');
-
-      // Color: {color:#ff0000}text{/color} -> <span style="color:#ff0000">text</span>
-      text = text.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, '<span style="color:$1">$2</span>');
-
-      // Citation: {citation}text{/citation} -> <span style="font-style: italic; color: var(--text-secondary)">text</span>
-      text = text.replace(/\{citation\}([^{]*)\{\/citation\}/g, '<span style="font-style: italic; color: var(--text-secondary)">$1</span>');
-
+      // Process line by line to handle links with formatting properly
       const lines = text.split(/\r?\n/);
       const mdLink = /\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g;
+      
       const htmlLines = lines.map(line => {
-        let out = '';
-        let lastIndex = 0;
-        let match;
-        while ((match = mdLink.exec(line)) !== null) {
-          // Don't escape the part that might contain our HTML tags
-          const beforeLink = line.slice(lastIndex, match.index);
-          out += this.escapeHtmlExceptTags(beforeLink);
-          const text = escapeHtml(match[1]);
-          const href = match[2];
-          out += `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
-          lastIndex = mdLink.lastIndex;
+        let processedLine = line;
+        
+        // First, extract and process links to handle formatting within link text
+        const linkReplacements = [];
+        let linkMatch;
+        mdLink.lastIndex = 0; // Reset regex
+        
+        while ((linkMatch = mdLink.exec(line)) !== null) {
+          const linkText = linkMatch[1];
+          const url = linkMatch[2];
+          const href = this.sanitizeUrl(url);
+          
+          if (href) {
+            // Process formatting within link text
+            let formattedLinkText = linkText;
+            
+            // Apply formatting to link text (same order as below)
+            formattedLinkText = formattedLinkText.replace(/\*\*([^*]*(?:\*(?!\*)[^*]*)*)\*\*/g, '<b>$1</b>');
+            formattedLinkText = formattedLinkText.replace(/\*([^*]+)\*/g, '<i>$1</i>');
+            formattedLinkText = formattedLinkText.replace(/__([^_]*(?:_(?!_)[^_]*)*?)__/g, '<u>$1</u>');
+            formattedLinkText = formattedLinkText.replace(/~~([^~]*(?:~(?!~)[^~]*)*?)~~/g, '<s>$1</s>');
+            
+            // Handle color formatting in link text
+            formattedLinkText = formattedLinkText.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, (match, color, content) => {
+              const safeColor = this.sanitizeColor(color);
+              if (safeColor) {
+                return `<span style="color:${safeColor}">${content}</span>`;
+              }
+              return content;
+            });
+            
+            // Handle citation formatting in link text
+            formattedLinkText = formattedLinkText.replace(/\{citation\}([^{]*)\{\/citation\}/g, '<span style="font-style: italic; color: var(--text-secondary)">$1</span>');
+            
+            const placeholder = `__LINK_PLACEHOLDER_${linkReplacements.length}__`;
+            linkReplacements.push({
+              placeholder,
+              replacement: `<a href="${href}" target="_blank" rel="noopener noreferrer">${formattedLinkText}</a>`
+            });
+            
+            processedLine = processedLine.replace(linkMatch[0], placeholder);
+          } else {
+            // If URL is unsafe, just show the text
+            processedLine = processedLine.replace(linkMatch[0], escapeHtml(linkText));
+          }
         }
-        const afterLink = line.slice(lastIndex);
-        out += this.escapeHtmlExceptTags(afterLink);
-        return out;
+        
+        // Now apply formatting to the rest of the line (outside of links)
+        // Bold: **text** -> <b>text</b> (process first - outermost)
+        processedLine = processedLine.replace(/\*\*([^*]*(?:\*(?!\*)[^*]*)*)\*\*/g, '<b>$1</b>');
+
+        // Italics: *text* -> <i>text</i> (avoid conflict with bold)
+        processedLine = processedLine.replace(/\*([^*]+)\*/g, '<i>$1</i>');
+
+        // Underline: __text__ -> <u>text</u>
+        processedLine = processedLine.replace(/__([^_]*(?:_(?!_)[^_]*)*?)__/g, '<u>$1</u>');
+
+        // Strikethrough: ~~text~~ -> <s>text</s> (process last - innermost)
+        processedLine = processedLine.replace(/~~([^~]*(?:~(?!~)[^~]*)*?)~~/g, '<s>$1</s>');
+
+        // Color: {color:#ff0000}text{/color} -> <span style="color:#ff0000">text</span>
+        processedLine = processedLine.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, (match, color, content) => {
+          const safeColor = this.sanitizeColor(color);
+          if (safeColor) {
+            return `<span style="color:${safeColor}">${content}</span>`;
+          }
+          return content;
+        });
+
+        // Citation: {citation}text{/citation} -> <span style="font-style: italic; color: var(--text-secondary)">text</span>
+        processedLine = processedLine.replace(/\{citation\}([^{]*)\{\/citation\}/g, '<span style="font-style: italic; color: var(--text-secondary)">$1</span>');
+        
+        // Restore processed links
+        linkReplacements.forEach(({ placeholder, replacement }) => {
+          processedLine = processedLine.replace(placeholder, replacement);
+        });
+        
+        // Escape any remaining HTML in non-link, non-formatted content
+        return this.escapeHtmlExceptTags(processedLine);
       });
+      
       return htmlLines.join('<br>');
     } catch (e) {
       return (content || '').replace(/\n/g, '<br>');
@@ -259,10 +315,72 @@ class EditorManager {
     return escaped;
   }
 
+  // Sanitize color values to prevent XSS (matches web app implementation)
+  sanitizeColor(color) {
+    if (!color) return null;
+    
+    const trimmedColor = color.trim();
+    
+    // Allow hex colors (#fff, #ffffff)
+    if (/^#[0-9a-fA-F]{3}$|^#[0-9a-fA-F]{6}$/.test(trimmedColor)) {
+      return trimmedColor;
+    }
+    
+    // Allow rgb/rgba colors
+    if (/^rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(?:,\s*[0-9.]+\s*)?\)$/.test(trimmedColor)) {
+      return trimmedColor;
+    }
+    
+    // Allow hsl/hsla colors
+    if (/^hsla?\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*(?:,\s*[0-9.]+\s*)?\)$/.test(trimmedColor)) {
+      return trimmedColor;
+    }
+    
+    // Allow CSS variables (for theme colors)
+    if (/^var\(--[a-zA-Z0-9-]+\)$/.test(trimmedColor)) {
+      return trimmedColor;
+    }
+    
+    // Allow common named colors (basic set for safety)
+    const safeNamedColors = [
+      'black', 'white', 'red', 'green', 'blue', 'yellow', 'orange', 'purple', 
+      'pink', 'brown', 'gray', 'grey', 'cyan', 'magenta', 'lime', 'navy',
+      'maroon', 'olive', 'teal', 'silver', 'gold'
+    ];
+    
+    if (safeNamedColors.includes(trimmedColor.toLowerCase())) {
+      return trimmedColor;
+    }
+    
+    return null; // Unsafe color
+  }
+
+  // Sanitize URLs to prevent XSS (matches web app implementation)
+  sanitizeUrl(url) {
+    if (!url) return null;
+    
+    try {
+      const urlObj = new URL(url);
+      // Only allow http and https protocols
+      if (urlObj.protocol === 'http:' || urlObj.protocol === 'https:') {
+        return url;
+      }
+    } catch (e) {
+      // Invalid URL
+    }
+    
+    return null; // Unsafe URL
+  }
+
   // Convert limited HTML back to markdown-like plain text for storage
   htmlToMarkdown(html) {
     const tmp = document.createElement('div');
-    tmp.innerHTML = html || '';
+    // Use safe DOM manipulation
+    if (window.safeDOM) {
+      window.safeDOM.setInnerHTML(tmp, html || '', true);
+    } else {
+      tmp.innerHTML = html || '';
+    }
     // Remove disallowed tags by unwrapping while preserving line breaks.
     // For block elements, insert <br> boundaries to reflect visual line breaks.
     const allowed = new Set(['A', 'BR', 'B', 'STRONG', 'I', 'EM', 'U', 'S', 'STRIKE', 'SPAN']);
@@ -297,32 +415,72 @@ class EditorManager {
     toRemove.forEach(n => n.remove());
 
     // Convert formatting tags to markdown-style markers
-    // Bold tags
-    tmp.querySelectorAll('b, strong').forEach(el => {
-      const text = el.textContent;
-      const md = document.createTextNode(`**${text}**`);
-      el.replaceWith(md);
-    });
+    // Process innermost tags first to preserve nested formatting
+    // We need to process in reverse document order to handle nested tags correctly
 
-    // Italics tags
-    tmp.querySelectorAll('i, em').forEach(el => {
-      const text = el.textContent;
-      const md = document.createTextNode(`*${text}*`);
-      el.replaceWith(md);
+    // Strikethrough tags (process first - innermost)
+    tmp.querySelectorAll('s, strike').forEach(el => {
+      const innerHTML = el.innerHTML;
+      const md = document.createElement('span');
+      // Use safe DOM manipulation
+      if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(md, `~~${innerHTML}~~`, true);
+      } else {
+        md.innerHTML = `~~${innerHTML}~~`;
+      }
+      // Replace with the content, not a text node, to preserve nested HTML
+      while (md.firstChild) {
+        el.parentNode.insertBefore(md.firstChild, el);
+      }
+      el.remove();
     });
 
     // Underline tags
     tmp.querySelectorAll('u').forEach(el => {
-      const text = el.textContent;
-      const md = document.createTextNode(`__${text}__`);
-      el.replaceWith(md);
+      const innerHTML = el.innerHTML;
+      const md = document.createElement('span');
+      // Use safe DOM manipulation
+      if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(md, `__${innerHTML}__`, true);
+      } else {
+        md.innerHTML = `__${innerHTML}__`;
+      }
+      while (md.firstChild) {
+        el.parentNode.insertBefore(md.firstChild, el);
+      }
+      el.remove();
     });
 
-    // Strikethrough tags  
-    tmp.querySelectorAll('s, strike').forEach(el => {
-      const text = el.textContent;
-      const md = document.createTextNode(`~~${text}~~`);
-      el.replaceWith(md);
+    // Italics tags
+    tmp.querySelectorAll('i, em').forEach(el => {
+      const innerHTML = el.innerHTML;
+      const md = document.createElement('span');
+      // Use safe DOM manipulation
+      if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(md, `*${innerHTML}*`, true);
+      } else {
+        md.innerHTML = `*${innerHTML}*`;
+      }
+      while (md.firstChild) {
+        el.parentNode.insertBefore(md.firstChild, el);
+      }
+      el.remove();
+    });
+
+    // Bold tags (process last - outermost)
+    tmp.querySelectorAll('b, strong').forEach(el => {
+      const innerHTML = el.innerHTML;
+      const md = document.createElement('span');
+      // Use safe DOM manipulation
+      if (window.safeDOM) {
+        window.safeDOM.setInnerHTML(md, `**${innerHTML}**`, true);
+      } else {
+        md.innerHTML = `**${innerHTML}**`;
+      }
+      while (md.firstChild) {
+        el.parentNode.insertBefore(md.firstChild, el);
+      }
+      el.remove();
     });
 
     // Citation spans (preserve with special formatting) - process BEFORE color spans
@@ -372,7 +530,12 @@ class EditorManager {
     const text = htmlStr.replace(/<[^>]*>/g, '');
     // Decode entities by using textContent of a temp element
     const decode = document.createElement('textarea');
-    decode.innerHTML = text;
+    // Use safe DOM manipulation for decoding
+    if (window.safeDOM) {
+      window.safeDOM.setInnerHTML(decode, text, false);
+    } else {
+      decode.innerHTML = text;
+    }
     return decode.value;
   }
 
@@ -494,7 +657,12 @@ class EditorManager {
       if (!text) return;
       e.preventDefault();
       const html = this.sanitizePastedTextToHtml(text);
-      this.insertHtmlAtCaret(html);
+      // Use safe HTML insertion
+      if (window.safeDOM) {
+        window.safeDOM.insertHTML(html, true);
+      } else {
+        this.insertHtmlAtCaret(html);
+      }
       this.updateCharCount();
     } catch (_) {
       // On error, allow default paste
@@ -526,6 +694,13 @@ class EditorManager {
 
   // Insert HTML at caret within contenteditable safely
   insertHtmlAtCaret(html) {
+    // Use safe DOM insertion if available
+    if (window.safeDOM) {
+      window.safeDOM.insertHTML(html, true);
+      return;
+    }
+
+    // Fallback implementation with basic sanitization
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) {
       document.execCommand('insertHTML', false, html);
@@ -550,12 +725,14 @@ class EditorManager {
     const target = e.target;
     if (target && target.tagName === 'A') {
       e.preventDefault();
+      e.stopPropagation(); // Prevent contenteditable from handling the click
       const href = target.getAttribute('href');
       const text = target.textContent || '';
       // Need to call the main app's openLinkAndHighlight method
       if (window.urlNotesApp && window.urlNotesApp.openLinkAndHighlight) {
         window.urlNotesApp.openLinkAndHighlight(href, text);
       }
+      return false; // Additional prevention of event propagation
     }
   }
 
@@ -675,7 +852,7 @@ class EditorManager {
   async saveEditorDraft() {
     try {
       if (!this.currentNote) {
-        console.log('💾 Cannot save draft: no current note');
+
         return;
       }
       const titleHeader = document.getElementById('noteTitleHeader');
@@ -700,13 +877,7 @@ class EditorManager {
       state.caretStart = start;
       state.caretEnd = end;
 
-      console.log('💾 Saving draft:', {
-        id: this.currentNote.id,
-        title: this.currentNote.title,
-        contentLength: this.currentNote.content.length,
-        updatedAt: this.currentNote.updatedAt,
-        wasEditorOpen: state.wasEditorOpen
-      });
+
 
       await chrome.storage.local.set({ editorState: state });
     } catch (error) {
@@ -866,7 +1037,7 @@ class EditorManager {
       return '';
     }
 
-    console.log('Generating citation for note:', note);
+
 
     // Get note properties with fallbacks
     const title = note.title || 'Untitled Note';
@@ -927,7 +1098,7 @@ class EditorManager {
         citation = `${pageTitle} - ${url} (accessed ${monthName} ${day}, ${year})`;
     }
 
-    console.log(`Generated ${format} citation:`, citation);
+
     return citation;
   }
 
@@ -1017,7 +1188,7 @@ class EditorManager {
   // Handle citation format selection
   async handleCitationFormat(format) {
     try {
-      console.log('Handling citation format:', format);
+
 
       // Try to get current note from multiple sources
       let note = this.currentNote;
@@ -1028,12 +1199,9 @@ class EditorManager {
         note = window.urlNotesApp.currentSite;
       }
 
-      console.log('Current note state:', note);
-      console.log('Main app currentNote:', window.urlNotesApp?.currentNote);
-      console.log('Main app currentSite:', window.urlNotesApp?.currentSite);
+
 
       const citation = this.generateCitation(format);
-      console.log('Generated citation:', citation);
 
       if (!citation) {
         console.error('Citation generation failed - empty result');
@@ -1117,9 +1285,8 @@ class EditorManager {
       selection.addRange(range);
     }
 
-    // Update character count and trigger save draft
+    // Update character count
     this.updateCharCount();
-    this.saveDraftDebounced();
   }
 
   // Copy citation to clipboard
@@ -1277,7 +1444,7 @@ class EditorManager {
     });
 
     // Close color picker when editor is closed
-    window.addEventListener('beforeunload', () => {
+    window.addEventListener('pagehide', () => {
       if (colorWheelPopup) {
         colorWheelPopup.style.display = 'none';
       }

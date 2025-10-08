@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Anchored – Notes & Highlights for Websites",
-  "version": "1.1.0",
-  "description": "Anchored helps you take contextual notes tied to websites and URLs while you browse. Highlight text, attach references, and save notes directly linked to the pages you visit, so you can remember what you read, organize your research, and keep track of important content. Key Features: Take notes directly on any website or URL, Highlight text for quick reference, Attach contextual references to your notes, Notes are anchored to domains or pages for easy organization, Lightweight, fast, and designed for safe browsing. Perfect for: students, researchers, web enthusiasts, and anyone who wants organized, contextual web notes.",
+  "version": "1.14",
+  "description": "Anchored helps take contextual notes tied to websites while you browse. Highlight text, and save notes linked pages you visit.",
   "permissions": [
     "storage",
     "activeTab",
@@ -10,14 +10,27 @@
     "alarms",
     "contextMenus",
     "identity",
-    "scripting"
+    "scripting",
+    "notifications"
   ],
   "host_permissions": [
     "<all_urls>"
   ],
+  "icons": {
+    "16": "assets/icons/icon16x16.png",
+    "32": "assets/icons/icon32x32.png",
+    "48": "assets/icons/icon48x48.png",
+    "128": "assets/icons/icon128x128.png"
+  },
   "action": {
     "default_title": "Anchored – Notes & Highlights for Websites",
-    "default_popup": "popup/popup.html"
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "assets/icons/icon16x16.png",
+      "32": "assets/icons/icon32x32.png",
+      "48": "assets/icons/icon48x48.png",
+      "128": "assets/icons/icon128x128.png"
+    }
   },
   "side_panel": {
     "default_path": "popup/popup.html"
@@ -61,6 +74,6 @@
     }
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co https://kqjcorjjvunmyrnzvqgr.supabase.co/auth/v1 https://kqjcorjjvunmyrnzvqgr.supabase.co/rest/v1; img-src 'self' data: https:; style-src 'self' 'unsafe-inline';"
+    "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co https://kqjcorjjvunmyrnzvqgr.supabase.co/auth/v1 https://kqjcorjjvunmyrnzvqgr.supabase.co/rest/v1; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; frame-src 'none'; base-uri 'self'; form-action 'self';"
   }
 }

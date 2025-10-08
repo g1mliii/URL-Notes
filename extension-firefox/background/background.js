@@ -1,6 +1,8 @@
 // Context menu now uses the same storage system as the main extension
 // No separate storage abstraction needed
 
+// Background script loaded
+
 // Keyboard commands
 try {
   chrome.commands.onCommand.addListener(async (command) => {
@@ -28,7 +30,7 @@ try {
     }
   });
 } catch (_) { /* noop */ }
-// URL Notes Extension - Background Script (Service Worker)
+// Anchored Extension - Background Script (Service Worker)
 
 // --- Main Event Listeners ---
 
@@ -90,14 +92,14 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 function setupContextMenus() {
   try {
     chrome.contextMenus.removeAll(() => {
-      // Create a parent menu for URL Notes
+      // Create a parent menu for Anchored
       chrome.contextMenus.create({
         id: 'urlNotesParent',
-        title: 'URL Notes',
+        title: 'Anchored',
         contexts: ['selection', 'page']
       }, () => {
         if (chrome.runtime.lastError) {
-          console.warn('Parent menu create error:', chrome.runtime.lastError.message);
+          // Parent menu create error - silently handled
         }
       });
 
@@ -109,7 +111,7 @@ function setupContextMenus() {
         parentId: 'urlNotesParent'
       }, () => {
         if (chrome.runtime.lastError) {
-          console.warn('Context menu create error:', chrome.runtime.lastError.message);
+          // Context menu create error - silently handled
         }
       });
 
@@ -121,7 +123,7 @@ function setupContextMenus() {
         parentId: 'urlNotesParent'
       }, () => {
         if (chrome.runtime.lastError) {
-          console.warn('Existing-note menu create error:', chrome.runtime.lastError.message);
+          // Existing-note menu create error - silently handled
         }
       });
 
@@ -133,7 +135,7 @@ function setupContextMenus() {
         parentId: 'urlNotesParent'
       }, () => {
         if (chrome.runtime.lastError) {
-          console.warn('Separator create error:', chrome.runtime.lastError.message);
+          // Separator create error - silently handled
         }
       });
 
@@ -145,12 +147,12 @@ function setupContextMenus() {
         parentId: 'urlNotesParent'
       }, () => {
         if (chrome.runtime.lastError) {
-          console.warn('Multi-highlight menu create error:', chrome.runtime.lastError.message);
+          // Multi-highlight menu create error - silently handled
         }
       });
     });
   } catch (e) {
-    console.warn('setupContextMenus failed:', e);
+    // setupContextMenus failed - silently handled
   }
 }
 
@@ -164,13 +166,11 @@ async function addSelectionToNewNote(info, tab) {
 
   // Validate that we have a proper URL and domain
   if (!pageUrl || !pageUrl.startsWith('http')) {
-    console.error('Context menu: Invalid pageUrl:', pageUrl);
     return;
   }
 
   const domain = new URL(pageUrl).hostname;
   if (!domain || domain === 'localhost') {
-    console.error('Context menu: Invalid domain:', domain);
     return;
   }
 
@@ -218,7 +218,7 @@ async function addSelectionToNewNote(info, tab) {
     openExtensionUi();
 
   } catch (error) {
-    console.error('Failed to save new note from selection:', error);
+    // Failed to save new note from selection - silently handled
   }
 }
 
@@ -228,13 +228,11 @@ async function addSelectionToExistingNote(info, tab) {
 
   // Validate that we have a proper URL and domain
   if (!pageUrl || !pageUrl.startsWith('http')) {
-    console.error('Context menu: Invalid pageUrl:', pageUrl);
     return;
   }
 
   const domain = new URL(pageUrl).hostname;
   if (!domain || domain === 'localhost') {
-    console.error('Context menu: Invalid domain:', domain);
     return;
   }
 
@@ -281,7 +279,7 @@ async function addSelectionToExistingNote(info, tab) {
         notes.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
         targetNote = notes[0];
       } catch (error) {
-        console.error('Context menu: Failed to get notes from storage, creating new note:', error);
+        // Context menu: Failed to get notes from storage, creating new note
         return addSelectionToNewNote(info, tab);
       }
     }
@@ -350,7 +348,7 @@ async function addSelectionToExistingNote(info, tab) {
       openExtensionUi();
     }
   } catch (e) {
-    console.error('Failed to append to existing note:', e);
+    // Failed to append to existing note - silently handled
   }
 }
 
@@ -418,7 +416,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           sendResponse({ success: true });
         })
         .catch(error => {
-          console.error('Error in addHighlightsToNote:', error);
           sendResponse({ success: false, error: error.message });
         });
       return true; // Keep message channel open for async response
@@ -429,7 +426,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'auth-changed':
       // Handle auth changes for sync timer management
       if (request.user) {
-        // User signed in, start timer and initialize lastSyncTime
+        // User signed in - initialize lastSyncTime and start timer
+        // Premium check will happen at sync execution time
         lastSyncTime = Date.now();
         saveLastSyncTime(); // Save the current time as last sync
         startSyncTimer();
@@ -446,12 +444,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       startSyncTimer();
       sendResponse({ success: true });
       break;
+    case 'tier-changed':
+      // Handle tier changes (premium status updates)
+
+
+      // Timer continues running regardless of tier - premium check happens at sync execution
+      // This prevents the popup open/close issue and keeps sync timing consistent
+
+
+      sendResponse({ success: true });
+      break;
     case 'reset-sync-timer':
       // Reset timer due to corrupted data
       resetSyncTimer().then(() => {
         sendResponse({ success: true });
       }).catch(error => {
-        console.error('🕐 Background: Error in reset-sync-timer:', error);
         sendResponse({ success: false, error: error.message });
       });
       return true; // Keep message channel open for async response
@@ -461,7 +468,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       forceResetSyncTimer().then(() => {
         sendResponse({ success: true });
       }).catch(error => {
-        console.error('🕐 Background: Error in force-reset-sync-timer:', error);
         sendResponse({ success: false, error: error.message });
       });
       return true; // Keep message channel open for async response
@@ -480,6 +486,165 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   return true; // Keep message channel open for async responses
 });
+
+// --- OAuth Handling ---
+
+// Listen for tab updates to catch OAuth redirects
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  // Check for OAuth callbacks
+  if (changeInfo.url) {
+    // Check if this looks like an OAuth callback (has access_token or error)
+    if (changeInfo.url.includes('access_token=') || changeInfo.url.includes('error=')) {
+      finishUserOAuth(changeInfo.url, tabId);
+      return;
+    }
+
+    // Also check for redirects to the extension-specific login-success page
+    if (changeInfo.url.includes('anchored.site/login-success') || changeInfo.url.includes('anchored.site/?')) {
+      finishUserOAuth(changeInfo.url, tabId);
+      return;
+    }
+
+    // Check for any anchored.site URL with hash parameters (extension OAuth)
+    if (changeInfo.url.includes('anchored.site') && changeInfo.url.includes('#')) {
+      finishUserOAuth(changeInfo.url, tabId);
+      return;
+    }
+  }
+
+  if (changeInfo.url?.startsWith(chrome.identity.getRedirectURL())) {
+    finishUserOAuth(changeInfo.url, tabId);
+  }
+});
+
+/**
+ * Method used to finish OAuth callback for user authentication.
+ */
+async function finishUserOAuth(url, tabId) {
+  try {
+    // Parse URL hash for tokens (Supabase returns tokens in hash)
+    const hashMap = parseUrlHash(url);
+
+    // Also try parsing query parameters in case tokens are there
+    const urlObj = new URL(url);
+    const queryParams = new URLSearchParams(urlObj.search);
+
+    // Try to get tokens from hash first, then query params
+    let access_token = hashMap.get('access_token') || queryParams.get('access_token');
+    let refresh_token = hashMap.get('refresh_token') || queryParams.get('refresh_token');
+
+    // OAuth tokens received
+
+    // Reset lastSyncTime on successful login to prevent overdue sync detection
+    lastSyncTime = Date.now();
+    await saveLastSyncTime();
+
+
+    if (!access_token) {
+      // Check for error parameters in both hash and query
+      const error = hashMap.get('error') || queryParams.get('error');
+      const error_description = hashMap.get('error_description') || queryParams.get('error_description');
+      console.log('❌ No access token found');
+      console.log('❌ Error:', error);
+      console.log('❌ Error description:', error_description);
+      throw new Error(error_description || error || 'No access token found in OAuth response');
+    }
+
+
+
+    // Get user info from the access token
+    const userResponse = await fetch('https://kqjcorjjvunmyrnzvqgr.supabase.co/auth/v1/user', {
+      headers: {
+        'Authorization': `Bearer ${access_token}`,
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxamNvcmpqdnVubXlybnp2cWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3MTc4ODgsImV4cCI6MjA3MTI5Mzg4OH0.l-ZdPOYMNi8x3lBqlemwQ2elDyvoPy-2ZUWuODVviWk'
+      }
+    });
+
+
+
+    if (!userResponse.ok) {
+      const errorText = await userResponse.text();
+      console.error('❌ User fetch failed:', errorText);
+      throw new Error(`Failed to get user info: ${userResponse.status} ${errorText}`);
+    }
+
+    const user = await userResponse.json();
+
+
+    // Create auth data object (same format as handleAuthSuccess expects)
+    const authData = {
+      access_token,
+      refresh_token: refresh_token || null,
+      user,
+      expires_in: 3600 // Default to 1 hour
+    };
+
+
+
+    // Store session in chrome.storage.local as fallback (in case popup isn't open)
+    await chrome.storage.local.set({
+      supabase_session: {
+        access_token,
+        refresh_token: refresh_token || null,
+        user,
+        expires_at: Date.now() + (3600 * 1000)
+      }
+    });
+
+
+
+    // Set flag for popup to check on reopen (since popup closes during OAuth)
+    await chrome.storage.local.set({
+      oauthJustCompleted: {
+        success: true,
+        timestamp: Date.now()
+      }
+    });
+
+    // Notify any open popups that OAuth is complete
+    // Let the popup's Supabase client handle the auth success using handleAuthSuccess
+    chrome.runtime.sendMessage({
+      action: 'oauth-complete',
+      success: true,
+      data: authData
+    }).then(() => {
+
+    }).catch(() => {
+      // Popup likely closed, but session is stored so it will work when popup opens
+    });
+
+
+  } catch (error) {
+    console.error('OAuth callback error:', error);
+
+    // Notify the popup that OAuth failed
+    chrome.runtime.sendMessage({
+      action: 'oauth-complete',
+      success: false,
+      error: error.message
+    }).catch(() => {
+      // Popup likely closed, ignore
+    });
+  }
+}
+
+/**
+ * Helper method used to parse the hash of a redirect URL.
+ */
+function parseUrlHash(url) {
+  const hashParts = new URL(url).hash.slice(1).split('&');
+  const hashMap = new Map(
+    hashParts.map((part) => {
+      const [name, value] = part.split('=');
+      return [name, decodeURIComponent(value || '')];
+    })
+  );
+  return hashMap;
+}
+
+
+
+// Background script loaded and ready
 
 function handleContentScriptReady(pageInfo, tab) {
   if (!tab || typeof tab.id !== 'number') {
@@ -515,7 +680,7 @@ async function performCleanup() {
       await chrome.storage.session.remove(keysToRemove);
     }
   } catch (error) {
-    console.error('Error during cleanup:', error);
+    // Error during cleanup - silently handled
   }
 }
 
@@ -553,7 +718,7 @@ async function updateUninstallUrl() {
     const uninstallUrl = `https://anchored.site?${params.toString()}`;
     chrome.runtime.setUninstallURL(uninstallUrl);
   } catch (e) {
-    console.warn('Failed to set uninstall URL:', e);
+    // Failed to set uninstall URL - silently handled
   }
 }
 
@@ -567,12 +732,10 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
 
   // Validate that we have a proper URL and domain
   if (!url || !url.startsWith('http')) {
-    console.error('Invalid pageUrl:', url);
     return;
   }
 
   if (!domain || domain === 'localhost') {
-    console.error('Invalid domain:', domain);
     return;
   }
 
@@ -622,7 +785,7 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
           targetNote = notes[0];
         }
       } catch (error) {
-        console.error('Multi-highlight: Failed to get notes from storage:', error);
+        // Multi-highlight: Failed to get notes from storage - silently handled
       }
     }
 
@@ -691,7 +854,7 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
       }
     }
   } catch (error) {
-    console.error('Multi-highlight: Failed to append to existing note, will create new note instead:', error);
+    // Multi-highlight: Failed to append to existing note, will create new note instead
   }
 
   // If we couldn't append to existing note, create a new one
@@ -738,7 +901,7 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
     openExtensionUi();
 
   } catch (error) {
-    console.error('Failed to save multi-highlight note:', error);
+    // Failed to save multi-highlight note - silently handled
   }
 }
 
@@ -752,14 +915,13 @@ function updateExtensionBadge(text, color) {
       chrome.action.setBadgeBackgroundColor({ color: color });
     }
   } catch (error) {
-    console.warn('Failed to update badge:', error);
+    // Failed to update badge - silently handled
   }
 }
 
 // Function to toggle multi-highlight mode from context menu
 async function toggleMultiHighlightModeFromContextMenu(tab) {
   if (!tab || !tab.url || !tab.url.startsWith('http')) {
-    console.error('Invalid tab for multi-highlight toggle');
     return;
   }
 
@@ -808,7 +970,7 @@ async function toggleMultiHighlightModeFromContextMenu(tab) {
         contentScriptReady = true;
 
       } catch (injectError) {
-        console.error('Failed to inject content script for context menu:', injectError);
+        // Failed to inject content script for context menu
         // Show error notification in the tab
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
@@ -912,7 +1074,7 @@ async function toggleMultiHighlightModeFromContextMenu(tab) {
       });
     }
   } catch (error) {
-    console.error('Failed to toggle multi-highlight mode from context menu:', error);
+    // Failed to toggle multi-highlight mode from context menu - silently handled
   }
 }
 
@@ -921,21 +1083,25 @@ let syncTimer = null;
 let syncInterval = 5 * 60 * 1000; // 5 minutes
 let lastSyncTime = 0; // Track when we last synced
 
+
+// Start periodic debug status logging
+// Background script loaded
+
 // Load lastSyncTime from storage on startup
 async function loadLastSyncTime() {
   try {
     const result = await chrome.storage.local.get(['lastSyncTime']);
+    const now = Date.now();
 
     if (result.lastSyncTime) {
       const storedTime = result.lastSyncTime;
-      const now = Date.now();
 
       // Validate that the stored time is reasonable
       // Check for obviously invalid timestamps (future dates, extremely old dates, or NaN)
       const currentYear = new Date().getFullYear();
       const storedYear = new Date(storedTime).getFullYear();
 
-      // Check if the stored timestamp is from a future year (like 2025 when we're in 2024)
+      // Check if the stored timestamp is from a future year or invalid
       if (isNaN(storedTime) || storedTime <= 0 || storedTime > now || storedYear > currentYear) {
         lastSyncTime = now;
         await chrome.storage.local.set({ lastSyncTime: lastSyncTime });
@@ -951,7 +1117,6 @@ async function loadLastSyncTime() {
       await chrome.storage.local.set({ lastSyncTime: lastSyncTime });
     }
   } catch (error) {
-    console.error('🕐 Background: Error loading lastSyncTime:', error);
     // Fallback to current time
     lastSyncTime = Date.now();
     await saveLastSyncTime(); // Save the fallback time
@@ -963,7 +1128,7 @@ async function saveLastSyncTime() {
   try {
     await chrome.storage.local.set({ lastSyncTime: lastSyncTime });
   } catch (error) {
-    console.error('🕐 Background: Error saving lastSyncTime:', error);
+    // Error saving lastSyncTime - silently handled
   }
 }
 
@@ -980,7 +1145,7 @@ async function resetSyncTimer() {
     // Restart timer
     startSyncTimer();
   } catch (error) {
-    console.error('🕐 Background: Error resetting sync timer:', error);
+    // Error resetting sync timer - silently handled
   }
 }
 
@@ -997,13 +1162,14 @@ async function forceResetSyncTimer() {
     // Restart timer
     startSyncTimer();
   } catch (error) {
-    console.error('🕐 Background: Error in force reset:', error);
+    // Error in force reset - silently handled
   }
 }
 
 function startSyncTimer() {
   if (syncTimer) {
     clearTimeout(syncTimer);
+    syncTimer = null;
   }
 
   // Set a one-time timeout instead of interval
@@ -1013,7 +1179,6 @@ function startSyncTimer() {
       // Popup might be closed, that's okay
       // Mark that we need to sync when popup opens
       // Don't set lastSyncTime here - let the popup handle it when it opens
-      // This prevents the invalid future timestamp issue
     });
 
     // Clear the timer after it fires
@@ -1031,23 +1196,11 @@ function stopSyncTimer() {
   saveLastSyncTime();
 }
 
-// Start timer when extension loads
-// Add a small delay to ensure storage is ready
+// Initialize sync timer management when extension loads
+// Note: Don't start timer automatically - wait for auth and premium status
 setTimeout(() => {
-  loadLastSyncTime().then(() => {
-    // Force reset if the timestamp is still corrupted after validation
-    const currentYear = new Date().getFullYear();
-    const storedYear = new Date(lastSyncTime).getFullYear();
-
-    if (lastSyncTime > Date.now() || storedYear > currentYear) {
-      forceResetSyncTimer();
-    } else {
-      startSyncTimer();
-    }
-  }).catch(error => {
-    console.error('🕐 Background: Error in loadLastSyncTime:', error);
-    // Fallback: start timer anyway
-    startSyncTimer();
+  loadLastSyncTime().catch(() => {
+    // Error during initialization - handled by loadLastSyncTime
   });
 }, 100);
 

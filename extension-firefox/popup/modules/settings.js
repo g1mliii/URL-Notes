@@ -29,15 +29,41 @@ class SettingsManager {
     this.authSignUpBtn = document.getElementById('authSignUpBtn');
     this.authSignInBtn = document.getElementById('authSignInBtn');
     this.authSignOutBtn = document.getElementById('authSignOutBtn');
+    this.authForgotPwBtn = document.getElementById('authForgotPwBtn');
     this.authStatusText = document.getElementById('authStatusText');
+    this.authGoogleBtn = document.getElementById('authGoogleBtn');
+    this.oauthSection = document.getElementById('oauthSection');
 
     // Sync elements
     this.manualSyncBtn = document.getElementById('manualSyncBtn');
 
+    // Premium status refresh button
+    this.refreshPremiumStatusBtn = document.getElementById('refreshPremiumStatusBtn');
+
+
+
+    // Website link button
+    this.websiteLinkBtn = document.getElementById('websiteLinkBtn');
+
+    // Export reminder elements
+    this.exportReminderBtn = document.getElementById('exportReminderBtn');
+
     this.currentFont = 'Default';
     this.currentFontSize = 12;
 
+    // Initialize backup reminder system
+    this.initBackupReminders();
+
     this.setupEventListeners();
+  }
+
+  // Helper function to safely set button HTML
+  setButtonHTML(button, html) {
+    if (window.safeDOM) {
+      window.safeDOM.setInnerHTML(button, html, false);
+    } else {
+      button.innerHTML = html;
+    }
   }
 
   // ===== Auth UI and handlers =====
@@ -64,6 +90,8 @@ class SettingsManager {
         show(this.authPasswordInput, false);
         show(this.authTogglePwBtn, false);
         show(this.authRow, false);
+        show(this.oauthSection, false); // Hide OAuth section when logged in
+        show(this.refreshPremiumStatusBtn, true); // Show refresh button when logged in
         if (this.authEmailInput) this.authEmailInput.value = user.email || '';
         if (this.authPasswordInput) this.authPasswordInput.value = '';
         if (actions) {
@@ -104,6 +132,8 @@ class SettingsManager {
         show(this.authTogglePwBtn, true);
         show(this.authRow, true);
         show(this.authForgotPwBtn, true);
+        show(this.oauthSection, true); // Show OAuth section when not logged in
+        show(this.refreshPremiumStatusBtn, false); // Hide refresh button when not logged in
         // Hide sync management for non-authenticated users
         show(syncManagement, false);
         // Swap buttons: Sign In on left, Sign Up on right
@@ -138,26 +168,7 @@ class SettingsManager {
     return { email, password };
   }
 
-  async handleSignUp() {
-    const { email, password } = this.getAuthInputs();
-    if (!email || !password) {
-      return this.showNotification('Enter email and password', 'error');
-    }
-    try {
-      this.setAuthBusy(true);
-      await window.supabaseClient.signUpWithEmail(email, password);
-      // With confirm disabled, ensure session by signing in
-      if (!window.supabaseClient.isAuthenticated()) {
-        await window.supabaseClient.signInWithEmail(email, password);
-      }
-      this.showNotification('Signed up successfully', 'success');
-      this.updateAuthUI();
-    } catch (e) {
-      this.showNotification(`Sign up failed: ${e.message || e}`, 'error');
-    } finally {
-      this.setAuthBusy(false);
-    }
-  }
+
 
   async handleSignIn() {
     const { email, password } = this.getAuthInputs();
@@ -167,8 +178,7 @@ class SettingsManager {
     try {
       this.setAuthBusy(true);
       await window.supabaseClient.signInWithEmail(email, password);
-      this.showNotification('Signed in', 'success');
-      this.updateAuthUI();
+      await this.handleSuccessfulSignIn('Signed in successfully');
     } catch (e) {
       this.showNotification(`Sign in failed: ${e.message || e}`, 'error');
     } finally {
@@ -189,25 +199,40 @@ class SettingsManager {
     }
   }
 
-  async handleForgotPassword() {
-    const email = this.authEmailInput?.value || '';
-    if (!email) {
-      this.showNotification('Please enter your email address', 'error');
-      return;
-    }
 
+
+  async handleGoogleSignIn() {
     try {
       this.setAuthBusy(true);
-      await window.supabaseClient.resetPassword(email);
-      this.showNotification('Password reset email sent. Check your inbox.', 'success');
+      await window.supabaseClient.signInWithOAuth('google');
+      await this.handleSuccessfulSignIn('Signed in with Google');
     } catch (e) {
-      this.showNotification(`Password reset failed: ${e.message || e}`, 'error');
+      console.error('Google OAuth error:', e);
+      this.showNotification(`Google sign in failed: ${e.message || e}`, 'error');
     } finally {
       this.setAuthBusy(false);
     }
   }
 
+  // Shared post-authentication logic for both email and Google sign-in
+  async handleSuccessfulSignIn(successMessage) {
+    this.showNotification(successMessage, 'success');
+
+    // Update settings UI immediately
+    await this.updateAuthUI();
+
+    // Email login triggers refresh directly (OAuth uses background flag mechanism)
+    if (successMessage.includes('Signed in successfully')) {
+      setTimeout(() => {
+        this.handleRefreshPremiumStatus();
+      }, 1500);
+    }
+    // Note: Google OAuth refresh is handled by background flag mechanism
+  }
+
   async handleManualSync() {
+    // Manual sync button clicked
+
     if (!window.syncEngine) {
       this.showNotification('Sync engine not available', 'error');
       return;
@@ -215,30 +240,30 @@ class SettingsManager {
 
     try {
       this.manualSyncBtn.disabled = true;
-      this.manualSyncBtn.innerHTML = `
+      this.setButtonHTML(this.manualSyncBtn, `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 3v9l3 3"/>
         </svg>
         <span>Syncing...</span>
-      `;
+      `);
 
       await window.syncEngine.manualSync();
 
-      this.manualSyncBtn.innerHTML = `
+      this.setButtonHTML(this.manualSyncBtn, `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 3v9l3 3"/>
         </svg>
         <span>Sync Complete</span>
-      `;
+      `);
 
       setTimeout(() => {
-        this.manualSyncBtn.innerHTML = `
+        this.setButtonHTML(this.manualSyncBtn, `
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
             <path d="M12 3v12l3 3"/>
           </svg>
           <span>Sync Now</span>
-        `;
+        `);
         this.manualSyncBtn.disabled = false;
       }, 2000);
 
@@ -248,13 +273,82 @@ class SettingsManager {
     } catch (e) {
       this.showNotification(`Manual sync failed: ${e.message || e}`, 'error');
       this.manualSyncBtn.disabled = false;
-      this.manualSyncBtn.innerHTML = `
+      this.setButtonHTML(this.manualSyncBtn, `
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
           <path d="M12 3v9l3 3"/>
         </svg>
         <span>Sync Now</span>
-      `;
+      `);
+    }
+  }
+
+  async handleRefreshPremiumStatus() {
+    if (!window.supabaseClient?.isAuthenticated()) {
+      this.showNotification('Please sign in first', 'error');
+      return;
+    }
+
+    try {
+      // Show loading state
+      this.refreshPremiumStatusBtn.disabled = true;
+      this.setButtonHTML(this.refreshPremiumStatusBtn, `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin">
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+          <path d="M12 3v9l3 3"/>
+        </svg>
+        <span>Refreshing...</span>
+      `);
+
+      // Use the shared refresh method
+      const status = await window.supabaseClient.refreshPremiumStatusAndUI();
+
+      // Update UI based on new status
+      await this.updateAuthUI();
+
+      // Show success message
+      if (status?.active && status?.tier !== 'free') {
+        this.showNotification(`Premium ${status.tier} active`, 'success');
+      } else if (status?.tier === 'premium' && !status?.active) {
+        this.showNotification('Premium inactive - check expiration', 'warning');
+      } else {
+        this.showNotification(`Status refreshed - ${status?.tier || 'free'} tier active`, 'info');
+      }
+
+      // Reset button
+      this.setButtonHTML(this.refreshPremiumStatusBtn, `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+          <path d="M12 3v9l3 3"/>
+        </svg>
+        <span>Status Updated</span>
+      `);
+
+      // Reset to original text after 2 seconds
+      setTimeout(() => {
+        this.setButtonHTML(this.refreshPremiumStatusBtn, `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            <path d="M12 3v9l3 3"/>
+          </svg>
+          <span>Refresh Premium Status</span>
+        `);
+        this.refreshPremiumStatusBtn.disabled = false;
+      }, 2000);
+
+    } catch (e) {
+      console.error('Premium status refresh failed:', e);
+      this.showNotification(`Failed to refresh status: ${e.message || e}`, 'error');
+
+      // Reset button on error
+      this.setButtonHTML(this.refreshPremiumStatusBtn, `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+          <path d="M12 3v9l3 3"/>
+        </svg>
+        <span>Refresh Premium Status</span>
+      `);
+      this.refreshPremiumStatusBtn.disabled = false;
     }
   }
 
@@ -289,7 +383,7 @@ class SettingsManager {
   }
 
   setAuthBusy(busy) {
-    const controls = [this.authEmailInput, this.authPasswordInput, this.authTogglePwBtn, this.authSignUpBtn, this.authSignInBtn, this.authForgotPwBtn, this.authSignOutBtn];
+    const controls = [this.authEmailInput, this.authPasswordInput, this.authTogglePwBtn, this.authSignUpBtn, this.authSignInBtn, this.authForgotPwBtn, this.authSignOutBtn, this.authGoogleBtn];
     controls.forEach(el => { if (el) el.disabled = !!busy; });
     if (this.authStatusText) this.authStatusText.style.opacity = busy ? '0.6' : '0.8';
   }
@@ -298,6 +392,9 @@ class SettingsManager {
     // Settings panel toggle
     this.settingsBtn?.addEventListener('click', () => this.openSettings());
     this.settingsBackBtn?.addEventListener('click', () => this.closeSettings());
+
+    // Setup scroll indicators for settings content
+    this.setupScrollIndicators();
 
     // Font settings
     this.fontSelector?.addEventListener('change', (e) => this.handleFontChange(e.target.value));
@@ -311,16 +408,22 @@ class SettingsManager {
     // Sync management
     this.manualSyncBtn?.addEventListener('click', () => this.handleManualSync());
 
+    // Premium status refresh
+    this.refreshPremiumStatusBtn?.addEventListener('click', () => this.handleRefreshPremiumStatus());
+
+
+
     // Shortcut settings
     this.changeShortcutBtn?.addEventListener('click', () => this.openShortcutEditor());
 
     // Auth handlers
     this.authTogglePwBtn?.addEventListener('click', () => this.togglePasswordVisibility());
-    this.authSignUpBtn?.addEventListener('click', () => this.handleSignUp());
+    this.authSignUpBtn?.addEventListener('click', () => this.openSignUp());
     this.authSignInBtn?.addEventListener('click', () => this.handleSignIn());
     this.authSignOutBtn?.addEventListener('click', () => this.handleSignOut());
+    this.authGoogleBtn?.addEventListener('click', () => this.handleGoogleSignIn());
     // Forgot password handler
-    this.authForgotPwBtn?.addEventListener('click', () => this.handleForgotPassword());
+    this.authForgotPwBtn?.addEventListener('click', () => this.openForgotPassword());
     // Press Enter to sign in from either field
     this.authEmailInput?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); this.handleSignIn(); }
@@ -332,8 +435,17 @@ class SettingsManager {
     // Open onboarding
     this.openOnboardingBtn?.addEventListener('click', () => this.openOnboarding());
 
+    // Add manual trigger for onboarding tooltips (for testing/re-showing)
+    const showTooltipsBtn = document.getElementById('showTooltipsBtn');
+    if (showTooltipsBtn) {
+      showTooltipsBtn.addEventListener('click', () => this.showOnboardingTooltips());
+    }
+
     // Open advertising disclosure
     this.adDisclaimerBtn?.addEventListener('click', () => this.openAdDisclosure());
+
+    // Website link button
+    this.websiteLinkBtn?.addEventListener('click', () => this.openWebsite());
 
     // Ad disclaimer link in ad container
     const adDisclaimerLink = document.getElementById('adDisclaimerLink');
@@ -341,6 +453,8 @@ class SettingsManager {
       e.preventDefault();
       this.openAdDisclosure();
     });
+
+
 
     // React to global auth and tier changes
     try {
@@ -356,12 +470,23 @@ class SettingsManager {
 
     if (notesList) notesList.style.display = 'none';
     if (noteEditor) noteEditor.style.display = 'none';
-    if (this.settingsPanel) this.settingsPanel.style.display = 'block';
+    if (this.settingsPanel) {
+      this.settingsPanel.style.display = 'block';
+      // Reset scroll position to top when opening
+      const settingsContent = this.settingsPanel.querySelector('.settings-content');
+      if (settingsContent) {
+        settingsContent.scrollTop = 0;
+      }
+    }
     // Refresh shortcut display when opening settings
     this.loadShortcutDisplay();
     // Refresh auth UI
     this.updateAuthUI();
+    // Setup scroll indicators after panel is visible
+    setTimeout(() => this.setupScrollIndicators(), 50);
   }
+
+
 
   // Close settings panel
   closeSettings() {
@@ -372,6 +497,8 @@ class SettingsManager {
     // Restore notes container to its stylesheet-defined display (flex),
     // instead of forcing 'block' which changes layout/background.
     if (notesList) notesList.style.removeProperty('display');
+
+
 
     // Don't automatically show editor - let the main app handle state
   }
@@ -468,6 +595,68 @@ class SettingsManager {
     this.loadShortcutDisplay();
     // Initialize auth UI
     this.updateAuthUI();
+    // Setup scroll indicators
+    this.setupScrollIndicators();
+  }
+
+  // Setup scroll indicators for better UX
+  setupScrollIndicators() {
+    const settingsContent = document.querySelector('.settings-content');
+    if (!settingsContent) return;
+
+    const updateScrollIndicators = () => {
+      const { scrollTop, scrollHeight, clientHeight } = settingsContent;
+
+      // Check if content is scrollable
+      const isScrollable = scrollHeight > clientHeight;
+      settingsContent.setAttribute('data-scrollable', isScrollable.toString());
+
+      // Add 'scrolled' class if user has scrolled down
+      if (scrollTop > 10) {
+        settingsContent.classList.add('scrolled');
+      } else {
+        settingsContent.classList.remove('scrolled');
+      }
+
+      // Add 'has-more' class if there's more content below
+      if (scrollTop + clientHeight < scrollHeight - 10) {
+        settingsContent.classList.add('has-more');
+      } else {
+        settingsContent.classList.remove('has-more');
+      }
+    };
+
+    // Update indicators on scroll
+    settingsContent.addEventListener('scroll', updateScrollIndicators);
+
+    // Update indicators on resize or content change
+    const resizeObserver = new ResizeObserver((entries) => {
+      // Use requestAnimationFrame to prevent ResizeObserver loops
+      requestAnimationFrame(() => {
+        updateScrollIndicators();
+      });
+    });
+    resizeObserver.observe(settingsContent);
+
+    // Initial update
+    setTimeout(updateScrollIndicators, 100);
+
+    // Also update when settings panel becomes visible
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+          const panel = mutation.target;
+          if (panel.style.display === 'block') {
+            setTimeout(updateScrollIndicators, 50);
+          }
+        }
+      });
+    });
+
+    const settingsPanel = document.getElementById('settingsPanel');
+    if (settingsPanel) {
+      observer.observe(settingsPanel, { attributes: true });
+    }
   }
 
   // Update font preview display
@@ -544,28 +733,78 @@ class SettingsManager {
     }
   }
 
+  // Open Anchored website in new tab
+  openWebsite() {
+    try {
+      const websiteUrl = 'https://anchored.site';
+      if (chrome?.tabs?.create) {
+        chrome.tabs.create({ url: websiteUrl }).catch(() => {
+          try { window.open(websiteUrl, '_blank'); } catch (_) { }
+        });
+      } else {
+        window.open(websiteUrl, '_blank');
+      }
+    } catch (_) {
+      try { window.open('https://anchored.site', '_blank'); } catch (__) { }
+    }
+  }
+
+  // Open signup page on website (reuses openWebsite logic)
+  openSignUp() {
+    try {
+      const signupUrl = 'https://anchored.site/?signup=true';
+      if (chrome?.tabs?.create) {
+        chrome.tabs.create({ url: signupUrl }).catch(() => {
+          try { window.open(signupUrl, '_blank'); } catch (_) { }
+        });
+      } else {
+        window.open(signupUrl, '_blank');
+      }
+    } catch (_) {
+      try { window.open('https://anchored.site/?signup=true', '_blank'); } catch (__) { }
+    }
+  }
+
+  // Open forgot password page on website (reuses openWebsite logic)
+  openForgotPassword() {
+    try {
+      const forgotUrl = 'https://anchored.site/?forgot=true';
+      if (chrome?.tabs?.create) {
+        chrome.tabs.create({ url: forgotUrl }).catch(() => {
+          try { window.open(forgotUrl, '_blank'); } catch (_) { }
+        });
+      } else {
+        window.open(forgotUrl, '_blank');
+      }
+    } catch (_) {
+      try { window.open('https://anchored.site/?forgot=true', '_blank'); } catch (__) { }
+    }
+  }
+
+
+
   // Open advertising disclosure dialog
   openAdDisclosure() {
     const dialog = document.getElementById('adDisclosureDialog');
     if (dialog) {
       dialog.style.display = 'block';
-      
+
       // Setup close button handlers
       const closeBtn = document.getElementById('adDisclosureCloseBtn');
       const okBtn = document.getElementById('adDisclosureOkBtn');
-      
+
       const closeDialog = () => {
         dialog.style.display = 'none';
       };
-      
+
       if (closeBtn) {
         closeBtn.onclick = closeDialog;
       }
-      
+
       if (okBtn) {
         okBtn.onclick = closeDialog;
       }
-      
+
       // Close on outside click
       dialog.onclick = (e) => {
         if (e.target === dialog) {
@@ -574,6 +813,34 @@ class SettingsManager {
       };
     }
   }
+
+  // Show onboarding tooltips manually
+  showOnboardingTooltips() {
+    try {
+      if (window.urlNotesApp && window.urlNotesApp.onboardingTooltips) {
+        // Force show main tooltips
+        window.urlNotesApp.onboardingTooltips.forceShowTooltips();
+      }
+    } catch (error) {
+      console.warn('Failed to show onboarding tooltips:', error);
+    }
+  }
+
+
+
+  // Show notification helper
+  showNotification(message, type = 'info') {
+    try {
+      // Use the Utils.showToast system
+      if (typeof Utils !== 'undefined' && Utils.showToast) {
+        Utils.showToast(message, type);
+      }
+    } catch (error) {
+      // Fallback notification handling
+    }
+  }
+
+
 
 
 
@@ -603,7 +870,7 @@ class SettingsManager {
 
       // Show success message with format info
       const formatInfo = exportFormats.getSupportedFormats()[selectedFormat];
-      this.showNotification(`Notes exported as ${formatInfo.name} successfully!`, 'success');
+      this.showNotification(`Exported as ${formatInfo.name}`, 'success');
     } catch (error) {
       console.error('Error exporting notes:', error);
       this.showNotification('Failed to export notes', 'error');
@@ -716,14 +983,36 @@ class SettingsManager {
         return { isValid: false, error: 'Import file is empty' };
       }
 
+      // Check for Anchored export identifier
+      if (!importData._anchored) {
+        return {
+          isValid: false,
+          error: 'This file does not appear to be an Anchored notes export. Please ensure you are importing a file exported from Anchored.'
+        };
+      }
+
+      // Validate Anchored metadata
+      const anchored = importData._anchored;
+      if (!anchored.version || !anchored.format || anchored.format !== 'anchored-notes') {
+        return {
+          isValid: false,
+          error: 'Invalid Anchored export format. Please ensure you are importing a valid Anchored notes file.'
+        };
+      }
+
       let totalNotes = 0;
       let validDomains = 0;
 
-      // Validate each domain
+      // Validate each domain (skip the _anchored metadata)
       for (const [domain, notes] of Object.entries(importData)) {
-        // Skip non-note data (like themeMode)
-        if (domain === 'themeMode' || !Array.isArray(notes)) {
+        // Skip metadata and non-note data
+        if (domain === '_anchored' || domain === 'themeMode' || !Array.isArray(notes)) {
           continue;
+        }
+
+        // Validate domain format
+        if (!this.isValidDomain(domain)) {
+          return { isValid: false, error: `Invalid domain format: ${domain}` };
         }
 
         validDomains++;
@@ -731,31 +1020,12 @@ class SettingsManager {
         // Validate notes array
         for (let i = 0; i < notes.length; i++) {
           const note = notes[i];
+          const noteLocation = `${domain}[${i}]`;
 
-          // Check required fields
-          if (!note || typeof note !== 'object') {
-            return { isValid: false, error: `Invalid note at ${domain}[${i}]: not an object` };
-          }
-
-          if (!note.id || typeof note.id !== 'string') {
-            return { isValid: false, error: `Invalid note at ${domain}[${i}]: missing or invalid ID` };
-          }
-
-          if (!note.domain || typeof note.domain !== 'string') {
-            return { isValid: false, error: `Invalid note at ${domain}[${i}]: missing or invalid domain` };
-          }
-
-          // Validate optional fields if present
-          if (note.title && typeof note.title !== 'string') {
-            return { isValid: false, error: `Invalid note at ${domain}[${i}]: title must be a string` };
-          }
-
-          if (note.content && typeof note.content !== 'string') {
-            return { isValid: false, error: `Invalid note at ${domain}[${i}]: content must be a string` };
-          }
-
-          if (note.tags && !Array.isArray(note.tags)) {
-            return { isValid: false, error: `Invalid note at ${domain}[${i}]: tags must be an array` };
+          // Validate note structure
+          const noteValidation = this.validateNoteStructure(note, noteLocation);
+          if (!noteValidation.isValid) {
+            return noteValidation;
           }
 
           totalNotes++;
@@ -772,9 +1042,153 @@ class SettingsManager {
         return { isValid: false, error: `Too many notes (${totalNotes}). Maximum is 10,000 notes per import.` };
       }
 
-      return { isValid: true, totalNotes, validDomains };
+      return {
+        isValid: true,
+        totalNotes,
+        validDomains,
+        version: anchored.version,
+        source: anchored.source,
+        exportedAt: anchored.exportedAt
+      };
     } catch (error) {
       return { isValid: false, error: `Validation error: ${error.message}` };
+    }
+  }
+
+  // Enhanced note structure validation
+  validateNoteStructure(note, location) {
+    // Check if note is an object
+    if (!note || typeof note !== 'object') {
+      return { isValid: false, error: `Invalid note at ${location}: not an object` };
+    }
+
+    // Validate required ID field with UUID format
+    if (!note.id || typeof note.id !== 'string') {
+      return { isValid: false, error: `Invalid note at ${location}: missing or invalid ID` };
+    }
+
+    if (!this.isValidUUID(note.id)) {
+      return { isValid: false, error: `Invalid note at ${location}: ID must be a valid UUID format` };
+    }
+
+    // Validate required domain field
+    if (!note.domain || typeof note.domain !== 'string') {
+      return { isValid: false, error: `Invalid note at ${location}: missing or invalid domain` };
+    }
+
+    if (!this.isValidDomain(note.domain)) {
+      return { isValid: false, error: `Invalid note at ${location}: invalid domain format` };
+    }
+
+    // Validate string fields (all optional except id and domain)
+    const stringFields = ['title', 'content', 'url', 'pageTitle'];
+    for (const field of stringFields) {
+      if (note[field] !== undefined && typeof note[field] !== 'string') {
+        return { isValid: false, error: `Invalid note at ${location}: ${field} must be a string` };
+      }
+    }
+
+    // Validate URL format if present
+    if (note.url && !this.isValidURL(note.url)) {
+      return { isValid: false, error: `Invalid note at ${location}: invalid URL format` };
+    }
+
+    // Validate tags array
+    if (note.tags !== undefined) {
+      if (!Array.isArray(note.tags)) {
+        return { isValid: false, error: `Invalid note at ${location}: tags must be an array` };
+      }
+
+      // Validate each tag is a string
+      for (let j = 0; j < note.tags.length; j++) {
+        if (typeof note.tags[j] !== 'string') {
+          return { isValid: false, error: `Invalid note at ${location}: tag[${j}] must be a string` };
+        }
+
+        // Validate tag length and format
+        if (note.tags[j].length === 0 || note.tags[j].length > 50) {
+          return { isValid: false, error: `Invalid note at ${location}: tag[${j}] must be 1-50 characters` };
+        }
+      }
+
+      // Check for duplicate tags
+      const uniqueTags = new Set(note.tags);
+      if (uniqueTags.size !== note.tags.length) {
+        return { isValid: false, error: `Invalid note at ${location}: duplicate tags not allowed` };
+      }
+    }
+
+    // Validate timestamp fields
+    const timestampFields = ['createdAt', 'updatedAt'];
+    for (const field of timestampFields) {
+      if (note[field] !== undefined) {
+        if (typeof note[field] !== 'string') {
+          return { isValid: false, error: `Invalid note at ${location}: ${field} must be a string` };
+        }
+
+        if (!this.isValidTimestamp(note[field])) {
+          return { isValid: false, error: `Invalid note at ${location}: ${field} must be a valid ISO timestamp` };
+        }
+      }
+    }
+
+    // Validate content length limits (reasonable limits for import)
+    if (note.title && note.title.length > 500) {
+      return { isValid: false, error: `Invalid note at ${location}: title too long (max 500 characters)` };
+    }
+
+    if (note.content && note.content.length > 100000) {
+      return { isValid: false, error: `Invalid note at ${location}: content too long (max 100,000 characters)` };
+    }
+
+    return { isValid: true };
+  }
+
+  // UUID validation (RFC 4122 format)
+  isValidUUID(uuid) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  }
+
+  // Domain validation
+  isValidDomain(domain) {
+    if (!domain || typeof domain !== 'string') return false;
+
+    // Basic domain format validation
+    const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    return domainRegex.test(domain) && domain.length <= 253;
+  }
+
+  // URL validation
+  isValidURL(url) {
+    if (!url || typeof url !== 'string') return false;
+
+    try {
+      const urlObj = new URL(url);
+      return ['http:', 'https:'].includes(urlObj.protocol);
+    } catch {
+      return false;
+    }
+  }
+
+  // ISO timestamp validation (flexible for different ISO formats)
+  isValidTimestamp(timestamp) {
+    if (!timestamp || typeof timestamp !== 'string') return false;
+
+    try {
+      const date = new Date(timestamp);
+      // Check if it's a valid date
+      if (isNaN(date.getTime())) return false;
+
+      // Allow various ISO 8601 formats:
+      // - 2024-01-16T16:00:00Z
+      // - 2024-01-16T16:00:00.000Z  
+      // - 2024-01-16T16:00:00+00:00
+      // - 2024-01-16T16:00:00.646882+00:00
+      const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$/;
+      return isoRegex.test(timestamp);
+    } catch {
+      return false;
     }
   }
 
@@ -784,75 +1198,15 @@ class SettingsManager {
     return validation.isValid;
   }
 
-  // Show notification message - Updated to match sync notification theme
+  // Show notification message using unified toast system
   showNotification(message, type = 'info') {
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-
-    // Add icon based on type
-    let icon = 'ℹ';
-    if (type === 'success') icon = '✓';
-    if (type === 'error') icon = '⚠';
-
-    notification.innerHTML = `
-      <span class="notification-icon">${icon}</span>
-      <span class="notification-message">${message}</span>
-    `;
-
-    // Apply glass morphism styling to match sync notifications
-    notification.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      padding: 12px 16px;
-      border-radius: 8px;
-      color: var(--text-primary);
-      font-size: 14px;
-      font-weight: 500;
-      z-index: 10000;
-      max-width: 300px;
-      word-wrap: break-word;
-      background: var(--glass-bg);
-      border: 1px solid var(--glass-border);
-      box-shadow: var(--glass-inset), var(--glass-shadow);
-             backdrop-filter: blur(var(--backdrop-blur));
-       -webkit-backdrop-filter: blur(var(--backdrop-blur));
-      transform: translateX(100%);
-      transition: transform 0.3s ease;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    `;
-
-    // Apply type-specific styling
-    if (type === 'success') {
-      notification.style.background = 'color-mix(in oklab, var(--accent-primary) 20%, var(--glass-bg) 80%)';
-      notification.style.borderColor = 'color-mix(in oklab, var(--accent-primary) 40%, var(--glass-border) 60%)';
-    } else if (type === 'error') {
-      notification.style.background = 'color-mix(in oklab, #ff3b30 20%, var(--glass-bg) 80%)';
-      notification.style.borderColor = 'color-mix(in oklab, #ff3b30 40%, var(--glass-border) 60%)';
-    } else if (type === 'info') {
-      notification.style.background = 'color-mix(in oklab, #007aff 20%, var(--glass-bg) 80%)';
-      notification.style.borderColor = 'color-mix(in oklab, #007aff 40%, var(--glass-border) 60%)';
+    // Use the unified Utils.showToast instead of custom notification
+    if (window.Utils && typeof window.Utils.showToast === 'function') {
+      window.Utils.showToast(message, type);
+    } else {
+      // Fallback to console if Utils not available
+      console.log(`${type.toUpperCase()}: ${message}`);
     }
-
-    document.body.appendChild(notification);
-
-    // Animate in
-    setTimeout(() => {
-      notification.style.transform = 'translateX(0)';
-    }, 10);
-
-    // Remove after delay
-    setTimeout(() => {
-      notification.style.transform = 'translateX(100%)';
-      setTimeout(() => {
-        if (notification.parentNode) {
-          notification.parentNode.removeChild(notification);
-        }
-      }, 300);
-    }, 3000);
   }
 
   // Get current settings
@@ -876,6 +1230,145 @@ class SettingsManager {
       content.style.fontFamily = fontFamily;
       content.style.fontSize = fontSize;
     });
+  }
+
+  // Initialize backup reminder system
+  async initBackupReminders() {
+    try {
+      // Check if user has notes and hasn't backed up recently
+      await this.checkBackupReminder();
+
+      // Set up periodic backup reminders (every 30 days)
+      chrome.alarms.create('backupReminder', {
+        delayInMinutes: 60 * 24 * 30, // 30 days
+        periodInMinutes: 60 * 24 * 30  // Repeat every 30 days
+      });
+
+      // Listen for backup reminder alarms
+      chrome.alarms.onAlarm.addListener((alarm) => {
+        if (alarm.name === 'backupReminder') {
+          this.showBackupReminder();
+        }
+      });
+    } catch (error) {
+      console.warn('Failed to initialize backup reminders:', error);
+    }
+  }
+
+  // Check if user needs a backup reminder
+  async checkBackupReminder() {
+    try {
+      // Only show backup reminders for FREE users
+      const premiumStatus = await getPremiumStatus();
+      if (premiumStatus.isPremium) {
+        return; // Premium users have cloud sync, no backup needed
+      }
+
+      const notes = await this.storageManager.getAllNotes();
+      const activeNotes = notes.filter(note => !note.is_deleted);
+
+      if (activeNotes.length === 0) return; // No notes to backup
+
+      // Check last backup date
+      const { lastBackupDate } = await chrome.storage.local.get(['lastBackupDate']);
+      const now = Date.now();
+      const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+
+      // Show reminder if never backed up or last backup was over 30 days ago
+      if (!lastBackupDate || lastBackupDate < thirtyDaysAgo) {
+        // Don't show immediately on first install, wait 7 days
+        const { installDate } = await chrome.storage.local.get(['installDate']);
+        const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
+
+        if (installDate && installDate < sevenDaysAgo) {
+          this.showBackupReminder();
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to check backup reminder:', error);
+    }
+  }
+
+  // Show backup reminder notification (FREE USERS ONLY)
+  async showBackupReminder() {
+    try {
+      // Double-check this is a free user
+      const premiumStatus = await getPremiumStatus();
+      if (premiumStatus.isPremium) {
+        return; // Premium users don't need backup reminders
+      }
+
+      const notes = await this.storageManager.getAllNotes();
+      const activeNotes = notes.filter(note => !note.is_deleted);
+
+      if (activeNotes.length === 0) return;
+
+      // Create notification for FREE users
+      chrome.notifications.create('backupReminder', {
+        type: 'basic',
+        iconUrl: '../assets/icons/icon128x128.png',
+        title: 'Backup Your Notes (Free User)',
+        message: `You have ${activeNotes.length} local notes. Export them to prevent data loss, or upgrade to Premium for automatic cloud sync!`,
+        buttons: [
+          { title: 'Open Extension Settings' },
+          { title: 'Get Premium' }
+        ]
+      });
+
+      // Handle notification clicks
+      chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
+        if (notificationId === 'backupReminder') {
+          if (buttonIndex === 0) {
+            // Open Extension Settings - open popup and navigate to settings
+            chrome.action.openPopup();
+            // Set flag to show settings panel with export highlighted
+            chrome.storage.local.set({
+              showSettingsOnOpen: true,
+              highlightExport: true
+            });
+          } else {
+            // Get Premium - open website
+            chrome.tabs.create({ url: 'https://anchored.site/?upgrade=true' });
+          }
+          chrome.notifications.clear(notificationId);
+        }
+      });
+
+    } catch (error) {
+      console.warn('Failed to show backup reminder:', error);
+    }
+  }
+
+  // Mark backup as completed (call this after successful export)
+  async markBackupCompleted() {
+    try {
+      await chrome.storage.local.set({
+        lastBackupDate: Date.now()
+      });
+    } catch (error) {
+      console.warn('Failed to mark backup completed:', error);
+    }
+  }
+
+  // Enhanced export function that marks backup as completed
+  async exportNotesWithBackupTracking() {
+    try {
+      // Call the existing export function
+      await this.exportNotes();
+
+      // Mark backup as completed
+      await this.markBackupCompleted();
+
+      // Show success message
+      if (window.showToast) {
+        window.showToast('Notes exported and backup recorded!', 'success');
+      }
+    } catch (error) {
+      console.error('Export with backup tracking failed:', error);
+      if (window.showToast) {
+        window.showToast('Export failed. Please try again.', 'error');
+      }
+    }
   }
 }
 

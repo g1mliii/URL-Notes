@@ -19,6 +19,9 @@
   transition: transform 0.24s ease;
   transform: translateY(100%);
   box-sizing: border-box;
+  /* GPU acceleration for smooth editor slide animations */
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 /* Vary shimmer direction for editor controls */
@@ -65,7 +68,7 @@
 
 /* Keep the editor in view once opened */
 .note-editor.open {
-  transform: translateY(0);
+  transform: translateY(0) translateZ(0);
 }
 
 .editor-header {
@@ -77,6 +80,8 @@
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   overflow: visible; /* allow buttons to be fully visible */
+  /* GPU acceleration for smooth header interactions */
+  will-change: contents;
 }
 
 /* Make editor action icons consistent in size */
@@ -293,6 +298,9 @@ html[data-compact="1"] .save-btn {
   line-height: 0;
   box-sizing: border-box;
   padding: 0 6px;
+  /* GPU acceleration for smooth AI rewrite button interactions */
+  will-change: transform, background-color;
+  backface-visibility: hidden;
 }
 
 .ai-rewrite-btn:hover {
@@ -449,6 +457,8 @@ html[data-compact="1"] .save-btn {
   scrollbar-width: none;
   -ms-overflow-style: none;
   background-clip: padding-box;
+  /* GPU acceleration for smooth note content editing */
+  will-change: contents, scroll-position;
 }
 
 .note-content-input::-webkit-scrollbar { /* Chrome/Safari */
@@ -807,7 +817,7 @@ gap: 8px;
   box-shadow: 
     0 8px 32px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 var(--shadow-light);
-  z-index: 9999999999;
+  z-index: 999999;
   min-width: 140px;
   animation: popup-fade-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }

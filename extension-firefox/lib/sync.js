@@ -72,11 +72,52 @@ class SyncEngine {
       // NO automatic sync - only local behavior
     });
 
+    // Listen for tier changes
+    window.eventBus?.on('tier:changed', (status) => {
+      if (status && status.active && status.tier !== 'free') {
+        this.startPeriodicSync();
+
+        // Notify background script to start sync timer
+        chrome.runtime.sendMessage({
+          action: 'tier-changed',
+          active: status.active,
+          tier: status.tier
+        }).catch(() => { });
+      } else {
+        this.stopPeriodicSync();
+
+        // Notify background script to stop sync timer
+        chrome.runtime.sendMessage({
+          action: 'tier-changed',
+          active: false,
+          tier: status.tier || 'free'
+        }).catch(() => { });
+      }
+    });
+
+    // Listen for decryption failures and retry
+    window.eventBus?.on('notes:decryption_failed', async (payload) => {
+      console.log('Sync: Decryption failed for note, will retry when key becomes available');
+      // Retry after a short delay to allow encryption key to be set up
+      setTimeout(async () => {
+        try {
+          await this.retryFailedDecryption();
+        } catch (error) {
+          console.warn('Sync: Failed to retry decryption after failure event:', error);
+        }
+      }, 2000);
+    });
+
     // Listen for auth changes
     window.eventBus?.on('auth:changed', (payload) => {
-      if (payload.user) {
+      if (payload && payload.user) {
         // Notify background script to start timer
-        chrome.runtime.sendMessage({ action: 'auth-changed', user: payload.user }).catch(() => { });
+        chrome.runtime.sendMessage({
+          action: 'auth-changed',
+          user: payload.user,
+          statusRefresh: payload.statusRefresh || false
+        }).catch(() => { });
+
         // Don't perform initial sync automatically - just start periodic sync
         this.startPeriodicSync();
       } else {
@@ -107,6 +148,96 @@ class SyncEngine {
     }
   }
 
+  // Check if encryption key is available (prevents placeholder content)
+  async isEncryptionReady() {
+    try {
+      // Check if encryption module is loaded
+      if (!window.noteEncryption) {
+        console.warn('Sync: noteEncryption module not available');
+        return false;
+      }
+
+      // Check if we can get the encryption key (this is the critical check)
+      if (!window.supabaseClient || typeof window.supabaseClient.getUserEncryptionKey !== 'function') {
+        console.warn('Sync: getUserEncryptionKey method not available');
+        return false;
+      }
+
+      // Try to get the encryption key - this is what prevents placeholder content
+      try {
+        const encryptionKey = await window.supabaseClient.getUserEncryptionKey();
+        if (!encryptionKey) {
+          console.warn('Sync: No encryption key available - would cause placeholder content');
+          return false;
+        }
+
+        return true;
+      } catch (keyError) {
+        console.warn('Sync: Failed to get encryption key - would cause placeholder content:', keyError.message);
+        return false;
+      }
+
+    } catch (error) {
+      console.warn('Sync: Encryption key check failed:', error.message);
+      return false;
+    }
+  }
+
+  // Retry decryption for notes that previously failed
+  async retryFailedDecryption() {
+    try {
+      // Check if we have notes that need decryption retry
+      const retryCount = await window.notesStorage.getDecryptionRetryCount();
+      if (retryCount === 0) {
+        return { retried: 0, successful: 0, failed: 0 };
+      }
+
+      console.log(`Sync: Found ${retryCount} notes needing decryption retry`);
+
+      // First attempt: try to retry decryption with current key
+      let result = await window.notesStorage.retryDecryptionForFailedNotes();
+
+      // If decryption still failed and we have premium access, try refreshing premium status to get new encryption key
+      if (result.failed > 0 && window.supabaseClient?.isAuthenticated()) {
+        console.log(`Sync: ${result.failed} notes still failed, refreshing premium status to get encryption key`);
+
+        try {
+          // Use the premium refresh functionality to clear caches and refresh encryption key
+          await window.supabaseClient.refreshPremiumStatusAndUI();
+
+          // Wait a moment for the refresh to complete
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          // Retry decryption after premium status refresh
+          const secondResult = await window.notesStorage.retryDecryptionForFailedNotes();
+
+          // Combine results
+          result = {
+            retried: result.retried,
+            successful: result.successful + secondResult.successful,
+            failed: secondResult.failed
+          };
+
+          if (secondResult.successful > 0) {
+            console.log(`Sync: Successfully decrypted ${secondResult.successful} additional notes after premium refresh`);
+          }
+        } catch (refreshError) {
+          console.warn('Sync: Failed to refresh premium status during decryption retry:', refreshError);
+        }
+      }
+
+      if (result.successful > 0) {
+        console.log(`Sync: Successfully decrypted ${result.successful} notes on retry`);
+        this.showSyncSuccess(`Decrypted ${result.successful} previously encrypted notes`);
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Sync: Failed to retry decryption:', error);
+      return { retried: 0, successful: 0, failed: 0 };
+    }
+  }
+
   // Check if user can sync
   async canSync() {
     try {
@@ -123,22 +254,50 @@ class SyncEngine {
       // Check authentication first
       try {
         if (window.supabaseClient.isAuthenticated()) {
-          // User is authenticated, check subscription status
+          // Token validity will be checked naturally by API calls
+
+          // User is authenticated with valid token, check subscription status
           try {
             const status = await window.supabaseClient.getSubscriptionStatus();
-            const canSync = status && status.active;
 
-            return { authenticated: true, status, canSync };
+            // CRITICAL: Multiple checks to ensure premium access
+            const isPremium = status && status.active && status.tier === 'premium';
+
+            // Additional check: ensure we have a current user object
+            const currentUser = window.supabaseClient.getCurrentUser();
+            if (!currentUser || !currentUser.id) {
+              console.warn('Sync: No current user available, cannot sync');
+              return { authenticated: false, status, canSync: false };
+            }
+
+            // Final safety check: if tier is explicitly 'free', block sync
+            if (status && status.tier === 'free') {
+              return { authenticated: true, status, canSync: false };
+            }
+
+            // CRITICAL: Ensure encryption is fully ready before allowing sync
+            if (isPremium) {
+              const encryptionReady = await this.isEncryptionReady();
+              if (!encryptionReady) {
+                console.warn('Sync: Premium active but encryption not ready - blocking sync');
+                return { authenticated: true, status, canSync: false };
+              }
+            }
+
+            return { authenticated: true, status, canSync: isPremium };
           } catch (statusError) {
+            console.warn('Sync: Failed to get subscription status:', statusError);
             return { authenticated: true, status: null, canSync: false };
           }
         } else {
           return { authenticated: false, status: null, canSync: false };
         }
       } catch (authError) {
+        console.warn('Sync: Authentication check failed:', authError);
         return { authenticated: false, status: null, canSync: false };
       }
     } catch (error) {
+      console.warn('Sync: canSync check failed:', error);
       return { authenticated: false, status: null, canSync: false };
     }
   }
@@ -150,13 +309,21 @@ class SyncEngine {
       this.startPeriodicSync();
     } catch (error) {
       console.error('Initial sync failed:', error);
-      this.showSyncError('Initial sync failed. Please try again.');
+      this.showSyncError('Sync failed');
     }
   }
 
   // Perform sync operation
   async performSync() {
     if (this.isSyncing) {
+      return;
+    }
+
+
+
+    // CRITICAL: Double-check premium status before any sync operation
+    if (!(await this.canSync())) {
+      console.warn('Sync engine: Attempted sync without premium access - blocking');
       return;
     }
 
@@ -280,6 +447,8 @@ class SyncEngine {
           }
         }
 
+
+
         // Update sync time
         const now = Date.now();
         await this.saveLastSyncTime(now);
@@ -293,7 +462,7 @@ class SyncEngine {
 
     } catch (error) {
       console.error('Sync failed:', error);
-      this.showSyncError('Sync failed. Changes will be saved locally.');
+      this.showSyncError('Sync failed');
     } finally {
       this.isSyncing = false;
     }
@@ -328,16 +497,17 @@ class SyncEngine {
 
   // Manual sync trigger
   async manualSync() {
+
     if (!(await this.canSync())) {
-      this.showSyncError('Premium subscription required for sync');
+      this.showSyncError('Premium required');
       return;
     }
 
     try {
       await this.performSync();
-      this.showSyncSuccess('Manual sync completed successfully');
+      this.showSyncSuccess('Synced');
     } catch (error) {
-      this.showSyncError('Manual sync failed');
+      this.showSyncError('Sync failed');
     }
   }
 
