@@ -80,11 +80,17 @@ class AdManager {
     setTimeout(() => this.showAd(), 3000); // 3 seconds initial delay
   }
 
-  // Check if user should see ads (free tier, ads enabled)
+  // Check if user should see ads (free tier, ads enabled, reached engagement tier)
   async shouldShowAds() {
     try {
       // Check cached premium status first to avoid API calls
-      const result = await chrome.storage.local.get(['settings', 'userTier', 'premiumStatus', 'lastPremiumCheck']);
+      const result = await chrome.storage.local.get([
+        'settings', 
+        'userTier', 
+        'premiumStatus', 
+        'lastPremiumCheck',
+        'userEngagement_noteCount'
+      ]);
       const settings = result.settings || {};
 
       // Check cached premium status
@@ -104,10 +110,16 @@ class AdManager {
         isPremium = userTier === 'premium' || userTier === 'pro';
       }
 
-      // Only show ads to free users who haven't disabled them
-      return !isPremium && settings.showAds !== false;
+      // Check if user has reached first engagement tier (3 notes)
+      const noteCount = result.userEngagement_noteCount || 0;
+      const hasReachedEngagementTier = noteCount >= 3;
+
+      // Only show ads to free users who:
+      // 1. Haven't disabled ads
+      // 2. Have reached the first engagement tier (3+ notes)
+      return !isPremium && settings.showAds !== false && hasReachedEngagementTier;
     } catch (error) {
-      return true; // Default to showing ads for free users
+      return false; // Default to NOT showing ads if there's an error
     }
   }
 

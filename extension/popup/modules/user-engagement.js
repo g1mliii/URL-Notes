@@ -7,7 +7,8 @@ class UserEngagement {
             lastPrompt: 'userEngagement_lastPrompt',
             promptCount: 'userEngagement_promptCount',
             dismissed: 'userEngagement_dismissed',
-            noteCount: 'userEngagement_noteCount'
+            noteCount: 'userEngagement_noteCount',
+            reviewPromptShown: 'userEngagement_reviewPromptShown'
         };
 
         // Deferred prompt storage
@@ -117,6 +118,7 @@ class UserEngagement {
             const promptCount = engagementData[this.storageKeys.promptCount] || 0;
             const dismissed = engagementData[this.storageKeys.dismissed] || 0;
             const lastNoteCount = engagementData[this.storageKeys.noteCount] || 0;
+            const reviewPromptShown = engagementData[this.storageKeys.reviewPromptShown] || false;
 
             const now = Date.now();
 
@@ -127,6 +129,20 @@ class UserEngagement {
 
             // Check if enough time has passed since last prompt
             if (lastPrompt && (now - lastPrompt) < this.delays.betweenPrompts) {
+                return;
+            }
+
+            // Check if we should show review prompt (at 25 notes, only once)
+            if (!reviewPromptShown && noteCount >= this.thresholds.thirdPrompt && lastNoteCount < this.thresholds.thirdPrompt) {
+                // Show review prompt instead of regular engagement prompt
+                await chrome.storage.local.set({
+                    [this.storageKeys.reviewPromptShown]: true,
+                    [this.storageKeys.noteCount]: noteCount
+                });
+
+                setTimeout(() => {
+                    this.showReviewPrompt(noteCount);
+                }, 2000);
                 return;
             }
 
@@ -155,6 +171,11 @@ class UserEngagement {
                     [this.storageKeys.promptCount]: promptCount + 1,
                     [this.storageKeys.noteCount]: noteCount
                 });
+
+                // If this is the first engagement tier, notify ad system
+                if (promptType === 'basic' && noteCount >= this.thresholds.firstPrompt) {
+                    this.notifyAdSystemEngagementReached();
+                }
 
                 // Show prompt after a brief delay to let UI settle
                 setTimeout(() => {
@@ -675,13 +696,168 @@ class UserEngagement {
         }
     }
 
+    // Show review prompt (special prompt for Chrome Web Store review)
+    showReviewPrompt(noteCount) {
+        // Only show on main page
+        const settingsPanel = document.getElementById('settingsPanel');
+        const noteEditor = document.getElementById('noteEditor');
+        const notesList = document.querySelector('.notes-container');
+
+        const isMainView = notesList && 
+            notesList.style.display !== 'none' &&
+            (!settingsPanel || settingsPanel.style.display === 'none') &&
+            (!noteEditor || noteEditor.style.display === 'none');
+
+        if (!isMainView) {
+            return; // Don't defer review prompts, just skip
+        }
+
+        const prompt = {
+            title: '⭐ Enjoying Anchored?',
+            message: `You've created ${noteCount} notes! If you're finding Anchored helpful, would you mind leaving a quick review?`,
+            benefits: [
+                '⭐ Takes less than 30 seconds',
+                '💙 Helps other users discover Anchored',
+                '🚀 Motivates us to keep improving'
+            ]
+        };
+
+        // Remove any existing prompt
+        const existingPrompt = document.getElementById('user-engagement-prompt');
+        if (existingPrompt) {
+            existingPrompt.remove();
+        }
+
+        // Create prompt container
+        const promptContainer = document.createElement('div');
+        promptContainer.id = 'user-engagement-prompt';
+        promptContainer.className = 'engagement-prompt';
+
+        // Create prompt content
+        const promptContent = document.createElement('div');
+        promptContent.className = 'engagement-content';
+
+        // Header
+        const header = document.createElement('div');
+        header.className = 'engagement-header';
+
+        const title = document.createElement('h3');
+        title.textContent = prompt.title;
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'engagement-close';
+        closeBtn.textContent = '×';
+        closeBtn.title = 'Close';
+
+        header.appendChild(title);
+        header.appendChild(closeBtn);
+
+        // Message
+        const message = document.createElement('p');
+        message.className = 'engagement-message';
+        message.textContent = prompt.message;
+
+        // Benefits
+        const benefitsList = document.createElement('ul');
+        benefitsList.className = 'engagement-benefits';
+        prompt.benefits.forEach(benefit => {
+            const li = document.createElement('li');
+            li.textContent = benefit;
+            benefitsList.appendChild(li);
+        });
+
+        // Actions
+        const actions = document.createElement('div');
+        actions.className = 'engagement-actions';
+
+        const reviewBtn = document.createElement('button');
+        reviewBtn.className = 'engagement-btn primary';
+        reviewBtn.textContent = '⭐ Leave a Review';
+
+        const laterBtn = document.createElement('button');
+        laterBtn.className = 'engagement-btn secondary';
+        laterBtn.textContent = 'Maybe Later';
+
+        actions.appendChild(reviewBtn);
+        actions.appendChild(laterBtn);
+
+        // Assemble
+        promptContent.appendChild(header);
+        promptContent.appendChild(message);
+        promptContent.appendChild(benefitsList);
+        promptContent.appendChild(actions);
+        promptContainer.appendChild(promptContent);
+
+        // Add styles (reuse existing styles)
+        this.addPromptStyles();
+
+        // Add to DOM
+        document.body.appendChild(promptContainer);
+
+        // Add event listeners
+        reviewBtn.addEventListener('click', () => {
+            this.openReviewPage();
+            this.hidePrompt(promptContainer);
+        });
+
+        laterBtn.addEventListener('click', () => {
+            this.hidePrompt(promptContainer);
+        });
+
+        closeBtn.addEventListener('click', () => {
+            this.hidePrompt(promptContainer);
+        });
+
+        // Click outside to close
+        promptContainer.addEventListener('click', (e) => {
+            if (e.target === promptContainer) {
+                this.hidePrompt(promptContainer);
+            }
+        });
+
+        // Show with animation
+        setTimeout(() => {
+            promptContainer.classList.add('show');
+        }, 100);
+    }
+
+    // Open Chrome Web Store review page
+    openReviewPage() {
+        try {
+            // Open the extension page in Chrome Web Store
+            // Users can leave reviews from the main extension page
+            const extensionUrl = 'https://chromewebstore.google.com/detail/anchored-%E2%80%93-notes-highligh/llkmfidpbpfgdgjlohgpomdjckcfkllg';
+            
+            if (chrome?.tabs?.create) {
+                chrome.tabs.create({ url: extensionUrl });
+            } else {
+                window.open(extensionUrl, '_blank');
+            }
+        } catch (error) {
+            console.error('Failed to open review page:', error);
+        }
+    }
+
+    // Notify ad system that user has reached engagement tier
+    notifyAdSystemEngagementReached() {
+        try {
+            // Refresh ad system to start showing ads
+            if (window.adManager && typeof window.adManager.refreshAd === 'function') {
+                window.adManager.refreshAd();
+            }
+        } catch (error) {
+            // Silently fail if ad system isn't available
+        }
+    }
+
     // Reset engagement data (for testing)
     async resetEngagementData() {
         await chrome.storage.local.remove([
             this.storageKeys.lastPrompt,
             this.storageKeys.promptCount,
             this.storageKeys.dismissed,
-            this.storageKeys.noteCount
+            this.storageKeys.noteCount,
+            this.storageKeys.reviewPromptShown
         ]);
         this.deferredPrompt = null;
     }
