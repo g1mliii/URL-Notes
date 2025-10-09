@@ -1,0 +1,87 @@
+/* Custom Dialog */
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+    /* GPU acceleration for smooth dialog overlay animations */
+    will-change: opacity, visibility;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    contain: layout style paint;
+}
+
+.dialog-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.dialog-box {
+    background-color: var(--bg-color);
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    width: 300px;
+    text-align: center;
+    transform: scale(0.9);
+    transition: transform 0.3s;
+    /* GPU acceleration for smooth dialog box animations */
+    will-change: transform;
+    backface-visibility: hidden;
+    contain: layout style paint;
+}
+
+.dialog-overlay.show .dialog-box {
+    transform: scale(1) translateZ(0);
+}
+
+.dialog-box p {
+    margin: 0 0 20px;
+    color: var(--text-color);
+    font-size: 16px;
+}
+
+.dialog-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.dialog-buttons button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: background-color 0.2s, transform 0.2s;
+}
+
+.dialog-confirm-btn {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.dialog-confirm-btn:hover {
+    background-color: #c0392b;
+    transform: translateY(-2px);
+}
+
+.dialog-cancel-btn {
+    background-color: #7f8c8d;
+    color: white;
+}
+
+.dialog-cancel-btn:hover {
+    background-color: #606b6c;
+    transform: translateY(-2px);
+}

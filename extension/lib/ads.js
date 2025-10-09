@@ -237,7 +237,7 @@ class AdManager {
     if (!adContent) return;
 
     // Clear existing content
-    adContent.innerHTML = '';
+    adContent.textContent = '';
     
     // Create elements safely without XSS prevention (trusted extension content)
     const adDiv = document.createElement('div');
@@ -270,7 +270,7 @@ class AdManager {
     if (!adContent) return;
 
     // Clear existing content
-    adContent.innerHTML = '';
+    adContent.textContent = '';
     
     // Create elements safely without XSS prevention (trusted extension content)
     const adDiv = document.createElement('div');
@@ -303,7 +303,7 @@ class AdManager {
     if (!adContent) return;
 
     // Clear existing content
-    adContent.innerHTML = '';
+    adContent.textContent = '';
     
     // Create elements safely without XSS prevention (trusted extension content)
     const adDiv = document.createElement('div');
@@ -336,7 +336,7 @@ class AdManager {
     if (!adContent) return;
 
     // Clear existing content
-    adContent.innerHTML = '';
+    adContent.textContent = '';
     
     // Create elements safely without XSS prevention (trusted extension content)
     const adDiv = document.createElement('div');

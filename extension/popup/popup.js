@@ -91,7 +91,7 @@ class URLNotesApp {
         const siteIcon = document.querySelector('.site-icon');
         if (siteIcon) {
           // Clear existing content
-          siteIcon.innerHTML = '';
+          siteIcon.textContent = '';
 
           if (this.currentSite.favicon) {
             // Create favicon image directly (bypass XSS prevention for trusted favicon URLs)
@@ -159,7 +159,7 @@ class URLNotesApp {
         const siteIcon = document.querySelector('.site-icon');
         if (siteIcon) {
           // Clear existing content
-          siteIcon.innerHTML = '';
+          siteIcon.textContent = '';
 
           // Create fallback SVG directly
           const fallbackDiv = document.createElement('div');

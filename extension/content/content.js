@@ -633,30 +633,69 @@
 
     const count = highlights.length;
 
-    // Create toolbar content safely (content script doesn't have access to safeDOM)
-    // Since this is a content script with trusted static content, we can use innerHTML directly
-    // but we should validate the count to prevent any potential issues
+    // Create toolbar content safely using DOM methods (content script doesn't have access to safeDOM)
     const safeCount = Math.max(0, Math.min(1000, parseInt(count) || 0)); // Limit count to reasonable range
     
-    highlightToolbar.innerHTML = `
-      <div style="margin-bottom: 8px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-        <span>📝 Multi-Highlight Mode</span>
-        <button id="exit-highlight-mode" style="background: #e74c3c; border: none; color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Exit</button>
-      </div>
-      <div style="margin-bottom: 12px; color: #bdc3c7;">
-        ${safeCount} highlight${safeCount !== 1 ? 's' : ''} selected
-      </div>
-      <div style="display: flex; gap: 8px;">
-        <button id="add-highlights-to-note" style="background: #3498db; border: none; color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; flex: 1; ${safeCount === 0 ? 'opacity: 0.5; cursor: not-allowed;' : ''}">Add to Note</button>
-        <button id="clear-all-highlights" style="background: #95a5a6; border: none; color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; ${safeCount === 0 ? 'opacity: 0.5; cursor: not-allowed;' : ''}">Clear All</button>
-      </div>
-      <div style="margin-top: 8px; font-size: 12px; color: #bdc3c7;">
-        <div>• Click and drag to highlight text</div>
-        <div>• Click highlight to remove</div>
-        <div>• Ctrl+Enter to add all to note</div>
-        <div>• Ctrl+Shift+H or Escape to exit mode</div>
-      </div>
-    `;
+    // Clear existing content
+    highlightToolbar.textContent = '';
+    
+    // Create header div
+    const headerDiv = document.createElement('div');
+    headerDiv.style.cssText = 'margin-bottom: 8px; font-weight: 600; display: flex; align-items: center; gap: 8px;';
+    
+    const titleSpan = document.createElement('span');
+    titleSpan.textContent = '📝 Multi-Highlight Mode';
+    headerDiv.appendChild(titleSpan);
+    
+    const exitButton = document.createElement('button');
+    exitButton.id = 'exit-highlight-mode';
+    exitButton.style.cssText = 'background: #e74c3c; border: none; color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;';
+    exitButton.textContent = 'Exit';
+    headerDiv.appendChild(exitButton);
+    
+    // Create count div
+    const countDiv = document.createElement('div');
+    countDiv.style.cssText = 'margin-bottom: 12px; color: #bdc3c7;';
+    countDiv.textContent = `${safeCount} highlight${safeCount !== 1 ? 's' : ''} selected`;
+    
+    // Create buttons div
+    const buttonsDiv = document.createElement('div');
+    buttonsDiv.style.cssText = 'display: flex; gap: 8px;';
+    
+    const addButton = document.createElement('button');
+    addButton.id = 'add-highlights-to-note';
+    addButton.style.cssText = `background: #3498db; border: none; color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; flex: 1; ${safeCount === 0 ? 'opacity: 0.5; cursor: not-allowed;' : ''}`;
+    addButton.textContent = 'Add to Note';
+    buttonsDiv.appendChild(addButton);
+    
+    const clearButton = document.createElement('button');
+    clearButton.id = 'clear-all-highlights';
+    clearButton.style.cssText = `background: #95a5a6; border: none; color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; ${safeCount === 0 ? 'opacity: 0.5; cursor: not-allowed;' : ''}`;
+    clearButton.textContent = 'Clear All';
+    buttonsDiv.appendChild(clearButton);
+    
+    // Create instructions div
+    const instructionsDiv = document.createElement('div');
+    instructionsDiv.style.cssText = 'margin-top: 8px; font-size: 12px; color: #bdc3c7;';
+    
+    const instructions = [
+      '• Click and drag to highlight text',
+      '• Click highlight to remove', 
+      '• Ctrl+Enter to add all to note',
+      '• Ctrl+Shift+H or Escape to exit mode'
+    ];
+    
+    instructions.forEach(text => {
+      const instructionDiv = document.createElement('div');
+      instructionDiv.textContent = text;
+      instructionsDiv.appendChild(instructionDiv);
+    });
+    
+    // Append all elements to toolbar
+    highlightToolbar.appendChild(headerDiv);
+    highlightToolbar.appendChild(countDiv);
+    highlightToolbar.appendChild(buttonsDiv);
+    highlightToolbar.appendChild(instructionsDiv);
 
     // Add event listeners
     const exitBtn = highlightToolbar.querySelector('#exit-highlight-mode');

@@ -1,0 +1,18 @@
+{
+  "name": "anchored-firefox-extension",
+  "version": "1.0.0",
+  "description": "Firefox version of Anchored URL Notes extension",
+  "scripts": {
+    "dev": "web-ext run --config=web-ext-config.js",
+    "build": "web-ext build --config=web-ext-config.js",
+    "lint": "web-ext lint --config=web-ext-config.js",
+    "sign": "web-ext sign --config=web-ext-config.js",
+    "test": "web-ext run --config=web-ext-config.js --start-url about:debugging"
+  },
+  "devDependencies": {
+    "web-ext": "^8.10.0"
+  },
+  "keywords": ["firefox", "extension", "notes", "webextensions"],
+  "author": "Anchored",
+  "license": "MIT"
+}

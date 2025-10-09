@@ -4,7 +4,7 @@
 class NotesManager {
   constructor(app) {
     this.app = app; // reference to URLNotesApp
-    
+
     // Listen for decryption retry success events
     if (window.eventBus) {
       window.eventBus.on('notes:decryption_retry_success', this.handleDecryptionRetrySuccess.bind(this));
@@ -15,12 +15,12 @@ class NotesManager {
   handleDecryptionRetrySuccess(event) {
     const { successful, failed, total } = event;
     console.log(`NotesManager: Decryption retry successful for ${successful}/${total} notes`);
-    
+
     // Refresh the notes display to show decrypted content
     if (this.app && this.app.loadAllNotes) {
       this.app.loadAllNotes().then(() => {
         this.render();
-        
+
         // Show notification about successful decryption
         if (this.app.showNotification) {
           this.app.showNotification(`Decrypted ${successful} notes`, 'success');
@@ -149,10 +149,10 @@ class NotesManager {
         window.safeDOM.setInnerHTML(container, '<div class="empty-state">No notes found</div>', false);
       } else {
         if (window.safeDOM) {
-        window.safeDOM.setInnerHTML(container, '<div class="empty-state">No notes found</div>', false);
-      } else {
-        container.innerHTML = '<div class="empty-state">No notes found</div>';
-      }
+          window.safeDOM.setInnerHTML(container, '<div class="empty-state">No notes found</div>', false);
+        } else {
+          container.innerHTML = '<div class="empty-state">No notes found</div>';
+        }
       }
       const notesCount = document.getElementById('notesCount');
       if (notesCount) notesCount.style.display = 'none';
@@ -201,27 +201,27 @@ class NotesManager {
 
       const rightDomainTagsHtml = (tags && tags.length > 0) ? `
         <div class="domain-tags domain-tags-right">
-          ${tags.map(tag => `<span class="note-tag">${tag}</span>`).join('')}
+          ${tags.map(tag => `<span class="note-tag">${Utils.escapeHtml(tag)}</span>`).join('')}
         </div>
       ` : '';
 
       domainGroup.innerHTML = `
         <summary class="domain-group-header">
           <div class="domain-header-info">
-            <span>${domain} (${domainNotes.length})</span>
+            <span>${Utils.escapeHtml(domain)} (${domainNotes.length})</span>
           </div>
 
           ${rightDomainTagsHtml}
         </summary>
         <div class="domain-actions">
-          <button class="icon-btn sm glass open-domain-btn" data-domain="${domain}" title="Open ${domain}">
+          <button class="icon-btn sm glass open-domain-btn" data-domain="${Utils.escapeHtml(domain)}" title="Open ${Utils.escapeHtml(domain)}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
               <polyline points="15,3 21,3 21,9"></polyline>
               <line x1="10" y1="14" x2="21" y2="3"></line>
             </svg>
           </button>
-          <button class="icon-btn sm glass delete-domain-btn" data-domain="${domain}" title="Delete all notes for this domain">
+          <button class="icon-btn sm glass delete-domain-btn" data-domain="${Utils.escapeHtml(domain)}" title="Delete all notes for this domain">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="3,6 5,6 21,6"></polyline>
               <path d="m19,6v14a2,2,0,0,1-2,2H7a2,2 0,0,1 -2,-2V6m3,0V4a2,2 0,0,1 2,-2h4a2,2 0,0,1 2,2v2"></path>
@@ -325,17 +325,17 @@ class NotesManager {
     el.innerHTML = `
       <div class="note-content">
         <div class="note-main">
-          <h4 class="note-title">${pageIndicator}${note.title || 'Untitled'}</h4>
+          <h4 class="note-title">${pageIndicator}${Utils.escapeHtml(note.title || 'Untitled')}</h4>
           <div class="note-date-inline">${Utils.formatDate(note.updatedAt)}</div>
           ${(note.tags && note.tags.length > 0) ? `
             <div class="note-tags-inline">
-              ${note.tags.slice(0, 3).map(t => `<span class="note-tag-inline">${t}</span>`).join('')}
+              ${note.tags.slice(0, 3).map(t => `<span class="note-tag-inline">${Utils.escapeHtml(t)}</span>`).join('')}
             </div>
           ` : ''}
         </div>
         <div class="note-sidebar">
           <div class="note-actions">
-            <button class="icon-btn sm open-page-btn" data-url="${note.url}" title="Open page">
+            <button class="icon-btn sm open-page-btn" data-url="${Utils.escapeHtml(note.url)}" title="Open page">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                   <polyline points="15,3 21,3 21,9"></polyline>
@@ -349,7 +349,7 @@ class NotesManager {
                  </svg>
                </button>
                ` : ''}
-              <button class="icon-btn sm delete-note-btn" data-note-id="${note.id}" title="Delete note">
+              <button class="icon-btn sm delete-note-btn" data-note-id="${Utils.escapeHtml(note.id)}" title="Delete note">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="3,6 5,6 21,6"></polyline>
                   <path d="m19,6v14a2,2,0,0,1-2,2H7a2 2 0,0,1 -2,-2V6m3,0V4a2 2 0,0,1 2,-2h4a2 2 0,0,1 2,2v2"></path>
@@ -448,12 +448,12 @@ class NotesManager {
             ${versions.map((version, index) => `
               <div class="version-item ${index === 0 ? 'current' : ''}">
                 <div class="version-header">
-                  <span class="version-number">v${version.version}</span>
-                  <span class="version-date">${new Date(version.createdAt).toLocaleDateString()}</span>
+                  <span class="version-number">v${Utils.escapeHtml(version.version)}</span>
+                  <span class="version-date">${Utils.escapeHtml(new Date(version.createdAt).toLocaleDateString())}</span>
                   ${index === 0 ? '<span class="current-badge">Current</span>' : ''}
                 </div>
                 <div class="version-preview">${this.buildPreviewHtml(version.content)}</div>
-                <button class="restore-btn" data-version="${version.version}">Restore</button>
+                <button class="restore-btn" data-version="${Utils.escapeHtml(version.version)}">Restore</button>
               </div>
             `).join('')}
           </div>
@@ -502,7 +502,7 @@ class NotesManager {
         throw new Error('Note not found');
       }
 
-      // Instead of creating a new version, open the restored content as a draft
+      // Instead of saving, open the restored content as a draft
       // This allows the user to review and manually save if they want to keep it
       const restoredContent = {
         ...currentNote,
@@ -515,12 +515,37 @@ class NotesManager {
         draftTimestamp: new Date().toISOString()
       };
 
-      // Open the note in the editor with restored content
-      if (this.app && this.app.openNote) {
-        this.app.openNote(restoredContent);
-      }
+      // Dialog will be closed by the click handler - don't remove it here to avoid the error
 
-      // Use the app's notification method instead of window.showToast
+      // Set the current note to the restored content
+      this.app.currentNote = restoredContent;
+
+      // Open the editor
+      await this.app.openEditor(true);
+
+      // CRITICAL: Override the content after editor opens (to bypass draft restoration)
+      setTimeout(() => {
+        const titleHeader = document.getElementById('noteTitleHeader');
+        const contentInput = document.getElementById('noteContentInput');
+
+        if (titleHeader) {
+          titleHeader.value = restoredContent.title || '';
+        }
+
+        if (contentInput) {
+          const safeContent = this.app.buildContentHtml(restoredContent.content || '');
+          if (window.safeDOM) {
+            window.safeDOM.setInnerHTML(contentInput, safeContent, true);
+          } else {
+            contentInput.innerHTML = safeContent;
+          }
+        }
+
+        // Save this as a draft so it persists
+        this.app.saveEditorDraft();
+      }, 150);
+
+      // Show notification
       if (this.app && this.app.showNotification) {
         this.app.showNotification('Version restored as draft - save to keep changes', 'info');
       }
@@ -530,8 +555,6 @@ class NotesManager {
       // Use the app's notification method instead of window.showToast
       if (this.app && this.app.showNotification) {
         this.app.showNotification('Failed to restore version', 'error');
-      } else {
-        console.error('Failed to restore version:', error);
       }
     }
   }
@@ -587,7 +610,7 @@ class NotesManager {
         <h4>${title}</h4>
         <p>${message}</p>
       `;
-      
+
       if (window.safeDOM) {
         window.safeDOM.setInnerHTML(emptyState, emptyStateHtml, false);
       } else {
