@@ -1,0 +1,101 @@
+---
+layout: none
+title: Gradient Debug Page
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Gradient Debug - Anchored</title>
+    <style>
+        /* Reset everything */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Gradient background */
+        html {
+            min-height: 100%;
+            background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
+            background-attachment: fixed;
+        }
+
+        body {
+            min-height: 100vh;
+            min-height: 100dvh;
+            background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
+            background-attachment: fixed;
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* iOS Safari specific */
+        @supports (-webkit-touch-callout: none) {
+            html {
+                background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
+                background-attachment: fixed;
+                min-height: 100vh;
+                min-height: -webkit-fill-available;
+            }
+
+            body {
+                min-height: 100vh;
+                min-height: -webkit-fill-available;
+                /* Respect safe area at top, extend at bottom */
+                padding-top: env(safe-area-inset-top);
+                padding-bottom: 0;
+                padding-left: env(safe-area-inset-left);
+                padding-right: env(safe-area-inset-right);
+            }
+        }
+
+        .content {
+            max-width: 600px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        p {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 2rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body>
+    <div class="content">
+        <h1>Gradient Debug Page</h1>
+        <p>This page has the ocean gradient background.</p>
+        <p>Check if you see any white space at the top or bottom on iOS Safari.</p>
+        <p>Try zooming out with two fingers to see if white background appears.</p>
+        <a href="/layout-debug.html" class="back-link">Next: Full Layout →</a>
+        <br><br>
+        <a href="/mobile-debug.html" class="back-link">← Back</a>
+    </div>
+</body>
+</html>
