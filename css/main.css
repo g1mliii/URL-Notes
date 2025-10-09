@@ -514,6 +514,9 @@ p {
     overflow-x: hidden;
     -webkit-text-size-adjust: 100%;
     -ms-text-size-adjust: 100%;
+    /* Ensure html has gradient background on mobile */
+    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
+    background-attachment: scroll;
   }
 
   body {
@@ -560,13 +563,17 @@ p {
 
 /* Chrome mobile specific fixes */
 @media screen and (max-width: 768px) and (-webkit-min-device-pixel-ratio: 1) {
+  html {
+    /* Ensure html has gradient background on Chrome mobile */
+    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
+    background-attachment: scroll;
+  }
+  
   .app-container {
-    /* Force Chrome to respect full viewport */
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    /* Allow content to extend to bottom for liquid glass effect */
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding-bottom: 0;
   }
 }
 

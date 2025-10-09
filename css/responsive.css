@@ -137,8 +137,8 @@
     /* Simplified 2-color gradient for better mobile performance */
     background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
     background-attachment: scroll !important;
-    height: 100vh;
-    overflow: hidden;
+    min-height: 100vh;
+    min-height: 100dvh;
     margin: 0;
     padding: 0;
     /* Extend content to bottom for iOS Safari liquid glass effect */
@@ -147,8 +147,8 @@
 
   /* Ensure no white gaps around the app container */
   .app-container {
-    height: 100vh;
     min-height: 100vh;
+    min-height: 100dvh;
     overflow-y: auto;
     /* Extend to bottom for iOS Safari liquid glass effect */
     padding-bottom: 0;
@@ -1609,15 +1609,17 @@ me mobile fade effect and bottom cut-off */
 
   /* Ensure full viewport coverage and fix white bars */
   html {
-    background-color: #1D3557;
-    /* Fallback color matching gradient end */
+    /* Use gradient instead of solid color */
+    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
+    background-attachment: scroll;
     margin: 0 !important;
     padding: 0 !important;
   }
 
   body {
-    background-color: #1D3557;
-    /* Fallback color matching gradient end */
+    /* Use gradient instead of solid color */
+    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
+    background-attachment: scroll;
     margin: 0 !important;
     padding: 0 !important;
   }
