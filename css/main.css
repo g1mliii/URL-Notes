@@ -124,7 +124,6 @@ body {
   /* Dynamic viewport height for mobile */
   margin: 0;
   padding: 0;
-  /* Don't add safe area padding to body - let app-container handle it */
   /* GPU acceleration for smooth scrolling and background rendering */
   will-change: scroll-position;
   transform: translateZ(0);
@@ -219,7 +218,6 @@ html {
   overflow-y: auto;
   overflow-x: hidden;
   width: 100%;
-  /* Prevent content from going under mobile browser UI */
   box-sizing: border-box;
 }
 
@@ -274,6 +272,7 @@ html {
   from {
     transform: rotate(0deg) translateZ(0);
   }
+
   to {
     transform: rotate(360deg) translateZ(0);
   }
@@ -1061,7 +1060,9 @@ Banner Styles */
   .subscription-actions .btn-secondary {
     width: 100%;
   }
-}/* Payme
+}
+
+/* Payme
 nt Success/Error Messages */
 .success-message {
   background: linear-gradient(135deg, #10b981, #059669);
@@ -1353,22 +1354,22 @@ nt Success/Error Messages */
   .help-container {
     padding: 0 1rem;
   }
-  
+
   .comparison-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   .shortcut-item {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .shortcut-keys {
     min-width: auto;
   }
-  
+
   .thanks-section {
     padding: 1.5rem;
   }

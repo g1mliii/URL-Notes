@@ -2569,8 +2569,8 @@ Dashboard Specific Styles - Google Drive-like Layout */
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
   position: relative;
   z-index: 10;
-  /* Add safe area padding for mobile browser UI */
-  padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+  /* Allow content to extend to bottom for iOS Safari liquid glass effect */
+  padding-bottom: 2rem;
 }
 
 .footer-content {
