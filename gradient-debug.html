@@ -18,18 +18,15 @@ title: Gradient Debug Page
             box-sizing: border-box;
         }
 
-        /* Gradient background */
+        /* Gradient background - using same approach as solid color */
         html {
-            min-height: 100%;
+            height: 100%;
             background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
-            background-attachment: fixed;
         }
 
         body {
-            min-height: 100vh;
-            min-height: 100dvh;
+            height: 100%;
             background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
-            background-attachment: fixed;
             color: white;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             display: flex;
@@ -37,26 +34,6 @@ title: Gradient Debug Page
             justify-content: center;
             text-align: center;
             padding: 20px;
-        }
-
-        /* iOS Safari specific */
-        @supports (-webkit-touch-callout: none) {
-            html {
-                background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
-                background-attachment: fixed;
-                min-height: 100vh;
-                min-height: -webkit-fill-available;
-            }
-
-            body {
-                min-height: 100vh;
-                min-height: -webkit-fill-available;
-                /* Respect safe area at top, extend at bottom */
-                padding-top: env(safe-area-inset-top);
-                padding-bottom: 0;
-                padding-left: env(safe-area-inset-left);
-                padding-right: env(safe-area-inset-right);
-            }
         }
 
         .content {
