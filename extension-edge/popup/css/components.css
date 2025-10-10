@@ -2918,7 +2918,11 @@ html[data-view="site"] .note-item:hover::after {
   width: 90%;
   max-width: 400px;
   max-height: 80%;
-  overflow: hidden;
+  overflow: auto; /* Changed to auto to allow scrolling while showing dropdown */
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .ai-summary-header {
@@ -2953,6 +2957,10 @@ html[data-view="site"] .note-item:hover::after {
 
 .ai-summary-body {
   padding: 20px;
+  overflow: visible; /* Ensure dropdown options are not clipped */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .ai-summary-info {
@@ -3022,6 +3030,9 @@ html[data-view="site"] .note-item:hover::after {
   -moz-appearance: none;
   appearance: none;
   cursor: pointer;
+  /* Ensure dropdown is above other elements */
+  position: relative;
+  z-index: 10;
   /* GPU acceleration for smooth dropdown interactions */
   will-change: border-color, background-color;
   transform: translateZ(0);
@@ -3038,6 +3049,17 @@ html[data-view="site"] .note-item:hover::after {
   background: var(--bg-secondary);
   color: var(--text-primary);
   padding: 8px 12px;
+}
+
+/* Ensure dropdown options are visible and properly styled */
+.summary-domain-select option:not(:disabled) {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.summary-domain-select option:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-strong);
 }
 
 /* Ensure dropdown arrow is visible */

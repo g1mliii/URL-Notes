@@ -4237,7 +4237,9 @@ class URLNotesApp {
     if (siteContentBtn) {
       if (this.currentSite && this.currentSite.domain && this.currentSite.url.startsWith('http')) {
         siteContentBtn.disabled = false;
-        siteContentBtn.textContent = `Summarize ${this.currentSite.domain} (20 tokens)`;
+        // Use textContent to safely set domain (already XSS-safe, but being explicit)
+        const safeDomain = String(this.currentSite.domain).replace(/[<>]/g, '');
+        siteContentBtn.textContent = `Summarize ${safeDomain} (20 tokens)`;
       } else {
         siteContentBtn.disabled = true;
         siteContentBtn.textContent = 'Summarize Current Page (20 tokens)';
@@ -4362,8 +4364,11 @@ class URLNotesApp {
         domains.forEach(domain => {
           const noteCount = filteredNotes.filter(note => note.domain === domain).length;
           const option = document.createElement('option');
-          option.value = domain;
-          option.textContent = `${domain} (${noteCount} notes)`;
+          // Sanitize domain value to prevent XSS in option value attribute
+          const safeDomain = String(domain).replace(/[<>"']/g, '');
+          option.value = safeDomain;
+          // textContent is already XSS-safe, but sanitize for extra safety
+          option.textContent = `${safeDomain} (${noteCount} notes)`;
           domainSelect.appendChild(option);
         });
       }
@@ -4414,7 +4419,9 @@ class URLNotesApp {
       // Enable site content summary button if we have a current site
       if (this.currentSite && this.currentSite.domain && this.currentSite.url.startsWith('http')) {
         siteContentBtn.disabled = false;
-        siteContentBtn.textContent = `Summarize ${this.currentSite.domain} (20 tokens)`;
+        // Use textContent to safely set domain (already XSS-safe, but being explicit)
+        const safeDomain = String(this.currentSite.domain).replace(/[<>]/g, '');
+        siteContentBtn.textContent = `Summarize ${safeDomain} (20 tokens)`;
       } else {
         siteContentBtn.disabled = true;
         siteContentBtn.textContent = 'Summarize Current Page (20 tokens)';
