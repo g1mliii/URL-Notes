@@ -19,7 +19,7 @@ title: Gradient Debug Page
             box-sizing: border-box;
         }
 
-        /* Solid black top, gradient on body */
+        /* Black top for notch, gradient on body */
         html {
             height: 100%;
             /* Solid black for safe area (notch) */
@@ -27,8 +27,9 @@ title: Gradient Debug Page
         }
 
         body {
-            height: 100%;
-            /* Simpler gradient - iOS Safari sometimes has issues with 3+ color stops */
+            min-height: 100vh;
+            min-height: 100dvh;
+            /* Simpler 2-color gradient works on iOS Safari */
             background: linear-gradient(to bottom, #A8DADC, #1D3557);
             color: white;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
