@@ -27,9 +27,8 @@ title: Gradient Debug Page
         }
 
         body {
-            min-height: 100vh;
-            min-height: 100dvh;
-            /* Simpler 2-color gradient works on iOS Safari */
+            height: 100%;
+            /* Simpler gradient - iOS Safari sometimes has issues with 3+ color stops */
             background: linear-gradient(to bottom, #A8DADC, #1D3557);
             color: white;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
