@@ -36,9 +36,9 @@ title: Layout Debug Page
             overflow-y: auto;
         }
 
-        /* Container with flexbox - use 100vh to extend under transparent Safari bar */
+        /* Container with flexbox - add extra height to push footer into safe area */
         .container {
-            min-height: 100vh;
+            min-height: calc(100vh + env(safe-area-inset-bottom));
             display: flex;
             flex-direction: column;
             position: relative;
