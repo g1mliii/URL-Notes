@@ -1,18 +1,23 @@
 /* Mobile-specific styles for Privacy and Terms pages */
 /* Based on working layout-debug.html approach */
+/* LOADS LAST - OVERRIDES ALL OTHER STYLES */
 
 @media (max-width: 1023px) {
   /* Dark blue to charcoal grey gradient - working approach from layout-debug */
-  html {
+  html,
+  html body {
     height: 100% !important;
+  }
+  
+  html {
     background: #202124 !important;
     margin: 0 !important;
     padding: 0 !important;
   }
 
   body {
-    height: 100% !important;
     background: linear-gradient(to bottom, #1D3557, #202124) !important;
+    background-attachment: scroll !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow-y: auto !important;
