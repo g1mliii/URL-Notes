@@ -59,6 +59,8 @@
         "<all_urls>"
       ],
       "js": [
+        "lib/browser-api.js",
+        "content/edge-content-compat.js",
         "content/content.js"
       ],
       "run_at": "document_end"

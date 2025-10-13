@@ -36,7 +36,7 @@
     }
   },
   "background": {
-    "scripts": ["background/background.js"],
+    "scripts": ["lib/browser-api.js", "background/background.js"],
     "persistent": false
   },
   "commands": {
@@ -59,6 +59,8 @@
         "<all_urls>"
       ],
       "js": [
+        "lib/browser-api.js",
+        "content/firefox-content-compat.js",
         "content/content.js"
       ],
       "run_at": "document_end"

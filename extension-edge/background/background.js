@@ -1,3 +1,6 @@
+// Import browser API abstraction layer for Edge compatibility
+importScripts('lib/browser-api.js');
+
 // Context menu now uses the same storage system as the main extension
 // No separate storage abstraction needed
 
