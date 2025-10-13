@@ -1178,38 +1178,21 @@
 /* iOS Safari specific fixes */
 @supports (-webkit-touch-callout: none) {
 
-  /* iOS Safari - fill safe areas with gradient color, let content extend underneath transparent UI */
+  /* iOS Safari - use working dark blue to charcoal grey gradient */
   html {
-    -webkit-overflow-scrolling: touch;
-    /* Fill the entire viewport including safe areas with gradient */
-    background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
-    background-attachment: fixed;
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
-    /* Prevent overscroll bounce showing white */
-    overscroll-behavior: none;
-    -webkit-overscroll-behavior: none;
+    height: 100% !important;
+    background: #202124 !important;
     margin: 0 !important;
     padding: 0 !important;
   }
 
   body {
-    /* Fill safe areas with gradient color */
-    background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
-    background-attachment: scroll !important;
-    -webkit-overflow-scrolling: touch;
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
-    /* Respect safe area at top (notch), but fill it with gradient color */
-    padding-top: env(safe-area-inset-top);
-    /* No padding at bottom - let content extend under transparent Safari UI */
-    padding-bottom: 0;
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-    /* Prevent overscroll bounce showing white */
-    overscroll-behavior: none;
-    -webkit-overscroll-behavior: none;
+    height: 100% !important;
+    /* Dark blue to charcoal grey gradient */
+    background: linear-gradient(to bottom, #1D3557, #202124) !important;
+    overflow-y: auto !important;
     margin: 0 !important;
+    padding: 0 !important;
   }
 
   .app-container {
@@ -1255,36 +1238,7 @@
 /* Additional mobile performance optimizations */
 @media (max-width: 767px) {
 
-  /* Fix mobile background coverage */
-  html {
-    background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
-    height: 100%;
-    height: 100dvh;
-    /* Dynamic viewport */
-    height: -webkit-fill-available;
-    /* Safari fallback */
-    overflow: hidden;
-    /* Prevent fade effects */
-    -webkit-appearance: none;
-    appearance: none;
-  }
-
-  body {
-    background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
-    background-attachment: scroll !important;
-    height: 100vh;
-    height: 100dvh;
-    /* Dynamic viewport */
-    height: -webkit-fill-available;
-    /* Safari fallback */
-    overflow: hidden;
-    margin: 0;
-    padding: 0;
-    /* Remove safe area padding to allow content to extend under iOS Safari's liquid glass UI */
-    /* Prevent fade effects */
-    -webkit-appearance: none;
-    appearance: none;
-  }
+  /* Background handled by global mobile/tablet rule at top of file */
 
   /* Ensure app container shows background gradient */
   .app-container {
@@ -1362,19 +1316,8 @@
 }
 
 /* Dark mode mobile fixes */
+/* Background handled by iOS Safari dark mode section above */
 @media (max-width: 767px) and (prefers-color-scheme: dark) {
-  html {
-    background: linear-gradient(135deg, #1D3557 0%, #0A1A24 100%) !important;
-    height: 100%;
-    overflow: hidden;
-  }
-
-  body {
-    background: linear-gradient(135deg, #1D3557 0%, #0A1A24 100%) !important;
-    background-attachment: scroll !important;
-    height: 100vh;
-    overflow: hidden;
-  }
 
   .app-container {
     background: rgba(15, 35, 50, 0.8) !important;
@@ -1433,25 +1376,18 @@
 @supports (-webkit-touch-callout: none) {
   @media (prefers-color-scheme: dark) {
     html {
-      /* Fill safe areas with dark gradient */
-      background: linear-gradient(135deg, #1D3557 0%, #0A1A24 100%) !important;
-      background-attachment: fixed;
-      min-height: 100vh;
-      min-height: -webkit-fill-available;
+      height: 100% !important;
+      /* Darker charcoal for dark mode */
+      background: #000000 !important;
     }
 
     body {
-      /* Fill safe areas with dark gradient */
-      background: linear-gradient(135deg, #1D3557 0%, #0A1A24 100%) !important;
-      background-attachment: scroll !important;
-      min-height: 100vh;
-      min-height: -webkit-fill-available;
-      /* Respect safe area at top (notch), fill with gradient */
-      padding-top: env(safe-area-inset-top);
-      /* No padding at bottom - let content extend under transparent Safari UI */
-      padding-bottom: 0;
-      padding-left: env(safe-area-inset-left);
-      padding-right: env(safe-area-inset-right);
+      height: 100% !important;
+      /* Darker gradient for dark mode */
+      background: linear-gradient(to bottom, #0A1A24, #000000) !important;
+      overflow-y: auto !important;
+      margin: 0 !important;
+      padding: 0 !important;
     }
 
     .app-container {
@@ -1614,22 +1550,7 @@ me mobile fade effect and bottom cut-off */
     mask-image: none !important;
   }
 
-  /* Ensure full viewport coverage and fix white bars */
-  html {
-    /* Use gradient instead of solid color */
-    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
-    background-attachment: scroll;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  body {
-    /* Use gradient instead of solid color */
-    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
-    background-attachment: scroll;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
+  /* Background handled by global mobile/tablet rule at top of file */
 
   /* Fix all heading elements on mobile */
   h1,
