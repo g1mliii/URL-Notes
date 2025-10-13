@@ -16,7 +16,6 @@
     height: 100% !important;
     /* Dark blue to charcoal grey gradient */
     background: linear-gradient(to bottom, #1D3557, #202124) !important;
-    background-attachment: scroll !important;
     overflow-y: auto !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -1194,12 +1193,9 @@
     /* No background - let body gradient show through */
     background: transparent !important;
     /* Let content extend to bottom under transparent Safari UI */
-    min-height: 100vh !important;
-    padding-bottom: 0 !important;
+    min-height: 100vh;
+    padding-bottom: 0;
     margin: 0 !important;
-    /* Flexbox for footer positioning */
-    display: flex !important;
-    flex-direction: column !important;
   }
 
   /* Completely remove the problematic overlay on iOS */
@@ -1381,15 +1377,13 @@
     }
 
     .app-container {
-      /* No background - let body gradient show through */
-      background: transparent !important;
+      background: rgba(15, 35, 50, 0.85) !important;
+      --bg-primary: rgba(15, 35, 50, 0.85) !important;
+      --bg-secondary: rgba(20, 45, 65, 0.85) !important;
       /* Let content extend to bottom under transparent Safari UI */
-      min-height: 100vh !important;
-      padding-bottom: 0 !important;
-      margin: 0 !important;
-      /* Flexbox for footer positioning */
-      display: flex !important;
-      flex-direction: column !important;
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      padding-bottom: 0;
     }
 
     /* Fix dashboard elements in iOS Safari dark mode */
@@ -1506,8 +1500,8 @@ me mobile fade effect and bottom cut-off */
   /* Specifically target the footer to extend to bottom */
   .site-footer {
     margin-bottom: 0;
-    /* Add extra padding to extend footer into bottom area on mobile */
-    padding-bottom: calc(1rem + 2rem);
+    /* Allow footer to extend to bottom for liquid glass effect */
+    padding-bottom: 1rem;
   }
 }
 

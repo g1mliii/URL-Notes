@@ -1,11 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, shrink-to-fit=no">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, shrink-to-fit=no">
+    
     <!-- Mobile browser UI fixes -->
     <meta name="theme-color" content="#1D3557" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#0A1A24" media="(prefers-color-scheme: dark)">
@@ -13,13 +11,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Anchored">
-
-    <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://kqjcorjjvunmyrnzvqgr.supabase.co https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co wss://kqjcorjjvunmyrnzvqgr.supabase.co https://accounts.google.com https://oauth2.googleapis.com; img-src 'self' data: https: https://www.paypalobjects.com https://www.paypal.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self' https://www.paypal.com; upgrade-insecure-requests; frame-src https://accounts.google.com"
-        <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://kqjcorjjvunmyrnzvqgr.supabase.co https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co wss://kqjcorjjvunmyrnzvqgr.supabase.co https://accounts.google.com https://oauth2.googleapis.com; img-src 'self' data: https: https://www.paypalobjects.com https://www.paypal.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self' https://www.paypal.com; upgrade-insecure-requests; frame-src https://accounts.google.com"
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta http-equiv="X-XSS-Protection" content="1; mode=block">
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
-
+    
     <!-- Cache busting meta tag - manually increment when users need to refresh -->
     <!-- 
          Version Format: YYYY.MM.DD.N (where N is the build number for that day)
@@ -36,9 +33,9 @@
          - Development/testing changes
     -->
     <meta name="cache-version" content="2025.01.15.1">
-
+    
     <title>{% if page.title %}{{ page.title }} - {{ site.title }}{% else %}{{ site.title }}{% endif %}</title>
-
+    
     <!-- Privacy Policy Link for OAuth verification -->
     {% if page.privacy_policy_url %}
     <link rel="privacy-policy" href="{{ page.privacy_policy_url }}">
@@ -54,80 +51,73 @@
     }
     </script>
     {% endif %}
-
+    
     <!-- Favicon and App Icons (optimized order for better browser selection) -->
     <!-- Standard favicon (browsers will pick the best size) -->
     <link rel="icon" type="image/png" sizes="32x32" href="{{ '/anchore wout background 32x32.png' | relative_url }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ '/anchore wout background 16x16.png' | relative_url }}">
-
+    
     <!-- Larger favicons for high-DPI displays and modern browsers -->
     <link rel="icon" type="image/png" sizes="48x48" href="{{ '/anchore wout background 48x48.png' | relative_url }}">
     <link rel="icon" type="image/png" sizes="96x96" href="{{ '/anchore wout background 96x96.png' | relative_url }}">
-    <link rel="icon" type="image/png" sizes="128x128"
-        href="{{ '/anchore wout background 128x128.png' | relative_url }}">
-    <link rel="icon" type="image/png" sizes="192x192"
-        href="{{ '/anchore wout background 192x192.png' | relative_url }}">
-
+    <link rel="icon" type="image/png" sizes="128x128" href="{{ '/anchore wout background 128x128.png' | relative_url }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ '/anchore wout background 192x192.png' | relative_url }}">
+    
     <!-- Fallback favicon.ico for older browsers -->
     <link rel="shortcut icon" href="{{ '/favicon.ico' | relative_url }}" type="image/x-icon">
     <link rel="icon" href="{{ '/favicon.ico' | relative_url }}" type="image/x-icon">
-
+    
     <!-- Apple Touch Icons -->
     <link rel="apple-touch-icon" sizes="60x60" href="{{ '/anchore wout background 60x60.png' | relative_url }}">
     <link rel="apple-touch-icon" sizes="76x76" href="{{ '/anchore wout background 76x76.png' | relative_url }}">
     <link rel="apple-touch-icon" sizes="167x167" href="{{ '/anchore wout background 167x167.png' | relative_url }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ '/anchore wout background 180x180.png' | relative_url }}">
-
+    
     <!-- Android Chrome Icons -->
-    <link rel="icon" type="image/png" sizes="512x512"
-        href="{{ '/anchore wout background 512x512.png' | relative_url }}">
-
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ '/anchore wout background 512x512.png' | relative_url }}">
+    
     <!-- Web App Manifest -->
     <link rel="manifest" href="{{ '/manifest.json' | relative_url }}">
-
+    
     <link rel="stylesheet" href="{{ '/css/main.css' | relative_url }}?v={{ site.time | date: '%Y%m%d%H%M%S' }}">
     <link rel="stylesheet" href="{{ '/css/components.css' | relative_url }}?v={{ site.time | date: '%Y%m%d%H%M%S' }}">
     <link rel="stylesheet" href="{{ '/css/responsive.css' | relative_url }}?v={{ site.time | date: '%Y%m%d%H%M%S' }}">
-    <link rel="stylesheet"
-        href="{{ '/css/mobile-static-pages.css' | relative_url }}?v={{ site.time | date: '%Y%m%d%H%M%S' }}">
 </head>
-
 <body>
     {{ content }}
-
+    
     <!-- Google Sign-In Script (load conditionally) -->
     {% if page.google_signin %}
-    <script src="https://accounts.google.com/gsi/client" async
-        onload="if (window.onGoogleScriptLoad) window.onGoogleScriptLoad();"></script>
+    <script src="https://accounts.google.com/gsi/client" async onload="if (window.onGoogleScriptLoad) window.onGoogleScriptLoad();"></script>
     {% endif %}
-
+    
     <!-- Environment configuration (load before other scripts) -->
     <script src="{{ '/js/env-config.js' | relative_url }}?v={{ site.time | date: '%Y%m%d%H%M%S' }}"></script>
-
+    
     <!-- Cache busting utility (load first) -->
     <script src="{{ '/js/cache-buster.js' | relative_url }}?v={{ site.time | date: '%Y%m%d%H%M%S' }}"></script>
-
+    
     {% if page.scripts %}
-    {% for script in page.scripts %}
-    <script src="{{ script | relative_url }}?v={{ site.time | date: '%Y%m%d%H%M%S' }}"></script>
-    {% endfor %}
+        {% for script in page.scripts %}
+            <script src="{{ script | relative_url }}?v={{ site.time | date: '%Y%m%d%H%M%S' }}"></script>
+        {% endfor %}
     {% endif %}
-
+    
     <!-- Initialize Google Sign-In after all scripts load -->
     {% if page.google_signin %}
     <script>
         // Global callback for when Google script loads
-        window.onGoogleScriptLoad = function () {
+        window.onGoogleScriptLoad = function() {
             window.googleSignInLoaded = true;
-
+            
             // Try to initialize only if needed
             if (window.auth && window.auth.initializeGoogleSignInIfNeeded) {
                 window.auth.initializeGoogleSignInIfNeeded();
             }
         };
-
+        
         // Retry Google Sign-In initialization if script loads after auth module
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             function tryInitGoogleSignIn() {
                 if (typeof google !== 'undefined' && google.accounts && window.auth && window.auth.initializeGoogleSignInIfNeeded) {
                     window.auth.initializeGoogleSignInIfNeeded();
@@ -136,7 +126,7 @@
                     return false;
                 }
             }
-
+            
             // Try immediately
             if (!tryInitGoogleSignIn()) {
                 // Retry every 500ms for up to 10 seconds
@@ -153,5 +143,4 @@
     </script>
     {% endif %}
 </body>
-
 </html>
