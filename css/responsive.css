@@ -2,6 +2,31 @@
 
 /* Mobile Base Styles (320px+) - Already defined in main.css and components.css */
 
+/* Mobile and Tablet Background Fix for iOS Safari (max-width: 1023px) */
+/* This overrides all other background styles below with !important */
+@media (max-width: 1023px) {
+
+  /* Dark blue to charcoal grey gradient for iOS Safari */
+  html {
+    height: 100% !important;
+    background: #202124 !important;
+  }
+
+  body {
+    height: 100% !important;
+    /* Dark blue to charcoal grey gradient */
+    background: linear-gradient(to bottom, #1D3557, #202124) !important;
+    overflow-y: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Ensure app container uses viewport height */
+  .app-container {
+    min-height: 100vh !important;
+  }
+}
+
 /* Mobile Navigation and Hero Improvements */
 @media (max-width: 768px) {
 
@@ -84,13 +109,7 @@
 /* Small Mobile (up to 480px) */
 @media (max-width: 480px) {
 
-  /* Fix mobile background rendering issues */
-  html {
-    -webkit-overflow-scrolling: touch;
-    background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
-    height: 100%;
-    overflow: hidden;
-  }
+  /* Background handled by global mobile/tablet rule above */
 
   /* Additional mobile spacing fixes for very small screens */
   .account-section {
@@ -131,19 +150,7 @@
     padding: 1.5rem 1rem !important;
   }
 
-  body {
-    background-attachment: scroll !important;
-    -webkit-overflow-scrolling: touch;
-    /* Simplified 2-color gradient for better mobile performance */
-    background: linear-gradient(135deg, #A8DADC 0%, #1D3557 100%) !important;
-    background-attachment: scroll !important;
-    min-height: 100vh;
-    min-height: 100dvh;
-    margin: 0;
-    padding: 0;
-    /* Extend content to bottom for iOS Safari liquid glass effect */
-    padding-bottom: 0;
-  }
+  /* Background handled by global mobile/tablet rule above */
 
   /* Ensure no white gaps around the app container */
   .app-container {

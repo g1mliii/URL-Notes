@@ -507,39 +507,20 @@ p {
 
 /* Comprehensive mobile browser fixes */
 @media screen and (max-width: 768px) {
+
+  /* Background handled by responsive.css mobile/tablet rule */
   html {
-    /* Force full height and prevent zoom */
-    height: 100%;
     width: 100%;
     overflow-x: hidden;
     -webkit-text-size-adjust: 100%;
     -ms-text-size-adjust: 100%;
-    /* Ensure html has gradient background on mobile */
-    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
-    background-attachment: scroll;
   }
 
+  /* Background handled by responsive.css mobile/tablet rule */
   body {
-    /* Prevent white space and ensure full coverage */
-    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
-    background-attachment: scroll;
-    /* Fixed causes issues on mobile */
-    background-size: 100% 100%;
-    background-repeat: no-repeat;
     overflow-x: hidden;
     width: 100vw;
-    height: 100vh;
-    height: 100dvh;
-    /* Dynamic viewport */
-    height: -webkit-fill-available;
-    /* Safari fallback */
-    margin: 0;
-    padding: 0;
-    /* Prevent Safari zoom and white bars */
     -webkit-text-size-adjust: 100%;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
   }
 
   .app-container {
@@ -562,13 +543,8 @@ p {
 }
 
 /* Chrome mobile specific fixes */
+/* Background handled by responsive.css mobile/tablet rule */
 @media screen and (max-width: 768px) and (-webkit-min-device-pixel-ratio: 1) {
-  html {
-    /* Ensure html has gradient background on Chrome mobile */
-    background: linear-gradient(135deg, #A8DADC 0%, #457B9D 50%, #1D3557 100%);
-    background-attachment: scroll;
-  }
-  
   .app-container {
     /* Allow content to extend to bottom for liquid glass effect */
     min-height: 100vh;
