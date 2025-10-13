@@ -21,9 +21,14 @@
     padding: 0 !important;
   }
 
-  /* Ensure app container uses viewport height */
+  /* Ensure app container is transparent, uses viewport height, and has flexbox for footer */
   .app-container {
     min-height: 100vh !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
 }
 
@@ -166,18 +171,8 @@
   }
 
   .app-container {
-    /* Reduce opacity to show blue background while maintaining readability */
-    background: rgba(248, 252, 253, 0.6) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    /* Force hardware acceleration to prevent rendering issues */
-    -webkit-transform: translate3d(0, 0, 0);
-    transform: translate3d(0, 0, 0);
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    /* Override CSS variables */
-    --bg-primary: rgba(248, 252, 253, 0.6) !important;
-    --bg-secondary: rgba(248, 252, 253, 0.75) !important;
+    /* No background - let body gradient show through */
+    background: transparent !important;
   }
 
   /* Override CSS variables specifically for auth-form on small mobile */
@@ -367,9 +362,8 @@
   }
 
   .app-container {
-    background: rgba(248, 252, 253, 0.7) !important;
-    /* Override CSS variables */
-    --bg-primary: rgba(248, 252, 253, 0.7) !important;
+    /* No background - let body gradient show through */
+    background: transparent !important;
   }
 
   /* Fix hero section centering and spacing on tablet */
@@ -1196,17 +1190,10 @@
   }
 
   .app-container {
-    background: rgba(248, 252, 253, 0.8) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    /* Force hardware acceleration */
-    -webkit-transform: translate3d(0, 0, 0);
-    transform: translate3d(0, 0, 0);
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
+    /* No background - let body gradient show through */
+    background: transparent !important;
     /* Let content extend to bottom under transparent Safari UI */
     min-height: 100vh;
-    min-height: -webkit-fill-available;
     padding-bottom: 0;
     margin: 0 !important;
   }
@@ -1320,9 +1307,8 @@
 @media (max-width: 767px) and (prefers-color-scheme: dark) {
 
   .app-container {
-    background: rgba(15, 35, 50, 0.8) !important;
-    --bg-primary: rgba(15, 35, 50, 0.8) !important;
-    --bg-secondary: rgba(20, 45, 65, 0.8) !important;
+    /* No background - let body gradient show through */
+    background: transparent !important;
   }
 
   /* Fix dashboard elements in dark mode */
