@@ -9,7 +9,7 @@
 
   async function loadConfig() {
     try {
-      const { supabaseUrl, supabaseAnonKey } = await chrome.storage.local.get(['supabaseUrl', 'supabaseAnonKey']);
+      const { supabaseUrl, supabaseAnonKey } = await browserAPI.storage.local.get(['supabaseUrl', 'supabaseAnonKey']);
       return {
         supabaseUrl: supabaseUrl || DEFAULTS.supabaseUrl,
         supabaseAnonKey: supabaseAnonKey || DEFAULTS.supabaseAnonKey,

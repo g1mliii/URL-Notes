@@ -77,7 +77,7 @@ class URLNotesApp {
   // Get current tab information and update UI/context
   async loadCurrentSite() {
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const [tab] = await browserAPI.tabs.query({ active: true, currentWindow: true });
       if (tab && tab.url && tab.url.startsWith('http')) {
         const url = new URL(tab.url);
         this.currentSite = {
@@ -328,7 +328,7 @@ class URLNotesApp {
     }
 
     // Listen for background sync timer messages
-    chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+    browserAPI.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       if (message.action === 'sync-timer-triggered') {
 
         // Background timer fired, check if we can sync
@@ -343,7 +343,7 @@ class URLNotesApp {
                 const encryptionReady = await window.encryptionManager.isEncryptionReady();
                 if (!encryptionReady) {
 
-                  chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
+                  browserAPI.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
                   return;
                 }
               }
@@ -353,35 +353,35 @@ class URLNotesApp {
                 await window.syncEngine.manualSync();
 
                 // After sync completes, restart the background timer for next cycle
-                chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
+                browserAPI.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
               } catch (syncError) {
                 console.error('Popup: Automatic sync failed:', syncError);
 
                 // Even if sync fails, restart timer for next cycle
-                chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
+                browserAPI.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
               }
             } else {
               // Can't sync, restart timer anyway for next cycle
-              chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
+              browserAPI.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
             }
           } catch (error) {
             console.error('Popup: Error checking sync capability:', error);
 
             // Error checking sync capability, restart timer for next cycle
-            chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
+            browserAPI.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
           }
         } else {
           console.warn('Popup: Sync engine not available');
 
           // Sync engine not available, restart timer for next cycle
-          chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
+          browserAPI.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
         }
       }
     });
 
     // Check for overdue sync when popup opens
     try {
-      const response = await chrome.runtime.sendMessage({ action: 'popup-opened' });
+      const response = await browserAPI.runtime.sendMessage({ action: 'popup-opened' });
       if (response && response.shouldSync) {
         if (window.syncEngine) {
           try {
@@ -397,7 +397,7 @@ class URLNotesApp {
                 const encryptionReady = await window.encryptionManager.isEncryptionReady();
                 if (!encryptionReady) {
 
-                  chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
+                  browserAPI.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
                   return;
                 }
               }
@@ -406,25 +406,25 @@ class URLNotesApp {
 
                 await window.syncEngine.manualSync();
 
-                chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
+                browserAPI.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
               } catch (syncError) {
                 console.error('Popup: Overdue sync failed:', syncError);
 
-                chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
+                browserAPI.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
               }
             } else {
 
-              chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
+              browserAPI.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
             }
           } catch (error) {
             console.error('Popup: Error checking sync capability for overdue sync:', error);
 
-            chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
+            browserAPI.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
           }
         } else {
           console.warn('Popup: Sync engine not available for overdue sync');
 
-          chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
+          browserAPI.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
         }
       } else if (response) {
         const timeRemainingMinutes = Math.round(response.timeRemaining / (1000 * 60));
@@ -443,7 +443,7 @@ class URLNotesApp {
 
     // Listen for context menu messages from background script
     try {
-      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === 'context_menu_note_saved') {
           this.handleContextMenuNote(message.note);
           // Note: context_menu_draft_updated now handled via lastAction mechanism for better timing
@@ -474,7 +474,7 @@ class URLNotesApp {
 
     // Restore last UI state (filter + possibly open editor)
     try {
-      const { lastFilterMode, editorState, lastAction, lastSearchQuery } = await chrome.storage.local.get(['lastFilterMode', 'editorState', 'lastAction', 'lastSearchQuery']);
+      const { lastFilterMode, editorState, lastAction, lastSearchQuery } = await browserAPI.storage.local.get(['lastFilterMode', 'editorState', 'lastAction', 'lastSearchQuery']);
       if (lastFilterMode === 'site' || lastFilterMode === 'page' || lastFilterMode === 'all_notes') {
         this.filterMode = lastFilterMode;
       }
@@ -485,10 +485,10 @@ class URLNotesApp {
       if (editorState) {
         editorState.open = true;
         // Preserve wasEditorOpen flag for auto-restore logic
-        await chrome.storage.local.set({ editorState });
+        await browserAPI.storage.local.set({ editorState });
       } else {
         const newEditorState = { open: true, wasEditorOpen: false };
-        await chrome.storage.local.set({ editorState: newEditorState });
+        await browserAPI.storage.local.set({ editorState: newEditorState });
       }
 
       // Set filter without rendering first
@@ -510,11 +510,11 @@ class URLNotesApp {
         if (this.currentSite) {
           // Create new note and open editor
           await this.createNewNote();
-          chrome.storage.local.remove('lastAction');
+          browserAPI.storage.local.remove('lastAction');
           return;
         } else {
           console.warn('Cannot create new note: No valid site context');
-          chrome.storage.local.remove('lastAction');
+          browserAPI.storage.local.remove('lastAction');
         }
       }
 
@@ -526,7 +526,7 @@ class URLNotesApp {
         // If not found in IndexedDB, check chrome.storage.local (context menu storage)
         if (!createdNote) {
           try {
-            const allData = await chrome.storage.local.get(null);
+            const allData = await browserAPI.storage.local.get(null);
             for (const [key, value] of Object.entries(allData)) {
               if (key.startsWith('note_') && value && value.id === lastAction.noteId) {
                 createdNote = value;
@@ -548,7 +548,7 @@ class URLNotesApp {
 
               // Remove from chrome.storage.local
               const key = `note_${createdNote.id}`;
-              await chrome.storage.local.remove(key);
+              await browserAPI.storage.local.remove(key);
 
               // Reload notes to include the new one
               this.allNotes = await this.loadNotes();
@@ -560,7 +560,7 @@ class URLNotesApp {
           // Open the created note in editor
           this.currentNote = { ...createdNote };
           await this.openEditor(true);
-          chrome.storage.local.remove('lastAction');
+          browserAPI.storage.local.remove('lastAction');
           return;
         }
       }
@@ -573,7 +573,7 @@ class URLNotesApp {
         // If not found in IndexedDB, check chrome.storage.local
         if (!createdNote) {
           try {
-            const allData = await chrome.storage.local.get(null);
+            const allData = await browserAPI.storage.local.get(null);
             for (const [key, value] of Object.entries(allData)) {
               if (key.startsWith('note_') && value && value.id === lastAction.noteId) {
                 createdNote = value;
@@ -595,7 +595,7 @@ class URLNotesApp {
 
               // Remove from chrome.storage.local
               const key = `note_${createdNote.id}`;
-              await chrome.storage.local.remove(key);
+              await browserAPI.storage.local.remove(key);
 
               // Reload notes to include the new one
               this.allNotes = await this.loadNotes();
@@ -607,7 +607,7 @@ class URLNotesApp {
           // Open the created note in editor
           this.currentNote = { ...createdNote };
           await this.openEditor(true);
-          chrome.storage.local.remove('lastAction');
+          browserAPI.storage.local.remove('lastAction');
           Utils.showToast(`Multi-highlight note created with ${lastAction.highlightCount} highlights`, 'success');
           return;
         }
@@ -618,7 +618,7 @@ class URLNotesApp {
         console.log('🎯 Context menu appended to draft, opening updated draft in editor');
 
         // Get the updated draft from storage
-        const { editorState } = await chrome.storage.local.get(['editorState']);
+        const { editorState } = await browserAPI.storage.local.get(['editorState']);
         if (editorState && editorState.noteDraft && editorState.noteDraft.id === lastAction.noteId) {
           // Set the updated draft as current note and open editor
           this.currentNote = { ...editorState.noteDraft };
@@ -627,7 +627,7 @@ class URLNotesApp {
         }
 
         // Remove action so it doesn't re-trigger
-        chrome.storage.local.remove('lastAction');
+        browserAPI.storage.local.remove('lastAction');
         return;
       }
 
@@ -639,7 +639,7 @@ class URLNotesApp {
         // If not found in IndexedDB, check chrome.storage.local
         if (!updatedNote) {
           try {
-            const allData = await chrome.storage.local.get(null);
+            const allData = await browserAPI.storage.local.get(null);
             for (const [key, value] of Object.entries(allData)) {
               if (key.startsWith('note_') && value && value.id === lastAction.noteId) {
                 updatedNote = value;
@@ -661,7 +661,7 @@ class URLNotesApp {
 
               // Remove from chrome.storage.local
               const key = `note_${updatedNote.id}`;
-              await chrome.storage.local.remove(key);
+              await browserAPI.storage.local.remove(key);
 
               // Reload notes to include the updated one
               this.allNotes = await this.loadNotes();
@@ -673,7 +673,7 @@ class URLNotesApp {
           // Open the updated note in editor
           this.currentNote = { ...updatedNote };
           await this.openEditor(true);
-          chrome.storage.local.remove('lastAction');
+          browserAPI.storage.local.remove('lastAction');
           Utils.showToast(`Added ${lastAction.highlightCount} highlights to note`, 'success');
           return;
         }
@@ -713,7 +713,7 @@ class URLNotesApp {
             }
           }
           // Remove action so it doesn't re-trigger
-          chrome.storage.local.remove('lastAction');
+          browserAPI.storage.local.remove('lastAction');
           return;
         }
 
@@ -727,7 +727,7 @@ class URLNotesApp {
           this.persistEditorOpen(true);
           this.saveEditorDraft();
           // Remove action so it doesn't re-trigger on next open
-          chrome.storage.local.remove('lastAction');
+          browserAPI.storage.local.remove('lastAction');
           return;
         }
       }
@@ -749,7 +749,7 @@ class URLNotesApp {
             await this.openEditor(true);
           }
         } else {
-          await chrome.storage.local.remove('editorState');
+          await browserAPI.storage.local.remove('editorState');
         }
       } else if (editorState && editorState.noteDraft) {
 
@@ -797,7 +797,7 @@ class URLNotesApp {
   async restoreCachedUIState() {
     try {
       // 1. Restore filter mode and search query immediately
-      const { lastFilterMode, lastSearchQuery } = await chrome.storage.local.get(['lastFilterMode', 'lastSearchQuery']);
+      const { lastFilterMode, lastSearchQuery } = await browserAPI.storage.local.get(['lastFilterMode', 'lastSearchQuery']);
       if (lastFilterMode === 'site' || lastFilterMode === 'page' || lastFilterMode === 'all_notes') {
         this.filterMode = lastFilterMode;
       }
@@ -837,7 +837,7 @@ class URLNotesApp {
   async restoreShortcutsImmediately() {
     try {
       // Try to get shortcuts from storage first (faster)
-      const { cachedShortcuts } = await chrome.storage.local.get(['cachedShortcuts']);
+      const { cachedShortcuts } = await browserAPI.storage.local.get(['cachedShortcuts']);
       if (cachedShortcuts && cachedShortcuts.open && cachedShortcuts.new) {
         const openEl = document.getElementById('shortcutOpenValue');
         const newEl = document.getElementById('shortcutNewValue');
@@ -847,7 +847,7 @@ class URLNotesApp {
       }
 
       // Then get fresh shortcuts from chrome.commands
-      const actions = await chrome.commands.getAll();
+      const actions = await browserAPI.commands.getAll();
       const openAction = actions.find(a => a.name === '_execute_action');
       const createAction = actions.find(a => a.name === '_execute_browser_action');
 
@@ -862,14 +862,14 @@ class URLNotesApp {
       if (newEl) newEl.textContent = newShortcut;
 
       // Cache the shortcuts for next time
-      await chrome.storage.local.set({
+      await browserAPI.storage.local.set({
         cachedShortcuts: { open: openShortcut, new: newShortcut }
       });
 
     } catch (error) {
       console.warn('Failed to restore shortcuts immediately:', error);
       // Only set fallback if no cached values were loaded
-      const { cachedShortcuts } = await chrome.storage.local.get(['cachedShortcuts']);
+      const { cachedShortcuts } = await browserAPI.storage.local.get(['cachedShortcuts']);
       if (!cachedShortcuts || !cachedShortcuts.open || !cachedShortcuts.new) {
         const openEl = document.getElementById('shortcutOpenValue');
         const newEl = document.getElementById('shortcutNewValue');
@@ -964,7 +964,7 @@ class URLNotesApp {
   // Check if OAuth just completed (called during popup initialization)
   async checkOAuthCompletion() {
     try {
-      const { oauthJustCompleted } = await chrome.storage.local.get(['oauthJustCompleted']);
+      const { oauthJustCompleted } = await browserAPI.storage.local.get(['oauthJustCompleted']);
 
       if (oauthJustCompleted && oauthJustCompleted !== null && oauthJustCompleted.success) {
         // Check if this completion is recent (within last 30 seconds)
@@ -972,7 +972,7 @@ class URLNotesApp {
 
         if (timeSinceCompletion < 30000) {
           // Clear the flag so we don't trigger again
-          await chrome.storage.local.set({ oauthJustCompleted: null });
+          await browserAPI.storage.local.set({ oauthJustCompleted: null });
 
           // Trigger refresh after a short delay to ensure UI is ready
           setTimeout(() => {
@@ -982,7 +982,7 @@ class URLNotesApp {
           }, 1500);
         } else {
           // Old completion, clear it
-          await chrome.storage.local.set({ oauthJustCompleted: null });
+          await browserAPI.storage.local.set({ oauthJustCompleted: null });
         }
       }
     } catch (error) {
@@ -1071,7 +1071,7 @@ class URLNotesApp {
 
       // First check if content script is ready by sending a ping message
       try {
-        await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
+        await browserAPI.tabs.sendMessage(tab.id, { action: 'ping' });
         console.log('Content script is ready');
       } catch (error) {
         console.warn('Content script not ready, attempting to inject:', error);
@@ -1080,12 +1080,12 @@ class URLNotesApp {
           console.log('Attempting to inject content script...');
 
           // Check if we have permission to inject
-          if (!chrome.scripting) {
+          if (!browserAPI.scripting) {
             throw new Error('Scripting API not available');
           }
 
           // Try to inject the content script
-          await chrome.scripting.executeScript({
+          await browserAPI.scripting.executeScript({
             target: { tabId: tab.id },
             files: ['content/content.js']
           });
@@ -1097,7 +1097,7 @@ class URLNotesApp {
           for (let attempt = 1; attempt <= 3; attempt++) {
             try {
               await new Promise(resolve => setTimeout(resolve, 300 * attempt)); // Progressive delay
-              await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
+              await browserAPI.tabs.sendMessage(tab.id, { action: 'ping' });
               console.log(`Content script ping successful on attempt ${attempt}`);
               pingSuccess = true;
               break;
@@ -1120,7 +1120,7 @@ class URLNotesApp {
 
           // Provide more specific error messages
           if (injectError.message.includes('Cannot access')) {
-            Utils.showToast('Cannot access this page. Try refreshing or check if it\'s a special page (like chrome:// URLs).', 'error');
+            Utils.showToast('Cannot access this page. Try refreshing or check if it\'s a special page (like browser internal URLs).', 'error');
           } else if (injectError.message.includes('Scripting API not available')) {
             Utils.showToast('Extension permissions issue. Please check extension permissions.', 'error');
           } else {
@@ -1132,7 +1132,7 @@ class URLNotesApp {
 
       // Now send the toggle message with a timeout
       const response = await Promise.race([
-        chrome.tabs.sendMessage(tab.id, { action: 'toggleMultiHighlight' }),
+        browserAPI.tabs.sendMessage(tab.id, { action: 'toggleMultiHighlight' }),
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Message timeout')), 5000)
         )
@@ -1186,14 +1186,14 @@ class URLNotesApp {
 
       // First check if content script is ready
       try {
-        await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
+        await browserAPI.tabs.sendMessage(tab.id, { action: 'ping' });
       } catch (error) {
         // Content script not ready, that's okay - just return
         console.debug('Content script not ready for multi-highlight state check:', error);
         return;
       }
 
-      const response = await chrome.tabs.sendMessage(tab.id, { action: 'getMultiHighlightState' });
+      const response = await browserAPI.tabs.sendMessage(tab.id, { action: 'getMultiHighlightState' });
       if (response) {
         const btn = document.getElementById('multiHighlightBtn');
         if (btn) {
@@ -1215,7 +1215,7 @@ class URLNotesApp {
   // Helper method to get current tab
   async getCurrentTab() {
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const [tab] = await browserAPI.tabs.query({ active: true, currentWindow: true });
       return tab;
     } catch (error) {
       console.error('Failed to get current tab:', error);
@@ -1276,7 +1276,7 @@ class URLNotesApp {
   // Refresh premium flag from chrome.storage.local 'userTier'
   async refreshPremiumFromStorage() {
     try {
-      const { userTier } = await chrome.storage.local.get(['userTier']);
+      const { userTier } = await browserAPI.storage.local.get(['userTier']);
       const isPremium = !!(userTier && userTier !== 'free');
       this.premiumStatus = { isPremium };
       await this.updatePremiumUI();
@@ -1292,7 +1292,7 @@ class URLNotesApp {
         this.allNotes = await this.storageManager.getAllNotesForDisplay();
       } else {
         // Fallback to Chrome storage
-        const allData = await chrome.storage.local.get(null);
+        const allData = await browserAPI.storage.local.get(null);
         let allNotes = [];
         for (const key in allData) {
           // Filter out settings or non-array data
@@ -1321,7 +1321,7 @@ class URLNotesApp {
   // Setup event listeners
   setupEventListeners() {
     // Listen for real-time note updates from context menu
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.action === 'note_updated') {
         this.handleRealTimeNoteUpdate(message);
       }
@@ -1348,7 +1348,7 @@ class URLNotesApp {
       this.searchQuery = e.target.value;
       debouncedRender();
       searchClear.style.display = this.searchQuery ? 'block' : 'none';
-      try { chrome.storage.local.set({ lastSearchQuery: this.searchQuery }); } catch (_) { }
+      try { browserAPI.storage.local.set({ lastSearchQuery: this.searchQuery }); } catch (_) { }
     });
 
     searchClear.addEventListener('click', () => {
@@ -1357,7 +1357,7 @@ class URLNotesApp {
       this.render();
       searchClear.style.display = 'none';
       // Clear the search query from storage so it doesn't restore on reopen
-      try { chrome.storage.local.remove('lastSearchQuery'); } catch (_) { }
+      try { browserAPI.storage.local.remove('lastSearchQuery'); } catch (_) { }
     });
 
     // Add new note
@@ -1595,7 +1595,7 @@ class URLNotesApp {
       window.eventBus?.on('notes:imported', refresh);
     } catch (_) { }
 
-    chrome.storage.onChanged.addListener((changes, areaName) => {
+    browserAPI.storage.onChanged.addListener((changes, areaName) => {
       if (areaName !== 'local') return;
       // Ignore editorState-only changes (draft autosave), which shouldn't trigger a UI refresh
       const changedKeys = Object.keys(changes || {});
@@ -1630,11 +1630,11 @@ class URLNotesApp {
         }
 
         // Mark popup as closed for context menu detection
-        chrome.storage.local.get(['editorState']).then(({ editorState }) => {
+        browserAPI.storage.local.get(['editorState']).then(({ editorState }) => {
           if (editorState) {
             editorState.open = false;
             // Preserve wasEditorOpen flag - don't clear it
-            chrome.storage.local.set({ editorState });
+            browserAPI.storage.local.set({ editorState });
           }
         });
       } catch (_) { }
@@ -1678,7 +1678,7 @@ class URLNotesApp {
       const size = fontSizeSelect.value;
       // Do not apply to editor while settings is open; preview only
       updateFontPreview(fontName, size);
-      chrome.storage.local.set({ editorFont: fontName });
+      browserAPI.storage.local.set({ editorFont: fontName });
     });
 
     fontSizeSelect.addEventListener('change', (e) => {
@@ -1689,16 +1689,16 @@ class URLNotesApp {
       const fontName = fontSelector.value;
       // Do not apply to editor while settings is open; preview only
       updateFontPreview(fontName, size);
-      chrome.storage.local.set({ editorFontSize: String(size) });
+      browserAPI.storage.local.set({ editorFontSize: String(size) });
     });
 
     // Load saved font settings
-    chrome.storage.local.get(['editorFont', 'editorFontSize'], ({ editorFont, editorFontSize }) => {
+    browserAPI.storage.local.get(['editorFont', 'editorFontSize'], ({ editorFont, editorFontSize }) => {
       // Normalize legacy 'System' to 'Default'
       const normalizedFont = editorFont === 'System' ? 'Default' : (editorFont || 'Default');
       fontSelector.value = normalizedFont;
       if (editorFont === 'System') {
-        chrome.storage.local.set({ editorFont: 'Default' });
+        browserAPI.storage.local.set({ editorFont: 'Default' });
       }
       // Determine size with default 12 and clamp within [8, 18]
       let sizeToUse = parseInt(editorFontSize || fontSizeSelect.value || '12', 10);
@@ -1730,7 +1730,7 @@ class URLNotesApp {
       const searchClear = document.getElementById('searchClear');
       if (searchClear) searchClear.style.display = 'none';
       // Clear from storage
-      try { chrome.storage.local.remove('lastSearchQuery'); } catch (_) { }
+      try { browserAPI.storage.local.remove('lastSearchQuery'); } catch (_) { }
     }
 
     // Update filter UI
@@ -1763,7 +1763,7 @@ class URLNotesApp {
 
     // Persist last chosen filter unless suppressed
     if (!options || options.persist !== false) {
-      chrome.storage.local.set({ lastFilterMode: this.filterMode });
+      browserAPI.storage.local.set({ lastFilterMode: this.filterMode });
     }
 
     // Clear filter transition flag after a delay
@@ -2521,7 +2521,7 @@ class URLNotesApp {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
       try {
-        const data = await chrome.storage.session.get(key);
+        const data = await browserAPI.storage.session.get(key);
         if (data && data[key]) return true;
       } catch (_) { /* no-op */ }
       await new Promise(r => setTimeout(r, intervalMs));
@@ -2570,7 +2570,7 @@ class URLNotesApp {
       };
       const targetKey = makeKey(absoluteHref);
 
-      const tabs = await chrome.tabs.query({ currentWindow: true });
+      const tabs = await browserAPI.tabs.query({ currentWindow: true });
       let targetTab = tabs.find(t => makeKey(t.url) === targetKey);
 
       // For new tabs, try to include a text fragment to encourage native highlight
@@ -2602,14 +2602,14 @@ class URLNotesApp {
 
       if (!targetTab) {
         const urlToOpen = addTextFragment(absoluteHref, text);
-        targetTab = await chrome.tabs.create({ url: urlToOpen, active: true });
+        targetTab = await browserAPI.tabs.create({ url: urlToOpen, active: true });
         // Wait for content script to be ready, then highlight
         await this.awaitContentReady(targetTab.id, { timeoutMs: 4000, intervalMs: 200 });
-        chrome.tabs.sendMessage(targetTab.id, { action: 'highlightText', href: urlToOpen, text }).catch(() => { });
+        browserAPI.tabs.sendMessage(targetTab.id, { action: 'highlightText', href: urlToOpen, text }).catch(() => { });
       } else {
         // If already on the same page, do not reload the page. Just activate and request highlight.
-        await chrome.tabs.update(targetTab.id, { active: true });
-        chrome.tabs.sendMessage(targetTab.id, { action: 'highlightText', href: absoluteHref, text }).catch(() => { });
+        await browserAPI.tabs.update(targetTab.id, { active: true });
+        browserAPI.tabs.sendMessage(targetTab.id, { action: 'highlightText', href: absoluteHref, text }).catch(() => { });
       }
     } catch (err) {
       // Fallback: open normally
@@ -2674,7 +2674,7 @@ class URLNotesApp {
       // Create a general note when no site context is available
       noteContext = {
         domain: 'general',
-        url: 'chrome://extensions',
+        url: 'about:addons', // Firefox uses about:addons instead of chrome://extensions
         title: 'General Note'
       };
     } else {
@@ -2722,7 +2722,7 @@ class URLNotesApp {
     // Additional safety: Clear any existing editor state from storage
     // This prevents drafts from previous notes from appearing
     try {
-      const { editorState } = await chrome.storage.local.get(['editorState']);
+      const { editorState } = await browserAPI.storage.local.get(['editorState']);
       if (editorState && editorState.noteDraft) {
         // Only clear if the draft is for a different note or different domain
         if (editorState.noteDraft.id !== note.id || editorState.noteDraft.domain !== note.domain) {
@@ -2732,7 +2732,7 @@ class URLNotesApp {
             noteId: note.id,
             noteDomain: note.domain
           });
-          await chrome.storage.local.remove('editorState');
+          await browserAPI.storage.local.remove('editorState');
         }
       }
     } catch (error) {
@@ -2824,7 +2824,7 @@ class URLNotesApp {
       }
       // Attempt to restore caret from editorState
       try {
-        chrome.storage.local.get(['editorState']).then(({ editorState }) => {
+        browserAPI.storage.local.get(['editorState']).then(({ editorState }) => {
           if (!editorState || !editorState.noteDraft) return;
           const d = editorState.noteDraft;
           if (d.id === this.currentNote.id && typeof d.caretStart === 'number' && typeof d.caretEnd === 'number') {
@@ -3076,9 +3076,9 @@ class URLNotesApp {
     } else {
       // Check if there's a draft for this note and clear it
       try {
-        const { editorState } = await chrome.storage.local.get(['editorState']);
+        const { editorState } = await browserAPI.storage.local.get(['editorState']);
         if (editorState && editorState.noteDraft && editorState.noteDraft.id === noteId) {
-          await chrome.storage.local.remove('editorState');
+          await browserAPI.storage.local.remove('editorState');
           console.log('Cleared draft for deleted note:', noteId);
         }
       } catch (error) {
@@ -3132,7 +3132,7 @@ class URLNotesApp {
   // Persist editor open flag (and keep existing noteDraft intact)
   async persistEditorOpen(isOpen) {
     try {
-      const { editorState } = await chrome.storage.local.get(['editorState']);
+      const { editorState } = await browserAPI.storage.local.get(['editorState']);
       const state = editorState || {};
       state.open = !!isOpen;
 
@@ -3146,7 +3146,7 @@ class URLNotesApp {
         state.wasEditorOpen = false;
       }
 
-      await chrome.storage.local.set({ editorState: state });
+      await browserAPI.storage.local.set({ editorState: state });
     } catch (_) { }
   }
 
@@ -3192,13 +3192,13 @@ class URLNotesApp {
         pageTitle: this.currentNote.pageTitle
       };
 
-      const { editorState } = await chrome.storage.local.get(['editorState']);
+      const { editorState } = await browserAPI.storage.local.get(['editorState']);
       const state = editorState || {};
       state.noteDraft = draft;
       state.caretStart = caretStart;
       state.caretEnd = caretEnd;
 
-      await chrome.storage.local.set({ editorState: state });
+      await browserAPI.storage.local.set({ editorState: state });
     } catch (error) {
       console.error('❌ Failed to save AI rewritten content:', error);
     }
@@ -3246,7 +3246,7 @@ class URLNotesApp {
       const currentContent = this.htmlToMarkdown(contentInput ? contentInput.innerHTML : '');
 
       // Safeguard: Don't save if content is empty and we had content before
-      const { editorState: existingState } = await chrome.storage.local.get(['editorState']);
+      const { editorState: existingState } = await browserAPI.storage.local.get(['editorState']);
       if (existingState && existingState.noteDraft && existingState.noteDraft.content &&
         existingState.noteDraft.content.trim() && !currentContent.trim()) {
         return;
@@ -3275,7 +3275,7 @@ class URLNotesApp {
         ...existingState,
         noteDraft: draft
       };
-      await chrome.storage.local.set({ editorState: updatedState });
+      await browserAPI.storage.local.set({ editorState: updatedState });
     } catch (error) {
       console.error('Failed to save editor draft:', error);
     }
@@ -3284,7 +3284,7 @@ class URLNotesApp {
   // NEW: Clean up old drafts to prevent unwanted auto-opening
   async cleanupOldDrafts() {
     try {
-      const { editorState } = await chrome.storage.local.get(['editorState']);
+      const { editorState } = await browserAPI.storage.local.get(['editorState']);
       if (editorState && editorState.noteDraft) {
         const now = Date.now();
         const draftTime = editorState.noteDraft.updatedAt ? new Date(editorState.noteDraft.updatedAt).getTime() : 0;
@@ -3292,7 +3292,7 @@ class URLNotesApp {
         const tenMinutes = 10 * 60 * 1000; // 10 minutes in milliseconds
 
         if (timeDiff > tenMinutes) {
-          await chrome.storage.local.remove('editorState');
+          await browserAPI.storage.local.remove('editorState');
         }
       }
     } catch (error) {
@@ -3308,7 +3308,7 @@ class URLNotesApp {
         return false;
       }
 
-      const { editorState } = await chrome.storage.local.get(['editorState']);
+      const { editorState } = await browserAPI.storage.local.get(['editorState']);
 
       if (!editorState || !editorState.noteDraft) {
         return false;
@@ -3384,7 +3384,7 @@ class URLNotesApp {
   // Clear editor state entirely
   async clearEditorState() {
     try {
-      await chrome.storage.local.remove('editorState');
+      await browserAPI.storage.local.remove('editorState');
     } catch (_) { }
   }
 
@@ -3406,9 +3406,9 @@ class URLNotesApp {
     } else {
       // Check if there's a draft for this domain and clear it
       try {
-        const { editorState } = await chrome.storage.local.get(['editorState']);
+        const { editorState } = await browserAPI.storage.local.get(['editorState']);
         if (editorState && editorState.noteDraft && editorState.noteDraft.domain === domain) {
-          await chrome.storage.local.remove('editorState');
+          await browserAPI.storage.local.remove('editorState');
           console.log('Cleared draft for deleted domain:', domain);
         }
       } catch (error) {
@@ -3466,7 +3466,7 @@ class URLNotesApp {
       const input = document.getElementById('searchInput') || document.querySelector('.search-input');
       if (input) input.value = '';
       // Also clear the search query from storage
-      try { chrome.storage.local.remove('lastSearchQuery'); } catch (_) { }
+      try { browserAPI.storage.local.remove('lastSearchQuery'); } catch (_) { }
     }
 
     this.render();
@@ -3548,7 +3548,7 @@ class URLNotesApp {
       const url = e.target.href;
 
       // Check if the URL is already open in a tab (flexible matching)
-      chrome.tabs.query({}, (tabs) => {
+      browserAPI.tabs.query({}, (tabs) => {
         const targetUrl = new URL(url);
         const existingTab = tabs.find(tab => {
           if (!tab.url) return false;
@@ -3564,15 +3564,15 @@ class URLNotesApp {
 
         if (existingTab) {
           // Switch to existing tab and highlight text
-          chrome.tabs.update(existingTab.id, { active: true });
-          chrome.tabs.sendMessage(existingTab.id, {
+          browserAPI.tabs.update(existingTab.id, { active: true });
+          browserAPI.tabs.sendMessage(existingTab.id, {
             action: 'highlightText',
             text: e.target.textContent,
             href: url
           }).catch(() => { });
         } else {
           // Create new tab
-          chrome.tabs.create({ url: url });
+          browserAPI.tabs.create({ url: url });
         }
       });
       return false; // Additional prevention of event propagation
@@ -3582,7 +3582,7 @@ class URLNotesApp {
   // Save font setting
   async saveFontSetting(fontFamily) {
     try {
-      await chrome.storage.local.set({ fontFamily });
+      await browserAPI.storage.local.set({ fontFamily });
       document.body.style.fontFamily = fontFamily;
       Utils.showToast('Font updated', 'success');
     } catch (error) {
@@ -4335,7 +4335,7 @@ class URLNotesApp {
         filteredNotes = await this.storageManager.getAllNotesForDisplay();
       } else {
         // Fallback to Chrome storage - use the same filtering logic as loadNotes()
-        const allData = await chrome.storage.local.get(null);
+        const allData = await browserAPI.storage.local.get(null);
         let allNotes = [];
         for (const key in allData) {
           // Filter out settings or non-array data
@@ -4394,7 +4394,7 @@ class URLNotesApp {
           filteredNotes = await this.storageManager.getAllNotesForDisplay();
         } else {
           // Fallback to Chrome storage - use the same filtering logic as loadNotes()
-          const allData = await chrome.storage.local.get(null);
+          const allData = await browserAPI.storage.local.get(null);
           let allNotes = [];
           for (const key in allData) {
             // Filter out settings or non-array data
@@ -4624,7 +4624,7 @@ class URLNotesApp {
         filteredNotes = await this.storageManager.getAllNotesForDisplay();
       } else {
         // Fallback to Chrome storage - use the same filtering logic as loadNotes()
-        const allData = await chrome.storage.local.get(null);
+        const allData = await browserAPI.storage.local.get(null);
         let allNotes = [];
         for (const key in allData) {
           // Filter out settings or non-array data
@@ -4767,7 +4767,7 @@ class URLNotesApp {
 
     try {
       // Get the current tab
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const [tab] = await browserAPI.tabs.query({ active: true, currentWindow: true });
       if (!tab || !tab.id) {
         throw new Error('No active tab found');
       }
@@ -4777,13 +4777,13 @@ class URLNotesApp {
 
       try {
         // First try sending message to existing content script
-        response = await chrome.tabs.sendMessage(tab.id, { action: 'extractPageContent' });
+        response = await browserAPI.tabs.sendMessage(tab.id, { action: 'extractPageContent' });
       } catch (messageError) {
         console.log('Content script not ready, injecting...', messageError.message);
 
         try {
           // Inject content script and try again
-          await chrome.scripting.executeScript({
+          await browserAPI.scripting.executeScript({
             target: { tabId: tab.id },
             files: ['content/content.js']
           });
@@ -4792,7 +4792,7 @@ class URLNotesApp {
           await new Promise(resolve => setTimeout(resolve, 100));
 
           // Try message again
-          response = await chrome.tabs.sendMessage(tab.id, { action: 'extractPageContent' });
+          response = await browserAPI.tabs.sendMessage(tab.id, { action: 'extractPageContent' });
         } catch (injectionError) {
           console.error('Failed to inject content script:', injectionError);
           throw new Error('Unable to access page content. Please refresh the page and try again.');
@@ -5121,7 +5121,7 @@ class URLNotesApp {
       // Get cached server data and local usage tracking
       const cacheKey = 'cachedAIUsage';
       const localUsageKey = 'localAIUsage';
-      const result = await chrome.storage.local.get([cacheKey, localUsageKey]);
+      const result = await browserAPI.storage.local.get([cacheKey, localUsageKey]);
 
       // Check if we have valid cached server data
       let serverData = null;
@@ -5167,7 +5167,7 @@ class URLNotesApp {
         serverData = usageData;
 
         // Cache the server result
-        await chrome.storage.local.set({
+        await browserAPI.storage.local.set({
           [cacheKey]: {
             data: serverData,
             timestamp: Date.now()
@@ -5175,7 +5175,7 @@ class URLNotesApp {
         });
 
         // Reset local usage tracking when we get fresh server data
-        await chrome.storage.local.set({
+        await browserAPI.storage.local.set({
           [localUsageKey]: {
             userId: user.id,
             usageCount: 0,
@@ -5193,7 +5193,7 @@ class URLNotesApp {
           usageCount: 0,
           timestamp: Date.now()
         };
-        await chrome.storage.local.set({ [localUsageKey]: localUsage });
+        await browserAPI.storage.local.set({ [localUsageKey]: localUsage });
       }
 
       // Calculate current remaining calls with local adjustments
@@ -5230,7 +5230,7 @@ class URLNotesApp {
       if (!user) return;
 
       const localUsageKey = 'localAIUsage';
-      const result = await chrome.storage.local.get([localUsageKey]);
+      const result = await browserAPI.storage.local.get([localUsageKey]);
 
       let localUsage = result[localUsageKey];
       if (!localUsage || localUsage.userId !== user.id) {
@@ -5245,7 +5245,7 @@ class URLNotesApp {
       localUsage.usageCount += usageAmount;
       localUsage.timestamp = Date.now();
 
-      await chrome.storage.local.set({ [localUsageKey]: localUsage });
+      await browserAPI.storage.local.set({ [localUsageKey]: localUsage });
 
 
     } catch (error) {
@@ -5265,7 +5265,7 @@ class URLNotesApp {
 
       // Clear both local usage tracking AND cached server data
       // This ensures fresh AI usage data is fetched with updated limits after tier changes
-      await chrome.storage.local.remove(['localAIUsage', 'cachedAIUsage']);
+      await browserAPI.storage.local.remove(['localAIUsage', 'cachedAIUsage']);
     } catch (error) {
       console.warn('Error clearing local AI usage:', error);
     }
@@ -5480,7 +5480,7 @@ class URLNotesApp {
 async function getPremiumStatus() {
   try {
     // Use cached premium status to avoid unnecessary sync calls
-    const { cachedPremiumStatus } = await chrome.storage.local.get(['cachedPremiumStatus']);
+    const { cachedPremiumStatus } = await browserAPI.storage.local.get(['cachedPremiumStatus']);
 
     // If we have a recent cached value (less than 1 hour old), use it
     if (cachedPremiumStatus && cachedPremiumStatus.timestamp && cachedPremiumStatus.status && typeof cachedPremiumStatus.status.isPremium === 'boolean') {
@@ -5500,7 +5500,7 @@ async function getPremiumStatus() {
 
     // Check chrome storage directly to avoid calling notesStorage.checkPremiumAccess
     try {
-      const { userTier } = await chrome.storage.local.get(['userTier']);
+      const { userTier } = await browserAPI.storage.local.get(['userTier']);
 
       // Check if userTier exists and has the expected structure
       if (userTier) {
@@ -5527,7 +5527,7 @@ async function getPremiumStatus() {
     const status = { isPremium };
 
     // Cache the result with timestamp
-    await chrome.storage.local.set({
+    await browserAPI.storage.local.set({
       cachedPremiumStatus: {
         status,
         timestamp: Date.now()
@@ -5547,7 +5547,7 @@ async function clearPremiumStatusCache() {
   try {
     // Also clear AI usage cache when premium status changes
     // This ensures AI limits are refreshed when tier changes
-    await chrome.storage.local.remove(['cachedPremiumStatus', 'cachedAIUsage']);
+    await browserAPI.storage.local.remove(['cachedPremiumStatus', 'cachedAIUsage']);
   } catch (error) {
     console.warn('Failed to clear premium status cache:', error);
   }
@@ -5570,3 +5570,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.notesManager = window.urlNotesApp.notesManager;
   }
 });
+
+
+

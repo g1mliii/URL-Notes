@@ -76,7 +76,7 @@ class OnboardingTooltips {
     // Check if user has already seen the onboarding tooltips
     async hasSeenTooltips() {
         try {
-            const result = await chrome.storage.local.get([this.storageKey]);
+            const result = await browserAPI.storage.local.get([this.storageKey]);
             return result[this.storageKey] === true;
         } catch (error) {
             console.warn('Failed to check onboarding status:', error);
@@ -87,7 +87,7 @@ class OnboardingTooltips {
     // Mark tooltips as seen
     async markTooltipsAsSeen() {
         try {
-            await chrome.storage.local.set({ [this.storageKey]: true });
+            await browserAPI.storage.local.set({ [this.storageKey]: true });
         } catch (error) {
             console.warn('Failed to save onboarding status:', error);
         }
@@ -825,11 +825,8 @@ class OnboardingTooltips {
     openUpgrade() {
         try {
             const websiteUrl = 'https://anchored.site';
-            if (chrome?.tabs?.create) {
-                chrome.tabs.create({ url: websiteUrl });
-            } else {
-                window.open(websiteUrl, '_blank');
-            }
+            try { await browserAPI.tabs.create({ url: websiteUrl });
+            } catch { window.open(websiteUrl, "_blank"); }
         } catch (error) {
             console.warn('Failed to open upgrade page:', error);
         }
@@ -837,7 +834,7 @@ class OnboardingTooltips {
 
     // Manually trigger onboarding (for testing or re-showing)
     async resetAndShow() {
-        await chrome.storage.local.remove(this.storageKey);
+        await browserAPI.storage.local.remove(this.storageKey);
         this.startOnboarding();
     }
 
@@ -858,3 +855,4 @@ class OnboardingTooltips {
 
 // Export for use in main popup
 window.OnboardingTooltips = OnboardingTooltips;
+

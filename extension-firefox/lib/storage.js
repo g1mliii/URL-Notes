@@ -8,6 +8,90 @@ class NotesStorage {
     this.dbName = 'URLNotesDB';
     this.dbVersion = 2; // Increment from 1 to 2 to trigger upgrade
     this.db = null;
+    this.initRetryCount = 0;
+    this.maxInitRetries = 3;
+  }
+
+  // Firefox-specific error handler for storage operations
+  handleFirefoxStorageError(error, operation = 'storage operation') {
+    console.error(`Firefox Storage: Error during ${operation}:`, error);
+
+    // Firefox-specific error codes
+    if (error.name === 'QuotaExceededError') {
+      console.warn('Firefox Storage: Quota exceeded. Consider cleaning up old data.');
+      window.eventBus?.emit('storage:quota_exceeded', {
+        message: 'Storage quota exceeded. Please free up space by deleting old notes.'
+      });
+    } else if (error.name === 'UnknownError' && error.message.includes('The operation failed for reasons unrelated to the database')) {
+      console.warn('Firefox Storage: Database locked or corrupted. Attempting recovery...');
+      return this.attemptDatabaseRecovery();
+    } else if (error.name === 'VersionError') {
+      console.warn('Firefox Storage: Version mismatch detected. Reinitializing database...');
+      return this.reinitializeDatabase();
+    }
+
+    return Promise.reject(error);
+  }
+
+  // Attempt to recover from database errors
+  async attemptDatabaseRecovery() {
+    try {
+      console.log('Firefox Storage: Attempting database recovery...');
+
+      // Close existing connection
+      if (this.db) {
+        this.db.close();
+        this.db = null;
+      }
+
+      // Wait a bit before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Try to reinitialize
+      await this.init();
+
+      console.log('Firefox Storage: Database recovery successful');
+      return true;
+    } catch (error) {
+      console.error('Firefox Storage: Database recovery failed:', error);
+      return false;
+    }
+  }
+
+  // Reinitialize database (for version errors)
+  async reinitializeDatabase() {
+    try {
+      console.log('Firefox Storage: Reinitializing database...');
+
+      // Backup data first
+      const backup = await this.backupExistingData();
+
+      // Close and delete database
+      if (this.db) {
+        this.db.close();
+        this.db = null;
+      }
+
+      await new Promise((resolve, reject) => {
+        const deleteRequest = indexedDB.deleteDatabase(this.dbName);
+        deleteRequest.onsuccess = () => resolve();
+        deleteRequest.onerror = () => reject(deleteRequest.error);
+      });
+
+      // Reinitialize
+      await this.init();
+
+      // Restore data
+      if (backup) {
+        await this.restoreData(backup);
+      }
+
+      console.log('Firefox Storage: Database reinitialization successful');
+      return true;
+    } catch (error) {
+      console.error('Firefox Storage: Database reinitialization failed:', error);
+      return false;
+    }
   }
 
   // Initialize database
@@ -17,8 +101,25 @@ class NotesStorage {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(this.dbName, this.dbVersion);
 
-      request.onerror = () => reject(request.error);
+      request.onerror = () => {
+        console.error('Firefox Storage: Database initialization failed:', request.error);
+
+        // Retry initialization if we haven't exceeded max retries
+        if (this.initRetryCount < this.maxInitRetries) {
+          this.initRetryCount++;
+          console.log(`Firefox Storage: Retrying initialization (attempt ${this.initRetryCount}/${this.maxInitRetries})...`);
+
+          setTimeout(() => {
+            this.init().then(resolve).catch(reject);
+          }, 1000 * this.initRetryCount); // Exponential backoff
+        } else {
+          this.initRetryCount = 0;
+          reject(request.error);
+        }
+      };
+
       request.onsuccess = () => {
+        this.initRetryCount = 0; // Reset retry count on success
         this.db = request.result;
 
         // Check if all required stores exist
@@ -127,7 +228,7 @@ class NotesStorage {
       if (note.title_encrypted && note.content_encrypted) {
         // This is a server note - decrypt it first
         // Clear premium status cache to get fresh status
-        await chrome.storage.local.remove(['cachedPremiumStatus']);
+        await browserAPI.storage.local.remove(['cachedPremiumStatus']);
         const premiumStatus = await getPremiumStatus();
 
         if (premiumStatus.isPremium) {
@@ -253,33 +354,55 @@ class NotesStorage {
     // Remove verbose logging
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction(['notes', 'versions'], 'readwrite');
-      const notesStore = transaction.objectStore('notes');
-      const versionsStore = transaction.objectStore('versions');
+      try {
+        const transaction = this.db.transaction(['notes', 'versions'], 'readwrite');
+        const notesStore = transaction.objectStore('notes');
+        const versionsStore = transaction.objectStore('versions');
 
-      // Save current version to history before updating
-      if (note.version > 1) {
-        const versionRecord = {
-          id: `${note.id}_v${note.version - 1}`,
-          noteId: note.id,
-          version: note.version - 1,
-          title: note.title,
-          content: note.content,
-          createdAt: new Date().toISOString()
+        // Firefox-specific: Handle transaction errors
+        transaction.onerror = () => {
+          console.error('Firefox Storage: Transaction error in saveNote:', transaction.error);
+          this.handleFirefoxStorageError(transaction.error, 'saveNote transaction')
+            .catch(() => reject(transaction.error));
         };
-        versionsStore.add(versionRecord);
+
+        transaction.onabort = () => {
+          console.error('Firefox Storage: Transaction aborted in saveNote');
+          reject(new Error('Transaction aborted'));
+        };
+
+        // Save current version to history before updating
+        if (note.version > 1) {
+          const versionRecord = {
+            id: `${note.id}_v${note.version - 1}`,
+            noteId: note.id,
+            version: note.version - 1,
+            title: note.title,
+            content: note.content,
+            createdAt: new Date().toISOString()
+          };
+          versionsStore.add(versionRecord);
+        }
+
+        // Update search index
+        this.updateSearchIndex(note);
+
+        const request = notesStore.put(note);
+        request.onsuccess = () => {
+          // EMIT EVENT TO TRIGGER SYNC
+          window.eventBus?.emit('notes:updated', { noteId: note.id, note });
+          resolve(note);
+        };
+        request.onerror = () => {
+          console.error('Firefox Storage: Error saving note:', request.error);
+          this.handleFirefoxStorageError(request.error, 'saveNote')
+            .catch(() => reject(request.error));
+        };
+      } catch (error) {
+        console.error('Firefox Storage: Exception in saveNote:', error);
+        this.handleFirefoxStorageError(error, 'saveNote')
+          .catch(() => reject(error));
       }
-
-      // Update search index
-      this.updateSearchIndex(note);
-
-      const request = notesStore.put(note);
-      request.onsuccess = () => {
-        // EMIT EVENT TO TRIGGER SYNC
-        window.eventBus?.emit('notes:updated', { noteId: note.id, note });
-        resolve(note);
-      };
-      request.onerror = () => reject(request.error);
     });
   }
 
@@ -1189,7 +1312,7 @@ class NotesStorage {
 
       // Fallback: check chrome storage for cached premium status
       try {
-        const result = await chrome.storage.local.get(['userTier']);
+        const result = await browserAPI.storage.local.get(['userTier']);
         if (result.userTier) {
           const isPremium = result.userTier.active && result.userTier.tier !== 'free';
           // Premium access via cached status
@@ -1305,35 +1428,51 @@ class NotesStorage {
     }
   }
 
-  // Check storage quota (compatibility method for StorageManager)
+  // Check storage quota (Firefox-specific implementation with StorageManager API)
   async checkStorageQuota() {
     try {
-      const stats = await this.getStorageStats();
-      // Estimate quota usage (Chrome storage is typically 5-10MB)
-      const estimatedQuota = 10 * 1024 * 1024; // 10MB
-      const usagePercent = (stats.storageUsed / estimatedQuota) * 100;
+      // Firefox supports the StorageManager API for accurate quota information
+      if (navigator.storage && navigator.storage.estimate) {
+        const estimate = await navigator.storage.estimate();
+        const usage = estimate.usage || 0;
+        const quota = estimate.quota || 0;
+        const usagePercent = quota > 0 ? (usage / quota) * 100 : 0;
 
-      return {
-        usage: stats.storageUsed,
-        quota: estimatedQuota,
-        usagePercent: Math.round(usagePercent * 100) / 100
-      };
+        return {
+          usage: usage,
+          quota: quota,
+          available: quota - usage,
+          usagePercent: Math.round(usagePercent * 100) / 100
+        };
+      } else {
+        // Fallback for older Firefox versions
+        const stats = await this.getStorageStats();
+        const estimatedQuota = 10 * 1024 * 1024; // 10MB fallback
+        const usagePercent = (stats.storageUsed / estimatedQuota) * 100;
+
+        return {
+          usage: stats.storageUsed,
+          quota: estimatedQuota,
+          available: estimatedQuota - stats.storageUsed,
+          usagePercent: Math.round(usagePercent * 100) / 100
+        };
+      }
     } catch (error) {
-      console.warn('Error checking storage quota:', error);
-      return { usage: 0, quota: 0, usagePercent: 0 };
+      console.warn('Firefox Storage: Error checking storage quota:', error);
+      return { usage: 0, quota: 0, available: 0, usagePercent: 0 };
     }
   }
 
   // Clean note data for export by removing internal fields
   cleanNoteForExport(note) {
     const cleanNote = { ...note };
-    
+
     // Remove encryption-related fields
     delete cleanNote.title_encrypted;
     delete cleanNote.content_encrypted;
     delete cleanNote.tags_encrypted;
     delete cleanNote.content_hash;
-    
+
     // Remove internal storage fields
     delete cleanNote.is_deleted;
     delete cleanNote.deleted_at;
@@ -1342,12 +1481,12 @@ class NotesStorage {
     delete cleanNote.needs_decryption_retry;
     delete cleanNote.decryption_error;
     delete cleanNote.last_synced_at;
-    
+
     // Ensure tags is always an array
     if (!Array.isArray(cleanNote.tags)) {
       cleanNote.tags = [];
     }
-    
+
     return cleanNote;
   }
 
@@ -1410,7 +1549,7 @@ class NotesStorage {
             // Ensure the imported note is not marked as deleted
             note.is_deleted = false;
             note.deleted_at = null;
-            
+
             // CRITICAL: Force fresh timestamp for imported notes to ensure they sync
             // This ensures imported notes are newer than lastSyncTime
             note.updatedAt = new Date().toISOString();
@@ -1557,7 +1696,7 @@ class NotesStorage {
   // Get editor state (compatibility method for StorageManager)
   async getEditorState() {
     try {
-      const result = await chrome.storage.local.get(['editorState']);
+      const result = await browserAPI.storage.local.get(['editorState']);
       return result.editorState || null;
     } catch (error) {
       console.warn('Error getting editor state:', error);
@@ -1568,10 +1707,10 @@ class NotesStorage {
   // Persist editor open flag (compatibility method for StorageManager)
   async persistEditorOpen(isOpen) {
     try {
-      const { editorState } = await chrome.storage.local.get(['editorState']);
+      const { editorState } = await browserAPI.storage.local.get(['editorState']);
       const state = editorState || {};
       state.open = isOpen;
-      await chrome.storage.local.set({ editorState: state });
+      await browserAPI.storage.local.set({ editorState: state });
     } catch (error) {
       console.warn('Error persisting editor open state:', error);
     }
@@ -1589,7 +1728,7 @@ class NotesStorage {
         caretEnd
       };
 
-      await chrome.storage.local.set({ editorState: state });
+      await browserAPI.storage.local.set({ editorState: state });
     } catch (error) {
       console.warn('Error saving editor draft:', error);
     }
@@ -1598,7 +1737,7 @@ class NotesStorage {
   // Clear editor state (compatibility method for StorageManager)
   async clearEditorState() {
     try {
-      await chrome.storage.local.remove('editorState');
+      await browserAPI.storage.local.remove('editorState');
     } catch (error) {
       console.warn('Error clearing editor state:', error);
     }

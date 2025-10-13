@@ -5,14 +5,14 @@
 
 // Keyboard commands
 try {
-  chrome.commands.onCommand.addListener(async (command) => {
+  browserAPI.commands.onCommand.addListener(async (command) => {
     if (command === 'create_new_note') {
       try {
         // Flag for popup to open new note immediately
-        await chrome.storage.local.set({ lastAction: { type: 'new_note', ts: Date.now() } });
+        await browserAPI.storage.local.set({ lastAction: { type: 'new_note', ts: Date.now() } });
         // Open the popup (command is a user gesture, permitted)
-        if (chrome.action && chrome.action.openPopup) {
-          await chrome.action.openPopup();
+        if (browserAPI.action && browserAPI.action.openPopup) {
+          await browserAPI.action.openPopup();
         }
       } catch (e) {
         // Best-effort fallback: open the side panel or settings (if configured)
@@ -23,10 +23,10 @@ try {
 
 // Open onboarding page on first install
 try {
-  chrome.runtime.onInstalled.addListener((details) => {
+  browserAPI.runtime.onInstalled.addListener((details) => {
     if (details.reason === 'install') {
-      const url = chrome.runtime.getURL('onboarding.html');
-      chrome.tabs.create({ url });
+      const url = browserAPI.runtime.getURL('onboarding.html');
+      browserAPI.tabs.create({ url });
     }
   });
 } catch (_) { /* noop */ }
@@ -35,12 +35,12 @@ try {
 // --- Main Event Listeners ---
 
 // Extension installation and updates
-chrome.runtime.onInstalled.addListener(async (details) => {
+browserAPI.runtime.onInstalled.addListener(async (details) => {
   setupContextMenus();
 
   if (details.reason === 'install') {
     // Set default settings
-    chrome.storage.local.set({
+    browserAPI.storage.local.set({
       settings: {
         theme: 'auto',
         defaultMode: 'domain',
@@ -57,7 +57,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 // Note: No action.onClicked handler needed when default_popup is set in manifest
 
 // Ensure context menus exist on browser startup (service worker cold start)
-chrome.runtime.onStartup.addListener(() => {
+browserAPI.runtime.onStartup.addListener(() => {
   setupContextMenus();
 });
 
@@ -65,7 +65,7 @@ chrome.runtime.onStartup.addListener(() => {
 setupContextMenus();
 
 // Handle context menu clicks
-chrome.contextMenus.onClicked.addListener((info, tab) => {
+browserAPI.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'addSelectionToNewNote') {
     addSelectionToNewNote(info, tab);
   } else if (info.menuItemId === 'addSelectionToExistingNote') {
@@ -76,7 +76,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 });
 
 // Update uninstall URL and handle settings changes whenever local storage is modified
-chrome.storage.onChanged.addListener((changes, namespace) => {
+browserAPI.storage.onChanged.addListener((changes, namespace) => {
   if (namespace === 'local') {
     if (changes.settings) {
       handleSettingsChange(changes.settings.oldValue, changes.settings.newValue);
@@ -91,62 +91,62 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 // Setup context menus for text selection
 function setupContextMenus() {
   try {
-    chrome.contextMenus.removeAll(() => {
+    browserAPI.contextMenus.removeAll(() => {
       // Create a parent menu for Anchored
-      chrome.contextMenus.create({
+      browserAPI.contextMenus.create({
         id: 'urlNotesParent',
         title: 'Anchored',
         contexts: ['selection', 'page']
       }, () => {
-        if (chrome.runtime.lastError) {
+        if (browserAPI.runtime.lastError) {
           // Parent menu create error - silently handled
         }
       });
 
       // Add to new note (only when text is selected)
-      chrome.contextMenus.create({
+      browserAPI.contextMenus.create({
         id: 'addSelectionToNewNote',
         title: 'Add to new note',
         contexts: ['selection'],
         parentId: 'urlNotesParent'
       }, () => {
-        if (chrome.runtime.lastError) {
+        if (browserAPI.runtime.lastError) {
           // Context menu create error - silently handled
         }
       });
 
       // Add to existing note (only when text is selected)
-      chrome.contextMenus.create({
+      browserAPI.contextMenus.create({
         id: 'addSelectionToExistingNote',
         title: 'Add to existing note',
         contexts: ['selection'],
         parentId: 'urlNotesParent'
       }, () => {
-        if (chrome.runtime.lastError) {
+        if (browserAPI.runtime.lastError) {
           // Existing-note menu create error - silently handled
         }
       });
 
       // Add separator
-      chrome.contextMenus.create({
+      browserAPI.contextMenus.create({
         id: 'separator1',
         type: 'separator',
         contexts: ['selection', 'page'],
         parentId: 'urlNotesParent'
       }, () => {
-        if (chrome.runtime.lastError) {
+        if (browserAPI.runtime.lastError) {
           // Separator create error - silently handled
         }
       });
 
       // Multi-highlight mode toggle (available on both page and selection contexts)
-      chrome.contextMenus.create({
+      browserAPI.contextMenus.create({
         id: 'toggleMultiHighlightMode',
         title: 'Toggle Multi-Highlight Mode',
         contexts: ['selection', 'page'],
         parentId: 'urlNotesParent'
       }, () => {
-        if (chrome.runtime.lastError) {
+        if (browserAPI.runtime.lastError) {
           // Multi-highlight menu create error - silently handled
         }
       });
@@ -202,10 +202,10 @@ async function addSelectionToNewNote(info, tab) {
   try {
     // Store note in chrome.storage.local with proper key (same as main extension)
     const key = `note_${newNote.id}`;
-    await chrome.storage.local.set({ [key]: newNote });
+    await browserAPI.storage.local.set({ [key]: newNote });
 
     // 5. Mark last action so popup can prioritize showing this note
-    await chrome.storage.local.set({
+    await browserAPI.storage.local.set({
       lastAction: {
         type: 'new_from_selection',
         domain,
@@ -243,7 +243,7 @@ async function addSelectionToExistingNote(info, tab) {
 
   try {
     // Check for cached editor state first (like AI rewrite system)
-    const { editorState } = await chrome.storage.local.get(['editorState']);
+    const { editorState } = await browserAPI.storage.local.get(['editorState']);
     let targetNote = null;
     let isDraftNote = false;
 
@@ -262,7 +262,7 @@ async function addSelectionToExistingNote(info, tab) {
     if (!targetNote) {
       try {
         // Use the same storage system as the main extension
-        const allKeys = await chrome.storage.local.get(null);
+        const allKeys = await browserAPI.storage.local.get(null);
         const notes = [];
 
         for (const [key, value] of Object.entries(allKeys)) {
@@ -300,10 +300,10 @@ async function addSelectionToExistingNote(info, tab) {
 
       // Update the draft in chrome.storage.local to preserve unsaved changes
       editorState.noteDraft = updatedDraft;
-      await chrome.storage.local.set({ editorState });
+      await browserAPI.storage.local.set({ editorState });
 
       // Mark last action for draft updates
-      await chrome.storage.local.set({
+      await browserAPI.storage.local.set({
         lastAction: {
           type: 'append_selection',
           domain,
@@ -322,10 +322,10 @@ async function addSelectionToExistingNote(info, tab) {
 
       // Update them in storage
       const key = `note_${targetNote.id}`;
-      await chrome.storage.local.set({ [key]: targetNote });
+      await browserAPI.storage.local.set({ [key]: targetNote });
 
       // Send message to popup to refresh the notes list
-      chrome.runtime.sendMessage({
+      browserAPI.runtime.sendMessage({
         action: 'context_menu_note_saved',
         note: targetNote,
         type: 'append_selection'
@@ -334,7 +334,7 @@ async function addSelectionToExistingNote(info, tab) {
       });
 
       // Mark last action and open extension to show result
-      await chrome.storage.local.set({
+      await browserAPI.storage.local.set({
         lastAction: {
           type: 'append_selection',
           domain,
@@ -368,18 +368,18 @@ function getClipParts(selectionText, pageUrl) {
 
 function openExtensionUi() {
   // Prefer opening the action popup (Chrome >= MV3). This keeps UX in the same window.
-  if (chrome.action && chrome.action.openPopup) {
+  if (browserAPI.action && browserAPI.action.openPopup) {
     try {
-      chrome.action.openPopup();
+      browserAPI.action.openPopup();
     } catch (error) {
       // Fallback to creating a new tab
-      const url = chrome.runtime.getURL('popup/popup.html');
-      chrome.tabs.create({ url }).catch(() => { });
+      const url = browserAPI.runtime.getURL('popup/popup.html');
+      browserAPI.tabs.create({ url }).catch(() => { });
     }
   } else {
     // Fallback for older Chrome versions
-    const url = chrome.runtime.getURL('popup/popup.html');
-    chrome.tabs.create({ url }).catch(() => { });
+    const url = browserAPI.runtime.getURL('popup/popup.html');
+    browserAPI.tabs.create({ url }).catch(() => { });
   }
 }
 
@@ -387,7 +387,7 @@ function openExtensionUi() {
 // --- Utility and Maintenance Functions (largely unchanged) ---
 
 // Handle messages from content scripts and popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.action) {
     case 'contentScriptReady':
       handleContentScriptReady(request.pageInfo, sender.tab);
@@ -490,7 +490,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // --- OAuth Handling ---
 
 // Listen for tab updates to catch OAuth redirects
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+browserAPI.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   // Check for OAuth callbacks
   if (changeInfo.url) {
     // Check if this looks like an OAuth callback (has access_token or error)
@@ -512,7 +512,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     }
   }
 
-  if (changeInfo.url?.startsWith(chrome.identity.getRedirectURL())) {
+  if (changeInfo.url?.startsWith(browserAPI.identity.getRedirectURL())) {
     finishUserOAuth(changeInfo.url, tabId);
   }
 });
@@ -582,7 +582,7 @@ async function finishUserOAuth(url, tabId) {
 
 
     // Store session in chrome.storage.local as fallback (in case popup isn't open)
-    await chrome.storage.local.set({
+    await browserAPI.storage.local.set({
       supabase_session: {
         access_token,
         refresh_token: refresh_token || null,
@@ -594,7 +594,7 @@ async function finishUserOAuth(url, tabId) {
 
 
     // Set flag for popup to check on reopen (since popup closes during OAuth)
-    await chrome.storage.local.set({
+    await browserAPI.storage.local.set({
       oauthJustCompleted: {
         success: true,
         timestamp: Date.now()
@@ -603,7 +603,7 @@ async function finishUserOAuth(url, tabId) {
 
     // Notify any open popups that OAuth is complete
     // Let the popup's Supabase client handle the auth success using handleAuthSuccess
-    chrome.runtime.sendMessage({
+    browserAPI.runtime.sendMessage({
       action: 'oauth-complete',
       success: true,
       data: authData
@@ -618,7 +618,7 @@ async function finishUserOAuth(url, tabId) {
     console.error('OAuth callback error:', error);
 
     // Notify the popup that OAuth failed
-    chrome.runtime.sendMessage({
+    browserAPI.runtime.sendMessage({
       action: 'oauth-complete',
       success: false,
       error: error.message
@@ -650,34 +650,34 @@ function handleContentScriptReady(pageInfo, tab) {
   if (!tab || typeof tab.id !== 'number') {
     return;
   }
-  chrome.storage.session.set({ [`pageInfo_${tab.id}`]: { ...pageInfo, tabId: tab.id, timestamp: Date.now() } });
+  browserAPI.storage.session.set({ [`pageInfo_${tab.id}`]: { ...pageInfo, tabId: tab.id, timestamp: Date.now() } });
 }
 
 function handleUrlChange(pageInfo, tab) {
   if (!tab || typeof tab.id !== 'number') {
     return;
   }
-  chrome.storage.session.set({ [`pageInfo_${tab.id}`]: { ...pageInfo, tabId: tab.id, timestamp: Date.now() } });
-  chrome.runtime.sendMessage({ action: 'pageInfoUpdated', pageInfo: pageInfo, tabId: tab.id }).catch(() => { });
+  browserAPI.storage.session.set({ [`pageInfo_${tab.id}`]: { ...pageInfo, tabId: tab.id, timestamp: Date.now() } });
+  browserAPI.runtime.sendMessage({ action: 'pageInfoUpdated', pageInfo: pageInfo, tabId: tab.id }).catch(() => { });
 }
 
-chrome.tabs.onRemoved.addListener((tabId) => {
-  chrome.storage.session.remove(`pageInfo_${tabId}`);
+browserAPI.tabs.onRemoved.addListener((tabId) => {
+  browserAPI.storage.session.remove(`pageInfo_${tabId}`);
 });
 
-chrome.alarms.create('cleanup', { periodInMinutes: 60 });
-chrome.alarms.onAlarm.addListener((alarm) => {
+browserAPI.alarms.create('cleanup', { periodInMinutes: 60 });
+browserAPI.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'cleanup') performCleanup();
 });
 
 async function performCleanup() {
   try {
-    const sessionData = await chrome.storage.session.get();
+    const sessionData = await browserAPI.storage.session.get();
     const now = Date.now();
     const oneHourAgo = now - (60 * 60 * 1000);
     const keysToRemove = Object.keys(sessionData).filter(key => key.startsWith('pageInfo_') && sessionData[key].timestamp < oneHourAgo);
     if (keysToRemove.length > 0) {
-      await chrome.storage.session.remove(keysToRemove);
+      await browserAPI.storage.session.remove(keysToRemove);
     }
   } catch (error) {
     // Error during cleanup - silently handled
@@ -685,20 +685,20 @@ async function performCleanup() {
 }
 
 function handleSettingsChange(oldSettings, newSettings) {
-  chrome.tabs.query({}, (tabs) => {
+  browserAPI.tabs.query({}, (tabs) => {
     tabs.forEach(tab => {
-      chrome.tabs.sendMessage(tab.id, { action: 'settingsChanged', settings: newSettings }).catch(() => { });
+      browserAPI.tabs.sendMessage(tab.id, { action: 'settingsChanged', settings: newSettings }).catch(() => { });
     });
   });
 }
 
-chrome.runtime.onStartup.addListener(() => {
+browserAPI.runtime.onStartup.addListener(() => {
   updateUninstallUrl();
 });
 
 async function updateUninstallUrl() {
   try {
-    const all = await chrome.storage.local.get(null);
+    const all = await browserAPI.storage.local.get(null);
     const json = JSON.stringify(all);
     const bytes = new TextEncoder().encode(json).length;
     let noteCount = 0;
@@ -716,7 +716,7 @@ async function updateUninstallUrl() {
     });
 
     const uninstallUrl = `https://anchored.site?${params.toString()}`;
-    chrome.runtime.setUninstallURL(uninstallUrl);
+    browserAPI.runtime.setUninstallURL(uninstallUrl);
   } catch (e) {
     // Failed to set uninstall URL - silently handled
   }
@@ -753,7 +753,7 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
   // Try to append to existing note first (like the single-selection feature does)
   try {
     // Check for cached editor state first (like AI rewrite system)
-    const { editorState } = await chrome.storage.local.get(['editorState']);
+    const { editorState } = await browserAPI.storage.local.get(['editorState']);
     let targetNote = null;
     let isDraftNote = false;
 
@@ -770,7 +770,7 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
     // If no cached note, check for existing saved notes
     if (!targetNote) {
       try {
-        const allKeys = await chrome.storage.local.get(null);
+        const allKeys = await browserAPI.storage.local.get(null);
         const notes = [];
 
         for (const [key, value] of Object.entries(allKeys)) {
@@ -801,10 +801,10 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
 
         // Update the draft in chrome.storage.local to preserve unsaved changes
         editorState.noteDraft = updatedDraft;
-        await chrome.storage.local.set({ editorState });
+        await browserAPI.storage.local.set({ editorState });
 
         // Mark last action for draft updates
-        await chrome.storage.local.set({
+        await browserAPI.storage.local.set({
           lastAction: {
             type: 'append_multi_highlights',
             domain,
@@ -825,10 +825,10 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
 
         // Update them in storage
         const key = `note_${targetNote.id}`;
-        await chrome.storage.local.set({ [key]: targetNote });
+        await browserAPI.storage.local.set({ [key]: targetNote });
 
         // Send message to popup to refresh the notes list
-        chrome.runtime.sendMessage({
+        browserAPI.runtime.sendMessage({
           action: 'multi_highlight_note_updated',
           note: targetNote,
           type: 'append_multi_highlights'
@@ -837,7 +837,7 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
         });
 
         // Mark last action and open extension to show result
-        await chrome.storage.local.set({
+        await browserAPI.storage.local.set({
           lastAction: {
             type: 'append_multi_highlights',
             domain,
@@ -875,10 +875,10 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
   try {
     // Store note in chrome.storage.local
     const key = `note_${newNote.id}`;
-    await chrome.storage.local.set({ [key]: newNote });
+    await browserAPI.storage.local.set({ [key]: newNote });
 
     // Send message to popup to refresh the notes list
-    chrome.runtime.sendMessage({
+    browserAPI.runtime.sendMessage({
       action: 'multi_highlight_note_updated',
       note: newNote,
       type: 'new_from_multi_highlight'
@@ -887,7 +887,7 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
     });
 
     // Mark last action so popup can prioritize showing this note
-    await chrome.storage.local.set({
+    await browserAPI.storage.local.set({
       lastAction: {
         type: 'new_from_multi_highlight',
         domain,
@@ -908,11 +908,11 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
 // Function to update extension badge
 function updateExtensionBadge(text, color) {
   try {
-    if (chrome.action && chrome.action.setBadgeText) {
-      chrome.action.setBadgeText({ text: text || '' });
+    if (browserAPI.action && browserAPI.action.setBadgeText) {
+      browserAPI.action.setBadgeText({ text: text || '' });
     }
-    if (chrome.action && chrome.action.setBadgeBackgroundColor && color) {
-      chrome.action.setBadgeBackgroundColor({ color: color });
+    if (browserAPI.action && browserAPI.action.setBadgeBackgroundColor && color) {
+      browserAPI.action.setBadgeBackgroundColor({ color: color });
     }
   } catch (error) {
     // Failed to update badge - silently handled
@@ -929,7 +929,7 @@ async function toggleMultiHighlightModeFromContextMenu(tab) {
     // First check if content script is ready by sending a ping message
     let contentScriptReady = false;
     try {
-      await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
+      await browserAPI.tabs.sendMessage(tab.id, { action: 'ping' });
       contentScriptReady = true;
     } catch (error) {
       contentScriptReady = false;
@@ -938,12 +938,12 @@ async function toggleMultiHighlightModeFromContextMenu(tab) {
     // If content script is not ready, try to inject it
     if (!contentScriptReady) {
       try {
-        if (!chrome.scripting) {
+        if (!browserAPI.scripting) {
           throw new Error('Scripting API not available');
         }
 
         // Try to inject the content script
-        await chrome.scripting.executeScript({
+        await browserAPI.scripting.executeScript({
           target: { tabId: tab.id },
           files: ['content/content.js']
         });
@@ -953,7 +953,7 @@ async function toggleMultiHighlightModeFromContextMenu(tab) {
         for (let attempt = 1; attempt <= 3; attempt++) {
           try {
             await new Promise(resolve => setTimeout(resolve, 300 * attempt)); // Progressive delay
-            await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
+            await browserAPI.tabs.sendMessage(tab.id, { action: 'ping' });
             pingSuccess = true;
             break;
           } catch (pingError) {
@@ -972,7 +972,7 @@ async function toggleMultiHighlightModeFromContextMenu(tab) {
       } catch (injectError) {
         // Failed to inject content script for context menu
         // Show error notification in the tab
-        await chrome.scripting.executeScript({
+        await browserAPI.scripting.executeScript({
           target: { tabId: tab.id },
           func: () => {
             const notification = document.createElement('div');
@@ -1006,11 +1006,11 @@ async function toggleMultiHighlightModeFromContextMenu(tab) {
     }
 
     // Now send the toggle message to the content script
-    const response = await chrome.tabs.sendMessage(tab.id, { action: 'toggleMultiHighlight' });
+    const response = await browserAPI.tabs.sendMessage(tab.id, { action: 'toggleMultiHighlight' });
 
     if (response && response.enabled) {
       // Show notification in the tab
-      await chrome.scripting.executeScript({
+      await browserAPI.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => {
           // Create a simple notification
@@ -1043,7 +1043,7 @@ async function toggleMultiHighlightModeFromContextMenu(tab) {
       });
     } else {
       // Show disabled notification
-      await chrome.scripting.executeScript({
+      await browserAPI.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => {
           const notification = document.createElement('div');
@@ -1090,7 +1090,7 @@ let lastSyncTime = 0; // Track when we last synced
 // Load lastSyncTime from storage on startup
 async function loadLastSyncTime() {
   try {
-    const result = await chrome.storage.local.get(['lastSyncTime']);
+    const result = await browserAPI.storage.local.get(['lastSyncTime']);
     const now = Date.now();
 
     if (result.lastSyncTime) {
@@ -1104,17 +1104,17 @@ async function loadLastSyncTime() {
       // Check if the stored timestamp is from a future year or invalid
       if (isNaN(storedTime) || storedTime <= 0 || storedTime > now || storedYear > currentYear) {
         lastSyncTime = now;
-        await chrome.storage.local.set({ lastSyncTime: lastSyncTime });
+        await browserAPI.storage.local.set({ lastSyncTime: lastSyncTime });
       } else if (storedTime < (now - (24 * 60 * 60 * 1000))) { // More than 24 hours ago
         lastSyncTime = now;
-        await chrome.storage.local.set({ lastSyncTime: lastSyncTime });
+        await browserAPI.storage.local.set({ lastSyncTime: lastSyncTime });
       } else {
         lastSyncTime = storedTime;
       }
     } else {
       // Initialize to current time if no stored value
       lastSyncTime = Date.now();
-      await chrome.storage.local.set({ lastSyncTime: lastSyncTime });
+      await browserAPI.storage.local.set({ lastSyncTime: lastSyncTime });
     }
   } catch (error) {
     // Fallback to current time
@@ -1126,7 +1126,7 @@ async function loadLastSyncTime() {
 // Save lastSyncTime to storage
 async function saveLastSyncTime() {
   try {
-    await chrome.storage.local.set({ lastSyncTime: lastSyncTime });
+    await browserAPI.storage.local.set({ lastSyncTime: lastSyncTime });
   } catch (error) {
     // Error saving lastSyncTime - silently handled
   }
@@ -1136,7 +1136,7 @@ async function saveLastSyncTime() {
 async function resetSyncTimer() {
   try {
     // Remove the corrupted lastSyncTime from storage
-    await chrome.storage.local.remove(['lastSyncTime']);
+    await browserAPI.storage.local.remove(['lastSyncTime']);
 
     // Reset to current time
     lastSyncTime = Date.now();
@@ -1153,7 +1153,7 @@ async function resetSyncTimer() {
 async function forceResetSyncTimer() {
   try {
     // Remove the corrupted lastSyncTime from storage
-    await chrome.storage.local.remove(['lastSyncTime']);
+    await browserAPI.storage.local.remove(['lastSyncTime']);
 
     // Reset to current time
     lastSyncTime = Date.now();
@@ -1175,7 +1175,7 @@ function startSyncTimer() {
   // Set a one-time timeout instead of interval
   syncTimer = setTimeout(() => {
     // Send message to popup to trigger sync
-    chrome.runtime.sendMessage({ action: 'sync-timer-triggered' }).catch(() => {
+    browserAPI.runtime.sendMessage({ action: 'sync-timer-triggered' }).catch(() => {
       // Popup might be closed, that's okay
       // Mark that we need to sync when popup opens
       // Don't set lastSyncTime here - let the popup handle it when it opens
@@ -1203,5 +1203,8 @@ setTimeout(() => {
     // Error during initialization - handled by loadLastSyncTime
   });
 }, 100);
+
+
+
 
 

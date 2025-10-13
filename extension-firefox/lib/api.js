@@ -51,7 +51,7 @@ class SupabaseClient {
       }
 
       // Check for stored session
-      const result = await chrome.storage.local.get(['supabase_session']);
+      const result = await browserAPI.storage.local.get(['supabase_session']);
       if (result.supabase_session) {
         this.accessToken = result.supabase_session.access_token;
         this.currentUser = result.supabase_session.user;
@@ -70,14 +70,14 @@ class SupabaseClient {
         {
           // Check if we need to create/update profile (only if not done recently)
           try {
-            const { profileLastChecked, userTier } = await chrome.storage.local.get(['profileLastChecked', 'userTier']);
+            const { profileLastChecked, userTier } = await browserAPI.storage.local.get(['profileLastChecked', 'userTier']);
             const now = Date.now();
             const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
 
             // Only check profile if we haven't done so in the last hour AND don't have userTier
             if ((!profileLastChecked || (now - profileLastChecked) > oneHour) && !userTier) {
               await this.upsertProfile(this.currentUser);
-              await chrome.storage.local.set({ profileLastChecked: now });
+              await browserAPI.storage.local.set({ profileLastChecked: now });
             } else if (userTier) {
               // Use cached subscription status
               const isActive = userTier !== 'free';
@@ -85,7 +85,7 @@ class SupabaseClient {
 
               // Notify background script of tier change for sync timer management
               try {
-                chrome.runtime.sendMessage({
+                browserAPI.runtime.sendMessage({
                   action: 'tier-changed',
                   active: isActive,
                   tier: userTier
@@ -250,7 +250,7 @@ class SupabaseClient {
   // Sign in with OAuth provider using tab-based flow with background script handling
   async signInWithOAuth(provider) {
     try {
-      const redirectUri = chrome.identity.getRedirectURL();
+      const redirectUri = browserAPI.identity.getRedirectURL();
       console.log('Extension redirect URI:', redirectUri);
 
       // Use Supabase's OAuth endpoint with the extension-specific login-success page
@@ -261,7 +261,7 @@ class SupabaseClient {
       console.log('Opening OAuth URL:', authUrl);
 
       // Open OAuth in new tab
-      const tab = await chrome.tabs.create({ url: authUrl });
+      const tab = await browserAPI.tabs.create({ url: authUrl });
       console.log('Opened OAuth tab:', tab.id);
 
       // Return a promise that will be resolved by the background script
@@ -275,7 +275,7 @@ class SupabaseClient {
 
           if (message.action === 'oauth-complete') {
             console.log('✅ OAuth completion message received:', message);
-            chrome.runtime.onMessage.removeListener(handleOAuthComplete);
+            browserAPI.runtime.onMessage.removeListener(handleOAuthComplete);
 
             if (message.success) {
               console.log('🎉 OAuth successful, handling auth success...');
@@ -296,13 +296,13 @@ class SupabaseClient {
           }
         };
 
-        chrome.runtime.onMessage.addListener(handleOAuthComplete);
+        browserAPI.runtime.onMessage.addListener(handleOAuthComplete);
         console.log('🎧 OAuth listener set up, waiting for completion...');
 
         // Set timeout to reject if OAuth takes too long
         setTimeout(() => {
           console.log('⏰ OAuth timeout reached');
-          chrome.runtime.onMessage.removeListener(handleOAuthComplete);
+          browserAPI.runtime.onMessage.removeListener(handleOAuthComplete);
           reject(new Error('OAuth authentication timed out'));
         }, 300000); // 5 minutes timeout
       });
@@ -318,7 +318,7 @@ class SupabaseClient {
     this.currentUser = authData.user;
 
     // Store session
-    await chrome.storage.local.set({
+    await browserAPI.storage.local.set({
       supabase_session: {
         access_token: authData.access_token,
         refresh_token: authData.refresh_token,
@@ -328,7 +328,7 @@ class SupabaseClient {
     });
 
     // Clear premium status cache to force refresh
-    await chrome.storage.local.remove(['cachedPremiumStatus']);
+    await browserAPI.storage.local.remove(['cachedPremiumStatus']);
 
     // Create or update user profile (this handles premium status refresh)
     await this.upsertProfile(authData.user);
@@ -359,12 +359,12 @@ class SupabaseClient {
       // Clear local session
       this.accessToken = null;
       this.currentUser = null;
-      await chrome.storage.local.remove(['supabase_session']);
+      await browserAPI.storage.local.remove(['supabase_session']);
       // Clear all caches
-      await chrome.storage.local.remove(['userTier', 'profileLastChecked', 'subscriptionLastChecked', 'cachedSubscription', 'encryptionKeyLastChecked', 'cachedKeyMaterial', 'cachedSalt']);
+      await browserAPI.storage.local.remove(['userTier', 'profileLastChecked', 'subscriptionLastChecked', 'cachedSubscription', 'encryptionKeyLastChecked', 'cachedKeyMaterial', 'cachedSalt']);
       // Reset premium gating
       try {
-        await chrome.storage.local.set({ userTier: 'free' });
+        await browserAPI.storage.local.set({ userTier: 'free' });
         window.adManager?.refreshAd?.();
       } catch (_) { }
       try { window.eventBus?.emit('auth:changed', { user: null }); } catch (_) { }
@@ -372,7 +372,7 @@ class SupabaseClient {
 
       // Notify background script that user signed out (stop sync timer)
       try {
-        chrome.runtime.sendMessage({
+        browserAPI.runtime.sendMessage({
           action: 'tier-changed',
           active: false,
           tier: 'free'
@@ -411,7 +411,7 @@ class SupabaseClient {
   // Refresh session using refresh_token
   async refreshSession() {
     try {
-      const { supabase_session } = await chrome.storage.local.get(['supabase_session']);
+      const { supabase_session } = await browserAPI.storage.local.get(['supabase_session']);
       const refreshToken = supabase_session?.refresh_token;
       // Attempting to refresh session
 
@@ -526,10 +526,10 @@ class SupabaseClient {
             (profile.subscription_expires_at && new Date(profile.subscription_expires_at) > new Date()));
         const userTier = isActive ? (profile.subscription_tier || 'premium') : 'free';
 
-        await chrome.storage.local.set({ userTier });
+        await browserAPI.storage.local.set({ userTier });
 
         // Clear premium status cache and AI usage cache to force UI refresh with updated limits
-        await chrome.storage.local.remove(['cachedPremiumStatus', 'cachedAIUsage']);
+        await browserAPI.storage.local.remove(['cachedPremiumStatus', 'cachedAIUsage']);
 
         // Store profile data in cache for reuse (including salt for encryption key)
         const profileData = {
@@ -539,7 +539,7 @@ class SupabaseClient {
           salt: profile.salt
         };
 
-        await chrome.storage.local.set({
+        await browserAPI.storage.local.set({
           subscriptionLastChecked: Date.now(),
           cachedSubscription: profileData
         });
@@ -548,7 +548,7 @@ class SupabaseClient {
 
         // Notify background script of tier change for sync timer management
         try {
-          chrome.runtime.sendMessage({
+          browserAPI.runtime.sendMessage({
             action: 'tier-changed',
             active: isActive,
             tier: userTier
@@ -557,7 +557,7 @@ class SupabaseClient {
 
         // Notify background script about auth change (for login flows)
         try {
-          chrome.runtime.sendMessage({
+          browserAPI.runtime.sendMessage({
             action: 'auth-changed',
             user: this.currentUser,
             statusRefresh: true
@@ -771,7 +771,7 @@ class SupabaseClient {
     }
 
     // Check if we have cached key material and salt
-    const { encryptionKeyLastChecked, cachedKeyMaterial, cachedSalt } = await chrome.storage.local.get(['encryptionKeyLastChecked', 'cachedKeyMaterial', 'cachedSalt']);
+    const { encryptionKeyLastChecked, cachedKeyMaterial, cachedSalt } = await browserAPI.storage.local.get(['encryptionKeyLastChecked', 'cachedKeyMaterial', 'cachedSalt']);
     const now = Date.now();
     const oneHour = 60 * 60 * 1000; // 1 hour cache
 
@@ -786,7 +786,7 @@ class SupabaseClient {
 
     // Try to get salt from cached profile data first
     try {
-      const { cachedSubscription } = await chrome.storage.local.get(['cachedSubscription']);
+      const { cachedSubscription } = await browserAPI.storage.local.get(['cachedSubscription']);
       if (cachedSubscription?.salt) {
         salt = cachedSubscription.salt;
       }
@@ -806,12 +806,12 @@ class SupabaseClient {
 
     if (!salt) {
       // Fallback: local salt (as last resort)
-      const local = await chrome.storage.local.get(['local_salt']);
+      const local = await browserAPI.storage.local.get(['local_salt']);
       if (!local.local_salt) {
         const saltBytes = new Uint8Array(32);
         crypto.getRandomValues(saltBytes);
         const gen = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
-        await chrome.storage.local.set({ local_salt: gen });
+        await browserAPI.storage.local.set({ local_salt: gen });
         salt = gen;
       } else {
         salt = local.local_salt;
@@ -822,7 +822,7 @@ class SupabaseClient {
 
     // Cache the key material and salt instead of the CryptoKey object
     // CryptoKey objects cannot be serialized to JSON
-    await chrome.storage.local.set({
+    await browserAPI.storage.local.set({
       encryptionKeyLastChecked: now,
       cachedKeyMaterial: keyMaterial,
       cachedSalt: salt
@@ -844,7 +844,7 @@ class SupabaseClient {
   // Get current session (from storage or in-memory)
   async getSession() {
     try {
-      const { supabase_session } = await chrome.storage.local.get(['supabase_session']);
+      const { supabase_session } = await browserAPI.storage.local.get(['supabase_session']);
       if (supabase_session) return supabase_session;
       if (this.accessToken && this.currentUser) {
         return {
@@ -861,7 +861,7 @@ class SupabaseClient {
   // Clear subscription cache
   async clearSubscriptionCache() {
     try {
-      await chrome.storage.local.remove(['subscriptionLastChecked', 'cachedSubscription']);
+      await browserAPI.storage.local.remove(['subscriptionLastChecked', 'cachedSubscription']);
     } catch (error) {
       console.warn('Failed to clear subscription cache:', error);
     }
@@ -876,7 +876,7 @@ class SupabaseClient {
     try {
       // Check if we have cached subscription status (unless force refresh)
       if (!forceRefresh) {
-        const { subscriptionLastChecked, cachedSubscription } = await chrome.storage.local.get(['subscriptionLastChecked', 'cachedSubscription']);
+        const { subscriptionLastChecked, cachedSubscription } = await browserAPI.storage.local.get(['subscriptionLastChecked', 'cachedSubscription']);
         const now = Date.now();
         const fiveMinutes = 5 * 60 * 1000; // 5 minutes cache
 
@@ -894,7 +894,7 @@ class SupabaseClient {
 
       if (!profile) {
         const result = { tier: 'free', active: false };
-        await chrome.storage.local.set({
+        await browserAPI.storage.local.set({
           subscriptionLastChecked: now,
           cachedSubscription: result
         });
@@ -916,7 +916,7 @@ class SupabaseClient {
       };
 
       // Always update cache with fresh data
-      await chrome.storage.local.set({
+      await browserAPI.storage.local.set({
         subscriptionLastChecked: now,
         cachedSubscription: result
       });
@@ -1120,10 +1120,10 @@ class SupabaseClient {
 
       // Update userTier in local storage for other parts of the extension
       const userTier = status.active ? status.tier : 'free';
-      await chrome.storage.local.set({ userTier });
+      await browserAPI.storage.local.set({ userTier });
 
       // Clear AI usage cache to ensure updated limits are fetched
-      await chrome.storage.local.remove(['cachedAIUsage']);
+      await browserAPI.storage.local.remove(['cachedAIUsage']);
 
       // Emit tier change event to update all parts of the extension
       try {
@@ -1136,7 +1136,7 @@ class SupabaseClient {
 
       // Notify background script of tier change for sync timer management
       try {
-        chrome.runtime.sendMessage({
+        browserAPI.runtime.sendMessage({
           action: 'tier-changed',
           active: status.active,
           tier: status.tier
@@ -1153,7 +1153,7 @@ class SupabaseClient {
 
       // Notify background script about auth change
       try {
-        chrome.runtime.sendMessage({
+        browserAPI.runtime.sendMessage({
           action: 'auth-changed',
           user: this.currentUser,
           statusRefresh: true // Flag to indicate this is a status refresh
@@ -1183,3 +1183,5 @@ class SupabaseClient {
 
 // Export singleton instance
 window.supabaseClient = new SupabaseClient();
+
+

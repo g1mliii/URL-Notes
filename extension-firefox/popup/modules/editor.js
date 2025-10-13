@@ -15,7 +15,7 @@ class EditorManager {
       // Remove verbose logging
       currentSite = {
         domain: 'general',
-        url: 'chrome://extensions',
+        url: 'about:addons', // Firefox uses about:addons instead of chrome://extensions
         title: 'General Note'
       };
     }
@@ -836,7 +836,7 @@ class EditorManager {
   // Persist editor open flag (and keep existing noteDraft intact)
   async persistEditorOpen(isOpen) {
     try {
-      const { editorState } = await chrome.storage.local.get(['editorState']);
+      const { editorState } = await browserAPI.storage.local.get(['editorState']);
       const state = editorState || {};
       state.open = isOpen;
       // Track if editor was ever open for auto-restore on next popup open
@@ -844,7 +844,7 @@ class EditorManager {
         state.wasEditorOpen = true;
       }
       // Don't clear wasEditorOpen when closing - leave it for auto-restore
-      await chrome.storage.local.set({ editorState: state });
+      await browserAPI.storage.local.set({ editorState: state });
     } catch (_) { }
   }
 
@@ -870,7 +870,7 @@ class EditorManager {
       // Get caret position
       const { start, end } = contentInput ? this.getSelectionOffsets(contentInput) : { start: 0, end: 0 };
 
-      const { editorState } = await chrome.storage.local.get(['editorState']);
+      const { editorState } = await browserAPI.storage.local.get(['editorState']);
       const state = editorState || {};
       // Preserve the existing open state - don't force it to true
       state.noteDraft = { ...this.currentNote };
@@ -879,7 +879,7 @@ class EditorManager {
 
 
 
-      await chrome.storage.local.set({ editorState: state });
+      await browserAPI.storage.local.set({ editorState: state });
     } catch (error) {
       console.error('❌ Failed to save draft:', error);
     }
@@ -888,7 +888,7 @@ class EditorManager {
   // Clear editor state entirely
   async clearEditorState() {
     try {
-      await chrome.storage.local.remove('editorState');
+      await browserAPI.storage.local.remove('editorState');
     } catch (_) { }
   }
 

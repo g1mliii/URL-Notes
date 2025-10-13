@@ -10,17 +10,17 @@ class StorageManager {
   // ---- Promise wrappers to ensure reliability across Chrome versions ----
   async _lsGet(keys = null) {
     return new Promise((resolve) => {
-      try { chrome.storage.local.get(keys, (res) => resolve(res || {})); } catch (_) { resolve({}); }
+      try { browserAPI.storage.local.get(keys, (res) => resolve(res || {})); } catch (_) { resolve({}); }
     });
   }
   async _lsSet(obj) {
     return new Promise((resolve, reject) => {
-      try { chrome.storage.local.set(obj, () => resolve(true)); } catch (e) { reject(e); }
+      try { browserAPI.storage.local.set(obj, () => resolve(true)); } catch (e) { reject(e); }
     });
   }
   async _lsRemove(keys) {
     return new Promise((resolve) => {
-      try { chrome.storage.local.remove(keys, () => resolve(true)); } catch (_) { resolve(false); }
+      try { browserAPI.storage.local.remove(keys, () => resolve(true)); } catch (_) { resolve(false); }
     });
   }
 
@@ -59,7 +59,7 @@ class StorageManager {
 
     // Get all notes for the current domain from storage
     const domain = note.domain;
-    const data = await chrome.storage.local.get(domain);
+    const data = await browserAPI.storage.local.get(domain);
     const notesForDomain = data[domain] || [];
 
     // Find and update the note, or add it if new
@@ -72,7 +72,7 @@ class StorageManager {
     }
 
     // Save back to storage
-    await chrome.storage.local.set({ [domain]: notesForDomain });
+    await browserAPI.storage.local.set({ [domain]: notesForDomain });
 
     // Update master list in memory
     const masterIndex = this.allNotes.findIndex(n => n.id === note.id);
@@ -108,10 +108,10 @@ class StorageManager {
 
     // Remove from storage
     const domain = note.domain;
-    const data = await chrome.storage.local.get(domain);
+    const data = await browserAPI.storage.local.get(domain);
     let notesForDomain = data[domain] || [];
     notesForDomain = notesForDomain.filter(n => n.id !== noteId);
-    await chrome.storage.local.set({ [domain]: notesForDomain });
+    await browserAPI.storage.local.set({ [domain]: notesForDomain });
 
     // Emit event
     try { window.eventBus?.emit('notes:deleted', { id: noteId, domain }); } catch (_) { }
@@ -128,7 +128,7 @@ class StorageManager {
     this.allNotes = this.allNotes.filter(note => note.domain !== domain);
 
     // Remove from storage
-    await chrome.storage.local.remove(domain);
+    await browserAPI.storage.local.remove(domain);
 
     // Emit event
     try { window.eventBus?.emit('notes:domain_deleted', { domain }); } catch (_) { }
@@ -202,7 +202,7 @@ class StorageManager {
   // Import notes from JSON data
   async importNotes(importedData) {
     try {
-      const currentData = await chrome.storage.local.get(null);
+      const currentData = await browserAPI.storage.local.get(null);
       let notesImportedCount = 0;
       let notesSkippedCount = 0;
       let notesUpdatedCount = 0;
@@ -254,7 +254,7 @@ class StorageManager {
         currentData[domain] = Array.from(notesMap.values());
       }
 
-      await chrome.storage.local.set(currentData);
+      await browserAPI.storage.local.set(currentData);
       await this.loadNotes(); // Reload all notes into memory
 
       // Emit event
@@ -290,10 +290,10 @@ class StorageManager {
   // Persist editor open flag (and keep existing noteDraft intact)
   async persistEditorOpen(isOpen) {
     try {
-      const { editorState } = await chrome.storage.local.get(['editorState']);
+      const { editorState } = await browserAPI.storage.local.get(['editorState']);
       const state = editorState || {};
       state.open = isOpen;
-      await chrome.storage.local.set({ editorState: state });
+      await browserAPI.storage.local.set({ editorState: state });
     } catch (_) { }
   }
 
@@ -309,28 +309,28 @@ class StorageManager {
         caretEnd
       };
 
-      await chrome.storage.local.set({ editorState: state });
+      await browserAPI.storage.local.set({ editorState: state });
     } catch (_) { }
   }
 
   // Clear editor state entirely
   async clearEditorState() {
     try {
-      await chrome.storage.local.remove('editorState');
+      await browserAPI.storage.local.remove('editorState');
     } catch (_) { }
   }
 
   // Clear all editor drafts (for complete state reset)
   async clearAllEditorDrafts() {
     try {
-      await chrome.storage.local.remove(['editorState']);
+      await browserAPI.storage.local.remove(['editorState']);
       // Also clear any other draft-related storage
-      const keys = await chrome.storage.local.get(null);
+      const keys = await browserAPI.storage.local.get(null);
       const draftKeys = Object.keys(keys).filter(key =>
         key.includes('draft') || key.includes('editor')
       );
       if (draftKeys.length > 0) {
-        await chrome.storage.local.remove(draftKeys);
+        await browserAPI.storage.local.remove(draftKeys);
       }
     } catch (_) { }
   }
@@ -338,7 +338,7 @@ class StorageManager {
   // Get editor state
   async getEditorState() {
     try {
-      const { editorState } = await chrome.storage.local.get(['editorState']);
+      const { editorState } = await browserAPI.storage.local.get(['editorState']);
       return editorState || null;
     } catch (_) {
       return null;
@@ -386,3 +386,4 @@ class StorageManager {
 
 // Export for use in other modules
 window.StorageManager = StorageManager;
+

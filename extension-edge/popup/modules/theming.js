@@ -103,7 +103,7 @@ class ThemeManager {
   // Accent cache helpers
   async getCachedAccent(domain) {
     if (!domain) return null;
-    const { accentCache } = await chrome.storage.local.get(['accentCache']);
+    const { accentCache } = await browserAPI.storage.local.get(['accentCache']);
     const cache = accentCache || {};
     const entry = cache[domain];
     if (!entry) return null;
@@ -114,10 +114,10 @@ class ThemeManager {
 
   async setCachedAccent(domain, hsl) {
     if (!domain || !hsl) return;
-    const { accentCache } = await chrome.storage.local.get(['accentCache']);
+    const { accentCache } = await browserAPI.storage.local.get(['accentCache']);
     const cache = accentCache || {};
     cache[domain] = { h: hsl.h, s: hsl.s, l: hsl.l, updatedAt: Date.now() };
-    await chrome.storage.local.set({ accentCache: cache });
+    await browserAPI.storage.local.set({ accentCache: cache });
   }
 
   isSameAccent(a, b) {
@@ -134,7 +134,7 @@ class ThemeManager {
     const root = document.documentElement;
 
     // Load preference
-    const { themeMode } = await chrome.storage.local.get(['themeMode']);
+    const { themeMode } = await browserAPI.storage.local.get(['themeMode']);
     this.themeMode = themeMode || 'auto'; // 'auto' | 'light' | 'dark'
 
     const updateAuto = () => {
@@ -166,7 +166,7 @@ class ThemeManager {
     if (btn) {
       btn.addEventListener('click', async () => {
         this.themeMode = this.themeMode === 'auto' ? 'light' : this.themeMode === 'light' ? 'dark' : 'auto';
-        await chrome.storage.local.set({ themeMode: this.themeMode });
+        await browserAPI.storage.local.set({ themeMode: this.themeMode });
         applyTheme();
       });
     }
@@ -185,3 +185,4 @@ class ThemeManager {
 
 // Export for use in other modules
 window.ThemeManager = ThemeManager;
+

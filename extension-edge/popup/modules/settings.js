@@ -506,7 +506,7 @@ class SettingsManager {
   // Load font settings from storage
   async loadFontSetting() {
     try {
-      const { fontFamily, fontSize } = await chrome.storage.local.get(['fontFamily', 'fontSize']);
+      const { fontFamily, fontSize } = await browserAPI.storage.local.get(['fontFamily', 'fontSize']);
 
       this.currentFont = fontFamily || 'Default';
       this.currentFontSize = fontSize || 12;
@@ -532,7 +532,7 @@ class SettingsManager {
   // Handle font family change
   async handleFontChange(fontFamily) {
     this.currentFont = fontFamily;
-    await chrome.storage.local.set({ fontFamily });
+    await browserAPI.storage.local.set({ fontFamily });
     this.applyFontSettings();
   }
 
@@ -542,7 +542,7 @@ class SettingsManager {
     if (this.fontSizeValue) {
       this.fontSizeValue.textContent = `${fontSize}px`;
     }
-    await chrome.storage.local.set({ fontSize });
+    await browserAPI.storage.local.set({ fontSize });
     this.applyFontSettings();
   }
 
@@ -671,8 +671,8 @@ class SettingsManager {
   // Load and display current keyboard shortcut for _execute_action
   async loadShortcutDisplay() {
     try {
-      if (!chrome.commands || !chrome.commands.getAll) return;
-      const cmds = await chrome.commands.getAll();
+      if (!browserAPI.commands || typeof browserAPI.commands.getAll !== "function") return;
+      const cmds = await browserAPI.commands.getAll();
       const action = cmds.find(c => c.name === '_execute_action');
       const create = cmds.find(c => c.name === 'create_new_note');
       const openShortcut = action && action.shortcut ? action.shortcut : 'Not set';
@@ -700,19 +700,16 @@ class SettingsManager {
     }
   }
 
-  // Open Chrome's extension shortcuts page for user to change shortcut
+  // Open Edge's extension shortcuts page for user to change shortcut
   openShortcutEditor() {
     try {
-      // Try chrome.tabs first
-      if (chrome?.tabs?.create) {
-        chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }).catch(() => {
-          // Fallback to window.open
-          try { window.open('chrome://extensions/shortcuts', '_blank'); } catch (_) { }
+      // Edge uses the same chrome:// URLs as Chrome
+      browserAPI.tabs.create({ url: 'edge://extensions/shortcuts' }).catch(() => {
+        // Fallback to chrome:// URL for compatibility
+        browserAPI.tabs.create({ url: 'chrome://extensions/shortcuts' }).catch(() => {
+          try { window.open('edge://extensions/shortcuts', '_blank'); } catch (_) { }
         });
-      } else {
-        // Fallback
-        window.open('chrome://extensions/shortcuts', '_blank');
-      }
+      });
     } catch (_) { /* noop */ }
   }
 
@@ -720,14 +717,10 @@ class SettingsManager {
   openOnboarding() {
     // Always open in new tab to match new user onboarding experience
     try {
-      const url = chrome?.runtime?.getURL ? chrome.runtime.getURL('onboarding.html') : 'onboarding.html';
-      if (chrome?.tabs?.create) {
-        chrome.tabs.create({ url }).catch(() => {
-          try { window.open(url, '_blank'); } catch (_) { }
-        });
-      } else {
-        window.open(url, '_blank');
-      }
+      const url = browserAPI.runtime.getURL('onboarding.html');
+      browserAPI.tabs.create({ url }).catch(() => {
+        try { window.open(url, '_blank'); } catch (_) { }
+      });
     } catch (_) {
       try { window.open('onboarding.html', '_blank'); } catch (__) { }
     }
@@ -737,8 +730,8 @@ class SettingsManager {
   openWebsite() {
     try {
       const websiteUrl = 'https://anchored.site';
-      if (chrome?.tabs?.create) {
-        chrome.tabs.create({ url: websiteUrl }).catch(() => {
+      if (browserAPI?.tabs?.create) {
+        browserAPI.tabs.create({ url: websiteUrl }).catch(() => {
           try { window.open(websiteUrl, '_blank'); } catch (_) { }
         });
       } else {
@@ -753,8 +746,8 @@ class SettingsManager {
   openSignUp() {
     try {
       const signupUrl = 'https://anchored.site/?signup=true';
-      if (chrome?.tabs?.create) {
-        chrome.tabs.create({ url: signupUrl }).catch(() => {
+      if (browserAPI?.tabs?.create) {
+        browserAPI.tabs.create({ url: signupUrl }).catch(() => {
           try { window.open(signupUrl, '_blank'); } catch (_) { }
         });
       } else {
@@ -769,8 +762,8 @@ class SettingsManager {
   openForgotPassword() {
     try {
       const forgotUrl = 'https://anchored.site/?forgot=true';
-      if (chrome?.tabs?.create) {
-        chrome.tabs.create({ url: forgotUrl }).catch(() => {
+      if (browserAPI?.tabs?.create) {
+        browserAPI.tabs.create({ url: forgotUrl }).catch(() => {
           try { window.open(forgotUrl, '_blank'); } catch (_) { }
         });
       } else {
@@ -1239,13 +1232,13 @@ class SettingsManager {
       await this.checkBackupReminder();
 
       // Set up periodic backup reminders (every 30 days)
-      chrome.alarms.create('backupReminder', {
+      browserAPI.alarms.create('backupReminder', {
         delayInMinutes: 60 * 24 * 30, // 30 days
         periodInMinutes: 60 * 24 * 30  // Repeat every 30 days
       });
 
       // Listen for backup reminder alarms
-      chrome.alarms.onAlarm.addListener((alarm) => {
+      browserAPI.alarms.onAlarm.addListener((alarm) => {
         if (alarm.name === 'backupReminder') {
           this.showBackupReminder();
         }
@@ -1270,14 +1263,14 @@ class SettingsManager {
       if (activeNotes.length === 0) return; // No notes to backup
 
       // Check last backup date
-      const { lastBackupDate } = await chrome.storage.local.get(['lastBackupDate']);
+      const { lastBackupDate } = await browserAPI.storage.local.get(['lastBackupDate']);
       const now = Date.now();
       const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
 
       // Show reminder if never backed up or last backup was over 30 days ago
       if (!lastBackupDate || lastBackupDate < thirtyDaysAgo) {
         // Don't show immediately on first install, wait 7 days
-        const { installDate } = await chrome.storage.local.get(['installDate']);
+        const { installDate } = await browserAPI.storage.local.get(['installDate']);
         const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
 
         if (installDate && installDate < sevenDaysAgo) {
@@ -1304,7 +1297,7 @@ class SettingsManager {
       if (activeNotes.length === 0) return;
 
       // Create notification for FREE users
-      chrome.notifications.create('backupReminder', {
+      browserAPI.notifications.create('backupReminder', {
         type: 'basic',
         iconUrl: '../assets/icons/icon128x128.png',
         title: 'Backup Your Notes (Free User)',
@@ -1316,21 +1309,21 @@ class SettingsManager {
       });
 
       // Handle notification clicks
-      chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
+      browserAPI.notifications.onClicked.addListener((notificationId, buttonIndex) => {
         if (notificationId === 'backupReminder') {
           if (buttonIndex === 0) {
             // Open Extension Settings - open popup and navigate to settings
-            chrome.action.openPopup();
+            browserAPI.action.openPopup();
             // Set flag to show settings panel with export highlighted
-            chrome.storage.local.set({
+            browserAPI.storage.local.set({
               showSettingsOnOpen: true,
               highlightExport: true
             });
           } else {
             // Get Premium - open website
-            chrome.tabs.create({ url: 'https://anchored.site/?upgrade=true' });
+            browserAPI.tabs.create({ url: 'https://anchored.site/?upgrade=true' });
           }
-          chrome.notifications.clear(notificationId);
+          browserAPI.notifications.clear(notificationId);
         }
       });
 
@@ -1342,7 +1335,7 @@ class SettingsManager {
   // Mark backup as completed (call this after successful export)
   async markBackupCompleted() {
     try {
-      await chrome.storage.local.set({
+      await browserAPI.storage.local.set({
         lastBackupDate: Date.now()
       });
     } catch (error) {
@@ -1374,3 +1367,6 @@ class SettingsManager {
 
 // Export to global scope
 window.SettingsManager = SettingsManager;
+
+
+

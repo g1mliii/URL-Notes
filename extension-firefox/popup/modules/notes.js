@@ -184,7 +184,7 @@ class NotesManager {
     // Load saved open domains to prevent visual shift
     let openSet = new Set();
     try {
-      const { allNotesOpenDomains } = await chrome.storage.local.get(['allNotesOpenDomains']);
+      const { allNotesOpenDomains } = await browserAPI.storage.local.get(['allNotesOpenDomains']);
       openSet = new Set(Array.isArray(allNotesOpenDomains) ? allNotesOpenDomains : []);
     } catch (_) {
       // Fallback: empty set
@@ -643,7 +643,7 @@ class NotesManager {
         .filter(d => d.open)
         .map(d => d.getAttribute('data-domain'))
         .filter(Boolean);
-      chrome.storage.local.set({ allNotesOpenDomains: currentlyOpen });
+      browserAPI.storage.local.set({ allNotesOpenDomains: currentlyOpen });
     } catch (_) { }
   }
 

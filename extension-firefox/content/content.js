@@ -43,7 +43,7 @@
   }
 
   // Listen for messages from popup
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
     try {
       if (request.action === 'getPageInfo') {
         const pageInfo = getCurrentPageInfo();
@@ -747,8 +747,8 @@
     // Send message to background script to create note
 
     // First check if background script is responsive
-    chrome.runtime.sendMessage({ action: 'ping' }, (pingResponse) => {
-      if (chrome.runtime.lastError) {
+    browserAPI.runtime.sendMessage({ action: 'ping' }, (pingResponse) => {
+      if (browserAPI.runtime.lastError) {
         return;
       }
 
@@ -757,7 +757,7 @@
         // Message timeout - background script may not be responding
       }, 5000);
 
-      chrome.runtime.sendMessage({
+      browserAPI.runtime.sendMessage({
         action: 'addHighlightsToNote',
         pageInfo: pageInfo,
         highlights: highlightData
@@ -765,7 +765,7 @@
         clearTimeout(messageTimeout);
 
         // Handle response using callback to avoid message channel issues
-        if (chrome.runtime.lastError) {
+        if (browserAPI.runtime.lastError) {
           return;
         }
 
@@ -782,22 +782,22 @@
   // Update extension badge
   function updateExtensionBadge() {
     if (multiHighlightMode) {
-      chrome.runtime.sendMessage({
+      browserAPI.runtime.sendMessage({
         action: 'updateBadge',
         text: highlights.length.toString(),
         color: '#3498db'
       }, () => {
-        if (chrome.runtime.lastError) {
+        if (browserAPI.runtime.lastError) {
           // Badge update error - silently handled
         }
       });
     } else {
-      chrome.runtime.sendMessage({
+      browserAPI.runtime.sendMessage({
         action: 'updateBadge',
         text: '',
         color: ''
       }, () => {
-        if (chrome.runtime.lastError) {
+        if (browserAPI.runtime.lastError) {
           // Badge update error - silently handled
         }
       });
@@ -869,8 +869,8 @@
   // Safe message sender to avoid "Extension context invalidated" errors
   function safeSendMessage(message) {
     try {
-      if (!chrome || !chrome.runtime || !chrome.runtime.id) return;
-      const maybePromise = chrome.runtime.sendMessage(message);
+      if (!browserAPI || !browserAPI.runtime || !browserAPI.runtime.id) return;
+      const maybePromise = browserAPI.runtime.sendMessage(message);
       // In MV3 this returns a promise; attach a no-op catch
       if (maybePromise && typeof maybePromise.then === 'function') {
         maybePromise.catch(() => { });
@@ -1248,3 +1248,5 @@
   }
 
 })();
+
+

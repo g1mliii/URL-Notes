@@ -78,7 +78,7 @@ class SyncEngine {
         this.startPeriodicSync();
 
         // Notify background script to start sync timer
-        chrome.runtime.sendMessage({
+        browserAPI.runtime.sendMessage({
           action: 'tier-changed',
           active: status.active,
           tier: status.tier
@@ -87,7 +87,7 @@ class SyncEngine {
         this.stopPeriodicSync();
 
         // Notify background script to stop sync timer
-        chrome.runtime.sendMessage({
+        browserAPI.runtime.sendMessage({
           action: 'tier-changed',
           active: false,
           tier: status.tier || 'free'
@@ -112,7 +112,7 @@ class SyncEngine {
     window.eventBus?.on('auth:changed', (payload) => {
       if (payload && payload.user) {
         // Notify background script to start timer
-        chrome.runtime.sendMessage({
+        browserAPI.runtime.sendMessage({
           action: 'auth-changed',
           user: payload.user,
           statusRefresh: payload.statusRefresh || false
@@ -122,7 +122,7 @@ class SyncEngine {
         this.startPeriodicSync();
       } else {
         // Notify background script to stop timer
-        chrome.runtime.sendMessage({ action: 'auth-changed', user: null }).catch(() => { });
+        browserAPI.runtime.sendMessage({ action: 'auth-changed', user: null }).catch(() => { });
         this.clearSyncState();
       }
     });
@@ -131,7 +131,7 @@ class SyncEngine {
   // Load last sync time from storage
   async loadLastSyncTime() {
     try {
-      const result = await chrome.storage.local.get(['lastSyncTime']);
+      const result = await browserAPI.storage.local.get(['lastSyncTime']);
       this.lastSyncTime = result.lastSyncTime || null;
     } catch (error) {
       console.warn('Failed to load last sync time:', error);
@@ -141,7 +141,7 @@ class SyncEngine {
   // Save last sync time to storage
   async saveLastSyncTime(timestamp) {
     try {
-      await chrome.storage.local.set({ lastSyncTime: timestamp });
+      await browserAPI.storage.local.set({ lastSyncTime: timestamp });
       this.lastSyncTime = timestamp;
     } catch (error) {
       console.warn('Failed to save last sync time:', error);

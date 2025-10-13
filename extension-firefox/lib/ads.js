@@ -22,7 +22,7 @@ class AdManager {
   // Load ad tracking data from storage
   async loadAdTrackingData() {
     try {
-      const result = await chrome.storage.local.get([this.storageKey]);
+      const result = await browserAPI.storage.local.get([this.storageKey]);
       const data = result[this.storageKey];
 
       if (data) {
@@ -53,7 +53,7 @@ class AdManager {
         updatedAt: Date.now()
       };
 
-      await chrome.storage.local.set({ [this.storageKey]: data });
+      await browserAPI.storage.local.set({ [this.storageKey]: data });
     } catch (error) {
       console.warn('Failed to save ad tracking data:', error);
     }
@@ -84,7 +84,7 @@ class AdManager {
   async shouldShowAds() {
     try {
       // Check cached premium status first to avoid API calls
-      const result = await chrome.storage.local.get([
+      const result = await browserAPI.storage.local.get([
         'settings', 
         'userTier', 
         'premiumStatus', 
@@ -578,7 +578,7 @@ class AdManager {
   trackAdImpression() {
     try {
       // Send impression data to analytics (optional - won't break if background script isn't ready)
-      chrome.runtime.sendMessage({
+      browserAPI.runtime.sendMessage({
         action: 'trackAdImpression',
         data: {
           timestamp: Date.now(),
@@ -606,28 +606,28 @@ class AdManager {
       // Fall back to main page if there's an error
     }
 
-    chrome.tabs.create({
+    browserAPI.tabs.create({
       url: targetUrl
     });
   }
 
   // Handle NordVPN affiliate click
   openNordVPN() {
-    chrome.tabs.create({
+    browserAPI.tabs.create({
       url: 'https://go.nordvpn.net/aff_c?offer_id=15&aff_id=130711&url_id=902'
     });
   }
 
   // Handle Vrbo affiliate click
   openVrbo() {
-    chrome.tabs.create({
+    browserAPI.tabs.create({
       url: 'https://www.jdoqocy.com/click-101532226-13820699'
     });
   }
 
   // Handle new banner affiliate click
   openNewBanner() {
-    chrome.tabs.create({
+    browserAPI.tabs.create({
       url: 'https://www.tkqlhce.com/click-101532226-15575456'
     });
   }
@@ -641,7 +641,7 @@ class AdManager {
   trackAdClick(adType = 'unknown') {
     try {
       // Send click data to analytics (optional - won't break if background script isn't ready)
-      chrome.runtime.sendMessage({
+      browserAPI.runtime.sendMessage({
         action: 'trackAdClick',
         data: {
           timestamp: Date.now(),
@@ -693,3 +693,5 @@ class AdManager {
 
 // Export singleton instance
 window.adManager = new AdManager();
+
+

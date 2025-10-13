@@ -55,7 +55,7 @@ class UserEngagement {
     async checkIfUserLoggedIn() {
         try {
             // Check for Supabase session
-            const { supabase_session } = await chrome.storage.local.get(['supabase_session']);
+            const { supabase_session } = await browserAPI.storage.local.get(['supabase_session']);
             if (supabase_session && supabase_session.user) {
                 return true;
             }
@@ -87,7 +87,7 @@ class UserEngagement {
             }
 
             // Last resort: Check chrome.storage.local (legacy or context menu notes)
-            const allData = await chrome.storage.local.get(null);
+            const allData = await browserAPI.storage.local.get(null);
             let noteCount = 0;
 
             for (const [key, value] of Object.entries(allData)) {
@@ -107,7 +107,7 @@ class UserEngagement {
     async checkAndShowPrompt() {
         try {
             const noteCount = await this.countUserNotes();
-            const engagementData = await chrome.storage.local.get([
+            const engagementData = await browserAPI.storage.local.get([
                 this.storageKeys.lastPrompt,
                 this.storageKeys.promptCount,
                 this.storageKeys.dismissed,
@@ -135,7 +135,7 @@ class UserEngagement {
             // Check if we should show review prompt (at 25 notes, only once)
             if (!reviewPromptShown && noteCount >= this.thresholds.thirdPrompt && lastNoteCount < this.thresholds.thirdPrompt) {
                 // Show review prompt instead of regular engagement prompt
-                await chrome.storage.local.set({
+                await browserAPI.storage.local.set({
                     [this.storageKeys.reviewPromptShown]: true,
                     [this.storageKeys.noteCount]: noteCount
                 });
@@ -166,7 +166,7 @@ class UserEngagement {
 
             if (shouldPrompt) {
                 // Update storage before showing prompt
-                await chrome.storage.local.set({
+                await browserAPI.storage.local.set({
                     [this.storageKeys.lastPrompt]: now,
                     [this.storageKeys.promptCount]: promptCount + 1,
                     [this.storageKeys.noteCount]: noteCount
@@ -187,7 +187,7 @@ class UserEngagement {
                 }, 2000);
             } else {
                 // Update note count even if not prompting
-                await chrome.storage.local.set({
+                await browserAPI.storage.local.set({
                     [this.storageKeys.noteCount]: noteCount
                 });
             }
@@ -507,7 +507,7 @@ class UserEngagement {
 
         // Dismiss button
         dismissBtn.addEventListener('click', async () => {
-            await chrome.storage.local.set({
+            await browserAPI.storage.local.set({
                 [this.storageKeys.dismissed]: Date.now()
             });
             this.hidePrompt(container);
@@ -616,7 +616,7 @@ class UserEngagement {
             const prompt = prompts[type];
 
             // Create notification
-            chrome.notifications.create('userEngagement', {
+            browserAPI.notifications.create('userEngagement', {
                 type: 'basic',
                 iconUrl: '../assets/icons/icon128x128.png',
                 title: prompt.title,
@@ -628,21 +628,21 @@ class UserEngagement {
             });
 
             // Handle notification clicks
-            chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
+            browserAPI.notifications.onClicked.addListener((notificationId, buttonIndex) => {
                 if (notificationId === 'userEngagement') {
                     if (buttonIndex === 0) {
                         // Create Account button clicked
                         this.handleCreateAccount();
                     }
-                    chrome.notifications.clear(notificationId);
+                    browserAPI.notifications.clear(notificationId);
                 }
             });
 
             // Handle notification click (main body)
-            chrome.notifications.onClicked.addListener((notificationId) => {
+            browserAPI.notifications.onClicked.addListener((notificationId) => {
                 if (notificationId === 'userEngagement') {
                     this.handleCreateAccount();
-                    chrome.notifications.clear(notificationId);
+                    browserAPI.notifications.clear(notificationId);
                 }
             });
 
@@ -822,15 +822,15 @@ class UserEngagement {
     }
 
     // Open Chrome Web Store review page
-    openReviewPage() {
+    async openReviewPage() {
         try {
             // Open the extension page in Chrome Web Store
             // Users can leave reviews from the main extension page
             const extensionUrl = 'https://chromewebstore.google.com/detail/anchored-%E2%80%93-notes-highligh/llkmfidpbpfgdgjlohgpomdjckcfkllg';
             
-            if (chrome?.tabs?.create) {
-                chrome.tabs.create({ url: extensionUrl });
-            } else {
+            try {
+                await browserAPI.tabs.create({ url: extensionUrl });
+            } catch (error) {
                 window.open(extensionUrl, '_blank');
             }
         } catch (error) {
@@ -852,7 +852,7 @@ class UserEngagement {
 
     // Reset engagement data (for testing)
     async resetEngagementData() {
-        await chrome.storage.local.remove([
+        await browserAPI.storage.local.remove([
             this.storageKeys.lastPrompt,
             this.storageKeys.promptCount,
             this.storageKeys.dismissed,
