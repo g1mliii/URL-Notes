@@ -579,8 +579,6 @@ class OnboardingTooltips {
         const tooltip = document.getElementById('onboarding-tooltip');
         const target = document.querySelector(config.target);
 
-        console.log('Showing tooltip:', config.id, 'Target found:', !!target, 'Tooltip found:', !!tooltip);
-
         if (!tooltip || !target) {
             console.warn('Tooltip or target not found, skipping:', config.id);
             this.nextTooltip();
@@ -822,10 +820,11 @@ class OnboardingTooltips {
     }
 
     // Open upgrade page
-    openUpgrade() {
+    async openUpgrade() {
         try {
             const websiteUrl = 'https://anchored.site';
-            try { await browserAPI.tabs.create({ url: websiteUrl });
+            try {
+                await browserAPI.tabs.create({ url: websiteUrl });
             } catch { window.open(websiteUrl, "_blank"); }
         } catch (error) {
             console.warn('Failed to open upgrade page:', error);

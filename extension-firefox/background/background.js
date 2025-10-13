@@ -1,3 +1,6 @@
+// Import browser API abstraction layer for Firefox compatibility
+importScripts('/lib/browser-api.js');
+
 // Context menu now uses the same storage system as the main extension
 // No separate storage abstraction needed
 
@@ -22,14 +25,6 @@ try {
 } catch (_) { /* noop */ }
 
 // Open onboarding page on first install
-try {
-  browserAPI.runtime.onInstalled.addListener((details) => {
-    if (details.reason === 'install') {
-      const url = browserAPI.runtime.getURL('onboarding.html');
-      browserAPI.tabs.create({ url });
-    }
-  });
-} catch (_) { /* noop */ }
 // Anchored Extension - Background Script (Service Worker)
 
 // --- Main Event Listeners ---
@@ -48,6 +43,10 @@ browserAPI.runtime.onInstalled.addListener(async (details) => {
         showAds: true
       }
     });
+
+    // Open onboarding page on first install
+    const url = browserAPI.runtime.getURL('onboarding.html');
+    browserAPI.tabs.create({ url });
   }
 
   // Always update uninstall URL on install/update

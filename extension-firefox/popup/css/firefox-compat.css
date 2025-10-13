@@ -190,9 +190,7 @@ svg {
 
 /* Firefox border-radius consistency */
 .app-container,
-.note-item,
-.icon-btn,
-.add-note-btn {
+.note-item {
   /* Ensure consistent border radius rendering */
   border-radius: inherit;
 }

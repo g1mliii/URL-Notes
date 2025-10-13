@@ -762,7 +762,13 @@
     }
   };
 
-  // Export to global scope using the same pattern as Chrome extension
+  // Export to global scope
+  // In service workers, use 'self' instead of 'window'
+  if (typeof self !== 'undefined') {
+    self.browserAPI = browserAPI;
+  }
+  
+  // Also support window for content scripts and popup
   if (typeof window !== 'undefined') {
     window.browserAPI = browserAPI;
   }

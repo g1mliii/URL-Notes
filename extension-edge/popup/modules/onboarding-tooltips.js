@@ -579,8 +579,6 @@ class OnboardingTooltips {
         const tooltip = document.getElementById('onboarding-tooltip');
         const target = document.querySelector(config.target);
 
-        console.log('Showing tooltip:', config.id, 'Target found:', !!target, 'Tooltip found:', !!tooltip);
-
         if (!tooltip || !target) {
             console.warn('Tooltip or target not found, skipping:', config.id);
             this.nextTooltip();

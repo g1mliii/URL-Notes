@@ -3,7 +3,7 @@
 // Edge uses the same chrome.* namespace as Chrome, so this is mostly a passthrough
 // with some Edge-specific compatibility handling
 
-(function() {
+(function () {
   'use strict';
 
   // Edge uses chrome.* namespace like Chrome, but may have some differences
@@ -14,7 +14,7 @@
     // Storage API - Edge uses chrome.storage
     storage: {
       local: {
-        get: function(keys) {
+        get: function (keys) {
           return new Promise((resolve, reject) => {
             chrome.storage.local.get(keys, (result) => {
               if (chrome.runtime.lastError) {
@@ -26,7 +26,7 @@
           });
         },
 
-        set: function(items) {
+        set: function (items) {
           return new Promise((resolve, reject) => {
             chrome.storage.local.set(items, () => {
               if (chrome.runtime.lastError) {
@@ -38,7 +38,7 @@
           });
         },
 
-        remove: function(keys) {
+        remove: function (keys) {
           return new Promise((resolve, reject) => {
             chrome.storage.local.remove(keys, () => {
               if (chrome.runtime.lastError) {
@@ -50,7 +50,7 @@
           });
         },
 
-        clear: function() {
+        clear: function () {
           return new Promise((resolve, reject) => {
             chrome.storage.local.clear(() => {
               if (chrome.runtime.lastError) {
@@ -64,7 +64,7 @@
       },
 
       session: {
-        get: function(keys) {
+        get: function (keys) {
           return new Promise((resolve, reject) => {
             if (chrome.storage.session) {
               chrome.storage.session.get(keys, (result) => {
@@ -87,7 +87,7 @@
           });
         },
 
-        set: function(items) {
+        set: function (items) {
           return new Promise((resolve, reject) => {
             if (chrome.storage.session) {
               chrome.storage.session.set(items, () => {
@@ -109,7 +109,7 @@
           });
         },
 
-        remove: function(keys) {
+        remove: function (keys) {
           return new Promise((resolve, reject) => {
             if (chrome.storage.session) {
               chrome.storage.session.remove(keys, () => {
@@ -133,11 +133,11 @@
       },
 
       onChanged: {
-        addListener: function(callback) {
+        addListener: function (callback) {
           chrome.storage.onChanged.addListener(callback);
         },
 
-        removeListener: function(callback) {
+        removeListener: function (callback) {
           chrome.storage.onChanged.removeListener(callback);
         }
       }
@@ -145,7 +145,7 @@
 
     // Tabs API - Edge uses chrome.tabs
     tabs: {
-      query: function(queryInfo) {
+      query: function (queryInfo) {
         return new Promise((resolve, reject) => {
           chrome.tabs.query(queryInfo, (tabs) => {
             if (chrome.runtime.lastError) {
@@ -157,7 +157,7 @@
         });
       },
 
-      get: function(tabId) {
+      get: function (tabId) {
         return new Promise((resolve, reject) => {
           chrome.tabs.get(tabId, (tab) => {
             if (chrome.runtime.lastError) {
@@ -169,7 +169,7 @@
         });
       },
 
-      create: function(createProperties) {
+      create: function (createProperties) {
         return new Promise((resolve, reject) => {
           chrome.tabs.create(createProperties, (tab) => {
             if (chrome.runtime.lastError) {
@@ -181,7 +181,7 @@
         });
       },
 
-      update: function(tabId, updateProperties) {
+      update: function (tabId, updateProperties) {
         return new Promise((resolve, reject) => {
           chrome.tabs.update(tabId, updateProperties, (tab) => {
             if (chrome.runtime.lastError) {
@@ -193,7 +193,7 @@
         });
       },
 
-      sendMessage: function(tabId, message) {
+      sendMessage: function (tabId, message) {
         return new Promise((resolve, reject) => {
           chrome.tabs.sendMessage(tabId, message, (response) => {
             if (chrome.runtime.lastError) {
@@ -206,21 +206,21 @@
       },
 
       onUpdated: {
-        addListener: function(callback) {
+        addListener: function (callback) {
           chrome.tabs.onUpdated.addListener(callback);
         },
 
-        removeListener: function(callback) {
+        removeListener: function (callback) {
           chrome.tabs.onUpdated.removeListener(callback);
         }
       },
 
       onRemoved: {
-        addListener: function(callback) {
+        addListener: function (callback) {
           chrome.tabs.onRemoved.addListener(callback);
         },
 
-        removeListener: function(callback) {
+        removeListener: function (callback) {
           chrome.tabs.onRemoved.removeListener(callback);
         }
       }
@@ -228,7 +228,7 @@
 
     // Runtime API - Edge uses chrome.runtime
     runtime: {
-      sendMessage: function(message) {
+      sendMessage: function (message) {
         return new Promise((resolve, reject) => {
           chrome.runtime.sendMessage(message, (response) => {
             if (chrome.runtime.lastError) {
@@ -240,39 +240,39 @@
         });
       },
 
-      getURL: function(path) {
+      getURL: function (path) {
         return chrome.runtime.getURL(path);
       },
 
       onMessage: {
-        addListener: function(callback) {
+        addListener: function (callback) {
           chrome.runtime.onMessage.addListener(callback);
         },
 
-        removeListener: function(callback) {
+        removeListener: function (callback) {
           chrome.runtime.onMessage.removeListener(callback);
         }
       },
 
       onInstalled: {
-        addListener: function(callback) {
+        addListener: function (callback) {
           chrome.runtime.onInstalled.addListener(callback);
         }
       },
 
       onStartup: {
-        addListener: function(callback) {
+        addListener: function (callback) {
           chrome.runtime.onStartup.addListener(callback);
         }
       },
 
       lastError: {
-        get: function() {
+        get: function () {
           return chrome.runtime.lastError;
         }
       },
 
-      setUninstallURL: function(url) {
+      setUninstallURL: function (url) {
         return new Promise((resolve, reject) => {
           chrome.runtime.setUninstallURL(url, () => {
             if (chrome.runtime.lastError) {
@@ -287,7 +287,7 @@
 
     // Context Menus API - Edge uses chrome.contextMenus
     contextMenus: {
-      create: function(createProperties, callback) {
+      create: function (createProperties, callback) {
         return new Promise((resolve, reject) => {
           const id = chrome.contextMenus.create(createProperties, () => {
             if (chrome.runtime.lastError) {
@@ -301,7 +301,7 @@
         });
       },
 
-      removeAll: function(callback) {
+      removeAll: function (callback) {
         return new Promise((resolve, reject) => {
           chrome.contextMenus.removeAll(() => {
             if (chrome.runtime.lastError) {
@@ -315,11 +315,11 @@
       },
 
       onClicked: {
-        addListener: function(callback) {
+        addListener: function (callback) {
           chrome.contextMenus.onClicked.addListener(callback);
         },
 
-        removeListener: function(callback) {
+        removeListener: function (callback) {
           chrome.contextMenus.onClicked.removeListener(callback);
         }
       }
@@ -327,12 +327,12 @@
 
     // Alarms API - Edge uses chrome.alarms
     alarms: {
-      create: function(name, alarmInfo) {
+      create: function (name, alarmInfo) {
         chrome.alarms.create(name, alarmInfo);
         return Promise.resolve();
       },
 
-      clear: function(name) {
+      clear: function (name) {
         return new Promise((resolve, reject) => {
           chrome.alarms.clear(name, (wasCleared) => {
             if (chrome.runtime.lastError) {
@@ -344,7 +344,7 @@
         });
       },
 
-      clearAll: function() {
+      clearAll: function () {
         return new Promise((resolve, reject) => {
           chrome.alarms.clearAll((wasCleared) => {
             if (chrome.runtime.lastError) {
@@ -356,7 +356,7 @@
         });
       },
 
-      get: function(name) {
+      get: function (name) {
         return new Promise((resolve, reject) => {
           chrome.alarms.get(name, (alarm) => {
             if (chrome.runtime.lastError) {
@@ -368,7 +368,7 @@
         });
       },
 
-      getAll: function() {
+      getAll: function () {
         return new Promise((resolve, reject) => {
           chrome.alarms.getAll((alarms) => {
             if (chrome.runtime.lastError) {
@@ -381,11 +381,11 @@
       },
 
       onAlarm: {
-        addListener: function(callback) {
+        addListener: function (callback) {
           chrome.alarms.onAlarm.addListener(callback);
         },
 
-        removeListener: function(callback) {
+        removeListener: function (callback) {
           chrome.alarms.onAlarm.removeListener(callback);
         }
       }
@@ -393,7 +393,7 @@
 
     // Action API - Edge uses chrome.action (MV3)
     action: {
-      openPopup: function() {
+      openPopup: function () {
         if (chrome.action && chrome.action.openPopup) {
           return new Promise((resolve, reject) => {
             chrome.action.openPopup(() => {
@@ -408,7 +408,7 @@
         return Promise.reject(new Error('openPopup not supported'));
       },
 
-      setBadgeText: function(details) {
+      setBadgeText: function (details) {
         if (chrome.action) {
           return new Promise((resolve, reject) => {
             chrome.action.setBadgeText(details, () => {
@@ -423,7 +423,7 @@
         return Promise.resolve();
       },
 
-      setBadgeBackgroundColor: function(details) {
+      setBadgeBackgroundColor: function (details) {
         if (chrome.action) {
           return new Promise((resolve, reject) => {
             chrome.action.setBadgeBackgroundColor(details, () => {
@@ -441,7 +441,7 @@
 
     // Commands API - Edge uses chrome.commands
     commands: {
-      getAll: function() {
+      getAll: function () {
         return new Promise((resolve, reject) => {
           chrome.commands.getAll((commands) => {
             if (chrome.runtime.lastError) {
@@ -454,7 +454,7 @@
       },
 
       onCommand: {
-        addListener: function(callback) {
+        addListener: function (callback) {
           chrome.commands.onCommand.addListener(callback);
         }
       }
@@ -462,14 +462,14 @@
 
     // Identity API - Edge uses chrome.identity
     identity: {
-      getRedirectURL: function(path) {
+      getRedirectURL: function (path) {
         return chrome.identity.getRedirectURL(path);
       }
     },
 
     // Notifications API - Edge uses chrome.notifications
     notifications: {
-      create: function(notificationId, options) {
+      create: function (notificationId, options) {
         return new Promise((resolve, reject) => {
           chrome.notifications.create(notificationId, options, (id) => {
             if (chrome.runtime.lastError) {
@@ -481,7 +481,7 @@
         });
       },
 
-      clear: function(notificationId) {
+      clear: function (notificationId) {
         return new Promise((resolve, reject) => {
           chrome.notifications.clear(notificationId, (wasCleared) => {
             if (chrome.runtime.lastError) {
@@ -494,7 +494,7 @@
       },
 
       onClicked: {
-        addListener: function(callback) {
+        addListener: function (callback) {
           chrome.notifications.onClicked.addListener(callback);
         }
       }
@@ -502,7 +502,7 @@
 
     // Scripting API - Edge uses chrome.scripting (MV3)
     scripting: {
-      executeScript: function(injection) {
+      executeScript: function (injection) {
         return new Promise((resolve, reject) => {
           chrome.scripting.executeScript(injection, (results) => {
             if (chrome.runtime.lastError) {
@@ -516,7 +516,13 @@
     }
   };
 
-  // Export to global scope using the same pattern as Chrome extension
+  // Export to global scope
+  // In service workers, use 'self' instead of 'window'
+  if (typeof self !== 'undefined') {
+    self.browserAPI = browserAPI;
+  }
+
+  // Also support window for content scripts and popup
   if (typeof window !== 'undefined') {
     window.browserAPI = browserAPI;
   }
