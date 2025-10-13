@@ -19,7 +19,7 @@ title: Layout Debug Page
             box-sizing: border-box;
         }
 
-        /* Solid color test - no gradient */
+        /* Dark blue to charcoal grey gradient for iOS Safari */
         html {
             height: 100%;
             background: #202124;
@@ -27,8 +27,8 @@ title: Layout Debug Page
 
         body {
             height: 100%;
-            /* Solid color instead of gradient */
-            background: #202124;
+            /* Dark blue to charcoal grey gradient (Chrome/Windows dark theme color) */
+            background: linear-gradient(to bottom, #1D3557, #202124);
             color: white;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             margin: 0;
@@ -36,9 +36,9 @@ title: Layout Debug Page
             overflow-y: auto;
         }
 
-        /* Container with flexbox - use 100lvh to extend under transparent Safari bar */
+        /* Container with flexbox - use 100dvh (dynamic viewport height) */
         .container {
-            min-height: 100lvh;
+            min-height: 100dvh;
             display: flex;
             flex-direction: column;
             position: relative;
