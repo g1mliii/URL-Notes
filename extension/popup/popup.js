@@ -2935,7 +2935,7 @@ class URLNotesApp {
 
       // Check for user engagement opportunities after successful save
       if (this.userEngagement) {
-        this.userEngagement.checkAndShowPrompt().catch(() => {});
+        this.userEngagement.checkAndShowPrompt().catch(() => { });
       }
 
     } catch (error) {
@@ -4353,11 +4353,12 @@ class URLNotesApp {
       const domainSelect = document.getElementById('summaryDomainSelect');
 
       if (domainSelect) {
-        // Clear existing options
+        // Clear existing options and set appropriate placeholder
+        const placeholderText = domains.length === 0 ? 'No notes to summarize' : 'Select a domain...';
         if (window.safeDOM) {
-          window.safeDOM.setInnerHTML(domainSelect, '<option value="">Select a domain...</option>', false);
+          window.safeDOM.setInnerHTML(domainSelect, `<option value="">${placeholderText}</option>`, false);
         } else {
-          domainSelect.innerHTML = '<option value="">Select a domain...</option>';
+          domainSelect.innerHTML = `<option value="">${placeholderText}</option>`;
         }
 
         // Add domain options

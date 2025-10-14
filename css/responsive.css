@@ -76,14 +76,24 @@
     line-height: 1.4 !important;
   }
 
-  /* Improve auth container spacing */
+  /* Improve auth container spacing and centering */
   .auth-container {
     margin-top: 0 !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 1rem !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
   }
 
   .auth-form {
     padding: 2rem 1.5rem !important;
+    margin: 0 auto !important;
     margin-bottom: 1.5rem !important;
+    width: 100% !important;
+    max-width: 400px !important;
   }
 
   .auth-form h3 {
@@ -255,28 +265,7 @@
     margin-bottom: 2rem;
   }
 
-  /* Fix auth form spacing and centering on mobile */
-  .auth-container {
-    max-width: 100%;
-    margin: 0 auto;
-    padding: 0 1rem;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-  }
-
-  .auth-form {
-    padding: 1.5rem;
-    margin: 0 auto;
-    width: 100%;
-    max-width: 320px;
-    /* Simple direct background like search-input */
-    background: rgba(248, 252, 253, 0.85) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    box-shadow: none !important;
-  }
+  /* Auth form centering handled by earlier rule in this media query */
 
   /* Auth form specific spacing on mobile - force override */
   .auth-form .input-group {

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Anchored – Notes & Highlights for Websites",
-  "version": "1.16",
+  "version": "1.17",
   "description": "Anchored helps take contextual notes tied to websites while you browse. Highlight text, and save notes linked pages you visit.",
   "permissions": [
     "storage",
