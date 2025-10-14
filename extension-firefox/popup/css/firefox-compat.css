@@ -136,6 +136,7 @@ input[type="color"] {
 
 /* Firefox-specific dark mode adjustments */
 @media (prefers-color-scheme: dark) {
+
   /* Ensure proper contrast in Firefox dark mode */
   body {
     color-scheme: dark;
@@ -183,7 +184,7 @@ svg {
 .note-item,
 .settings-section {
   /* Ensure consistent shadow rendering */
-  box-shadow: 
+  box-shadow:
     0 8px 32px var(--shadow-dark),
     inset 0 1px 0 var(--shadow-light);
 }
