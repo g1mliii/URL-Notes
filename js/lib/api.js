@@ -312,32 +312,52 @@ class SupabaseClient {
   // Sign up with email and password
   async signUpWithEmail(email, password) {
     try {
-      console.log('Attempting signup with:', { email, authUrl: this.authUrl });
-      
       const data = await this._request(`${this.authUrl}/signup`, {
         method: 'POST',
         auth: false,
         body: { email, password }
       });
-      
-      console.log('Signup API response:', data);
-      
-      // If we got an access token, user is authenticated immediately (email confirmation disabled)
+
+      // If we got an access token, user is authenticated immediately
       if (data.access_token) {
         await this.handleAuthSuccess(data);
+
+        // Send verification email in background (non-blocking)
+        // This allows user to login immediately while still getting verification email
+        this.sendVerificationEmail(email).catch(() => {
+          // Silently fail - don't block signup if email fails
+        });
       }
-      
-      // Return the full response so caller can check if email confirmation is needed
+
       return data;
     } catch (error) {
-      console.error('Signup error:', error);
-      console.error('Error details:', { message: error.message, status: error.status, data: error.data });
-      
-      // Sign up error - provide more context
-      if (error.message && error.message.includes('already')) {
+      // Handle specific error cases
+      if (error.status === 500) {
+        error.message = 'Account creation failed due to server configuration. Please contact support or try again later.';
+      } else if (error.message && error.message.includes('already')) {
         error.message = 'User already registered';
       }
       throw error;
+    }
+  }
+
+  // Send verification email (for optional email verification after signup)
+  async sendVerificationEmail(email) {
+    try {
+      await this._request(`${this.authUrl}/otp`, {
+        method: 'POST',
+        auth: false,
+        body: {
+          email,
+          type: 'signup',
+          options: {
+            email_redirect_to: `${window.location.origin}/auth/confirm`
+          }
+        }
+      });
+    } catch (error) {
+      // Email send failed - log but don't throw
+      console.warn('Verification email send failed:', error.message);
     }
   }
 

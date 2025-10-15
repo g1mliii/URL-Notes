@@ -1377,28 +1377,8 @@ class Auth {
       this.setAuthBusy(true);
 
       const signupData = await this.supabaseClient.signUpWithEmail(email, password);
-      
-      console.log('Signup response:', signupData); // Debug log
 
-      // Check if email confirmation is required
-      if (signupData && signupData.user && !signupData.access_token) {
-        // Email confirmation required - show message and don't try to sign in
-        console.log('Email confirmation required for user:', signupData.user.email);
-        this.showNotification('Account created! Please check your email (including spam folder) to verify your account before signing in.', 'success');
-        
-        // Switch back to login form after delay
-        setTimeout(() => {
-          const registerForm = document.getElementById('registerForm');
-          const loginForm = document.getElementById('loginForm');
-          if (registerForm && loginForm && window.app) {
-            window.app.switchAuthForm(registerForm, loginForm);
-          }
-        }, 4000);
-        
-        return;
-      }
-
-      // If we got an access token, user is already authenticated (email confirmation disabled)
+      // If we got an access token, user is authenticated immediately
       if (signupData && signupData.access_token) {
         const user = this.supabaseClient.getCurrentUser();
 
@@ -1421,7 +1401,7 @@ class Auth {
           }
         }
 
-        this.showNotification('Account created successfully!', 'success');
+        this.showNotification('Account created! A verification email has been sent to your inbox.', 'success');
 
         // Handle authentication success and redirect
         const redirectTo = await this.handleAuthenticationSuccess(user);
@@ -1441,8 +1421,6 @@ class Auth {
         errorMessage = 'An account with this email already exists. Please sign in instead.';
       } else if (error.message.includes('Password') || error.message.includes('password')) {
         errorMessage = 'Password must be at least 6 characters long';
-      } else if (error.message.includes('Email not confirmed') || error.message.includes('confirm')) {
-        errorMessage = 'Please verify your email address by clicking the link we sent to your inbox';
       } else if (error.message.includes('invalid') && error.message.includes('email')) {
         errorMessage = 'Please enter a valid email address';
       }
