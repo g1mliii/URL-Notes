@@ -1376,55 +1376,75 @@ class Auth {
     try {
       this.setAuthBusy(true);
 
-      await this.supabaseClient.signUpWithEmail(email, password);
+      const signupData = await this.supabaseClient.signUpWithEmail(email, password);
+      
+      console.log('Signup response:', signupData); // Debug log
 
-      // Ensure session by signing in (same as extension logic)
-      if (!this.supabaseClient.isAuthenticated()) {
-        await this.supabaseClient.signInWithEmail(email, password);
-      }
-
-      const user = this.supabaseClient.getCurrentUser();
-
-      if (user) {
-        // Store session with extended expiration for persistent login
-        const sessionData = {
-          access_token: this.supabaseClient.accessToken,
-          refresh_token: this.supabaseClient.refreshToken,
-          user: user,
-          expires_at: Date.now() + (30 * 24 * 60 * 60 * 1000) // 30 days
-        };
+      // Check if email confirmation is required
+      if (signupData && signupData.user && !signupData.access_token) {
+        // Email confirmation required - show message and don't try to sign in
+        console.log('Email confirmation required for user:', signupData.user.email);
+        this.showNotification('Account created! Please check your email (including spam folder) to verify your account before signing in.', 'success');
         
-        localStorage.setItem('supabase_session', JSON.stringify(sessionData));
-        localStorage.setItem('remember_login', 'true');
-        
-        // Also update app state immediately
-        if (window.app) {
-          window.app.isAuthenticated = true;
-          window.app.currentUser = user;
-        }
-      }
-
-      this.showNotification('Account created successfully! Please check your email to verify your account.', 'success');
-
-      // Handle authentication success and redirect
-      const redirectTo = await this.handleAuthenticationSuccess(user);
-
-      if (redirectTo) {
+        // Switch back to login form after delay
         setTimeout(() => {
-          window.location.href = redirectTo;
-        }, 1000);
+          const registerForm = document.getElementById('registerForm');
+          const loginForm = document.getElementById('loginForm');
+          if (registerForm && loginForm && window.app) {
+            window.app.switchAuthForm(registerForm, loginForm);
+          }
+        }, 4000);
+        
+        return;
+      }
+
+      // If we got an access token, user is already authenticated (email confirmation disabled)
+      if (signupData && signupData.access_token) {
+        const user = this.supabaseClient.getCurrentUser();
+
+        if (user) {
+          // Store session with extended expiration for persistent login
+          const sessionData = {
+            access_token: this.supabaseClient.accessToken,
+            refresh_token: this.supabaseClient.refreshToken,
+            user: user,
+            expires_at: Date.now() + (30 * 24 * 60 * 60 * 1000) // 30 days
+          };
+          
+          localStorage.setItem('supabase_session', JSON.stringify(sessionData));
+          localStorage.setItem('remember_login', 'true');
+          
+          // Also update app state immediately
+          if (window.app) {
+            window.app.isAuthenticated = true;
+            window.app.currentUser = user;
+          }
+        }
+
+        this.showNotification('Account created successfully!', 'success');
+
+        // Handle authentication success and redirect
+        const redirectTo = await this.handleAuthenticationSuccess(user);
+
+        if (redirectTo) {
+          setTimeout(() => {
+            window.location.href = redirectTo;
+          }, 1000);
+        }
       }
 
     } catch (error) {
       // Sign up error
       let errorMessage = `Sign up failed: ${error.message || error}`;
 
-      if (error.message.includes('already registered')) {
-        errorMessage = 'An account with this email already exists';
-      } else if (error.message.includes('Password')) {
+      if (error.message.includes('already registered') || error.message.includes('already been registered')) {
+        errorMessage = 'An account with this email already exists. Please sign in instead.';
+      } else if (error.message.includes('Password') || error.message.includes('password')) {
         errorMessage = 'Password must be at least 6 characters long';
       } else if (error.message.includes('Email not confirmed') || error.message.includes('confirm')) {
         errorMessage = 'Please verify your email address by clicking the link we sent to your inbox';
+      } else if (error.message.includes('invalid') && error.message.includes('email')) {
+        errorMessage = 'Please enter a valid email address';
       }
 
       this.showNotification(errorMessage, 'error');

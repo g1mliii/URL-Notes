@@ -312,17 +312,31 @@ class SupabaseClient {
   // Sign up with email and password
   async signUpWithEmail(email, password) {
     try {
+      console.log('Attempting signup with:', { email, authUrl: this.authUrl });
+      
       const data = await this._request(`${this.authUrl}/signup`, {
         method: 'POST',
         auth: false,
         body: { email, password }
       });
+      
+      console.log('Signup API response:', data);
+      
+      // If we got an access token, user is authenticated immediately (email confirmation disabled)
       if (data.access_token) {
         await this.handleAuthSuccess(data);
       }
+      
+      // Return the full response so caller can check if email confirmation is needed
       return data;
     } catch (error) {
-      // Sign up error
+      console.error('Signup error:', error);
+      console.error('Error details:', { message: error.message, status: error.status, data: error.data });
+      
+      // Sign up error - provide more context
+      if (error.message && error.message.includes('already')) {
+        error.message = 'User already registered';
+      }
       throw error;
     }
   }

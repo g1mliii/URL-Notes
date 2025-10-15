@@ -3,11 +3,16 @@
   "version": "1.0.0",
   "description": "Firefox version of Anchored URL Notes extension",
   "scripts": {
-    "dev": "web-ext run --config=web-ext-config.js",
-    "build": "web-ext build --config=web-ext-config.js",
-    "lint": "web-ext lint --config=web-ext-config.js",
-    "sign": "web-ext sign --config=web-ext-config.js",
-    "test": "web-ext run --config=web-ext-config.js --start-url about:debugging"
+    "dev": "web-ext run --config=web-ext-config.cjs",
+    "build": "web-ext build --config=web-ext-config.cjs",
+    "build:prod": "npm run lint && web-ext build --config=web-ext-config.cjs --overwrite-dest",
+    "lint": "web-ext lint --config=web-ext-config.cjs",
+    "lint:strict": "web-ext lint --config=web-ext-config.cjs --warnings-as-errors",
+    "sign": "web-ext sign --config=web-ext-config.cjs",
+    "sign:unlisted": "web-ext sign --config=web-ext-config.cjs --channel=unlisted",
+    "test": "web-ext run --config=web-ext-config.cjs --start-url about:debugging",
+    "package": "npm run lint && npm run build:prod",
+    "validate": "web-ext lint --config=web-ext-config.cjs && echo 'Extension validation passed!'"
   },
   "devDependencies": {
     "web-ext": "^8.10.0"

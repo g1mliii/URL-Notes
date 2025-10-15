@@ -1,0 +1,15 @@
+# Web-ext build artifacts
+web-ext-artifacts/
+*.xpi
+*.zip
+
+# Node modules
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary files
+*.tmp
+*.temp
