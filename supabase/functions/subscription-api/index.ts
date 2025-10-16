@@ -15,10 +15,10 @@ serve(async (req) => {
   }
 
   try {
-    // Initialize Supabase client
+    // Initialize Supabase client with service role to bypass RLS
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       {
         global: {
           headers: { Authorization: req.headers.get('Authorization')! },
@@ -87,7 +87,7 @@ async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: 
   try {
 
 
-    // Get or create customer
+    // Get or create customer (with race condition protection)
     let customerId = null
 
     // Check if user already has a Stripe customer ID
@@ -110,13 +110,30 @@ async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: 
       })
       customerId = customer.id
 
-      // Save customer ID to profile
-      await supabaseClient
+      // Save customer ID to profile with race condition check
+      // Only update if stripe_customer_id is still null
+      const { data: updated, error: updateError } = await supabaseClient
         .from('profiles')
         .update({ stripe_customer_id: customerId })
         .eq('id', user.id)
+        .is('stripe_customer_id', null)
+        .select('stripe_customer_id')
+        .single()
 
+      // If update failed, another request already created a customer
+      if (updateError || !updated) {
+        // Fetch the existing customer ID that was set by the other request
+        const { data: existingProfile } = await supabaseClient
+          .from('profiles')
+          .select('stripe_customer_id')
+          .eq('id', user.id)
+          .single()
 
+        if (existingProfile?.stripe_customer_id && existingProfile.stripe_customer_id !== customerId) {
+          // Use the existing customer ID instead
+          customerId = existingProfile.stripe_customer_id
+        }
+      }
     }
 
     // Create checkout session using predefined Stripe product

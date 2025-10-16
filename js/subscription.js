@@ -270,8 +270,13 @@ class SubscriptionManager {
 
   async createCheckoutSession() {
     try {
-      // Show loading state
+      // Prevent double-clicks
       const upgradeBtn = document.getElementById('upgradeBtn');
+      if (upgradeBtn && upgradeBtn.disabled) {
+        return; // Already processing
+      }
+
+      // Show loading state
       if (upgradeBtn) {
         upgradeBtn.disabled = true;
         upgradeBtn.textContent = 'Processing...';
@@ -501,9 +506,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set up event listeners
     const upgradeBtn = document.getElementById('upgradeBtn');
     if (upgradeBtn) {
-      upgradeBtn.addEventListener('click', () => {
+      upgradeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
         window.subscriptionManager.createCheckoutSession();
-      });
+      }, { once: false }); // Don't use 'once' to allow retry on error
     }
 
     const manageSubscriptionBtn = document.getElementById('manageSubscriptionBtn');
