@@ -85,8 +85,6 @@ serve(async (req) => {
 
 async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: any, data: any) {
   try {
-
-
     // Get or create customer (with race condition protection)
     let customerId = null
 
@@ -99,7 +97,6 @@ async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: 
 
     if (profile?.stripe_customer_id) {
       customerId = profile.stripe_customer_id
-
     } else {
       // Create new Stripe customer
       const customer = await stripe.customers.create({
@@ -112,7 +109,7 @@ async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: 
 
       // Save customer ID to profile with race condition check
       // Only update if stripe_customer_id is still null
-      const { data: updated, error: updateError } = await supabaseClient
+      const { data: updated } = await supabaseClient
         .from('profiles')
         .update({ stripe_customer_id: customerId })
         .eq('id', user.id)
@@ -121,7 +118,7 @@ async function createCheckoutSession(stripe: Stripe, supabaseClient: any, user: 
         .single()
 
       // If update failed, another request already created a customer
-      if (updateError || !updated) {
+      if (!updated) {
         // Fetch the existing customer ID that was set by the other request
         const { data: existingProfile } = await supabaseClient
           .from('profiles')
@@ -306,8 +303,6 @@ async function syncSubscriptionStatus(stripe: Stripe, supabaseClient: any, user:
       )
     }
 
-    console.log('🔍 Checking Stripe subscriptions for customer:', profile.stripe_customer_id)
-
     // Get customer's subscriptions from Stripe
     const subscriptions = await stripe.subscriptions.list({
       customer: profile.stripe_customer_id,
@@ -334,10 +329,8 @@ async function syncSubscriptionStatus(stripe: Stripe, supabaseClient: any, user:
         }
         shouldUpdate = true
         statusMessage = `Activated premium subscription (was ${profile.subscription_tier})`
-        console.log('✅ User has active subscription - upgrading to premium')
       } else {
         statusMessage = 'Premium subscription already active'
-        console.log('✅ User already has premium status')
       }
     } else {
       // Check for canceled subscription that's still in current period
@@ -355,7 +348,6 @@ async function syncSubscriptionStatus(stripe: Stripe, supabaseClient: any, user:
         }
         shouldUpdate = true
         statusMessage = `Subscription expires ${new Date(expiresAt).toLocaleDateString()} - recurring billing canceled`
-        console.log('⏰ User has canceled subscription, setting expiry date')
       } else {
         // No active subscription - should be free
         if (profile.subscription_tier !== 'free') {
@@ -366,29 +358,25 @@ async function syncSubscriptionStatus(stripe: Stripe, supabaseClient: any, user:
           }
           shouldUpdate = true
           statusMessage = `Downgraded to free tier (was ${profile.subscription_tier})`
-          console.log('❌ No active subscription found - downgrading to free')
         } else {
           statusMessage = 'No active subscription found - already on free tier'
-          console.log('➡️ User already on free tier')
         }
       }
     }
 
     // Update user profile if needed
     if (shouldUpdate) {
+      console.log('Attempting to update subscription status:', updateData)
       const { error: updateError } = await supabaseClient
         .from('profiles')
         .update(updateData)
         .eq('id', user.id)
 
       if (updateError) {
+        console.error('Update error:', updateError)
         throw updateError
       }
-
-      console.log('✅ SUBSCRIPTION STATUS UPDATED SUCCESSFULLY')
-      console.log('User:', user.email)
-      console.log('New Tier:', updateData.subscription_tier)
-      console.log('Expires:', updateData.subscription_expires_at || 'Never')
+      console.log('Subscription status updated successfully')
     }
 
     return new Response(
@@ -407,7 +395,7 @@ async function syncSubscriptionStatus(stripe: Stripe, supabaseClient: any, user:
     )
 
   } catch (error) {
-    console.error('❌ Sync subscription status error:', error)
+    console.error('Sync subscription status error:', error)
     return new Response(
       JSON.stringify({
         error: 'Failed to sync subscription',

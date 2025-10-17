@@ -11,7 +11,7 @@
     STORE_URLS: {
       chrome: 'https://chromewebstore.google.com/detail/anchored-%E2%80%93-notes-highligh/llkmfidpbpfgdgjlohgpomdjckcfkllg',
       firefox: 'https://addons.mozilla.org/firefox/addon/anchored-notes/', // TODO: Update with actual Firefox store URL
-      edge: 'https://microsoftedge.microsoft.com/addons/detail/anchored-notes/', // TODO: Update with actual Edge store URL
+      edge: 'https://microsoftedge.microsoft.com/addons/detail/anchored-%E2%80%93-notes-highli/kkilajkoeofmdjmnendnjfdgbhmhlmaf',
       safari: null // Coming soon
     },
 
