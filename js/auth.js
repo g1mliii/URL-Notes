@@ -171,6 +171,29 @@ class Auth {
     return { email, password };
   }
 
+  // Get Turnstile captcha token
+  getTurnstileToken(widgetId) {
+    try {
+      const widget = document.getElementById(widgetId);
+      if (!widget) {
+        console.error('Turnstile widget not found:', widgetId);
+        return null;
+      }
+
+      // Get the response token from Turnstile
+      const response = window.turnstile?.getResponse?.(widget);
+      if (!response) {
+        console.error('Turnstile response not available');
+        return null;
+      }
+
+      return response;
+    } catch (error) {
+      console.error('Error getting Turnstile token:', error);
+      return null;
+    }
+  }
+
   // Handle sign in (adapted from extension settings.js)
   async handleSignIn(event) {
     event.preventDefault();
@@ -1319,10 +1342,17 @@ class Auth {
       return;
     }
 
+    // Get Turnstile token
+    const turnstileToken = this.getTurnstileToken('loginTurnstile');
+    if (!turnstileToken) {
+      this.showNotification('Please complete the captcha verification', 'error');
+      return;
+    }
+
     try {
       this.setAuthBusy(true);
 
-      await this.supabaseClient.signInWithEmail(finalEmail, finalPassword);
+      await this.supabaseClient.signInWithEmail(finalEmail, finalPassword, { captchaToken: turnstileToken });
       const user = this.supabaseClient.getCurrentUser();
 
       if (user) {
@@ -1373,10 +1403,17 @@ class Auth {
 
   // Enhanced sign up with proper redirect handling and persistent session
   async signUpWithRedirect(email, password) {
+    // Get Turnstile token
+    const turnstileToken = this.getTurnstileToken('registerTurnstile');
+    if (!turnstileToken) {
+      this.showNotification('Please complete the captcha verification', 'error');
+      return;
+    }
+
     try {
       this.setAuthBusy(true);
 
-      const signupData = await this.supabaseClient.signUpWithEmail(email, password);
+      const signupData = await this.supabaseClient.signUpWithEmail(email, password, { captchaToken: turnstileToken });
 
       // If we got an access token, user is authenticated immediately
       if (signupData && signupData.access_token) {

@@ -294,12 +294,19 @@ class SupabaseClient {
   }
 
   // Sign in with email and password
-  async signInWithEmail(email, password) {
+  async signInWithEmail(email, password, options = {}) {
     try {
+      const body = { email, password };
+
+      // Add captcha token if provided
+      if (options.captchaToken) {
+        body.gotrue_meta_security = { captcha_token: options.captchaToken };
+      }
+
       const data = await this._request(`${this.authUrl}/token?grant_type=password`, {
         method: 'POST',
         auth: false,
-        body: { email, password }
+        body
       });
       await this.handleAuthSuccess(data);
       return data;
@@ -310,12 +317,19 @@ class SupabaseClient {
   }
 
   // Sign up with email and password
-  async signUpWithEmail(email, password) {
+  async signUpWithEmail(email, password, options = {}) {
     try {
+      const body = { email, password };
+
+      // Add captcha token if provided
+      if (options.captchaToken) {
+        body.gotrue_meta_security = { captcha_token: options.captchaToken };
+      }
+
       const data = await this._request(`${this.authUrl}/signup`, {
         method: 'POST',
         auth: false,
-        body: { email, password }
+        body
       });
 
       // If we got an access token, user is authenticated immediately
