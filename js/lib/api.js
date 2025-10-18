@@ -536,11 +536,10 @@ class SupabaseClient {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
       (window.innerWidth <= 768 && 'ontouchstart' in window);
 
-    // Use long-lasting sessions like other modern websites (Gmail, GitHub, etc.)
-    const expiresIn = authData.expires_in || 3600;
-    const sessionDuration = isMobile ?
-      30 * 24 * 60 * 60 * 1000 : // 30 days for mobile
-      7 * 24 * 60 * 60 * 1000; // 7 days for desktop
+    // Use actual token expiry from Supabase (typically 1 hour)
+    // The refresh_token will keep the session alive long-term
+    const expiresIn = authData.expires_in || 3600; // seconds
+    const expiresAt = Date.now() + (expiresIn * 1000); // convert to milliseconds
 
     // Store session with enhanced metadata
     await this.setStorage({
@@ -548,7 +547,8 @@ class SupabaseClient {
         access_token: authData.access_token,
         refresh_token: authData.refresh_token,
         user: authData.user,
-        expires_at: Date.now() + sessionDuration,
+        expires_at: expiresAt,
+        expires_in: expiresIn,
         created_at: Date.now(),
         last_activity: Date.now(),
         is_mobile: isMobile

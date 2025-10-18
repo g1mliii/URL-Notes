@@ -16,11 +16,11 @@ class SubscriptionManager {
 
     if (window.api) {
       this.api = window.api;
-      
+
       // Check if user just returned from Stripe checkout
       const pendingCheckout = localStorage.getItem('pending_stripe_checkout');
       const checkoutTime = localStorage.getItem('checkout_initiated_at');
-      
+
       if (pendingCheckout === 'true' && checkoutTime) {
         const timeSinceCheckout = Date.now() - parseInt(checkoutTime);
         // If checkout was initiated within last 10 minutes, force sync
@@ -28,7 +28,7 @@ class SubscriptionManager {
           // Clear the flags
           localStorage.removeItem('pending_stripe_checkout');
           localStorage.removeItem('checkout_initiated_at');
-          
+
           // Force refresh subscription status
           await this.loadSubscriptionStatus(true);
           return;
@@ -38,7 +38,7 @@ class SubscriptionManager {
           localStorage.removeItem('checkout_initiated_at');
         }
       }
-      
+
       // Check if subscription data is already cached in app
       if (window.app?.subscriptionData) {
         this.currentSubscription = window.app.subscriptionData;
@@ -70,19 +70,19 @@ class SubscriptionManager {
       if (!forceRefresh) {
         const cachedData = localStorage.getItem('cachedSubscription');
         const cacheTime = localStorage.getItem('subscriptionCacheTime');
-        
+
         if (cachedData && cacheTime) {
           const age = Date.now() - parseInt(cacheTime);
           if (age < 5 * 60 * 1000) { // 5 minutes cache
             this.currentSubscription = JSON.parse(cachedData);
             this.updateSubscriptionUI();
             this.updateDataSourceIndicator('cached', new Date(parseInt(cacheTime)));
-            
+
             // Store in app for other modules to avoid duplicate calls
             if (window.app) {
               window.app.subscriptionData = this.currentSubscription;
             }
-            
+
             window.eventBus.emit('subscription:updated', this.currentSubscription);
             return;
           }
@@ -99,19 +99,19 @@ class SubscriptionManager {
       }
 
       this.currentSubscription = response;
-      
+
       // Update all caches atomically
       localStorage.setItem('cachedSubscription', JSON.stringify(response));
       localStorage.setItem('subscriptionCacheTime', Date.now().toString());
-      
+
       // Store in app for other modules
       if (window.app) {
         window.app.subscriptionData = response;
       }
-      
+
       this.updateSubscriptionUI();
       this.updateDataSourceIndicator('fresh', new Date());
-      
+
       // Emit to other modules
       window.eventBus.emit('subscription:updated', response);
     } catch (error) {
@@ -218,9 +218,9 @@ class SubscriptionManager {
         const remaining = usage.remainingCalls || 0;
         const limit = usage.monthlyLimit || 30;
         const used = limit - remaining;
-        
+
         aiUsageInfo.textContent = `${used}/${limit} used this month`;
-        
+
         // Add visual indicator for usage level
         const usagePercent = (used / limit) * 100;
         if (usagePercent >= 90) {
@@ -244,9 +244,9 @@ class SubscriptionManager {
         const remaining = usage.remainingCalls || 0;
         const limit = usage.monthlyLimit || 30;
         const used = limit - remaining;
-        
+
         aiUsageInfo.textContent = `${used}/${limit} used this month`;
-        
+
         // Add visual indicator for usage level
         const usagePercent = (used / limit) * 100;
         if (usagePercent >= 90) {
@@ -300,11 +300,11 @@ class SubscriptionManager {
     } catch (error) {
       // Error creating checkout session
       this.showError('Failed to start subscription process. Please try again.');
-      
+
       // Clear checkout flags since we're not going to Stripe
       localStorage.removeItem('pending_stripe_checkout');
       localStorage.removeItem('checkout_initiated_at');
-      
+
       // Reset button state
       const upgradeBtn = document.getElementById('upgradeBtn');
       if (upgradeBtn) {
@@ -342,19 +342,19 @@ class SubscriptionManager {
 
       // Redirect to Stripe Customer Portal
       window.location.href = response.url;
-      
+
       // Don't reset button state here since we're redirecting
-      
+
     } catch (error) {
       // Error creating portal session
-      
+
       // Show specific error message if it's the "no Stripe subscription" issue
       if (error.message.includes('No Stripe subscription found')) {
         this.showError('This account has premium status but no Stripe subscription. Please create a new subscription or contact support.');
       } else {
         this.showError('Failed to open subscription management. Please try again.');
       }
-      
+
       // Reset button state only on actual error
       const manageBtn = document.getElementById('manageSubscriptionBtn');
       if (manageBtn) {
@@ -371,16 +371,16 @@ class SubscriptionManager {
       errorElement = document.createElement('div');
       errorElement.id = 'subscriptionError';
       errorElement.className = 'error-message';
-      
+
       const subscriptionSection = document.querySelector('.subscription-info');
       if (subscriptionSection) {
         subscriptionSection.appendChild(errorElement);
       }
     }
-    
+
     errorElement.textContent = message;
     errorElement.style.display = 'block';
-    
+
     // Hide error after 5 seconds
     setTimeout(() => {
       errorElement.style.display = 'none';
@@ -394,16 +394,16 @@ class SubscriptionManager {
       successElement = document.createElement('div');
       successElement.id = 'subscriptionSuccess';
       successElement.className = 'success-message';
-      
+
       const subscriptionSection = document.querySelector('.subscription-info');
       if (subscriptionSection) {
         subscriptionSection.appendChild(successElement);
       }
     }
-    
+
     successElement.textContent = message;
     successElement.style.display = 'block';
-    
+
     // Hide success after 5 seconds
     setTimeout(() => {
       successElement.style.display = 'none';
@@ -415,14 +415,14 @@ class SubscriptionManager {
     if (!indicator) return;
 
     const timeStr = timestamp.toLocaleTimeString();
-    
+
     if (source === 'cached') {
       indicator.textContent = `Using cached data (last updated: ${timeStr})`;
       indicator.style.color = '#888';
     } else if (source === 'fresh') {
       indicator.textContent = `Fresh data from server (updated: ${timeStr})`;
       indicator.style.color = '#28a745';
-      
+
       // Fade back to normal color after 3 seconds
       setTimeout(() => {
         indicator.style.color = '#888';
@@ -433,17 +433,17 @@ class SubscriptionManager {
   updateSyncButtonState(lastSyncTime, cooldownMs) {
     const syncBtn = document.getElementById('syncSubscriptionBtn');
     const indicator = document.getElementById('subscriptionDataSource');
-    
+
     if (!syncBtn || !lastSyncTime) return;
 
     const now = Date.now();
     const timeSinceSync = now - lastSyncTime;
-    
+
     if (timeSinceSync < cooldownMs) {
       const remainingSeconds = Math.ceil((cooldownMs - timeSinceSync) / 1000);
       syncBtn.disabled = true;
       syncBtn.textContent = `Sync Available in ${remainingSeconds}s`;
-      
+
       // Update every second until cooldown is over
       const updateInterval = setInterval(() => {
         const currentRemaining = Math.ceil((cooldownMs - (Date.now() - lastSyncTime)) / 1000);
@@ -466,28 +466,28 @@ class SubscriptionManager {
 
     if (success === 'true') {
       this.showSuccess('Welcome to Anchored Premium! Your subscription is now active.');
-      
+
       // Reload subscription status (force refresh after checkout success)
       setTimeout(async () => {
         await this.loadSubscriptionStatus(true); // Force refresh after successful checkout
-        
+
         // Ensure the update propagates to all pages
         if (this.currentSubscription) {
           window.eventBus.emit('subscription:updated', this.currentSubscription);
-          
+
           // Update app-level cache for cross-page sharing
           if (window.app) {
             window.app.subscriptionData = this.currentSubscription;
           }
         }
       }, 2000);
-      
+
       // Clean up URL
       const cleanUrl = window.location.pathname;
       window.history.replaceState({}, document.title, cleanUrl);
     } else if (canceled === 'true') {
       this.showError('Subscription upgrade was canceled. You can try again anytime.');
-      
+
       // Clean up URL
       const cleanUrl = window.location.pathname;
       window.history.replaceState({}, document.title, cleanUrl);
@@ -499,10 +499,10 @@ class SubscriptionManager {
 document.addEventListener('DOMContentLoaded', () => {
   if (window.location.pathname.includes('/account')) {
     window.subscriptionManager = new SubscriptionManager();
-    
+
     // Handle checkout success/cancel
     window.subscriptionManager.handleCheckoutSuccess();
-    
+
     // Set up event listeners
     const upgradeBtn = document.getElementById('upgradeBtn');
     if (upgradeBtn) {
