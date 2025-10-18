@@ -1763,6 +1763,21 @@ class Auth {
   }
 }
 
+// Global Turnstile callback functions
+window.onLoginTurnstileSuccess = function() {
+  const loginBtn = document.getElementById('loginSubmitBtn');
+  if (loginBtn) {
+    loginBtn.disabled = false;
+  }
+};
+
+window.onRegisterTurnstileSuccess = function() {
+  const registerBtn = document.getElementById('registerSubmitBtn');
+  if (registerBtn) {
+    registerBtn.disabled = false;
+  }
+};
+
 // Initialize auth module when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   window.auth = new Auth();

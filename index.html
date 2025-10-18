@@ -39,7 +39,8 @@ privacy_policy_url: "https://anchored.site/privacy"
         <div class="hero-content">
             <h2 class="hero-title">Anchor Your Ideas to the Web</h2>
             <p class="hero-subtitle">
-                <span class="hero-subtitle-full">Capture and organize notes on any website with secure, encrypted cloud sync</span>
+                <span class="hero-subtitle-full">Capture and organize notes on any website with secure, encrypted cloud
+                    sync</span>
                 <span class="hero-subtitle-mobile">Take notes on any website</span>
             </p>
 
@@ -86,8 +87,9 @@ privacy_policy_url: "https://anchored.site/privacy"
                             </div>
                         </div>
                         <!-- Turnstile Captcha -->
-                        <div class="cf-turnstile" id="loginTurnstile" data-sitekey="0x4AAAAAAB7Nk4TnjM7Yn4r-"></div>
-                        <button type="submit" class="btn-primary">Sign In</button>
+                        <div class="cf-turnstile" id="loginTurnstile" data-sitekey="0x4AAAAAAB7Nk4TnjM7Yn4r-"
+                            data-callback="onLoginTurnstileSuccess"></div>
+                        <button type="submit" class="btn-primary" id="loginSubmitBtn" disabled>Sign In</button>
                     </form>
 
                     <!-- Google Sign-In -->
@@ -104,8 +106,10 @@ privacy_policy_url: "https://anchored.site/privacy"
                         <a href="#" id="showRegister">Create Account</a>
                         <a href="#" id="showForgotPassword">Forgot Password?</a>
                     </div>
-                    <div style="text-align: center; margin-top: 1rem; font-size: 0.75rem; color: var(--text-secondary);">
-                        Protected by <a href="https://www.cloudflare.com/products/turnstile/" target="_blank" style="color: var(--accent-primary); text-decoration: none;">Cloudflare Turnstile</a>
+                    <div
+                        style="text-align: center; margin-top: 1rem; font-size: 0.75rem; color: var(--text-secondary);">
+                        Protected by <a href="https://www.cloudflare.com/products/turnstile/" target="_blank"
+                            style="color: var(--accent-primary); text-decoration: none;">Cloudflare Turnstile</a>
                     </div>
                 </div>
 
@@ -141,8 +145,10 @@ privacy_policy_url: "https://anchored.site/privacy"
                                 style="color: var(--accent-primary); text-decoration: none;">Terms of Service</a>
                         </div>
                         <!-- Turnstile Captcha -->
-                        <div class="cf-turnstile" id="registerTurnstile" data-sitekey="0x4AAAAAAB7Nk4TnjM7Yn4r-"></div>
-                        <button type="submit" class="btn-primary">Create Account</button>
+                        <div class="cf-turnstile" id="registerTurnstile" data-sitekey="0x4AAAAAAB7Nk4TnjM7Yn4r-"
+                            data-callback="onRegisterTurnstileSuccess"></div>
+                        <button type="submit" class="btn-primary" id="registerSubmitBtn" disabled>Create
+                            Account</button>
                     </form>
 
                     <!-- Google Sign-In -->
@@ -158,8 +164,10 @@ privacy_policy_url: "https://anchored.site/privacy"
                     <div class="auth-links">
                         <a href="#" id="showLogin">Already have an account?</a>
                     </div>
-                    <div style="text-align: center; margin-top: 1rem; font-size: 0.75rem; color: var(--text-secondary);">
-                        Protected by <a href="https://www.cloudflare.com/products/turnstile/" target="_blank" style="color: var(--accent-primary); text-decoration: none;">Cloudflare Turnstile</a>
+                    <div
+                        style="text-align: center; margin-top: 1rem; font-size: 0.75rem; color: var(--text-secondary);">
+                        Protected by <a href="https://www.cloudflare.com/products/turnstile/" target="_blank"
+                            style="color: var(--accent-primary); text-decoration: none;">Cloudflare Turnstile</a>
                     </div>
                 </div>
 
