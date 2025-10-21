@@ -26,56 +26,43 @@ serve(async (req) => {
             apiVersion: '2023-10-16',
         })
 
-        // First, handle expired subscriptions without calling Stripe API
-        const { data: expiredProfiles, error: expiredError } = await supabaseClient
+        // Clean up old expiration dates - set to null if outside our check window
+        // This ensures old free users will be checked if they renew (null condition catches them)
+        const today = new Date()
+        const yesterday = new Date(today)
+        yesterday.setDate(yesterday.getDate() - 1)
+        const twoDaysAgo = new Date(today)
+        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+
+        console.log(`🧹 Cleaning up expiration dates older than ${twoDaysAgo.toISOString()}`)
+
+        const { data: oldExpiryProfiles, error: oldExpiryError } = await supabaseClient
             .from('profiles')
             .select('id, subscription_expires_at')
             .not('subscription_expires_at', 'is', null)
-            .lt('subscription_expires_at', new Date().toISOString())
-            .eq('subscription_tier', 'premium')
+            .lt('subscription_expires_at', twoDaysAgo.toISOString())
+            .not('stripe_customer_id', 'is', null)
 
-        if (expiredError) {
-            throw expiredError
-        }
+        let cleanedCount = 0
+        if (!oldExpiryError && oldExpiryProfiles && oldExpiryProfiles.length > 0) {
+            console.log(`🧹 Found ${oldExpiryProfiles.length} users with old expiration dates to clean`)
 
-        let expiredCount = 0
-        if (expiredProfiles.length > 0) {
-            console.log(`⏰ Found ${expiredProfiles.length} expired subscriptions to downgrade`)
-
-            // Bulk update expired users to free
-            const { error: bulkUpdateError } = await supabaseClient
+            const { error: cleanupError } = await supabaseClient
                 .from('profiles')
                 .update({
-                    subscription_tier: 'free',
+                    subscription_expires_at: null,
                     updated_at: new Date().toISOString()
                 })
-                .in('id', expiredProfiles.map(p => p.id))
+                .in('id', oldExpiryProfiles.map(p => p.id))
 
-            if (bulkUpdateError) {
-                throw bulkUpdateError
+            if (!cleanupError) {
+                cleanedCount = oldExpiryProfiles.length
+                console.log(`✅ Cleaned ${cleanedCount} old expiration dates (set to null)`)
             }
-
-            // Update AI usage limits for downgraded users (30 calls for free tier)
-            for (const profile of expiredProfiles) {
-                try {
-                    await supabaseClient.rpc('check_ai_usage', {
-                        p_user_id: profile.id,
-                        p_feature_name: 'overall'
-                    })
-                } catch (aiError) {
-                    console.error(`Error updating AI limits for user ${profile.id}:`, aiError)
-                }
-            }
-
-            expiredCount = expiredProfiles.length
-            console.log(`✅ Downgraded ${expiredCount} expired users to free with 30 AI calls/month`)
         }
 
         // Get users with Stripe customer IDs that need Stripe API checks
         // Only check users with null expiration dates OR users near their expiration date (±1 day)
-        const today = new Date()
-        const yesterday = new Date(today)
-        yesterday.setDate(yesterday.getDate() - 1)
         const tomorrow = new Date(today)
         tomorrow.setDate(tomorrow.getDate() + 1)
 
@@ -199,13 +186,53 @@ serve(async (req) => {
             }
         }
 
-        console.log(`✅ Sync complete: ${expiredCount} expired, ${updatedCount} stripe-checked, ${errorCount} errors`)
+        // After checking Stripe, handle any remaining expired subscriptions
+        const { data: expiredProfiles, error: expiredError } = await supabaseClient
+            .from('profiles')
+            .select('id, subscription_expires_at')
+            .not('subscription_expires_at', 'is', null)
+            .lt('subscription_expires_at', new Date().toISOString())
+            .eq('subscription_tier', 'premium')
+
+        let expiredCount = 0
+        if (!expiredError && expiredProfiles && expiredProfiles.length > 0) {
+            console.log(`⏰ Found ${expiredProfiles.length} expired subscriptions to downgrade`)
+
+            // Bulk update expired users to free
+            const { error: bulkUpdateError } = await supabaseClient
+                .from('profiles')
+                .update({
+                    subscription_tier: 'free',
+                    updated_at: new Date().toISOString()
+                })
+                .in('id', expiredProfiles.map(p => p.id))
+
+            if (!bulkUpdateError) {
+                // Update AI usage limits for downgraded users (30 calls for free tier)
+                for (const profile of expiredProfiles) {
+                    try {
+                        await supabaseClient.rpc('check_ai_usage', {
+                            p_user_id: profile.id,
+                            p_feature_name: 'overall'
+                        })
+                    } catch (aiError) {
+                        console.error(`Error updating AI limits for user ${profile.id}:`, aiError)
+                    }
+                }
+
+                expiredCount = expiredProfiles.length
+                console.log(`✅ Downgraded ${expiredCount} expired users to free with 30 AI calls/month`)
+            }
+        }
+
+        console.log(`✅ Sync complete: ${cleanedCount} cleaned, ${updatedCount} stripe-checked, ${expiredCount} expired, ${errorCount} errors`)
 
         return new Response(JSON.stringify({
             success: true,
             total_users_checked: profiles.length,
-            expired_users_downgraded: expiredCount,
+            old_expiry_cleaned: cleanedCount,
             stripe_api_updates: updatedCount,
+            expired_users_downgraded: expiredCount,
             error_count: errorCount,
             timestamp: new Date().toISOString()
         }), {

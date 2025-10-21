@@ -3,14 +3,14 @@
  * Detects user's browser and provides appropriate extension store links
  */
 
-(function() {
+(function () {
   'use strict';
 
   const BrowserDetection = {
     // Extension store URLs
     STORE_URLS: {
       chrome: 'https://chromewebstore.google.com/detail/anchored-%E2%80%93-notes-highligh/llkmfidpbpfgdgjlohgpomdjckcfkllg',
-      firefox: 'https://addons.mozilla.org/firefox/addon/anchored-notes/', // TODO: Update with actual Firefox store URL
+      firefox: 'https://addons.mozilla.org/en-US/firefox/addon/anchored-notes/',
       edge: 'https://microsoftedge.microsoft.com/addons/detail/anchored-%E2%80%93-notes-highli/kkilajkoeofmdjmnendnjfdgbhmhlmaf',
       safari: null // Coming soon
     },
@@ -19,7 +19,7 @@
      * Detect the user's browser
      * @returns {Object} Browser info with name and version
      */
-    detectBrowser: function() {
+    detectBrowser: function () {
       const ua = navigator.userAgent;
       const vendor = navigator.vendor || '';
 
@@ -70,7 +70,7 @@
 
       // Brave (difficult to detect, falls back to Chrome)
       // Brave doesn't have unique UA string, treat as Chrome
-      
+
       // Default fallback
       return {
         name: 'unknown',
@@ -83,7 +83,7 @@
      * Extract version number from user agent string
      * @private
      */
-    _extractVersion: function(ua, regex) {
+    _extractVersion: function (ua, regex) {
       const match = ua.match(regex);
       return match ? parseInt(match[1], 10) : null;
     },
@@ -92,25 +92,25 @@
      * Get the appropriate extension store URL for the detected browser
      * @returns {string|null} Store URL or null if not available
      */
-    getStoreUrl: function() {
+    getStoreUrl: function () {
       const browser = this.detectBrowser();
-      
+
       // Map browser to store URL
       switch (browser.name) {
         case 'chrome':
         case 'opera':
         case 'brave':
           return this.STORE_URLS.chrome; // Chrome Web Store works for Chromium browsers
-        
+
         case 'firefox':
           return this.STORE_URLS.firefox;
-        
+
         case 'edge':
           return this.STORE_URLS.edge;
-        
+
         case 'safari':
           return this.STORE_URLS.safari; // null - coming soon
-        
+
         default:
           return this.STORE_URLS.chrome; // Fallback to Chrome Web Store
       }
@@ -120,9 +120,9 @@
      * Get browser-specific messaging
      * @returns {Object} Message object with title and description
      */
-    getBrowserMessage: function() {
+    getBrowserMessage: function () {
       const browser = this.detectBrowser();
-      
+
       switch (browser.name) {
         case 'chrome':
           return {
@@ -130,35 +130,35 @@
             description: 'Install from Chrome Web Store',
             available: true
           };
-        
+
         case 'firefox':
           return {
             title: 'Get Anchored for Firefox',
             description: 'Install from Firefox Add-ons',
             available: true
           };
-        
+
         case 'edge':
           return {
             title: 'Get Anchored for Edge',
             description: 'Install from Edge Add-ons',
             available: true
           };
-        
+
         case 'safari':
           return {
             title: 'Coming Soon for Safari',
             description: 'Safari support is in development. Sign up to be notified when it\'s ready!',
             available: false
           };
-        
+
         case 'opera':
           return {
             title: 'Get Anchored for Opera',
             description: 'Install from Chrome Web Store (compatible with Opera)',
             available: true
           };
-        
+
         default:
           return {
             title: 'Get Anchored',
@@ -171,18 +171,18 @@
     /**
      * Update all extension links on the page
      */
-    updateExtensionLinks: function() {
+    updateExtensionLinks: function () {
       const storeUrl = this.getStoreUrl();
       const message = this.getBrowserMessage();
       const browser = this.detectBrowser();
 
       // Update all links with class 'chrome-store-link'
       const links = document.querySelectorAll('.chrome-store-link, .btn-primary[href*="chromewebstore"]');
-      
+
       links.forEach(link => {
         if (message.available && storeUrl) {
           link.href = storeUrl;
-          
+
           // Update button text if it's a primary button
           if (link.classList.contains('btn-primary')) {
             const textNode = Array.from(link.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
@@ -195,16 +195,16 @@
           link.href = '#';
           link.style.cursor = 'not-allowed';
           link.style.opacity = '0.6';
-          
+
           if (link.classList.contains('btn-primary')) {
             const textNode = Array.from(link.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
             if (textNode) {
               textNode.textContent = message.title;
             }
           }
-          
+
           // Add click handler to show message
-          link.addEventListener('click', function(e) {
+          link.addEventListener('click', function (e) {
             e.preventDefault();
             alert(message.description);
           });
@@ -215,10 +215,10 @@
       const ctaDescription = document.querySelector('.chrome-store-cta p');
       if (ctaDescription && message.available) {
         const browserName = browser.displayName;
-        const storeName = browser.name === 'firefox' ? 'Firefox Add-ons' : 
-                         browser.name === 'edge' ? 'Edge Add-ons' : 
-                         'Chrome Web Store';
-        
+        const storeName = browser.name === 'firefox' ? 'Firefox Add-ons' :
+          browser.name === 'edge' ? 'Edge Add-ons' :
+            'Chrome Web Store';
+
         ctaDescription.innerHTML = `Available now on ${storeName} • This web app is for premium sync only`;
       }
 
@@ -231,7 +231,7 @@
     /**
      * Initialize browser detection on page load
      */
-    init: function() {
+    init: function () {
       // Wait for DOM to be ready
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => this.updateExtensionLinks());
