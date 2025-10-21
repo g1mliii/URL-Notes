@@ -6,10 +6,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "anchored@anchored.site",
-      "strict_min_version": "109.0",
-      "data_collection_permissions": {
-        "required": []
-      }
+      "strict_min_version": "109.0"
     }
   },
   "permissions": [
@@ -39,7 +36,10 @@
     }
   },
   "background": {
-    "scripts": ["lib/browser-api.js", "background/background.js"],
+    "scripts": [
+      "lib/browser-api.js",
+      "background/background.js"
+    ],
     "persistent": false
   },
   "commands": {

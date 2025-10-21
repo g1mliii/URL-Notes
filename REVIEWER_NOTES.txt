@@ -1,0 +1,57 @@
+REVIEWER NOTES FOR ANCHORED FIREFOX EXTENSION
+==============================================
+
+BUILD PROCESS
+-------------
+This extension requires NO BUILD PROCESS. All source files are included as-is.
+
+THIRD-PARTY LIBRARIES
+---------------------
+Only one minified library is used:
+- DOMPurify 3.0.5 (lib/dompurify.min.js)
+  Source: https://github.com/cure53/DOMPurify/releases/tag/3.0.5
+  Purpose: XSS prevention and HTML sanitization
+  License: Apache 2.0 / MPL 2.0
+
+SECURITY - innerHTML USAGE
+--------------------------
+All dynamic HTML content is sanitized using DOMPurify before insertion.
+Security layers:
+- DOMPurify library (lib/dompurify.min.js)
+- XSS Prevention wrapper (lib/xss-prevention.js)
+- Safe DOM utilities (lib/safe-dom.js)
+
+The innerHTML warnings in validation are expected and safe - all user content
+is sanitized before rendering to prevent XSS attacks.
+
+TESTING INSTRUCTIONS
+--------------------
+1. Extract firefox-source.zip
+2. Load as temporary add-on in Firefox (about:debugging)
+3. Or run: web-ext run --source-dir extension-firefox
+
+No compilation or build steps required.
+
+PERMISSIONS JUSTIFICATION
+-------------------------
+- storage: Store user notes locally
+- activeTab: Access current page URL for note context
+- tabs: Detect page navigation for note display
+- alarms: Schedule periodic cloud sync (premium feature)
+- contextMenus: Right-click menu for quick note creation
+- identity: OAuth authentication (Google Sign-In)
+- notifications: Sync status notifications
+- <all_urls>: Content script for text highlighting feature
+
+PRIVACY
+-------
+- All notes stored locally first (IndexedDB)
+- Cloud sync is optional (premium feature only)
+- All cloud data is encrypted client-side before upload
+- Zero-knowledge architecture - server cannot read user notes
+
+CONTACT
+-------
+Developer: Anchored Team
+Email: support@anchored.site
+Website: https://anchored.site
