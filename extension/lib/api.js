@@ -411,7 +411,8 @@ class SupabaseClient {
   // Refresh session using refresh_token
   async refreshSession() {
     try {
-      const { supabase_session } = await chrome.storage.local.get(['supabase_session']);
+      const storage = typeof browser !== 'undefined' ? browser.storage.local : chrome.storage.local;
+      const { supabase_session } = await storage.get(['supabase_session']);
       const refreshToken = supabase_session?.refresh_token;
       // Attempting to refresh session
 
@@ -419,6 +420,8 @@ class SupabaseClient {
         console.error('No refresh token available for session refresh - user will need to re-authenticate');
         // Clear the invalid session and force re-authentication
         await this.signOut();
+        // Set a flag to show re-login prompt
+        await storage.set({ needsReauth: true });
         throw new Error('No refresh token available - please sign in again');
       }
 
@@ -443,6 +446,9 @@ class SupabaseClient {
         if (response.status === 400 || response.status === 401) {
           console.log('Refresh token invalid, clearing session');
           await this.signOut();
+          // Set a flag to show re-login prompt
+          const storage = typeof browser !== 'undefined' ? browser.storage.local : chrome.storage.local;
+          await storage.set({ needsReauth: true });
         }
 
         throw new Error(detail);

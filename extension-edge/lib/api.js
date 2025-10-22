@@ -419,6 +419,9 @@ class SupabaseClient {
         console.error('No refresh token available for session refresh - user will need to re-authenticate');
         // Clear the invalid session and force re-authentication
         await this.signOut();
+        // Set a flag to show re-login prompt
+        const storage = typeof browser !== 'undefined' ? browser.storage.local : chrome.storage.local;
+        await storage.set({ needsReauth: true });
         throw new Error('No refresh token available - please sign in again');
       }
 
@@ -443,6 +446,9 @@ class SupabaseClient {
         if (response.status === 400 || response.status === 401) {
           console.log('Refresh token invalid, clearing session');
           await this.signOut();
+          // Set a flag to show re-login prompt
+          const storage = typeof browser !== 'undefined' ? browser.storage.local : chrome.storage.local;
+          await storage.set({ needsReauth: true });
         }
 
         throw new Error(detail);

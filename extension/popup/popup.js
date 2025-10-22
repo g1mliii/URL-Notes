@@ -318,6 +318,9 @@ class URLNotesApp {
       console.warn('Supabase init failed:', e);
     }
 
+    // Check if user needs to re-authenticate (expired session)
+    await this.checkReauthRequired();
+
     // Initialize sync engine for timer-based sync
     try {
       if (window.syncEngine && typeof window.syncEngine.init === 'function') {
@@ -987,6 +990,24 @@ class URLNotesApp {
       }
     } catch (error) {
       console.error('Error checking OAuth completion:', error);
+    }
+  }
+
+  // Check if user needs to re-authenticate due to expired session
+  async checkReauthRequired() {
+    try {
+      const storage = typeof browser !== 'undefined' ? browser.storage.local : chrome.storage.local;
+      const { needsReauth } = await storage.get(['needsReauth']);
+
+      if (needsReauth) {
+        // Clear the flag
+        await storage.remove(['needsReauth']);
+
+        // Show notification to user
+        this.showNotification('Authentication expired. Go to Settings to sign in again.', 'warning');
+      }
+    } catch (error) {
+      console.error('Error checking reauth requirement:', error);
     }
   }
 
