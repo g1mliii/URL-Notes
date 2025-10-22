@@ -16,6 +16,23 @@
     },
 
     /**
+     * Check if user is on mobile device
+     * @returns {boolean} True if mobile device
+     */
+    isMobile: function () {
+      const ua = navigator.userAgent;
+      
+      // Check for mobile keywords in user agent
+      const mobileKeywords = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i;
+      
+      // Also check for touch-only devices with small screens
+      const isTouchDevice = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+      const isSmallScreen = window.innerWidth <= 768;
+      
+      return mobileKeywords.test(ua) || (isTouchDevice && isSmallScreen);
+    },
+
+    /**
      * Detect the user's browser
      * @returns {Object} Browser info with name and version
      */
@@ -23,12 +40,23 @@
       const ua = navigator.userAgent;
       const vendor = navigator.vendor || '';
 
+      // Check if mobile first
+      if (this.isMobile()) {
+        return {
+          name: 'mobile',
+          displayName: 'Mobile Browser',
+          version: null,
+          isMobile: true
+        };
+      }
+
       // Edge (Chromium-based) - Must check before Chrome
       if (ua.indexOf('Edg/') > -1 || ua.indexOf('Edge/') > -1) {
         return {
           name: 'edge',
           displayName: 'Microsoft Edge',
-          version: this._extractVersion(ua, /Edg\/(\d+)/)
+          version: this._extractVersion(ua, /Edg\/(\d+)/),
+          isMobile: false
         };
       }
 
@@ -37,7 +65,8 @@
         return {
           name: 'firefox',
           displayName: 'Firefox',
-          version: this._extractVersion(ua, /Firefox\/(\d+)/)
+          version: this._extractVersion(ua, /Firefox\/(\d+)/),
+          isMobile: false
         };
       }
 
@@ -46,7 +75,8 @@
         return {
           name: 'safari',
           displayName: 'Safari',
-          version: this._extractVersion(ua, /Version\/(\d+)/)
+          version: this._extractVersion(ua, /Version\/(\d+)/),
+          isMobile: false
         };
       }
 
@@ -55,7 +85,8 @@
         return {
           name: 'chrome',
           displayName: 'Chrome',
-          version: this._extractVersion(ua, /Chrome\/(\d+)/)
+          version: this._extractVersion(ua, /Chrome\/(\d+)/),
+          isMobile: false
         };
       }
 
@@ -64,7 +95,8 @@
         return {
           name: 'opera',
           displayName: 'Opera',
-          version: this._extractVersion(ua, /OPR\/(\d+)/)
+          version: this._extractVersion(ua, /OPR\/(\d+)/),
+          isMobile: false
         };
       }
 
@@ -75,7 +107,8 @@
       return {
         name: 'unknown',
         displayName: 'Unknown Browser',
-        version: null
+        version: null,
+        isMobile: false
       };
     },
 
@@ -122,6 +155,15 @@
      */
     getBrowserMessage: function () {
       const browser = this.detectBrowser();
+
+      // Mobile devices - extension not available
+      if (browser.isMobile) {
+        return {
+          title: 'Desktop Only',
+          description: 'Browser extensions are not available on mobile devices. Please visit this page on a desktop browser (Chrome, Firefox, or Edge) to install Anchored.',
+          available: false
+        };
+      }
 
       switch (browser.name) {
         case 'chrome':
@@ -191,7 +233,7 @@
             }
           }
         } else {
-          // Safari - disable link and show coming soon message
+          // Mobile or Safari - disable link and show message
           link.href = '#';
           link.style.cursor = 'not-allowed';
           link.style.opacity = '0.6';
@@ -213,13 +255,18 @@
 
       // Update the description text below the CTA button
       const ctaDescription = document.querySelector('.chrome-store-cta p');
-      if (ctaDescription && message.available) {
-        const browserName = browser.displayName;
-        const storeName = browser.name === 'firefox' ? 'Firefox Add-ons' :
-          browser.name === 'edge' ? 'Edge Add-ons' :
-            'Chrome Web Store';
+      if (ctaDescription) {
+        if (browser.isMobile) {
+          ctaDescription.innerHTML = `<strong>Not available on mobile</strong> • Please use a desktop browser to install the extension`;
+          ctaDescription.style.color = 'var(--accent-primary)';
+        } else if (message.available) {
+          const browserName = browser.displayName;
+          const storeName = browser.name === 'firefox' ? 'Firefox Add-ons' :
+            browser.name === 'edge' ? 'Edge Add-ons' :
+              'Chrome Web Store';
 
-        ctaDescription.innerHTML = `Available now on ${storeName} • This web app is for premium sync only`;
+          ctaDescription.innerHTML = `Available now on ${storeName} • This web app is for premium sync only`;
+        }
       }
 
       // Log detection for debugging
