@@ -499,7 +499,7 @@ class SyncEngine {
   async manualSync() {
 
     if (!(await this.canSync())) {
-      this.showSyncError('Premium required');
+      this.showSyncError('Upgrade to sync across devices');
       return;
     }
 

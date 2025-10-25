@@ -767,13 +767,14 @@ class URLNotesApp {
     }
 
     // Initialize ad manager for free users
-    try {
-      if (window.adManager && typeof window.adManager.init === 'function') {
-        await window.adManager.init();
-      }
-    } catch (error) {
-      console.warn('Failed to initialize ad manager:', error);
-    }
+    // TEMPORARILY DISABLED during growth phase - focus on user experience
+    // try {
+    //   if (window.adManager && typeof window.adManager.init === 'function') {
+    //     await window.adManager.init();
+    //   }
+    // } catch (error) {
+    //   console.warn('Failed to initialize ad manager:', error);
+    // }
 
     // Initialize onboarding tooltips for new users
     try {
@@ -1029,7 +1030,7 @@ class URLNotesApp {
       Utils.showToast('Note saved from context menu', 'success');
     } catch (error) {
       console.error('Failed to handle context menu note:', error);
-      Utils.showToast('Failed to save note from context menu', 'error');
+      Utils.showToast('Failed to save note', 'error');
     }
   }
 
@@ -1071,7 +1072,7 @@ class URLNotesApp {
       }
     } catch (error) {
       console.error('Failed to handle multi-highlight note update:', error);
-      Utils.showToast('Failed to update note with highlights', 'error');
+      Utils.showToast('Failed to add highlights', 'error');
     }
   }
 
@@ -1141,11 +1142,11 @@ class URLNotesApp {
 
           // Provide more specific error messages
           if (injectError.message.includes('Cannot access')) {
-            Utils.showToast('Cannot access this page. Try refreshing or check if it\'s a special page (like chrome:// URLs).', 'error');
+            Utils.showToast('Cannot access this page - Try refreshing or use a regular webpage', 'error');
           } else if (injectError.message.includes('Scripting API not available')) {
-            Utils.showToast('Extension permissions issue. Please check extension permissions.', 'error');
+            Utils.showToast('Extension permissions issue - Check extension settings', 'error');
           } else {
-            Utils.showToast('Failed to load multi-highlight feature. Please refresh the page and try again.', 'error');
+            Utils.showToast('Failed to load multi-highlight - Refresh the page and try again', 'error');
           }
           return;
         }
@@ -1168,7 +1169,7 @@ class URLNotesApp {
         }
 
         // Show notification
-        Utils.showToast('Multi-highlight mode enabled! Select text to highlight.', 'success');
+        Utils.showToast('Multi-highlight enabled - Select text on the page to highlight', 'success');
 
         // Close popup to let user interact with the webpage
         setTimeout(() => {
@@ -1188,11 +1189,11 @@ class URLNotesApp {
       console.error('Failed to toggle multi-highlight mode:', error);
 
       if (error.message === 'Message timeout') {
-        Utils.showToast('Multi-highlight feature is not responding. Please refresh the page and try again.', 'error');
+        Utils.showToast('Multi-highlight not responding - Refresh the page and try again', 'error');
       } else if (error.message.includes('Could not establish connection')) {
-        Utils.showToast('Multi-highlight feature not available on this page. Please refresh and try again.', 'error');
+        Utils.showToast('Multi-highlight not available on this page - Refresh and try again', 'error');
       } else {
-        Utils.showToast('Failed to toggle multi-highlight mode. Make sure you\'re on a webpage.', 'error');
+        Utils.showToast('Failed to toggle multi-highlight - Make sure you\'re on a webpage', 'error');
       }
     }
   }
@@ -2903,7 +2904,7 @@ class URLNotesApp {
       switchFilterAfterSave: false // Keep current filter instead of switching to page
     };
     if (!this.currentNote) {
-      Utils.showToast('No note open to save', 'info');
+      Utils.showToast('No note to save', 'info');
       return;
     }
 
@@ -3615,7 +3616,7 @@ class URLNotesApp {
   async aiRewrite() {
     // Check if we have a current note (including drafts)
     if (!this.currentNote) {
-      Utils.showToast('Please open a note to use AI Rewrite.', 'info');
+      Utils.showToast('Open or create a note to use AI Rewrite', 'info');
       return;
     }
 
@@ -3635,13 +3636,13 @@ class URLNotesApp {
       this.currentNote?.title;
 
     if (!hasContent) {
-      Utils.showToast('Please add some content to your note before using AI Rewrite.', 'info');
+      Utils.showToast('Add some content to your note first to use AI Rewrite', 'info');
       return;
     }
 
     // Check if user is authenticated (required for usage tracking)
     if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
-      Utils.showToast('Please create an account to use AI Rewrite. Free users get 30 rewrites/month!', 'info');
+      Utils.showToast('Sign in to use AI Rewrite - Free users get 30 rewrites per month!', 'info');
       // Optionally open settings to guide them to sign up
       setTimeout(() => {
         this.showSettings();
@@ -3654,7 +3655,7 @@ class URLNotesApp {
     if (!isPremium) {
       const currentUsage = await this.getCurrentAIUsage();
       if (currentUsage && currentUsage.remainingCalls <= 0) {
-        Utils.showToast('Monthly AI limit reached. Upgrade to Premium for more rewrites!', 'warning');
+        Utils.showToast('You\'ve used all 30 free AI rewrites this month! Upgrade for unlimited access', 'info');
         return;
       }
     }
@@ -3978,7 +3979,7 @@ class URLNotesApp {
       // Show remaining calls info
       if (data.remainingCalls !== undefined) {
         const remainingText = data.remainingCalls === 1 ? '1 call' : `${data.remainingCalls} calls`;
-        Utils.showToast(`AI rewrite successful! ${remainingText} remaining this month.`, 'success');
+        Utils.showToast(`AI rewrite complete! ${remainingText} left this month`, 'success');
       }
 
       // Store generated tags for later use
@@ -4517,13 +4518,13 @@ class URLNotesApp {
     const combinedContent = `${title} ${content}`.trim();
 
     if (!combinedContent) {
-      Utils.showToast('Please add some content to your note before using AI Rewrite.', 'info');
+      Utils.showToast('Add some content to your note first to use AI Rewrite', 'info');
       return;
     }
 
     // Check if user is authenticated (same pattern as AI summary)
     if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
-      Utils.showToast('Please create an account to use AI Rewrite. Free users get 30 rewrites/month!', 'info');
+      Utils.showToast('Sign in to use AI Rewrite - Free users get 30 rewrites per month!', 'info');
       return;
     }
 

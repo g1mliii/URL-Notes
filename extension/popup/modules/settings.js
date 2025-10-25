@@ -173,7 +173,7 @@ class SettingsManager {
   async handleSignIn() {
     const { email, password } = this.getAuthInputs();
     if (!email || !password) {
-      return this.showNotification('Enter email and password', 'error');
+      return this.showNotification('Please enter your email and password', 'error');
     }
     try {
       this.setAuthBusy(true);
@@ -190,7 +190,7 @@ class SettingsManager {
     try {
       this.setAuthBusy(true);
       await window.supabaseClient.signOut();
-      this.showNotification('Signed out', 'success');
+      this.showNotification('Successfully signed out', 'success');
       this.updateAuthUI();
     } catch (e) {
       this.showNotification(`Sign out failed: ${e.message || e}`, 'error');
@@ -285,7 +285,7 @@ class SettingsManager {
 
   async handleRefreshPremiumStatus() {
     if (!window.supabaseClient?.isAuthenticated()) {
-      this.showNotification('Please sign in first', 'error');
+      this.showNotification('Please sign in to refresh your status', 'info');
       return;
     }
 
@@ -312,7 +312,7 @@ class SettingsManager {
       } else if (status?.tier === 'premium' && !status?.active) {
         this.showNotification('Premium inactive - check expiration', 'warning');
       } else {
-        this.showNotification(`Status refreshed - ${status?.tier || 'free'} tier active`, 'info');
+        this.showNotification(`You're on the ${status?.tier || 'free'} plan`, 'info');
       }
 
       // Reset button
