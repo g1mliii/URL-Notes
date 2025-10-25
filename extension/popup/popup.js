@@ -2654,8 +2654,74 @@ class URLNotesApp {
     }
   }
 
+  // Check if user can create a new note (note limit for free users)
+  async checkNoteLimitBeforeCreate() {
+    const FREE_NOTE_LIMIT = 50;
+
+    // Check if user is premium
+    const isPremium = this.premiumStatus?.isPremium || false;
+
+    // Premium users have no limit
+    if (isPremium) {
+      return true;
+    }
+
+    // Count current notes (use allNotes which is already loaded)
+    const currentNoteCount = this.allNotes ? this.allNotes.length : 0;
+
+    // Check if user has reached the limit
+    if (currentNoteCount >= FREE_NOTE_LIMIT) {
+      // Show upgrade prompt
+      this.showNoteLimitUpgradePrompt(currentNoteCount, FREE_NOTE_LIMIT);
+      return false;
+    }
+
+    // Show warning when approaching limit (at 45 notes)
+    if (currentNoteCount === 45) {
+      Utils.showToast(`You have ${FREE_NOTE_LIMIT - currentNoteCount} notes left on the free plan`, 'warning');
+    }
+
+    return true;
+  }
+
+  // Show upgrade prompt when note limit is reached
+  showNoteLimitUpgradePrompt(currentCount, limit) {
+    // Sanitize limit to ensure it's a safe number
+    const safeLimit = parseInt(limit) || 50;
+
+    // Use the dialog system for a more prominent message
+    if (this.dialog) {
+      // Create XSS-safe message using textContent (the dialog uses textContent internally)
+      const safeMessage = `📝 Note Limit Reached\n\nYou've reached the free plan limit of ${safeLimit} notes. Upgrade to Premium for unlimited notes, cloud sync, and more!`;
+
+      this.dialog.show(safeMessage).then((confirmed) => {
+        if (confirmed) {
+          // Open settings to show upgrade options
+          this.settingsManager.openSettings();
+          // Show a helpful message
+          setTimeout(() => {
+            Utils.showToast('Sign in and upgrade to Premium for unlimited notes', 'info');
+          }, 500);
+        }
+      });
+    } else {
+      // Fallback to toast if dialog not available (Utils.showToast is XSS safe)
+      Utils.showToast(`Note limit reached (${safeLimit} max). Upgrade to Premium for unlimited notes!`, 'warning');
+      // Open settings after a delay
+      setTimeout(() => {
+        this.settingsManager.openSettings();
+      }, 2000);
+    }
+  }
+
   // Create a new note (hybrid - always save both domain and URL)
   async createNewNote() {
+    // Check note limit before creating new note
+    const canCreate = await this.checkNoteLimitBeforeCreate();
+    if (!canCreate) {
+      return; // User hit the limit, prompt was shown
+    }
+
     this.isJotMode = false;
 
     // Clear current note and any existing drafts to prevent contamination

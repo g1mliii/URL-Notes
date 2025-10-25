@@ -116,7 +116,22 @@ class NotesManager {
     // Show counter inline with notes title
     if (notesCount) {
       notesCount.style.display = 'inline';
-      notesCount.textContent = `(${filteredNotes.length})`;
+
+      // Show note limit for free users
+      const isPremium = app.premiumStatus?.isPremium || false;
+      const FREE_NOTE_LIMIT = 50;
+
+      if (!isPremium && app.allNotes && app.allNotes.length >= FREE_NOTE_LIMIT * 0.8) {
+        // Show limit warning when at 80% (40 notes)
+        const remaining = FREE_NOTE_LIMIT - app.allNotes.length;
+        notesCount.textContent = `(${filteredNotes.length}/${FREE_NOTE_LIMIT})`;
+        notesCount.style.color = remaining <= 5 ? 'var(--error-color, #ef4444)' : 'var(--warning-color, #f59e0b)';
+        notesCount.title = `${remaining} notes remaining on free plan`;
+      } else {
+        notesCount.textContent = `(${filteredNotes.length})`;
+        notesCount.style.color = '';
+        notesCount.title = '';
+      }
     }
 
     // Don't clear again - already cleared at the beginning

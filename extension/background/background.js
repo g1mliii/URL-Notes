@@ -159,6 +159,42 @@ function setupContextMenus() {
 // Remove the immediate call that causes logs on startup
 // setupContextMenus();
 
+// Check if user can create a new note (note limit for free users)
+async function checkNoteLimitBeforeCreate() {
+  const FREE_NOTE_LIMIT = 50;
+
+  try {
+    // Check if user is premium
+    const { supabase_session, userTier } = await chrome.storage.local.get(['supabase_session', 'userTier']);
+    const isPremium = userTier && userTier !== 'free';
+    
+    // Premium users have no limit
+    if (isPremium) {
+      return true;
+    }
+
+    // Count current notes from chrome.storage.local
+    const allData = await chrome.storage.local.get(null);
+    let noteCount = 0;
+
+    for (const [key, value] of Object.entries(allData)) {
+      if (key.startsWith('note_') && value && !value.is_deleted) {
+        noteCount++;
+      }
+    }
+
+    // Check if user has reached the limit
+    if (noteCount >= FREE_NOTE_LIMIT) {
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    // If check fails, allow creation (fail open)
+    return true;
+  }
+}
+
 // Function to handle adding selected text to a new note
 async function addSelectionToNewNote(info, tab) {
   const { selectionText, pageUrl } = info;
@@ -171,6 +207,22 @@ async function addSelectionToNewNote(info, tab) {
 
   const domain = new URL(pageUrl).hostname;
   if (!domain || domain === 'localhost') {
+    return;
+  }
+
+  // Check note limit before creating new note
+  const canCreate = await checkNoteLimitBeforeCreate();
+  if (!canCreate) {
+    // Show notification to user
+    chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'assets/icons/icon128x128.png',
+      title: 'Note Limit Reached',
+      message: 'You\'ve reached the 50 note limit on the free plan. Upgrade to Premium for unlimited notes!',
+      priority: 2
+    });
+    // Open extension to show upgrade options
+    openExtensionUi();
     return;
   }
 
@@ -858,6 +910,22 @@ async function addHighlightsToNote(pageInfo, highlights, tab) {
   }
 
   // If we couldn't append to existing note, create a new one
+
+  // Check note limit before creating new note
+  const canCreate = await checkNoteLimitBeforeCreate();
+  if (!canCreate) {
+    // Show notification to user
+    chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'assets/icons/icon128x128.png',
+      title: 'Note Limit Reached',
+      message: 'You\'ve reached the 50 note limit on the free plan. Upgrade to Premium for unlimited notes!',
+      priority: 2
+    });
+    // Open extension to show upgrade options
+    openExtensionUi();
+    return;
+  }
 
   const newNote = {
     id: crypto.randomUUID ? crypto.randomUUID() : `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
