@@ -30,9 +30,9 @@
             </svg>
           </div>
           <div class="site-details">
-            <div class="site-domain" id="siteDomain">Loading...</div>
-            <div class="site-url" id="siteUrl">Loading...</div>
-            <div class="sync-status" id="syncStatus"
+            <div class="site-domain" id="siteDomain" aria-live="polite" lang="en">Loading...</div>
+            <div class="site-url" id="siteUrl" aria-live="polite" lang="en">Loading...</div>
+            <div class="sync-status" id="syncStatus" lang="en"
               style="display: none; font-size: 11px; opacity: 0.7; margin-top: 2px;"></div>
           </div>
         </div>
@@ -52,8 +52,9 @@
               <path d="M21 12v7a2 2 0 0 1 -2 2H5a2 2 0 0 1 -2 -2V5a2 2 0 0 1 2 -2h11" />
             </svg>
           </button>
-          <button class="icon-btn settings-btn" id="settingsBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="icon-btn settings-btn" id="settingsBtn" title="Settings" aria-label="Open settings">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
               <path
                 d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z">
               </path>
@@ -87,9 +88,12 @@
           <circle cx="11" cy="11" r="8"></circle>
           <path d="m21 21-4.35-4.35"></path>
         </svg>
-        <input type="text" class="search-input" placeholder="Search notes..." id="searchInput">
-        <button class="search-clear" id="searchClear" style="display: none;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <input type="text" class="search-input" placeholder="Search notes..." id="searchInput"
+          aria-label="Search notes">
+        <button class="search-clear" id="searchClear" style="display: none;" aria-label="Clear search"
+          title="Clear search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
@@ -99,15 +103,19 @@
       <!-- Page Filter moved here -->
       <div class="filter-container">
         <div class="filter-wrapper">
-          <button class="filter-option filter-btn" id="showPageBtn" data-filter="page">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="filter-option filter-btn" id="showPageBtn" data-filter="page"
+            aria-label="Show notes for this page only">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
               <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
             </svg>
             <span>This Page</span>
           </button>
-          <button class="filter-option active filter-btn" id="showAllBtn" data-filter="site">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="filter-option active filter-btn" id="showAllBtn" data-filter="site"
+            aria-label="Show notes for this site">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
               <circle cx="12" cy="12" r="10"></circle>
               <path d="m4.93 4.93 4.24 4.24"></path>
               <path d="m14.83 9.17 4.24-4.24"></path>
@@ -116,8 +124,10 @@
             </svg>
             <span>This Site</span>
           </button>
-          <button class="filter-option filter-btn" id="showAllNotesBtn" data-filter="all_notes">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="filter-option filter-btn" id="showAllNotesBtn" data-filter="all_notes"
+            aria-label="Show all notes from all sites">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
               <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
               <polyline points="2 17 12 22 22 17"></polyline>
               <polyline points="2 12 12 17 22 12"></polyline>
@@ -135,13 +145,16 @@
             style="display: none;">(0)</span></h3>
         <div class="notes-actions">
           <div class="ai-dropdown-container">
-            <button class="icon-btn ai-summary-btn ai-dropdown-trigger" id="aiSummaryBtn" title="Summarize Site Notes">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button class="icon-btn ai-summary-btn ai-dropdown-trigger" id="aiSummaryBtn" title="Summarize Site Notes"
+              aria-label="Summarize site notes with AI">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                aria-hidden="true">
                 <path d="M3 3v18h18"></path>
                 <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
               </svg>
               <div class="dropdown-indicator">
-                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  aria-hidden="true">
                   <polyline points="6,9 12,15 18,9"></polyline>
                 </svg>
               </div>
@@ -150,8 +163,9 @@
 
           </div>
 
-          <button class="add-note-btn" id="addNoteBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="add-note-btn" id="addNoteBtn" aria-label="Create new note">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
@@ -160,7 +174,7 @@
         </div>
       </div>
 
-      <div class="notes-list" id="notesList">
+      <div class="notes-list" id="notesList" lang="en">
         <!-- Notes will be dynamically inserted here -->
         <!-- Note template - will be replaced by JS -->
       </div>
@@ -171,12 +185,14 @@
     <!-- Note Editor (Hidden by default) -->
     <div class="note-editor" id="noteEditor" style="display: none;">
       <div class="editor-header">
-        <button class="back-btn" id="backBtn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button class="back-btn" id="backBtn" aria-label="Back to notes list" title="Back">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            aria-hidden="true">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
         </button>
-        <input type="text" class="note-title-header" placeholder="Note title..." id="noteTitleHeader">
+        <input type="text" class="note-title-header" placeholder="Note title..." id="noteTitleHeader"
+          aria-label="Note title">
         <div class="editor-actions">
           <div class="ai-dropdown-container">
             <button class="icon-btn ai-rewrite-btn ai-dropdown-trigger" id="aiRewriteBtn" title="Rewrite with AI">
@@ -249,22 +265,25 @@
             </div>
           </div>
 
-          <button class="icon-btn export-btn" id="exportNoteBtn" title="Export Note">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="icon-btn export-btn" id="exportNoteBtn" title="Export Note" aria-label="Export note">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="17 8 12 3 7 8"></polyline>
               <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
           </button>
 
-          <button class="icon-btn delete-btn" id="deleteNoteBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="icon-btn delete-btn" id="deleteNoteBtn" title="Delete note" aria-label="Delete note">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
               <polyline points="3 6 5 6 21 6"></polyline>
               <path d="m19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
             </svg>
           </button>
-          <button class="save-btn" id="saveNoteBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="save-btn" id="saveNoteBtn" aria-label="Save note">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
               <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
               <polyline points="17,21 17,13 7,13 7,21"></polyline>
               <polyline points="7,3 7,8 15,8"></polyline>
@@ -350,18 +369,19 @@
 
       <div class="editor-content">
         <div id="noteContentInput" class="note-content-input" contenteditable="true"
-          aria-label="Note content (rich text)"></div>
-        <div class="note-content-preview" id="noteContentPreview" aria-live="polite" style="display:none;">
+          aria-label="Note content (rich text)" lang="en"></div>
+        <div class="note-content-preview" id="noteContentPreview" aria-live="polite" style="display:none;" lang="en">
           <!-- Preview hidden: editor is now rich text -->
         </div>
 
         <div class="note-meta">
           <div class="note-tags">
-            <input type="text" class="tags-input" placeholder="Add tags (comma separated)" id="tagsInput">
+            <input type="text" class="tags-input" placeholder="Add tags (comma separated)" id="tagsInput"
+              aria-label="Note tags" lang="en">
           </div>
           <div class="note-info">
-            <span class="note-date" id="noteDate"></span>
-            <span class="note-chars" id="noteChars">0 characters</span>
+            <span class="note-date" id="noteDate" lang="en"></span>
+            <span class="note-chars" id="noteChars" lang="en">0 characters</span>
           </div>
         </div>
       </div>
@@ -406,7 +426,7 @@
         </div>
         <div class="rewrite-preview" id="rewritePreview" style="display: none;">
           <h4>Preview:</h4>
-          <div class="preview-content" id="previewContent"></div>
+          <div class="preview-content" id="previewContent" lang="en"></div>
           <div class="preview-actions">
             <button class="btn-secondary" id="tryAnotherStyleBtn">Try Another Style</button>
             <button class="btn-primary" id="applyRewriteBtn">Apply Rewrite</button>
@@ -414,7 +434,7 @@
         </div>
         <div class="rewrite-loading" id="rewriteLoading" style="display: none;">
           <div class="loading-spinner"></div>
-          <p>AI is rewriting your note...</p>
+          <p lang="en">AI is rewriting your note...</p>
         </div>
       </div>
     </div>
@@ -460,15 +480,18 @@
     <!-- Settings Panel (Hidden by default) -->
     <div class="settings-panel" id="settingsPanel" style="display: none;">
       <div class="editor-header">
-        <button class="back-btn" id="settingsBackBtn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button class="back-btn" id="settingsBackBtn" aria-label="Back to notes list" title="Back">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            aria-hidden="true">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
         </button>
         <h3 class="settings-title">Settings</h3>
         <div class="editor-actions">
-          <button class="icon-btn website-link-btn" id="websiteLinkBtn" title="Open Anchored Website">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="icon-btn website-link-btn" id="websiteLinkBtn" title="Open Anchored Website"
+            aria-label="Open Anchored website">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
               <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
             </svg>
@@ -800,6 +823,47 @@
 
   <!-- Unified Toast Notification -->
   <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
+  <!-- Export Selection Dialog -->
+  <div class="export-selection-dialog" id="exportSelectionDialog">
+    <div class="export-selection-content">
+      <div class="export-selection-header">
+        <h3>Select Notes to Export</h3>
+        <button class="export-selection-close" id="exportSelectionClose" aria-label="Close export selection">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="export-selection-body" id="exportSelectionBody">
+        <div class="export-stats">
+          <div class="export-stat">
+            <div class="export-stat-value" id="exportSelectedDomains">0</div>
+            <div class="export-stat-label">Domains</div>
+          </div>
+          <div class="export-stat">
+            <div class="export-stat-value" id="exportSelectedNotes">0</div>
+            <div class="export-stat-label">Notes</div>
+          </div>
+        </div>
+
+        <div class="export-select-all">
+          <input type="checkbox" id="exportSelectAllCheckbox" checked>
+          <label for="exportSelectAllCheckbox">Select All</label>
+        </div>
+
+        <div id="exportDomainsList"></div>
+      </div>
+
+      <div class="export-selection-footer">
+        <button class="export-cancel-btn" id="exportSelectionCancel">Cancel</button>
+        <button class="export-confirm-btn" id="exportSelectionConfirm">Export Selected</button>
+      </div>
+    </div>
+  </div>
 
 </body>
 

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Anchored – Notes & Highlights for Websites",
-  "version": "1.19",
-  "description": "Anchored helps take contextual notes tied to websites while you browse. Highlight text, and save notes linked pages you visit.",
+  "version": "1.22",
+  "description": "Take contextual notes tied to websites while you browse. Highlight text and save notes linked to pages you visit.",
   "permissions": [
     "storage",
     "activeTab",
@@ -41,13 +41,15 @@
   "commands": {
     "_execute_action": {
       "suggested_key": {
-        "default": "Alt+O"
+        "default": "Alt+O",
+        "mac": "Command+Shift+O"
       },
       "description": "Open Anchored"
     },
     "create_new_note": {
       "suggested_key": {
-        "default": "Alt+N"
+        "default": "Alt+N",
+        "mac": "Command+Shift+N"
       },
       "description": "Create a new note"
     }
