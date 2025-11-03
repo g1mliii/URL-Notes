@@ -3895,6 +3895,31 @@ class URLNotesApp {
           this.applyGeneratedTags();
         }
 
+        // Set up tag protection using the same mechanism as content protection
+        const tagsInput = document.getElementById('tagsInput');
+        const finalTagsValue = tagsInput ? tagsInput.value : '';
+        const finalTagsArray = this.currentNote ? [...(this.currentNote.tags || [])] : [];
+
+        const protectTags = () => {
+          if (!protectionActive || !tagsInput) return;
+
+          // If tags input was changed, reapply the correct value
+          if (tagsInput.value !== finalTagsValue) {
+            tagsInput.value = finalTagsValue;
+          }
+
+          // Also protect the currentNote.tags array
+          if (this.currentNote && JSON.stringify(this.currentNote.tags) !== JSON.stringify(finalTagsArray)) {
+            this.currentNote.tags = [...finalTagsArray];
+          }
+        };
+
+        // Protect tags at the same intervals as content
+        setTimeout(protectTags, 50);
+        setTimeout(protectTags, 150);
+        setTimeout(protectTags, 300);
+        setTimeout(protectTags, 500);
+
         // Immediately save the AI rewritten content to prevent it from being overwritten
         await this.saveAIRewrittenContent();
 
