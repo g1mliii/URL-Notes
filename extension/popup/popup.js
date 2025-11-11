@@ -4055,6 +4055,11 @@ class URLNotesApp {
           Utils.showToast('Please sign in to use AI rewrite.', 'error');
         } else if (response.status === 429) {
           Utils.showToast('Monthly AI usage limit exceeded.', 'error');
+        } else if (errorData.error && errorData.error.includes('Content too large')) {
+          // Extract word limit from error message if available
+          const wordLimitMatch = errorData.error.match(/Maximum (\d+(?:,\d+)*) words/);
+          const wordLimit = wordLimitMatch ? wordLimitMatch[1] : '15,000';
+          Utils.showToast(`Your note is too long for AI rewrite. Please shorten it to under ${wordLimit} words and try again.`, 'error');
         } else {
           Utils.showToast(errorData.error || 'AI rewrite failed. Please try again.', 'error');
         }
@@ -4080,8 +4085,10 @@ class URLNotesApp {
 
       return data.rewrittenContent;
     } catch (error) {
-      console.error('AI rewrite API call failed:', error);
-
+      // Don't log "content too large" errors as they're user errors, not system errors
+      if (!error.message.includes('Content too large')) {
+        console.error('AI rewrite API call failed:', error);
+      }
 
       // Show helpful message for authentication errors
       if (error.message.includes('create an account')) {

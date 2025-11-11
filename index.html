@@ -76,11 +76,11 @@ privacy_policy_url: "https://anchored.site/privacy"
                     <h3>Sign In</h3>
                     <form id="signInForm">
                         <div class="input-group">
-                            <input type="email" id="loginEmail" placeholder="Email" required autocomplete="email">
+                            <input type="email" id="loginEmail" name="email" placeholder="Email" required autocomplete="email">
                         </div>
                         <div class="input-group">
                             <div style="position: relative;">
-                                <input type="password" id="loginPassword" placeholder="Password" required
+                                <input type="password" id="loginPassword" name="password" placeholder="Password" required
                                     autocomplete="current-password">
                                 <button type="button" class="toggle-password"
                                     style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.875rem;">Show</button>
@@ -118,11 +118,11 @@ privacy_policy_url: "https://anchored.site/privacy"
                     <h3>Create Account</h3>
                     <form id="signUpForm">
                         <div class="input-group">
-                            <input type="email" id="registerEmail" placeholder="Email" required autocomplete="email">
+                            <input type="email" id="registerEmail" name="email" placeholder="Email" required autocomplete="email">
                         </div>
                         <div class="input-group">
                             <div style="position: relative;">
-                                <input type="password" id="registerPassword" placeholder="Password" required
+                                <input type="password" id="registerPassword" name="new-password" placeholder="Password" required
                                     autocomplete="new-password">
                                 <button type="button" class="toggle-password"
                                     style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.875rem;">Show</button>
@@ -130,7 +130,7 @@ privacy_policy_url: "https://anchored.site/privacy"
                         </div>
                         <div class="input-group">
                             <div style="position: relative;">
-                                <input type="password" id="confirmPassword" placeholder="Confirm Password" required
+                                <input type="password" id="confirmPassword" name="new-password-confirm" placeholder="Confirm Password" required
                                     autocomplete="new-password">
                                 <button type="button" class="toggle-password"
                                     style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.875rem;">Show</button>
@@ -176,7 +176,7 @@ privacy_policy_url: "https://anchored.site/privacy"
                     <h3>Reset Password</h3>
                     <form id="resetPasswordForm">
                         <div class="input-group">
-                            <input type="email" id="resetEmail" placeholder="Email" required autocomplete="email">
+                            <input type="email" id="resetEmail" name="email" placeholder="Email" required autocomplete="email">
                         </div>
                         <button type="submit" class="btn-primary">Send Reset Link</button>
                     </form>
