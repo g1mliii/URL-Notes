@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>URL Notes</title>
+  <title>Anchored</title>
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/themes.css">
   <link rel="stylesheet" href="css/components.css">
@@ -30,8 +30,8 @@
             </svg>
           </div>
           <div class="site-details">
-            <div class="site-domain" id="siteDomain" aria-live="polite" lang="en">Loading...</div>
-            <div class="site-url" id="siteUrl" aria-live="polite" lang="en">Loading...</div>
+            <div class="site-domain" id="siteDomain" aria-live="polite" aria-busy="true" lang="en">Loading...</div>
+            <div class="site-url" id="siteUrl" aria-live="polite" aria-busy="true" lang="en">Loading...</div>
             <div class="sync-status" id="syncStatus" lang="en"
               style="display: none; font-size: 11px; opacity: 0.7; margin-top: 2px;"></div>
           </div>
@@ -174,7 +174,7 @@
         </div>
       </div>
 
-      <div class="notes-list" id="notesList" lang="en">
+      <div class="notes-list" id="notesList" lang="en" aria-busy="false">
         <!-- Notes will be dynamically inserted here -->
         <!-- Note template - will be replaced by JS -->
       </div>
@@ -192,7 +192,7 @@
           </svg>
         </button>
         <input type="text" class="note-title-header" placeholder="Note title..." id="noteTitleHeader"
-          aria-label="Note title">
+          aria-label="Note title" spellcheck="true">
         <div class="editor-actions">
           <div class="ai-dropdown-container">
             <button class="icon-btn ai-rewrite-btn ai-dropdown-trigger" id="aiRewriteBtn" title="Rewrite with AI">
@@ -217,7 +217,7 @@
                 <div class="context-input-container">
                   <textarea id="userContextInput" class="context-input"
                     placeholder="Add specific instructions (e.g., 'make this more technical', 'rewrite for social media', 'emphasize key points')"
-                    maxlength="300" rows="3"></textarea>
+                    maxlength="300" rows="3" spellcheck="true"></textarea>
                   <div class="char-counter">
                     <span id="charCount">0</span>/300
                   </div>
@@ -369,7 +369,7 @@
 
       <div class="editor-content">
         <div id="noteContentInput" class="note-content-input" contenteditable="true"
-          aria-label="Note content (rich text)" lang="en"></div>
+          aria-label="Note content (rich text)" lang="en" spellcheck="true"></div>
         <div class="note-content-preview" id="noteContentPreview" aria-live="polite" style="display:none;" lang="en">
           <!-- Preview hidden: editor is now rich text -->
         </div>
@@ -377,7 +377,7 @@
         <div class="note-meta">
           <div class="note-tags">
             <input type="text" class="tags-input" placeholder="Add tags (comma separated)" id="tagsInput"
-              aria-label="Note tags" lang="en">
+              aria-label="Note tags" lang="en" spellcheck="true">
           </div>
           <div class="note-info">
             <span class="note-date" id="noteDate" lang="en"></span>
@@ -432,7 +432,7 @@
             <button class="btn-primary" id="applyRewriteBtn">Apply Rewrite</button>
           </div>
         </div>
-        <div class="rewrite-loading" id="rewriteLoading" style="display: none;">
+        <div class="rewrite-loading" id="rewriteLoading" style="display: none;" role="status" aria-live="polite" aria-busy="false">
           <div class="loading-spinner"></div>
           <p lang="en">AI is rewriting your note...</p>
         </div>
@@ -454,7 +454,7 @@
         <div style="padding: 16px; line-height: 1.5;">
           <h4 style="margin: 0 0 12px 0; font-size: 14px;">Affiliate-Based Advertising</h4>
           <p style="margin: 0 0 12px 0; font-size: 13px; opacity: 0.9;">
-            URL Notes displays affiliate-based advertisements to support the development and maintenance of this free
+            Anchored displays affiliate-based advertisements to support the development and maintenance of this free
             extension.
             We may earn commissions from purchases made through these advertisements.
           </p>

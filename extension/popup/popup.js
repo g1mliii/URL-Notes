@@ -139,10 +139,12 @@ class URLNotesApp {
           const displayDomain = (this.currentSite.domain || '').replace(/^www\./, '');
           domainEl.textContent = displayDomain;
           domainEl.title = displayDomain;
+          domainEl.setAttribute('aria-busy', 'false');
         }
         if (urlEl) {
           urlEl.textContent = this.currentSite.url;
           urlEl.title = this.currentSite.url;
+          urlEl.setAttribute('aria-busy', 'false');
         }
 
         // Apply cached accent immediately if available
@@ -197,10 +199,12 @@ class URLNotesApp {
         if (domainEl) {
           domainEl.textContent = 'No site context';
           domainEl.title = 'Extension opened outside of web page';
+          domainEl.setAttribute('aria-busy', 'false');
         }
         if (urlEl) {
           urlEl.textContent = 'No active tab';
           urlEl.title = 'Extension opened outside of web page';
+          urlEl.setAttribute('aria-busy', 'false');
         }
       }
     } catch (error) {
@@ -213,10 +217,12 @@ class URLNotesApp {
       if (domainEl) {
         domainEl.textContent = 'Error loading site';
         domainEl.title = 'Failed to load current site information';
+        domainEl.setAttribute('aria-busy', 'false');
       }
       if (urlEl) {
         urlEl.textContent = 'Error';
         urlEl.title = 'Failed to load current site information';
+        urlEl.setAttribute('aria-busy', 'false');
       }
     }
   }
@@ -1852,6 +1858,7 @@ class URLNotesApp {
   // Render notes grouped by domain for 'All Notes' view
   renderGroupedNotes(notes) {
     const notesList = document.getElementById('notesList');
+    notesList.setAttribute('aria-busy', 'true');
     const groupedData = this.groupNotesByDomain(notes);
     const sortedDomains = Object.keys(groupedData).sort();
 
@@ -1944,6 +1951,7 @@ class URLNotesApp {
 
       notesList.appendChild(domainGroup);
     });
+    notesList.setAttribute('aria-busy', 'false');
   }
 
   // Create a note element
@@ -3798,16 +3806,20 @@ class URLNotesApp {
 
   // Show rewrite loading state
   showRewriteLoading() {
+    const rewriteLoading = document.getElementById('rewriteLoading');
     document.getElementById('rewriteOptions').style.display = 'none';
     document.getElementById('rewritePreview').style.display = 'none';
-    document.getElementById('rewriteLoading').style.display = 'block';
+    rewriteLoading.style.display = 'block';
+    rewriteLoading.setAttribute('aria-busy', 'true');
   }
 
   // Show style selection
   showStyleSelection() {
+    const rewriteLoading = document.getElementById('rewriteLoading');
     document.getElementById('rewriteOptions').style.display = 'block';
     document.getElementById('rewritePreview').style.display = 'none';
-    document.getElementById('rewriteLoading').style.display = 'none';
+    rewriteLoading.style.display = 'none';
+    rewriteLoading.setAttribute('aria-busy', 'false');
   }
 
   // Apply AI rewrite directly to the note

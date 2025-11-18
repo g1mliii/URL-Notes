@@ -12,14 +12,9 @@ tags:
 ![](https://www.youtube.com/watch?v=embed)
 
 
-3. Add rel="noopener" to external links (Security)
-Prevents security vulnerability when opening external sites
-
 4. Add loading states with aria-busy (Accessibility)
 Screen readers announce when content is loading
 
-5. Add spellcheck="true" to note editor (UX)
-Browser spell-check for note content
 
 6. Add inputmode attributes (Mobile UX)
 Better mobile keyboard for email/search inputs

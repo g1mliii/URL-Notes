@@ -707,11 +707,11 @@ class SettingsManager {
       if (chrome?.tabs?.create) {
         chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }).catch(() => {
           // Fallback to window.open
-          try { window.open('chrome://extensions/shortcuts', '_blank'); } catch (_) { }
+          try { window.open('chrome://extensions/shortcuts', '_blank', 'noopener,noreferrer'); } catch (_) { }
         });
       } else {
         // Fallback
-        window.open('chrome://extensions/shortcuts', '_blank');
+        window.open('chrome://extensions/shortcuts', '_blank', 'noopener,noreferrer');
       }
     } catch (_) { /* noop */ }
   }
@@ -723,13 +723,13 @@ class SettingsManager {
       const url = chrome?.runtime?.getURL ? chrome.runtime.getURL('onboarding.html') : 'onboarding.html';
       if (chrome?.tabs?.create) {
         chrome.tabs.create({ url }).catch(() => {
-          try { window.open(url, '_blank'); } catch (_) { }
+          try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) { }
         });
       } else {
-        window.open(url, '_blank');
+        window.open(url, '_blank', 'noopener,noreferrer');
       }
     } catch (_) {
-      try { window.open('onboarding.html', '_blank'); } catch (__) { }
+      try { window.open('onboarding.html', '_blank', 'noopener,noreferrer'); } catch (__) { }
     }
   }
 
@@ -739,13 +739,13 @@ class SettingsManager {
       const websiteUrl = 'https://anchored.site';
       if (chrome?.tabs?.create) {
         chrome.tabs.create({ url: websiteUrl }).catch(() => {
-          try { window.open(websiteUrl, '_blank'); } catch (_) { }
+          try { window.open(websiteUrl, '_blank', 'noopener,noreferrer'); } catch (_) { }
         });
       } else {
-        window.open(websiteUrl, '_blank');
+        window.open(websiteUrl, '_blank', 'noopener,noreferrer');
       }
     } catch (_) {
-      try { window.open('https://anchored.site', '_blank'); } catch (__) { }
+      try { window.open('https://anchored.site', '_blank', 'noopener,noreferrer'); } catch (__) { }
     }
   }
 
@@ -755,13 +755,13 @@ class SettingsManager {
       const signupUrl = 'https://anchored.site/?signup=true';
       if (chrome?.tabs?.create) {
         chrome.tabs.create({ url: signupUrl }).catch(() => {
-          try { window.open(signupUrl, '_blank'); } catch (_) { }
+          try { window.open(signupUrl, '_blank', 'noopener,noreferrer'); } catch (_) { }
         });
       } else {
-        window.open(signupUrl, '_blank');
+        window.open(signupUrl, '_blank', 'noopener,noreferrer');
       }
     } catch (_) {
-      try { window.open('https://anchored.site/?signup=true', '_blank'); } catch (__) { }
+      try { window.open('https://anchored.site/?signup=true', '_blank', 'noopener,noreferrer'); } catch (__) { }
     }
   }
 
@@ -771,13 +771,13 @@ class SettingsManager {
       const forgotUrl = 'https://anchored.site/?forgot=true';
       if (chrome?.tabs?.create) {
         chrome.tabs.create({ url: forgotUrl }).catch(() => {
-          try { window.open(forgotUrl, '_blank'); } catch (_) { }
+          try { window.open(forgotUrl, '_blank', 'noopener,noreferrer'); } catch (_) { }
         });
       } else {
-        window.open(forgotUrl, '_blank');
+        window.open(forgotUrl, '_blank', 'noopener,noreferrer');
       }
     } catch (_) {
-      try { window.open('https://anchored.site/?forgot=true', '_blank'); } catch (__) { }
+      try { window.open('https://anchored.site/?forgot=true', '_blank', 'noopener,noreferrer'); } catch (__) { }
     }
   }
 

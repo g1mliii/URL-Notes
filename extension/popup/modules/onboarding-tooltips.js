@@ -826,7 +826,7 @@ class OnboardingTooltips {
             if (chrome?.tabs?.create) {
                 chrome.tabs.create({ url: websiteUrl });
             } else {
-                window.open(websiteUrl, '_blank');
+                window.open(websiteUrl, '_blank', 'noopener,noreferrer');
             }
         } catch (error) {
             console.warn('Failed to open upgrade page:', error);

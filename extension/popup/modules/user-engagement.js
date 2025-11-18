@@ -831,7 +831,7 @@ class UserEngagement {
             if (chrome?.tabs?.create) {
                 chrome.tabs.create({ url: extensionUrl });
             } else {
-                window.open(extensionUrl, '_blank');
+                window.open(extensionUrl, '_blank', 'noopener,noreferrer');
             }
         } catch (error) {
             console.error('Failed to open review page:', error);
