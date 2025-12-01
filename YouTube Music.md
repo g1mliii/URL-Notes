@@ -12,17 +12,19 @@ tags:
 ![](https://www.youtube.com/watch?v=embed)
 
 
-4. Add loading states with aria-busy (Accessibility)
-Screen readers announce when content is loading
+Remove development console.log statements - Several console.log calls in production code that should be removed or wrapped in dev-only checks.
 
+Consolidate duplicate shimmer gradient code - The icon button shimmer effects have lots of repetitive CSS that could be simplified.
 
-6. Add inputmode attributes (Mobile UX)
-Better mobile keyboard for email/search inputs
+Remove redundant transform: translateZ(0) declarations - Many elements have both will-change and translateZ(0) which is redundant for GPU acceleration.
 
-7. Add meta theme-color (Polish)
-Extension matches system theme in browser chrome
+Fix invalid CSS property - will-change: contents is not a valid value (should be transform, opacity, etc. or removed).
 
-8. Add prefers-reduced-motion support (Accessibility)
+Remove empty placeholder comment blocks - Some CSS has placeholder comments that serve no purpose.
+
+Consolidate transition properties - Some elements define transitions multiple times or have conflicting transition values.
+
+Remove unused CSS variables - Check for CSS custom properties that are defined but never used.
 
 
 Implementation Plan: Single Note Export with "Open in App"

@@ -282,7 +282,6 @@ body {
   position: relative;
   contain: layout paint;
   /* GPU acceleration for smooth extension popup performance */
-  will-change: contents;
   transform: translateZ(0);
   -webkit-overflow-scrolling: touch;
 }
@@ -309,7 +308,6 @@ body {
   padding: 8px 0;
   /* full-bleed background */
   /* GPU acceleration for smooth header interactions */
-  will-change: contents;
   transform: translateZ(0);
   contain: layout style;
 }
@@ -507,7 +505,7 @@ body {
   /* Differentiate search band from rest of UI */
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
   /* GPU acceleration for smooth search interactions */
-  will-change: contents;
+  will-change: transform;
   transform: translateZ(0);
   contain: layout style;
 }
@@ -524,7 +522,6 @@ body {
   border-radius: 16px;
   box-shadow: inset 0 1px 0 var(--shadow-light);
   /* GPU acceleration for smooth search interactions */
-  will-change: contents;
   transform: translateZ(0);
   contain: layout style;
 }
@@ -556,12 +553,11 @@ body {
   transition: box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
   box-shadow: inset 0 1px 0 var(--shadow-light);
   /* GPU acceleration for smooth search input typing */
-  will-change: contents;
   transform: translateZ(0);
   contain: layout style;
 }
 
-.search-input:focus {
+.search-input:focus-visible {
   /* Colorless (neutral) focus treatment */
   border-color: var(--border-color);
   box-shadow: inset 0 1px 0 var(--shadow-light), 0 0 0 2px rgba(255, 255, 255, 0.06);
@@ -618,7 +614,7 @@ body {
   position: relative;
   isolation: isolate;
   /* GPU acceleration for smooth filter switching */
-  will-change: contents;
+  will-change: transform;
   transform: translateZ(0);
   contain: layout style;
 }
@@ -867,7 +863,7 @@ body {
   transform: translateZ(0);
 }
 
-.domain-select:focus {
+.domain-select:focus-visible {
   border-color: var(--accent-color);
 }
 
@@ -1313,7 +1309,7 @@ body {
   -webkit-overflow-scrolling: touch;
   /* iOS smooth scrolling */
   /* GPU acceleration for smooth note list scrolling */
-  will-change: scroll-position, contents;
+  will-change: scroll-position;
   transform: translateZ(0);
   contain: layout style paint;
   overscroll-behavior: contain;
@@ -1441,7 +1437,6 @@ html[data-compact="1"] .notes-list {
   height: 100%;
   position: relative;
   /* GPU acceleration for smooth note content rendering */
-  will-change: contents;
   transform: translateZ(0);
   contain: layout style;
 }
@@ -1474,7 +1469,9 @@ html[data-compact="1"] .notes-list {
   display: flex;
   gap: 4px;
   margin-top: 2px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .note-tag-inline {
@@ -2474,7 +2471,6 @@ html[data-view="site"] .note-item:hover::after {
   /* Force new stacking context */
   isolation: isolate;
   /* GPU acceleration for smooth dialog content */
-  will-change: contents;
   transform: translateZ(0);
   contain: layout style paint;
 }
@@ -2797,7 +2793,6 @@ html[data-view="site"] .note-item:hover::after {
   /* Ensure dropdown container has highest z-index in extension */
   z-index: 2147483646;
   /* GPU acceleration for smooth dropdown interactions */
-  will-change: contents;
   transform: translateZ(0);
   contain: layout style;
 }

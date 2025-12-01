@@ -893,12 +893,14 @@ class URLNotesApp {
   // NEW: Update filter button states immediately
   updateFilterButtonStates() {
     try {
-      // Remove active class from all filter buttons
+      // Remove active class and ARIA attributes from all filter buttons
       document.querySelectorAll('.filter-option').forEach(btn => {
         btn.classList.remove('active');
+        btn.setAttribute('aria-selected', 'false');
+        btn.removeAttribute('aria-current');
       });
 
-      // Add active class to current filter button
+      // Add active class and ARIA attributes to current filter button
       const buttonId = {
         'site': 'showAllBtn',
         'page': 'showPageBtn',
@@ -907,7 +909,11 @@ class URLNotesApp {
 
       if (buttonId) {
         const activeButton = document.getElementById(buttonId);
-        if (activeButton) activeButton.classList.add('active');
+        if (activeButton) {
+          activeButton.classList.add('active');
+          activeButton.setAttribute('aria-selected', 'true');
+          activeButton.setAttribute('aria-current', 'page');
+        }
       }
 
       // Set data-view on root for view-specific styling
@@ -1764,6 +1770,8 @@ class URLNotesApp {
     // Update filter UI
     document.querySelectorAll('.filter-option').forEach(btn => {
       btn.classList.remove('active');
+      btn.setAttribute('aria-selected', 'false');
+      btn.removeAttribute('aria-current');
     });
     const buttonId = {
       'site': 'showAllBtn',
@@ -1771,7 +1779,11 @@ class URLNotesApp {
       'all_notes': 'showAllNotesBtn'
     }[filter];
     const filterBtn = document.getElementById(buttonId);
-    if (filterBtn) filterBtn.classList.add('active');
+    if (filterBtn) {
+      filterBtn.classList.add('active');
+      filterBtn.setAttribute('aria-selected', 'true');
+      filterBtn.setAttribute('aria-current', 'page');
+    }
 
     // Set data-view on root for view-specific styling (compact site/page)
     document.documentElement.setAttribute('data-view', filter);

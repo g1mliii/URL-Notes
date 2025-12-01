@@ -95,7 +95,7 @@
   /* Account for header */
   min-height: 0;
   /* GPU acceleration for smooth settings scrolling */
-  will-change: scroll-position, contents;
+  will-change: scroll-position;
   transform: translateZ(0);
   contain: layout style;
   /* Allow flex shrinking */
@@ -178,7 +178,7 @@
   color: var(--text-secondary);
 }
 
-.settings-input:focus {
+.settings-input:focus-visible {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.10);
 }
@@ -324,7 +324,7 @@
   box-shadow: inset 0 1px 0 var(--shadow-light);
 }
 
-.export-controls .settings-select:focus {
+.export-controls .settings-select:focus-visible {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.10);
 }
@@ -501,7 +501,7 @@
   transform: translateZ(0);
 }
 
-.settings-select:focus {
+.settings-select:focus-visible {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
 }
@@ -518,7 +518,6 @@
   align-items: center;
   gap: 8px;
   /* GPU acceleration for smooth font size interactions */
-  will-change: contents;
   transform: translateZ(0);
   contain: layout style;
 }

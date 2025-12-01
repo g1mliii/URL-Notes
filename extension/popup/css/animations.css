@@ -286,7 +286,7 @@
 }
 
 /* Focus effects */
-.focus-ring:focus {
+.focus-ring:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3);
 }
@@ -363,3 +363,5 @@
 .note-item-stagger:nth-child(8) { animation-delay: 0.4s; }
 .note-item-stagger:nth-child(9) { animation-delay: 0.45s; }
 .note-item-stagger:nth-child(10) { animation-delay: 0.5s; }
+
+

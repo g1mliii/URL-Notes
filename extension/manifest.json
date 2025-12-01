@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Anchored – Notes & Highlights for Websites",
-  "version": "1.33",
-  "description": "Anchor notes and highlights on the sites your browsing.",
+  "version": "1.45",
+  "description": "Take notes and highlight text on any website. Organize by site or page with rich text editing.",
   "permissions": [
     "storage",
     "activeTab",
