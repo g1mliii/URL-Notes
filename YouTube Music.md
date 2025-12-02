@@ -16,8 +16,6 @@ Remove development console.log statements - Several console.log calls in product
 
 Consolidate duplicate shimmer gradient code - The icon button shimmer effects have lots of repetitive CSS that could be simplified.
 
-Remove redundant transform: translateZ(0) declarations - Many elements have both will-change and translateZ(0) which is redundant for GPU acceleration.
-
 Fix invalid CSS property - will-change: contents is not a valid value (should be transform, opacity, etc. or removed).
 
 Remove empty placeholder comment blocks - Some CSS has placeholder comments that serve no purpose.

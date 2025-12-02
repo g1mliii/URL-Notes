@@ -429,7 +429,6 @@ body {
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
   /* GPU acceleration for smooth icon button interactions */
   will-change: transform, background-color;
-  transform: translateZ(0);
   backface-visibility: hidden;
 }
 
@@ -506,7 +505,6 @@ body {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
   /* GPU acceleration for smooth search interactions */
   will-change: transform;
-  transform: translateZ(0);
   contain: layout style;
 }
 
@@ -615,7 +613,6 @@ body {
   isolation: isolate;
   /* GPU acceleration for smooth filter switching */
   will-change: transform;
-  transform: translateZ(0);
   contain: layout style;
 }
 
@@ -644,7 +641,6 @@ body {
   /* original size */
   /* GPU acceleration for smooth filter option interactions */
   will-change: transform, background-color;
-  transform: translateZ(0);
   backface-visibility: hidden;
   font-weight: 500;
   cursor: pointer;
@@ -3207,7 +3203,6 @@ html[data-view="site"] .note-item:hover::after {
   z-index: 1;
   /* GPU acceleration for smooth style option interactions */
   will-change: transform, background-color, border-color;
-  transform: translateZ(0);
   backface-visibility: hidden;
 }
 

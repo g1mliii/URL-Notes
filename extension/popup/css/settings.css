@@ -19,7 +19,6 @@
   /* Match popup height */
   /* GPU acceleration for smooth settings panel overlay */
   will-change: transform, opacity;
-  transform: translateZ(0);
   backface-visibility: hidden;
   contain: layout style paint;
 }

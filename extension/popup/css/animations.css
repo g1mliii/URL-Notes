@@ -34,7 +34,6 @@
   animation: nebulous-flow 40s ease-in-out infinite;
   /* GPU acceleration for smooth background animation */
   will-change: transform;
-  transform: translateZ(0);
   backface-visibility: hidden;
 }
 
