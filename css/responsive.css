@@ -1267,6 +1267,26 @@
   .features-section {
     background: transparent !important;
   }
+
+  /* Safari mobile scrolling fixes for dashboard */
+  @media (max-width: 767px) {
+    .notes-grid {
+      overflow-y: scroll !important;
+      -webkit-overflow-scrolling: touch !important;
+      height: 100% !important;
+      max-height: calc(100vh - 250px) !important;
+      min-height: 400px !important;
+      position: relative !important;
+    }
+
+    .dashboard-content {
+      overflow: visible !important;
+    }
+
+    .dashboard-main {
+      overflow: visible !important;
+    }
+  }
 }
 
 /* Additional mobile performance optimizations */
