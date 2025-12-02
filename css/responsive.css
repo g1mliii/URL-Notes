@@ -1274,7 +1274,7 @@
       overflow-y: scroll !important;
       -webkit-overflow-scrolling: touch !important;
       height: 100% !important;
-      max-height: calc(100vh - 250px) !important;
+      max-height: calc(100vh - 350px) !important;
       min-height: 400px !important;
       position: relative !important;
     }
