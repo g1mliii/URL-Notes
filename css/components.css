@@ -1298,16 +1298,16 @@ Dashboard Specific Styles - Google Drive-like Layout */
   font-size: 0.8125rem;
   line-height: 1.4;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
   flex: 1;
   margin-bottom: 0.75rem;
   position: relative;
-  /* Add fade gradient at cutoff */
-  mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  /* Subtle fade gradient - starts later and fades more gradually */
+  mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
 }
 
 .empty-state {
