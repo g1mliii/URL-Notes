@@ -715,6 +715,9 @@
     padding: 1rem;
     grid-template-columns: 1fr;
     gap: 1rem;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+    height: 100%;
   }
 
   .note-card {
@@ -1213,7 +1216,7 @@
   }
 }
 
-/* iOS Safari specific fixes */
+/* iOS Safari specific fixes (iPhone and iPad) */
 @supports (-webkit-touch-callout: none) {
 
   /* iOS Safari - use working dark blue to charcoal grey gradient */
