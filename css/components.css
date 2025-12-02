@@ -1304,6 +1304,10 @@ Dashboard Specific Styles - Google Drive-like Layout */
   overflow: hidden;
   flex: 1;
   margin-bottom: 0.75rem;
+  position: relative;
+  /* Subtle fade gradient - starts later and fades more gradually */
+  mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
 }
 
 .empty-state {
