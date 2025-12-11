@@ -11,7 +11,7 @@ This directory contains the Microsoft Edge version of the Anchored browser exten
 
 ## Edge vs Chrome
 
-Edge uses the same Chromium engine as Chrome, so this extension is identical to the Chrome version with no code changes required.
+Edge uses the same Chromium engine as Chrome, so this extension is identical to the Chrome version with no code changes required. just a few updates
 
 ## Testing
 

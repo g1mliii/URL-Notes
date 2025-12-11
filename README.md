@@ -54,7 +54,6 @@ Anchored represents the concept of anchoring your thoughts and insights to speci
 - Full export/import (JSON, Markdown, Obsidian, Notion, Plain Text, Google Docs)
 - Version history and note recovery
 - Ad-free experience
-- Priority support
 
 ## Architecture
 
