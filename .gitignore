@@ -52,6 +52,10 @@ dist/
 build/
 *.tgz
 
+# Version archives and extension builds
+*.zip
+anchored-*.zip
+
 # Temporary files
 *.tmp
 *.temp
@@ -85,6 +89,12 @@ test-*.json
 test-*.html
 *-backup.json
 debug-*.js
+
+# Verbose development documentation (keep local)
+docs/
+YouTube Music.md
+extension-edge/QUICK_START.md
+extension-firefox/BROWSER_API_MIGRATION_STATUS.md
 
 # Documentation that should be organized (move to /docs)
 DEVELOPMENT.md
