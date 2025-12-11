@@ -92,22 +92,24 @@ window.urlNotesConfig = {
     return {
       contentSecurityPolicy: {
         'default-src': "'self'",
-        'script-src': "'self' 'unsafe-inline' https://kqjcorjjvunmyrnzvqgr.supabase.co",
+        'script-src': "'self' https://kqjcorjjvunmyrnzvqgr.supabase.co https://accounts.google.com https://apis.google.com",
         'style-src': "'self' 'unsafe-inline'",
-        'connect-src': "'self' https://kqjcorjjvunmyrnzvqgr.supabase.co wss://kqjcorjjvunmyrnzvqgr.supabase.co",
+        'connect-src': "'self' https://kqjcorjjvunmyrnzvqgr.supabase.co wss://kqjcorjjvunmyrnzvqgr.supabase.co https://accounts.google.com",
         'img-src': "'self' data: https:",
         'font-src': "'self'",
         'object-src': "'none'",
         'base-uri': "'self'",
-        'form-action': "'self'"
+        'form-action': "'self'",
+        'frame-ancestors': "'none'",
+        'upgrade-insecure-requests': ''
       },
 
       // Additional security headers
       headers: {
         'X-Content-Type-Options': 'nosniff',
         'X-Frame-Options': 'DENY',
-        'X-XSS-Protection': '1; mode=block',
-        'Referrer-Policy': 'strict-origin-when-cross-origin'
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Permissions-Policy': 'geolocation=(), microphone=(), camera=()'
       }
     };
   }
