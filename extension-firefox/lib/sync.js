@@ -358,15 +358,8 @@ class SyncEngine {
       // Only sync notes that have changed since last sync
       const notesToSync = this.lastSyncTime
         ? localNotes.filter(note => new Date(note.updatedAt) > new Date(this.lastSyncTime))
-        : localNotes; // If no last sync time, sync all notes
+        : localNotes;
 
-      // Check if we have anything to sync (notes OR deletions)
-      const hasNotesToSync = notesToSync.length > 0;
-      const hasDeletionsToSync = localDeletions.length > 0;
-
-      // Always proceed with sync to check for server notes, even if no local changes
-
-      // Prepare sync payload - include essential fields including url, domain, and tags
       const syncPayload = {
         operation: 'sync',
         notes: notesToSync.map(note => ({

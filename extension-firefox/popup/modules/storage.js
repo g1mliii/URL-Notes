@@ -9,22 +9,19 @@ class StorageManager {
 
   // ---- Promise wrappers to ensure reliability across Chrome versions ----
   async _lsGet(keys = null) {
-    try {
-      return await browserAPI.storage.local.get(keys);
-    } catch (_) {
-      return {};
-    }
+    return new Promise((resolve) => {
+      try { browserAPI.storage.local.get(keys, (res) => resolve(res || {})); } catch (_) { resolve({}); }
+    });
   }
   async _lsSet(obj) {
-    return await browserAPI.storage.local.set(obj);
+    return new Promise((resolve, reject) => {
+      try { browserAPI.storage.local.set(obj, () => resolve(true)); } catch (e) { reject(e); }
+    });
   }
   async _lsRemove(keys) {
-    try {
-      await browserAPI.storage.local.remove(keys);
-      return true;
-    } catch (_) {
-      return false;
-    }
+    return new Promise((resolve) => {
+      try { browserAPI.storage.local.remove(keys, () => resolve(true)); } catch (_) { resolve(false); }
+    });
   }
 
   // Load all notes from storage into the master list
@@ -223,11 +220,6 @@ class StorageManager {
           if (note && note.id) {
             // Check if note already exists
             const existingNote = notesMap.get(note.id);
-
-            // If existing note is deleted with pending sync, we'll overwrite it
-            if (existingNote && existingNote.is_deleted && existingNote.sync_pending) {
-              console.log(`Overwriting deleted note ${note.id} with imported version`);
-            }
 
             // Add timestamp if missing
             if (!note.createdAt) {

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm run validate:*)",
+      "Bash(npx web-ext lint)",
+      "Bash(move \"anchored_notes_highlights_for_websites-1.55.zip\" \"anchored-firefox-1.55.xpi\")",
+      "Bash(dir)",
+      "Bash(7z a:*)",
+      "Bash(dir:*)",
+      "Bash(7z l:*)"
+    ]
+  }
+}

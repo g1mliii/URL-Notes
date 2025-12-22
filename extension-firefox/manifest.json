@@ -1,8 +1,8 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "Anchored – Notes & Highlights for Websites",
-  "version": "1.18",
-  "description": "Anchored helps take contextual notes tied to websites while you browse. Highlight text, and save notes linked pages you visit.",
+  "version": "1.55",
+  "description": "Take notes and highlight text on any website. Organize by site or page with rich text editing.",
   "browser_specific_settings": {
     "gecko": {
       "id": "anchored@anchored.site",
@@ -11,12 +11,12 @@
   },
   "permissions": [
     "storage",
-    "activeTab",
-    "tabs",
     "alarms",
     "contextMenus",
-    "identity",
-    "notifications",
+    "scripting",
+    "notifications"
+  ],
+  "host_permissions": [
     "<all_urls>"
   ],
   "icons": {
@@ -25,7 +25,7 @@
     "48": "assets/icons/icon48x48.png",
     "128": "assets/icons/icon128x128.png"
   },
-  "browser_action": {
+  "action": {
     "default_title": "Anchored – Notes & Highlights for Websites",
     "default_popup": "popup/popup.html",
     "default_icon": {
@@ -39,11 +39,10 @@
     "scripts": [
       "lib/browser-api.js",
       "background/background.js"
-    ],
-    "persistent": false
+    ]
   },
   "commands": {
-    "_execute_browser_action": {
+    "_execute_action": {
       "suggested_key": {
         "default": "Alt+O"
       },
@@ -70,7 +69,16 @@
     }
   ],
   "web_accessible_resources": [
-    "assets/*"
+    {
+      "resources": [
+        "assets/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
   ],
-  "content_security_policy": "script-src 'self'; object-src 'none'; connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co; img-src 'self' data: https:; style-src 'self' 'unsafe-inline';"
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'self' https://kqjcorjjvunmyrnzvqgr.supabase.co https://kqjcorjjvunmyrnzvqgr.supabase.co/auth/v1 https://kqjcorjjvunmyrnzvqgr.supabase.co/rest/v1; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; frame-src 'none'; base-uri 'self'; form-action 'self';"
+  }
 }

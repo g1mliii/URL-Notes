@@ -820,12 +820,14 @@ class OnboardingTooltips {
     }
 
     // Open upgrade page
-    async openUpgrade() {
+    openUpgrade() {
         try {
             const websiteUrl = 'https://anchored.site';
-            try {
-                await browserAPI.tabs.create({ url: websiteUrl });
-            } catch { window.open(websiteUrl, "_blank"); }
+            if (browserAPI?.tabs?.create) {
+                browserAPI.tabs.create({ url: websiteUrl });
+            } else {
+                window.open(websiteUrl, '_blank');
+            }
         } catch (error) {
             console.warn('Failed to open upgrade page:', error);
         }

@@ -30,6 +30,12 @@ class URLNotesApp {
     this._lastCacheClear = 0; // Rate limit cache clearing
     this._aiRewriteJustCompleted = false; // Flag to track if AI rewrite just completed
 
+    // Memory leak prevention: Track all event listeners and timers for cleanup
+    this._eventListeners = [];
+    this._timeouts = [];
+    this._intervals = [];
+    this._messageListener = null;
+
     // Use IndexedDB storage instead of Chrome storage for sync compatibility
     this.storageManager = window.notesStorage || new StorageManager();
 
@@ -139,10 +145,12 @@ class URLNotesApp {
           const displayDomain = (this.currentSite.domain || '').replace(/^www\./, '');
           domainEl.textContent = displayDomain;
           domainEl.title = displayDomain;
+          domainEl.setAttribute('aria-busy', 'false');
         }
         if (urlEl) {
           urlEl.textContent = this.currentSite.url;
           urlEl.title = this.currentSite.url;
+          urlEl.setAttribute('aria-busy', 'false');
         }
 
         // Apply cached accent immediately if available
@@ -197,10 +205,12 @@ class URLNotesApp {
         if (domainEl) {
           domainEl.textContent = 'No site context';
           domainEl.title = 'Extension opened outside of web page';
+          domainEl.setAttribute('aria-busy', 'false');
         }
         if (urlEl) {
           urlEl.textContent = 'No active tab';
           urlEl.title = 'Extension opened outside of web page';
+          urlEl.setAttribute('aria-busy', 'false');
         }
       }
     } catch (error) {
@@ -213,10 +223,12 @@ class URLNotesApp {
       if (domainEl) {
         domainEl.textContent = 'Error loading site';
         domainEl.title = 'Failed to load current site information';
+        domainEl.setAttribute('aria-busy', 'false');
       }
       if (urlEl) {
         urlEl.textContent = 'Error';
         urlEl.title = 'Failed to load current site information';
+        urlEl.setAttribute('aria-busy', 'false');
       }
     }
   }
@@ -331,7 +343,7 @@ class URLNotesApp {
     }
 
     // Listen for background sync timer messages
-    browserAPI.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+    this._messageListener = async (message, sender, sendResponse) => {
       if (message.action === 'sync-timer-triggered') {
 
         // Background timer fired, check if we can sync
@@ -380,7 +392,8 @@ class URLNotesApp {
           browserAPI.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
         }
       }
-    });
+    };
+    browserAPI.runtime.onMessage.addListener(this._messageListener);
 
     // Check for overdue sync when popup opens
     try {
@@ -767,13 +780,14 @@ class URLNotesApp {
     }
 
     // Initialize ad manager for free users
-    try {
-      if (window.adManager && typeof window.adManager.init === 'function') {
-        await window.adManager.init();
-      }
-    } catch (error) {
-      console.warn('Failed to initialize ad manager:', error);
-    }
+    // TEMPORARILY DISABLED during growth phase - focus on user experience
+    // try {
+    //   if (window.adManager && typeof window.adManager.init === 'function') {
+    //     await window.adManager.init();
+    //   }
+    // } catch (error) {
+    //   console.warn('Failed to initialize ad manager:', error);
+    // }
 
     // Initialize onboarding tooltips for new users
     try {
@@ -886,9 +900,11 @@ class URLNotesApp {
   // NEW: Update filter button states immediately
   updateFilterButtonStates() {
     try {
-      // Remove active class from all filter buttons
+      // Remove active class and ARIA attributes from all filter buttons
       document.querySelectorAll('.filter-option').forEach(btn => {
         btn.classList.remove('active');
+        btn.setAttribute('aria-selected', 'false');
+        btn.removeAttribute('aria-current');
       });
 
       // Add active class to current filter button
@@ -900,7 +916,11 @@ class URLNotesApp {
 
       if (buttonId) {
         const activeButton = document.getElementById(buttonId);
-        if (activeButton) activeButton.classList.add('active');
+        if (activeButton) {
+          activeButton.classList.add('active');
+          activeButton.setAttribute('aria-selected', 'true');
+          activeButton.setAttribute('aria-current', 'page');
+        }
       }
 
       // Set data-view on root for view-specific styling
@@ -1029,7 +1049,7 @@ class URLNotesApp {
       Utils.showToast('Note saved from context menu', 'success');
     } catch (error) {
       console.error('Failed to handle context menu note:', error);
-      Utils.showToast('Failed to save note from context menu', 'error');
+      Utils.showToast('Failed to save note', 'error');
     }
   }
 
@@ -1071,7 +1091,7 @@ class URLNotesApp {
       }
     } catch (error) {
       console.error('Failed to handle multi-highlight note update:', error);
-      Utils.showToast('Failed to update note with highlights', 'error');
+      Utils.showToast('Failed to add highlights', 'error');
     }
   }
 
@@ -1141,11 +1161,11 @@ class URLNotesApp {
 
           // Provide more specific error messages
           if (injectError.message.includes('Cannot access')) {
-            Utils.showToast('Cannot access this page. Try refreshing or check if it\'s a special page (like browser internal URLs).', 'error');
+            Utils.showToast('Cannot access this page - Try refreshing or use a regular webpage', 'error');
           } else if (injectError.message.includes('Scripting API not available')) {
-            Utils.showToast('Extension permissions issue. Please check extension permissions.', 'error');
+            Utils.showToast('Extension permissions issue - Check extension settings', 'error');
           } else {
-            Utils.showToast('Failed to load multi-highlight feature. Please refresh the page and try again.', 'error');
+            Utils.showToast('Failed to load multi-highlight - Refresh the page and try again', 'error');
           }
           return;
         }
@@ -1168,7 +1188,7 @@ class URLNotesApp {
         }
 
         // Show notification
-        Utils.showToast('Multi-highlight mode enabled! Select text to highlight.', 'success');
+        Utils.showToast('Multi-highlight enabled - Select text on the page to highlight', 'success');
 
         // Close popup to let user interact with the webpage
         setTimeout(() => {
@@ -1188,11 +1208,11 @@ class URLNotesApp {
       console.error('Failed to toggle multi-highlight mode:', error);
 
       if (error.message === 'Message timeout') {
-        Utils.showToast('Multi-highlight feature is not responding. Please refresh the page and try again.', 'error');
+        Utils.showToast('Multi-highlight not responding - Refresh the page and try again', 'error');
       } else if (error.message.includes('Could not establish connection')) {
-        Utils.showToast('Multi-highlight feature not available on this page. Please refresh and try again.', 'error');
+        Utils.showToast('Multi-highlight not available on this page - Refresh and try again', 'error');
       } else {
-        Utils.showToast('Failed to toggle multi-highlight mode. Make sure you\'re on a webpage.', 'error');
+        Utils.showToast('Failed to toggle multi-highlight - Make sure you\'re on a webpage', 'error');
       }
     }
   }
@@ -1638,7 +1658,7 @@ class URLNotesApp {
     });
 
     // Persist editor/filter state when popup is about to close
-    window.addEventListener('pagehide', () => {
+    const pagehideHandler = () => {
       try {
         // Save draft if we have a current note
         if (this.currentNote) {
@@ -1659,7 +1679,9 @@ class URLNotesApp {
           }
         });
       } catch (_) { }
-    });
+    };
+    window.addEventListener('pagehide', pagehideHandler);
+    this._eventListeners.push({ target: window, event: 'pagehide', handler: pagehideHandler });
   }
 
   initSettings() {
@@ -1757,6 +1779,8 @@ class URLNotesApp {
     // Update filter UI
     document.querySelectorAll('.filter-option').forEach(btn => {
       btn.classList.remove('active');
+      btn.setAttribute('aria-selected', 'false');
+      btn.removeAttribute('aria-current');
     });
     const buttonId = {
       'site': 'showAllBtn',
@@ -1764,7 +1788,11 @@ class URLNotesApp {
       'all_notes': 'showAllNotesBtn'
     }[filter];
     const filterBtn = document.getElementById(buttonId);
-    if (filterBtn) filterBtn.classList.add('active');
+    if (filterBtn) {
+      filterBtn.classList.add('active');
+      filterBtn.setAttribute('aria-selected', 'true');
+      filterBtn.setAttribute('aria-current', 'page');
+    }
 
     // Set data-view on root for view-specific styling (compact site/page)
     document.documentElement.setAttribute('data-view', filter);
@@ -1851,6 +1879,7 @@ class URLNotesApp {
   // Render notes grouped by domain for 'All Notes' view
   renderGroupedNotes(notes) {
     const notesList = document.getElementById('notesList');
+    notesList.setAttribute('aria-busy', 'true');
     const groupedData = this.groupNotesByDomain(notes);
     const sortedDomains = Object.keys(groupedData).sort();
 
@@ -1943,6 +1972,7 @@ class URLNotesApp {
 
       notesList.appendChild(domainGroup);
     });
+    notesList.setAttribute('aria-busy', 'false');
   }
 
   // Create a note element
@@ -2653,8 +2683,74 @@ class URLNotesApp {
     }
   }
 
+  // Check if user can create a new note (note limit for free users)
+  async checkNoteLimitBeforeCreate() {
+    const FREE_NOTE_LIMIT = 50;
+
+    // Check if user is premium
+    const isPremium = this.premiumStatus?.isPremium || false;
+
+    // Premium users have no limit
+    if (isPremium) {
+      return true;
+    }
+
+    // Count current notes (use allNotes which is already loaded)
+    const currentNoteCount = this.allNotes ? this.allNotes.length : 0;
+
+    // Check if user has reached the limit
+    if (currentNoteCount >= FREE_NOTE_LIMIT) {
+      // Show upgrade prompt
+      this.showNoteLimitUpgradePrompt(currentNoteCount, FREE_NOTE_LIMIT);
+      return false;
+    }
+
+    // Show warning when approaching limit (at 45 notes)
+    if (currentNoteCount === 45) {
+      Utils.showToast(`You have ${FREE_NOTE_LIMIT - currentNoteCount} notes left on the free plan`, 'warning');
+    }
+
+    return true;
+  }
+
+  // Show upgrade prompt when note limit is reached
+  showNoteLimitUpgradePrompt(currentCount, limit) {
+    // Sanitize limit to ensure it's a safe number
+    const safeLimit = parseInt(limit) || 50;
+
+    // Use the dialog system for a more prominent message
+    if (this.dialog) {
+      // Create XSS-safe message using textContent (the dialog uses textContent internally)
+      const safeMessage = `📝 Note Limit Reached\n\nYou've reached the free plan limit of ${safeLimit} notes. Upgrade to Premium for unlimited notes, cloud sync, and more!`;
+
+      this.dialog.show(safeMessage).then((confirmed) => {
+        if (confirmed) {
+          // Open settings to show upgrade options
+          this.settingsManager.openSettings();
+          // Show a helpful message
+          setTimeout(() => {
+            Utils.showToast('Sign in and upgrade to Premium for unlimited notes', 'info');
+          }, 500);
+        }
+      });
+    } else {
+      // Fallback to toast if dialog not available (Utils.showToast is XSS safe)
+      Utils.showToast(`Note limit reached (${safeLimit} max). Upgrade to Premium for unlimited notes!`, 'warning');
+      // Open settings after a delay
+      setTimeout(() => {
+        this.settingsManager.openSettings();
+      }, 2000);
+    }
+  }
+
   // Create a new note (hybrid - always save both domain and URL)
   async createNewNote() {
+    // Check note limit before creating new note
+    const canCreate = await this.checkNoteLimitBeforeCreate();
+    if (!canCreate) {
+      return; // User hit the limit, prompt was shown
+    }
+
     this.isJotMode = false;
 
     // Clear current note and any existing drafts to prevent contamination
@@ -2903,7 +2999,7 @@ class URLNotesApp {
       switchFilterAfterSave: false // Keep current filter instead of switching to page
     };
     if (!this.currentNote) {
-      Utils.showToast('No note open to save', 'info');
+      Utils.showToast('No note to save', 'info');
       return;
     }
 
@@ -2956,7 +3052,7 @@ class URLNotesApp {
 
       // Check for user engagement opportunities after successful save
       if (this.userEngagement) {
-        this.userEngagement.checkAndShowPrompt().catch(() => {});
+        this.userEngagement.checkAndShowPrompt().catch(() => { });
       }
 
     } catch (error) {
@@ -3615,7 +3711,7 @@ class URLNotesApp {
   async aiRewrite() {
     // Check if we have a current note (including drafts)
     if (!this.currentNote) {
-      Utils.showToast('Please open a note to use AI Rewrite.', 'info');
+      Utils.showToast('Open or create a note to use AI Rewrite', 'info');
       return;
     }
 
@@ -3635,13 +3731,13 @@ class URLNotesApp {
       this.currentNote?.title;
 
     if (!hasContent) {
-      Utils.showToast('Please add some content to your note before using AI Rewrite.', 'info');
+      Utils.showToast('Add some content to your note first to use AI Rewrite', 'info');
       return;
     }
 
     // Check if user is authenticated (required for usage tracking)
     if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
-      Utils.showToast('Please create an account to use AI Rewrite. Free users get 30 rewrites/month!', 'info');
+      Utils.showToast('Sign in to use AI Rewrite - Free users get 30 rewrites per month!', 'info');
       // Optionally open settings to guide them to sign up
       setTimeout(() => {
         this.showSettings();
@@ -3654,7 +3750,7 @@ class URLNotesApp {
     if (!isPremium) {
       const currentUsage = await this.getCurrentAIUsage();
       if (currentUsage && currentUsage.remainingCalls <= 0) {
-        Utils.showToast('Monthly AI limit reached. Upgrade to Premium for more rewrites!', 'warning');
+        Utils.showToast('You\'ve used all 30 free AI rewrites this month! Upgrade for unlimited access', 'info');
         return;
       }
     }
@@ -3731,16 +3827,20 @@ class URLNotesApp {
 
   // Show rewrite loading state
   showRewriteLoading() {
+    const rewriteLoading = document.getElementById('rewriteLoading');
     document.getElementById('rewriteOptions').style.display = 'none';
     document.getElementById('rewritePreview').style.display = 'none';
-    document.getElementById('rewriteLoading').style.display = 'block';
+    rewriteLoading.style.display = 'block';
+    rewriteLoading.setAttribute('aria-busy', 'true');
   }
 
   // Show style selection
   showStyleSelection() {
+    const rewriteLoading = document.getElementById('rewriteLoading');
     document.getElementById('rewriteOptions').style.display = 'block';
     document.getElementById('rewritePreview').style.display = 'none';
-    document.getElementById('rewriteLoading').style.display = 'none';
+    rewriteLoading.style.display = 'none';
+    rewriteLoading.setAttribute('aria-busy', 'false');
   }
 
   // Apply AI rewrite directly to the note
@@ -3827,6 +3927,31 @@ class URLNotesApp {
         if (this.generatedTags && this.generatedTags.length > 0) {
           this.applyGeneratedTags();
         }
+
+        // Set up tag protection using the same mechanism as content protection
+        const tagsInput = document.getElementById('tagsInput');
+        const finalTagsValue = tagsInput ? tagsInput.value : '';
+        const finalTagsArray = this.currentNote ? [...(this.currentNote.tags || [])] : [];
+
+        const protectTags = () => {
+          if (!protectionActive || !tagsInput) return;
+
+          // If tags input was changed, reapply the correct value
+          if (tagsInput.value !== finalTagsValue) {
+            tagsInput.value = finalTagsValue;
+          }
+
+          // Also protect the currentNote.tags array
+          if (this.currentNote && JSON.stringify(this.currentNote.tags) !== JSON.stringify(finalTagsArray)) {
+            this.currentNote.tags = [...finalTagsArray];
+          }
+        };
+
+        // Protect tags at the same intervals as content
+        setTimeout(protectTags, 50);
+        setTimeout(protectTags, 150);
+        setTimeout(protectTags, 300);
+        setTimeout(protectTags, 500);
 
         // Immediately save the AI rewritten content to prevent it from being overwritten
         await this.saveAIRewrittenContent();
@@ -3963,6 +4088,11 @@ class URLNotesApp {
           Utils.showToast('Please sign in to use AI rewrite.', 'error');
         } else if (response.status === 429) {
           Utils.showToast('Monthly AI usage limit exceeded.', 'error');
+        } else if (errorData.error && errorData.error.includes('Content too large')) {
+          // Extract word limit from error message if available
+          const wordLimitMatch = errorData.error.match(/Maximum (\d+(?:,\d+)*) words/);
+          const wordLimit = wordLimitMatch ? wordLimitMatch[1] : '15,000';
+          Utils.showToast(`Your note is too long for AI rewrite. Please shorten it to under ${wordLimit} words and try again.`, 'error');
         } else {
           Utils.showToast(errorData.error || 'AI rewrite failed. Please try again.', 'error');
         }
@@ -3978,7 +4108,7 @@ class URLNotesApp {
       // Show remaining calls info
       if (data.remainingCalls !== undefined) {
         const remainingText = data.remainingCalls === 1 ? '1 call' : `${data.remainingCalls} calls`;
-        Utils.showToast(`AI rewrite successful! ${remainingText} remaining this month.`, 'success');
+        Utils.showToast(`AI rewrite complete! ${remainingText} left this month`, 'success');
       }
 
       // Store generated tags for later use
@@ -3988,8 +4118,10 @@ class URLNotesApp {
 
       return data.rewrittenContent;
     } catch (error) {
+      // Don't log "content too large" errors as they're user errors, not system errors
+      if (!error.message.includes('Content too large')) {
       console.error('AI rewrite API call failed:', error);
-
+      }
 
       // Show helpful message for authentication errors
       if (error.message.includes('create an account')) {
@@ -4517,13 +4649,13 @@ class URLNotesApp {
     const combinedContent = `${title} ${content}`.trim();
 
     if (!combinedContent) {
-      Utils.showToast('Please add some content to your note before using AI Rewrite.', 'info');
+      Utils.showToast('Add some content to your note first to use AI Rewrite', 'info');
       return;
     }
 
     // Check if user is authenticated (same pattern as AI summary)
     if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
-      Utils.showToast('Please create an account to use AI Rewrite. Free users get 30 rewrites/month!', 'info');
+      Utils.showToast('Sign in to use AI Rewrite - Free users get 30 rewrites per month!', 'info');
       return;
     }
 
@@ -5496,6 +5628,90 @@ class URLNotesApp {
     }
   }
 
+  // Helper to track setTimeout calls for cleanup
+  _setTimeout(callback, delay) {
+    const timeoutId = setTimeout(() => {
+      callback();
+      // Remove from tracking after execution
+      const index = this._timeouts.indexOf(timeoutId);
+      if (index > -1) this._timeouts.splice(index, 1);
+    }, delay);
+    this._timeouts.push(timeoutId);
+    return timeoutId;
+  }
+
+  // Helper to track setInterval calls for cleanup
+  _setInterval(callback, delay) {
+    const intervalId = setInterval(callback, delay);
+    this._intervals.push(intervalId);
+    return intervalId;
+  }
+
+  // Cleanup method to prevent memory leaks
+  cleanup() {
+    try {
+      // Clear all tracked timeouts
+      if (this._timeouts && Array.isArray(this._timeouts)) {
+        this._timeouts.forEach(timeoutId => {
+          if (timeoutId) clearTimeout(timeoutId);
+        });
+        this._timeouts = [];
+      }
+
+      // Clear all tracked intervals
+      if (this._intervals && Array.isArray(this._intervals)) {
+        this._intervals.forEach(intervalId => {
+          if (intervalId) clearInterval(intervalId);
+        });
+        this._intervals = [];
+      }
+
+      // Remove all tracked event listeners
+      if (this._eventListeners && Array.isArray(this._eventListeners)) {
+        this._eventListeners.forEach(({ target, event, handler }) => {
+          if (target && event && handler) {
+            target.removeEventListener(event, handler);
+          }
+        });
+        this._eventListeners = [];
+      }
+
+      // Remove chrome message listener
+      if (this._messageListener) {
+        browserAPI.runtime.onMessage.removeListener(this._messageListener);
+        this._messageListener = null;
+      }
+
+      // Clear autosave interval if exists
+      if (this.autosaveInterval) {
+        clearInterval(this.autosaveInterval);
+        this.autosaveInterval = null;
+      }
+
+      // Cleanup theme manager
+      if (this.themeManager && typeof this.themeManager.cleanup === 'function') {
+        this.themeManager.cleanup();
+      }
+
+      // Cleanup settings manager
+      if (this.settingsManager && typeof this.settingsManager.cleanup === 'function') {
+        this.settingsManager.cleanup();
+      }
+
+      // Cleanup notes manager
+      if (this.notesManager && typeof this.notesManager.cleanup === 'function') {
+        this.notesManager.cleanup();
+      }
+
+      // Cleanup editor manager
+      if (this.editorManager && typeof this.editorManager.cleanup === 'function') {
+        this.editorManager.cleanup();
+      }
+    } catch (error) {
+      console.warn('Error during cleanup:', error);
+    }
+  }
+
 }
 
 // Get premium status from storage or default to false
@@ -5587,11 +5803,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Expose the app globally so modules (e.g., editor.js) can read premiumStatus
   window.urlNotesApp = new URLNotesApp();
 
+  // Cleanup on popup unload to prevent memory leaks
+  window.addEventListener('unload', () => {
+    if (window.urlNotesApp && window.urlNotesApp.cleanup) {
+      window.urlNotesApp.cleanup();
+    }
+  });
+
   // Expose notesManager globally for version history functionality
   if (window.urlNotesApp && window.urlNotesApp.notesManager) {
     window.notesManager = window.urlNotesApp.notesManager;
   }
 });
-
-
-

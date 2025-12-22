@@ -3,10 +3,13 @@
  */
 class ThemeManager {
   constructor() {
-    this.themeMode = 'auto'; // 'auto' | 'light' | 'dark'
+    this.themeMode = 'auto';
+    // Memory leak prevention: Track listeners for cleanup
+    this._mediaQueryList = null;
+    this._mediaQueryHandler = null;
+    this._themeToggleHandler = null;
   }
 
-  // Derive accent color from favicon (with safe fallbacks)
   async applyAccentFromFavicon(currentSite) {
     try {
       const domain = currentSite?.domain;
@@ -159,19 +162,41 @@ class ThemeManager {
     const onChange = () => {
       if (this.themeMode === 'auto') updateAuto();
     };
+    this._mediaQueryList = mql;
+    this._mediaQueryHandler = onChange;
     mql.addEventListener('change', onChange);
 
     // Wire toggle
     const btn = document.getElementById('themeToggleBtn');
     if (btn) {
-      btn.addEventListener('click', async () => {
+      this._themeToggleHandler = async () => {
         this.themeMode = this.themeMode === 'auto' ? 'light' : this.themeMode === 'light' ? 'dark' : 'auto';
         await browserAPI.storage.local.set({ themeMode: this.themeMode });
         applyTheme();
-      });
+      };
+      btn.addEventListener('click', this._themeToggleHandler);
     }
 
     applyTheme();
+  }
+
+  cleanup() {
+    try {
+      if (this._mediaQueryList && this._mediaQueryHandler) {
+        this._mediaQueryList.removeEventListener('change', this._mediaQueryHandler);
+        this._mediaQueryList = null;
+        this._mediaQueryHandler = null;
+      }
+
+      if (this._themeToggleHandler) {
+        const btn = document.getElementById('themeToggleBtn');
+        if (btn) {
+          btn.removeEventListener('click', this._themeToggleHandler);
+        }
+        this._themeToggleHandler = null;
+      }
+    } catch (error) {
+    }
   }
 
   updateThemeToggleTitle(mode) {
@@ -185,3 +210,4 @@ class ThemeManager {
 
 // Export for use in other modules
 window.ThemeManager = ThemeManager;
+

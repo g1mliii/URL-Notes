@@ -176,8 +176,8 @@ class EditorManager {
     setTimeout(() => {
       // Hide editor and show notes
       editor.style.display = 'none';
-      notesContainer.style.display = ''; // Remove inline style to let CSS flex take over
-      searchContainer.style.display = ''; // Remove inline style to let CSS flex take over
+      notesContainer.style.display = ''; // Let CSS flex take over
+      searchContainer.style.display = ''; // Let CSS flex take over
 
       // Remove animation classes
       editor.classList.remove('open', 'slide-in', 'slide-out', 'editor-fade-in');
@@ -217,7 +217,7 @@ class EditorManager {
         // First, extract and process links to handle formatting within link text
         const linkReplacements = [];
         let linkMatch;
-        mdLink.lastIndex = 0; // Reset regex
+        mdLink.lastIndex = 0;
         
         while ((linkMatch = mdLink.exec(line)) !== null) {
           const linkText = linkMatch[1];

@@ -1,27 +1,65 @@
-# Firefox Extension
+# Firefox Extension - Anchored
 
-This directory contains the Firefox version of the Anchored browser extension.
+Browser extension for domain/URL-specific note-taking with zero-knowledge encryption.
 
-## Quick Setup
+## Quick Start
 
-1. Install Firefox Developer Edition
-2. Install web-ext CLI: `npm install --global web-ext`
-3. Run development server: `npm run dev`
+```bash
+npm install
+npm run build
+```
 
-## Firefox vs Chrome
+## System Requirements
 
-Firefox uses WebExtensions APIs (`browser.*` namespace) instead of Chrome APIs (`chrome.*`), requiring API migration and Manifest V2 instead of V3.
+- Node.js 16+
+- npm 7+
+- Firefox 109+
 
 ## Development Commands
 
+- `npm install` - Install web-ext CLI and development tools
+- `npm run build` - Create distribution package (development)
+- `npm run build:prod` - Build with linting (production)
+- `npm run validate` - Validate extension code
 - `npm run dev` - Launch Firefox with extension loaded
-- `npm run build` - Create distribution package
-- `npm run lint` - Validate extension code
+- `npm run lint` - Run ESLint validation
 - `npm run test` - Open debugging interface
 
-## Testing
+## Build Instructions
 
-Run `node test-firefox-setup.js` to validate the development environment setup.
+For detailed build instructions, system requirements, and verification steps, see [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md).
 
-For build instructions, see `BUILD_INSTRUCTIONS.md`.
-For packaging and distribution, see `PACKAGING.md`.
+## Extension Details
+
+- **Manifest Version:** 3
+- **Minimum Firefox Version:** 109.0
+- **No Build Tools:** Vanilla JavaScript, no webpack/rollup/transpilation
+- **No Third-Party Code in Extension:** Only open-source DOMPurify for XSS protection
+
+## Files and Structure
+
+- `manifest.json` - Extension configuration
+- `background/background.js` - Service worker
+- `content/` - Content scripts
+- `popup/` - Popup UI and modules
+- `lib/` - Core libraries (storage, sync, encryption, APIs)
+- `assets/` - Icons and resources
+
+## Features
+
+- Local-first note storage (IndexedDB)
+- Cloud sync with Supabase (encrypted)
+- AES-256-GCM encryption
+- Domain and page-specific notes
+- Rich text editing
+- Zero-knowledge architecture
+
+## Support
+
+- Website: https://anchored.site
+- Email: support@anchored.site
+- Repository: https://github.com/g1mliii/URL-Notes
+
+## License
+
+Proprietary - Anchored

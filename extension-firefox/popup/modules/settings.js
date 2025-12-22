@@ -51,6 +51,11 @@ class SettingsManager {
     this.currentFont = 'Default';
     this.currentFontSize = 12;
 
+    // Memory leak prevention: Track observers for cleanup
+    this._resizeObserver = null;
+    this._mutationObserver = null;
+    this._eventListeners = [];
+
     // Initialize backup reminder system
     this.initBackupReminders();
 
@@ -90,8 +95,8 @@ class SettingsManager {
         show(this.authPasswordInput, false);
         show(this.authTogglePwBtn, false);
         show(this.authRow, false);
-        show(this.oauthSection, false); // Hide OAuth section when logged in
-        show(this.refreshPremiumStatusBtn, true); // Show refresh button when logged in
+        show(this.oauthSection, false);
+        show(this.refreshPremiumStatusBtn, true);
         if (this.authEmailInput) this.authEmailInput.value = user.email || '';
         if (this.authPasswordInput) this.authPasswordInput.value = '';
         if (actions) {
@@ -132,9 +137,8 @@ class SettingsManager {
         show(this.authTogglePwBtn, true);
         show(this.authRow, true);
         show(this.authForgotPwBtn, true);
-        show(this.oauthSection, true); // Show OAuth section when not logged in
-        show(this.refreshPremiumStatusBtn, false); // Hide refresh button when not logged in
-        // Hide sync management for non-authenticated users
+        show(this.oauthSection, true);
+        show(this.refreshPremiumStatusBtn, false);
         show(syncManagement, false);
         // Swap buttons: Sign In on left, Sign Up on right
         if (actions && this.authSignInBtn && this.authSignUpBtn) {
@@ -173,7 +177,7 @@ class SettingsManager {
   async handleSignIn() {
     const { email, password } = this.getAuthInputs();
     if (!email || !password) {
-      return this.showNotification('Enter email and password', 'error');
+      return this.showNotification('Please enter your email and password', 'error');
     }
     try {
       this.setAuthBusy(true);
@@ -190,7 +194,7 @@ class SettingsManager {
     try {
       this.setAuthBusy(true);
       await window.supabaseClient.signOut();
-      this.showNotification('Signed out', 'success');
+      this.showNotification('Successfully signed out', 'success');
       this.updateAuthUI();
     } catch (e) {
       this.showNotification(`Sign out failed: ${e.message || e}`, 'error');
@@ -285,7 +289,7 @@ class SettingsManager {
 
   async handleRefreshPremiumStatus() {
     if (!window.supabaseClient?.isAuthenticated()) {
-      this.showNotification('Please sign in first', 'error');
+      this.showNotification('Please sign in to refresh your status', 'info');
       return;
     }
 
@@ -312,7 +316,7 @@ class SettingsManager {
       } else if (status?.tier === 'premium' && !status?.active) {
         this.showNotification('Premium inactive - check expiration', 'warning');
       } else {
-        this.showNotification(`Status refreshed - ${status?.tier || 'free'} tier active`, 'info');
+        this.showNotification(`You're on the ${status?.tier || 'free'} plan`, 'info');
       }
 
       // Reset button
@@ -628,21 +632,30 @@ class SettingsManager {
 
     // Update indicators on scroll
     settingsContent.addEventListener('scroll', updateScrollIndicators);
+    this._eventListeners.push({ target: settingsContent, event: 'scroll', handler: updateScrollIndicators });
 
     // Update indicators on resize or content change
-    const resizeObserver = new ResizeObserver((entries) => {
+    // Disconnect previous observer if exists
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
+    }
+    this._resizeObserver = new ResizeObserver((entries) => {
       // Use requestAnimationFrame to prevent ResizeObserver loops
       requestAnimationFrame(() => {
         updateScrollIndicators();
       });
     });
-    resizeObserver.observe(settingsContent);
+    this._resizeObserver.observe(settingsContent);
 
     // Initial update
     setTimeout(updateScrollIndicators, 100);
 
     // Also update when settings panel becomes visible
-    const observer = new MutationObserver((mutations) => {
+    // Disconnect previous observer if exists
+    if (this._mutationObserver) {
+      this._mutationObserver.disconnect();
+    }
+    this._mutationObserver = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
           const panel = mutation.target;
@@ -655,7 +668,7 @@ class SettingsManager {
 
     const settingsPanel = document.getElementById('settingsPanel');
     if (settingsPanel) {
-      observer.observe(settingsPanel, { attributes: true });
+      this._mutationObserver.observe(settingsPanel, { attributes: true });
     }
   }
 
@@ -733,9 +746,13 @@ class SettingsManager {
   openWebsite() {
     try {
       const websiteUrl = 'https://anchored.site';
+      if (browserAPI?.tabs?.create) {
       browserAPI.tabs.create({ url: websiteUrl }).catch(() => {
         try { window.open(websiteUrl, '_blank'); } catch (_) { }
       });
+      } else {
+        window.open(websiteUrl, '_blank');
+      }
     } catch (_) {
       try { window.open('https://anchored.site', '_blank'); } catch (__) { }
     }
@@ -745,9 +762,13 @@ class SettingsManager {
   openSignUp() {
     try {
       const signupUrl = 'https://anchored.site/?signup=true';
+      if (browserAPI?.tabs?.create) {
       browserAPI.tabs.create({ url: signupUrl }).catch(() => {
         try { window.open(signupUrl, '_blank'); } catch (_) { }
       });
+      } else {
+        window.open(signupUrl, '_blank');
+      }
     } catch (_) {
       try { window.open('https://anchored.site/?signup=true', '_blank'); } catch (__) { }
     }
@@ -757,9 +778,13 @@ class SettingsManager {
   openForgotPassword() {
     try {
       const forgotUrl = 'https://anchored.site/?forgot=true';
+      if (browserAPI?.tabs?.create) {
       browserAPI.tabs.create({ url: forgotUrl }).catch(() => {
         try { window.open(forgotUrl, '_blank'); } catch (_) { }
       });
+      } else {
+        window.open(forgotUrl, '_blank');
+      }
     } catch (_) {
       try { window.open('https://anchored.site/?forgot=true', '_blank'); } catch (__) { }
     }
@@ -837,9 +862,259 @@ class SettingsManager {
       const formatSelect = document.getElementById('exportFormatSelect');
       const selectedFormat = formatSelect ? formatSelect.value : 'json';
 
+      // Show export selection dialog
+      this.showExportSelectionDialog(exportData, selectedFormat);
+    } catch (error) {
+      console.error('Error exporting notes:', error);
+      this.showNotification('Failed to export notes', 'error');
+    }
+  }
+
+  // Show export selection dialog
+  showExportSelectionDialog(exportData, selectedFormat) {
+    const dialog = document.getElementById('exportSelectionDialog');
+    const domainsList = document.getElementById('exportDomainsList');
+    const selectAllCheckbox = document.getElementById('exportSelectAllCheckbox');
+
+    if (!dialog || !domainsList) return;
+
+    // Store export data and format for later use
+    this.pendingExportData = exportData;
+    this.pendingExportFormat = selectedFormat;
+    this.exportSelection = {};
+
+    // Clear previous content
+    domainsList.textContent = '';
+
+    // Build domain list (skip metadata)
+    for (const domain in exportData) {
+      if (domain === '_anchored') continue;
+
+      const notes = exportData[domain];
+      if (!Array.isArray(notes) || notes.length === 0) continue;
+
+      // Initialize selection (all selected by default)
+      this.exportSelection[domain] = {
+        selected: true,
+        notes: notes.map(note => ({ id: note.id, selected: true, title: note.title || 'Untitled' }))
+      };
+
+      // Create domain group
+      const domainGroup = document.createElement('div');
+      domainGroup.className = 'export-domain-group';
+
+      const domainHeader = document.createElement('div');
+      domainHeader.className = 'export-domain-header';
+
+      // Domain checkbox
+      const domainCheckbox = document.createElement('input');
+      domainCheckbox.type = 'checkbox';
+      domainCheckbox.className = 'export-domain-checkbox';
+      domainCheckbox.checked = true;
+      domainCheckbox.dataset.domain = domain;
+      domainCheckbox.addEventListener('change', (e) => this.handleDomainCheckboxChange(e, domain));
+
+      // Domain info
+      const domainInfo = document.createElement('div');
+      domainInfo.className = 'export-domain-info';
+
+      const domainName = document.createElement('div');
+      domainName.className = 'export-domain-name';
+      domainName.textContent = domain;
+
+      const domainCount = document.createElement('div');
+      domainCount.className = 'export-domain-count';
+      domainCount.textContent = `${notes.length} note${notes.length !== 1 ? 's' : ''}`;
+
+      domainInfo.appendChild(domainName);
+      domainInfo.appendChild(domainCount);
+
+      // Toggle button
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'export-domain-toggle';
+      toggleBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>';
+      toggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const notesList = domainGroup.querySelector('.export-notes-list');
+        notesList.classList.toggle('show');
+        toggleBtn.classList.toggle('expanded');
+      });
+
+      domainHeader.appendChild(domainCheckbox);
+      domainHeader.appendChild(domainInfo);
+      domainHeader.appendChild(toggleBtn);
+
+      // Notes list
+      const notesList = document.createElement('div');
+      notesList.className = 'export-notes-list';
+
+      notes.forEach(note => {
+        const noteItem = document.createElement('div');
+        noteItem.className = 'export-note-item';
+
+        const noteCheckbox = document.createElement('input');
+        noteCheckbox.type = 'checkbox';
+        noteCheckbox.className = 'export-note-checkbox';
+        noteCheckbox.checked = true;
+        noteCheckbox.dataset.domain = domain;
+        noteCheckbox.dataset.noteId = note.id;
+        noteCheckbox.addEventListener('change', (e) => this.handleNoteCheckboxChange(e, domain, note.id));
+
+        const noteTitle = document.createElement('div');
+        noteTitle.className = 'export-note-title';
+        noteTitle.textContent = note.title || 'Untitled Note';
+
+        noteItem.appendChild(noteCheckbox);
+        noteItem.appendChild(noteTitle);
+        notesList.appendChild(noteItem);
+      });
+
+      domainGroup.appendChild(domainHeader);
+      domainGroup.appendChild(notesList);
+      domainsList.appendChild(domainGroup);
+    }
+
+    // Update stats
+    this.updateExportStats();
+
+    // Setup event listeners (remove old ones first to prevent duplicates)
+    selectAllCheckbox.checked = true;
+
+    // Clone and replace elements to remove all old event listeners
+    const closeBtn = document.getElementById('exportSelectionClose');
+    const cancelBtn = document.getElementById('exportSelectionCancel');
+    const confirmBtn = document.getElementById('exportSelectionConfirm');
+
+    const newCloseBtn = closeBtn.cloneNode(true);
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+
+    closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+    // Add fresh event listeners
+    selectAllCheckbox.addEventListener('change', (e) => this.handleSelectAllChange(e));
+    newCloseBtn.addEventListener('click', () => this.closeExportSelectionDialog());
+    newCancelBtn.addEventListener('click', () => this.closeExportSelectionDialog());
+    newConfirmBtn.addEventListener('click', () => this.confirmExportSelection());
+
+    // Show dialog
+    dialog.classList.add('show');
+  }
+
+  // Handle domain checkbox change
+  handleDomainCheckboxChange(event, domain) {
+    const checked = event.target.checked;
+    this.exportSelection[domain].selected = checked;
+
+    // Update all note checkboxes in this domain
+    this.exportSelection[domain].notes.forEach(note => {
+      note.selected = checked;
+    });
+
+    // Update UI checkboxes
+    const noteCheckboxes = document.querySelectorAll(`input[data-domain="${domain}"][data-note-id]`);
+    noteCheckboxes.forEach(cb => cb.checked = checked);
+
+    this.updateExportStats();
+  }
+
+  // Handle note checkbox change
+  handleNoteCheckboxChange(event, domain, noteId) {
+    const checked = event.target.checked;
+    const note = this.exportSelection[domain].notes.find(n => n.id === noteId);
+    if (note) note.selected = checked;
+
+    // Update domain checkbox if all notes are unchecked
+    const allUnchecked = this.exportSelection[domain].notes.every(n => !n.selected);
+    const allChecked = this.exportSelection[domain].notes.every(n => n.selected);
+
+    const domainCheckbox = document.querySelector(`input[data-domain="${domain}"]:not([data-note-id])`);
+    if (domainCheckbox) {
+      domainCheckbox.checked = !allUnchecked;
+      domainCheckbox.indeterminate = !allUnchecked && !allChecked;
+    }
+
+    this.exportSelection[domain].selected = !allUnchecked;
+    this.updateExportStats();
+  }
+
+  // Handle select all change
+  handleSelectAllChange(event) {
+    const checked = event.target.checked;
+
+    // Update all selections
+    for (const domain in this.exportSelection) {
+      this.exportSelection[domain].selected = checked;
+      this.exportSelection[domain].notes.forEach(note => {
+        note.selected = checked;
+      });
+    }
+
+    // Update all UI checkboxes
+    document.querySelectorAll('.export-domain-checkbox, .export-note-checkbox').forEach(cb => {
+      cb.checked = checked;
+    });
+
+    this.updateExportStats();
+  }
+
+  // Update export stats
+  updateExportStats() {
+    let selectedDomains = 0;
+    let selectedNotes = 0;
+
+    for (const domain in this.exportSelection) {
+      const hasSelectedNotes = this.exportSelection[domain].notes.some(n => n.selected);
+      if (hasSelectedNotes) {
+        selectedDomains++;
+        selectedNotes += this.exportSelection[domain].notes.filter(n => n.selected).length;
+      }
+    }
+
+    document.getElementById('exportSelectedDomains').textContent = selectedDomains;
+    document.getElementById('exportSelectedNotes').textContent = selectedNotes;
+
+    // Enable/disable export button
+    const confirmBtn = document.getElementById('exportSelectionConfirm');
+    if (confirmBtn) {
+      confirmBtn.disabled = selectedNotes === 0;
+    }
+  }
+
+  // Close export selection dialog
+  closeExportSelectionDialog() {
+    const dialog = document.getElementById('exportSelectionDialog');
+    if (dialog) {
+      dialog.classList.remove('show');
+      this.pendingExportData = null;
+      this.pendingExportFormat = null;
+      this.exportSelection = {};
+    }
+  }
+
+  // Confirm export selection
+  async confirmExportSelection() {
+    try {
+      // Filter export data based on selection
+      const filteredData = { _anchored: this.pendingExportData._anchored };
+
+      for (const domain in this.exportSelection) {
+        const selectedNotes = this.exportSelection[domain].notes
+          .filter(n => n.selected)
+          .map(n => n.id);
+
+        if (selectedNotes.length > 0) {
+          filteredData[domain] = this.pendingExportData[domain].filter(note =>
+            selectedNotes.includes(note.id)
+          );
+        }
+      }
+
       // Use ExportFormats class to convert data
       const exportFormats = new ExportFormats();
-      const exportResult = exportFormats.exportToFormat(exportData, selectedFormat);
+      const exportResult = exportFormats.exportToFormat(filteredData, this.pendingExportFormat);
 
       // Create and download file
       const blob = new Blob([exportResult.content], { type: exportResult.mimeType });
@@ -852,11 +1127,23 @@ class SettingsManager {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
+      // Calculate selected count and get format info BEFORE closing dialog
+      const selectedCount = Object.values(filteredData).reduce((sum, notes) =>
+        sum + (Array.isArray(notes) ? notes.length : 0), 0
+      );
+      const formatInfo = exportFormats.getSupportedFormats()[this.pendingExportFormat];
+
+      // Close dialog (this clears pendingExportFormat)
+      this.closeExportSelectionDialog();
+
       // Show success message with format info
-      const formatInfo = exportFormats.getSupportedFormats()[selectedFormat];
-      this.showNotification(`Exported as ${formatInfo.name}`, 'success');
+      if (formatInfo) {
+        this.showNotification(`Exported ${selectedCount} notes as ${formatInfo.name}`, 'success');
+      } else {
+        this.showNotification(`Exported ${selectedCount} notes`, 'success');
+      }
     } catch (error) {
-      console.error('Error exporting notes:', error);
+      console.error('Error exporting selected notes:', error);
       this.showNotification('Failed to export notes', 'error');
     }
   }
@@ -1354,9 +1641,39 @@ class SettingsManager {
       }
     }
   }
+
+  // Cleanup method to prevent memory leaks
+  cleanup() {
+    try {
+      // Disconnect ResizeObserver
+      if (this._resizeObserver) {
+        this._resizeObserver.disconnect();
+        this._resizeObserver = null;
+      }
+
+      // Disconnect MutationObserver
+      if (this._mutationObserver) {
+        this._mutationObserver.disconnect();
+        this._mutationObserver = null;
+      }
+
+      // Remove tracked event listeners
+      if (this._eventListeners && Array.isArray(this._eventListeners)) {
+        this._eventListeners.forEach(({ target, event, handler }) => {
+          if (target && event && handler) {
+            target.removeEventListener(event, handler);
+          }
+        });
+        this._eventListeners = [];
+      }
+    } catch (error) {
+      console.warn('SettingsManager cleanup error:', error);
+    }
+  }
 }
 
 // Export to global scope
 window.SettingsManager = SettingsManager;
+
 
 

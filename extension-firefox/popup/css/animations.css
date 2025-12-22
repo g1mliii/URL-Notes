@@ -34,7 +34,6 @@
   animation: nebulous-flow 40s ease-in-out infinite;
   /* GPU acceleration for smooth background animation */
   will-change: transform;
-  transform: translateZ(0);
   backface-visibility: hidden;
 }
 
@@ -286,7 +285,7 @@
 }
 
 /* Focus effects */
-.focus-ring:focus {
+.focus-ring:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3);
 }
