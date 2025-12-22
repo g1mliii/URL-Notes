@@ -8,11 +8,9 @@ class EditorManager {
 
   }
 
-  // Create a new note
   createNewNote(currentSite) {
-    // Handle case where currentSite might be null (e.g., extension opened from management page)
+    // Handle null currentSite (e.g., extension opened from management page)
     if (!currentSite) {
-      // Remove verbose logging
       currentSite = {
         domain: 'general',
         url: 'edge://extensions', // Edge uses edge:// URLs
@@ -38,14 +36,12 @@ class EditorManager {
     return newNote;
   }
 
-  // Open existing note
   openNote(note) {
     this.currentNote = { ...note };
     this.openEditor();
     this.populateEditor();
   }
 
-  // Populate editor with note data
   populateEditor() {
     try {
       if (!this.currentNote) return;
@@ -64,6 +60,7 @@ class EditorManager {
       if (contentInput) {
         const safeContent = this.buildContentHtml(this.currentNote.content || '');
         if (window.safeDOM) {
+          // Use XSS-safe DOM manipulation
           window.safeDOM.setInnerHTML(contentInput, safeContent, true);
         } else {
           // Fallback for safety
@@ -176,8 +173,8 @@ class EditorManager {
     setTimeout(() => {
       // Hide editor and show notes
       editor.style.display = 'none';
-      notesContainer.style.display = ''; // Remove inline style to let CSS flex take over
-      searchContainer.style.display = ''; // Remove inline style to let CSS flex take over
+      notesContainer.style.display = ''; // Let CSS flex take over
+      searchContainer.style.display = ''; // Let CSS flex take over
 
       // Remove animation classes
       editor.classList.remove('open', 'slide-in', 'slide-out', 'editor-fade-in');
@@ -217,8 +214,8 @@ class EditorManager {
         // First, extract and process links to handle formatting within link text
         const linkReplacements = [];
         let linkMatch;
-        mdLink.lastIndex = 0; // Reset regex
-        
+        mdLink.lastIndex = 0;
+
         while ((linkMatch = mdLink.exec(line)) !== null) {
           const linkText = linkMatch[1];
           const url = linkMatch[2];
@@ -307,7 +304,7 @@ class EditorManager {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
 
-    // Then unescape our allowed formatting tags
+    // Unescape our allowed formatting tags
     escaped = escaped
       .replace(/&lt;(\/?(?:b|i|u|s|span[^&]*))&gt;/gi, '<$1>')
       .replace(/&lt;span style=&quot;([^&]*)&quot;&gt;/gi, '<span style="$1">');

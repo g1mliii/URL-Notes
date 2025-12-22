@@ -5,188 +5,36 @@
   border-radius: 50%;
 }
 
-/* Rotate shimmer per instance to avoid identical look side-by-side */
-.note-actions .icon-btn:nth-child(1)::after {
-  transform: rotate(0deg);
+/* Base shimmer gradient - all buttons use this with rotation variations */
+.icon-btn::after {
+  background: conic-gradient(from 0deg at 50% 50%,
+    rgba(255, 255, 255, 0.55) 0deg,
+    rgba(255, 255, 255, 0.10) 70deg,
+    rgba(0, 0, 0, 0.18) 140deg,
+    rgba(255, 255, 255, 0.12) 220deg,
+    rgba(255, 255, 255, 0.55) 360deg);
+  opacity: 0.8;
+  padding: 1px;
 }
 
-.note-actions .icon-btn:nth-child(2)::after {
-  transform: rotate(40deg);
-}
+/* Rotate shimmer per instance for visual variety */
+.note-actions .icon-btn:nth-child(1)::after { transform: rotate(0deg); }
+.note-actions .icon-btn:nth-child(2)::after { transform: rotate(40deg); }
+.note-actions .icon-btn:nth-child(3)::after { transform: rotate(95deg); }
+.note-actions .icon-btn:nth-child(4)::after { transform: rotate(140deg); }
+.note-actions .icon-btn:nth-child(5)::after { transform: rotate(210deg); }
 
-.note-actions .icon-btn:nth-child(3)::after {
-  transform: rotate(95deg);
-}
+.domain-actions .icon-btn:nth-child(1)::after { transform: rotate(15deg); }
+.domain-actions .icon-btn:nth-child(2)::after { transform: rotate(70deg); }
+.domain-actions .icon-btn:nth-child(3)::after { transform: rotate(130deg); }
+.domain-actions .icon-btn:nth-child(4)::after { transform: rotate(185deg); }
+.domain-actions .icon-btn:nth-child(5)::after { transform: rotate(240deg); }
 
-.note-actions .icon-btn:nth-child(4)::after {
-  transform: rotate(140deg);
-}
-
-.note-actions .icon-btn:nth-child(5)::after {
-  transform: rotate(210deg);
-}
-
-.domain-actions .icon-btn:nth-child(1)::after {
-  transform: rotate(15deg);
-}
-
-.domain-actions .icon-btn:nth-child(2)::after {
-  transform: rotate(70deg);
-}
-
-.domain-actions .icon-btn:nth-child(3)::after {
-  transform: rotate(130deg);
-}
-
-.domain-actions .icon-btn:nth-child(4)::after {
-  transform: rotate(185deg);
-}
-
-.domain-actions .icon-btn:nth-child(5)::after {
-  transform: rotate(240deg);
-}
-
-.header .icon-btn:nth-child(1)::after {
-  transform: rotate(25deg);
-}
-
-.header .icon-btn:nth-child(2)::after {
-  transform: rotate(85deg);
-}
-
-.header .icon-btn:nth-child(3)::after {
-  transform: rotate(145deg);
-}
-
-.header .icon-btn:nth-child(4)::after {
-  transform: rotate(200deg);
-}
-
-.header .icon-btn:nth-child(5)::after {
-  transform: rotate(260deg);
-}
-
-/* Stronger per-instance variation: offset gradient centers, angles, opacity, and thickness */
-.note-actions .icon-btn:nth-child(1)::after {
-  background:
-    conic-gradient(from 110deg at 58% 42%,
-      rgba(255, 255, 255, 0.55) 0deg,
-      rgba(255, 255, 255, 0.10) 65deg,
-      rgba(0, 0, 0, 0.20) 145deg,
-      rgba(255, 255, 255, 0.12) 225deg,
-      rgba(255, 255, 255, 0.55) 360deg);
-  opacity: 0.88;
-  padding: var(--ring-padding, 1px);
-}
-
-.note-actions .icon-btn:nth-child(2)::after {
-  background:
-    conic-gradient(from 250deg at 42% 60%,
-      rgba(255, 255, 255, 0.55) 0deg,
-      rgba(255, 255, 255, 0.10) 60deg,
-      rgba(0, 0, 0, 0.20) 140deg,
-      rgba(255, 255, 255, 0.12) 220deg,
-      rgba(255, 255, 255, 0.55) 360deg);
-  opacity: 0.75;
-  padding: 0.5px;
-}
-
-.note-actions .icon-btn:nth-child(3)::after {
-  background:
-    conic-gradient(from 190deg at 55% 45%,
-      rgba(255, 255, 255, 0.55) 0deg,
-      rgba(255, 255, 255, 0.10) 70deg,
-      rgba(0, 0, 0, 0.18) 150deg,
-      rgba(255, 255, 255, 0.12) 230deg,
-      rgba(255, 255, 255, 0.55) 360deg);
-  opacity: 0.82;
-  padding: 0.75px;
-}
-
-.domain-actions .icon-btn:nth-child(1) {
-  --btn-shimmer: conic-gradient(from 140deg at 60% 40%,
-      rgba(255, 255, 255, 0.55) 0deg,
-      rgba(255, 255, 255, 0.10) 65deg,
-      rgba(0, 0, 0, 0.20) 145deg,
-      rgba(255, 255, 255, 0.12) 225deg,
-      rgba(255, 255, 255, 0.55) 360deg);
-  --ring-opacity: 0.86;
-  --ring-padding: 1px;
-}
-
-.domain-actions .icon-btn:nth-child(2) {
-  --btn-shimmer: conic-gradient(from 300deg at 40% 62%,
-      rgba(255, 255, 255, 0.55) 0deg,
-      rgba(255, 255, 255, 0.10) 60deg,
-      rgba(0, 0, 0, 0.20) 140deg,
-      rgba(255, 255, 255, 0.12) 220deg,
-      rgba(255, 255, 255, 0.55) 360deg);
-  --ring-opacity: 0.74;
-  --ring-padding: 0.5px;
-}
-
-.header .icon-btn:nth-child(1) {
-  --btn-shimmer: conic-gradient(from 90deg at 56% 44%,
-      rgba(255, 255, 255, 0.55) 0deg,
-      rgba(255, 255, 255, 0.10) 70deg,
-      rgba(0, 0, 0, 0.18) 150deg,
-      rgba(255, 255, 255, 0.12) 230deg,
-      rgba(255, 255, 255, 0.55) 360deg);
-  --ring-opacity: 0.85;
-  --ring-padding: 0.85px;
-}
-
-.header .icon-btn:nth-child(2) {
-  --btn-shimmer: conic-gradient(from 230deg at 44% 58%,
-      rgba(255, 255, 255, 0.55) 0deg,
-      rgba(255, 255, 255, 0.10) 60deg,
-      rgba(0, 0, 0, 0.20) 140deg,
-      rgba(255, 255, 255, 0.12) 220deg,
-      rgba(255, 255, 255, 0.55) 360deg);
-  --ring-opacity: 0.76;
-  --ring-padding: 0.6px;
-}
-
-/* Default shimmer, can be overridden via --btn-shimmer per instance */
-.note-actions .icon-btn::after {
-  background: var(--btn-shimmer,
-      conic-gradient(from 160deg at 50% 50%,
-        rgba(255, 255, 255, 0.55) 0deg,
-        rgba(255, 255, 255, 0.10) 70deg,
-        rgba(0, 0, 0, 0.18) 140deg,
-        rgba(255, 255, 255, 0.12) 220deg,
-        rgba(255, 255, 255, 0.55) 360deg));
-}
-
-.domain-actions .icon-btn::after {
-  background:
-    conic-gradient(from 220deg at 50% 50%,
-      rgba(255, 255, 255, 0.55) 0deg,
-      rgba(255, 255, 255, 0.10) 70deg,
-      rgba(0, 0, 0, 0.18) 140deg,
-      rgba(255, 255, 255, 0.12) 220deg,
-      rgba(255, 255, 255, 0.55) 360deg);
-}
-
-.site-icon .icon-btn::after {
-  background:
-    conic-gradient(from 120deg at 50% 50%,
-      rgba(255, 255, 255, 0.55) 0deg,
-      rgba(255, 255, 255, 0.10) 70deg,
-      rgba(0, 0, 0, 0.18) 140deg,
-      rgba(255, 255, 255, 0.12) 220deg,
-      rgba(255, 255, 255, 0.55) 360deg);
-}
-
-.header .icon-btn::after {
-  background:
-    conic-gradient(from 280deg at 50% 50%,
-      rgba(255, 255, 255, 0.55) 0deg,
-      rgba(255, 255, 255, 0.10) 70deg,
-      rgba(0, 0, 0, 0.18) 140deg,
-      rgba(255, 255, 255, 0.12) 220deg,
-      rgba(255, 255, 255, 0.55) 360deg);
-}
+.header .icon-btn:nth-child(1)::after { transform: rotate(25deg); }
+.header .icon-btn:nth-child(2)::after { transform: rotate(85deg); }
+.header .icon-btn:nth-child(3)::after { transform: rotate(145deg); }
+.header .icon-btn:nth-child(4)::after { transform: rotate(200deg); }
+.header .icon-btn:nth-child(5)::after { transform: rotate(260deg); }
 
 .domain-actions .icon-btn svg {
   width: 14px;
@@ -282,7 +130,6 @@ body {
   position: relative;
   contain: layout paint;
   /* GPU acceleration for smooth extension popup performance */
-  will-change: contents;
   transform: translateZ(0);
   -webkit-overflow-scrolling: touch;
 }
@@ -309,7 +156,6 @@ body {
   padding: 8px 0;
   /* full-bleed background */
   /* GPU acceleration for smooth header interactions */
-  will-change: contents;
   transform: translateZ(0);
   contain: layout style;
 }
@@ -431,7 +277,6 @@ body {
   -webkit-backdrop-filter: blur(var(--backdrop-blur));
   /* GPU acceleration for smooth icon button interactions */
   will-change: transform, background-color;
-  transform: translateZ(0);
   backface-visibility: hidden;
 }
 
@@ -507,8 +352,7 @@ body {
   /* Differentiate search band from rest of UI */
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
   /* GPU acceleration for smooth search interactions */
-  will-change: contents;
-  transform: translateZ(0);
+  will-change: transform;
   contain: layout style;
 }
 
@@ -524,7 +368,6 @@ body {
   border-radius: 16px;
   box-shadow: inset 0 1px 0 var(--shadow-light);
   /* GPU acceleration for smooth search interactions */
-  will-change: contents;
   transform: translateZ(0);
   contain: layout style;
 }
@@ -556,12 +399,11 @@ body {
   transition: box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
   box-shadow: inset 0 1px 0 var(--shadow-light);
   /* GPU acceleration for smooth search input typing */
-  will-change: contents;
   transform: translateZ(0);
   contain: layout style;
 }
 
-.search-input:focus {
+.search-input:focus-visible {
   /* Colorless (neutral) focus treatment */
   border-color: var(--border-color);
   box-shadow: inset 0 1px 0 var(--shadow-light), 0 0 0 2px rgba(255, 255, 255, 0.06);
@@ -618,8 +460,7 @@ body {
   position: relative;
   isolation: isolate;
   /* GPU acceleration for smooth filter switching */
-  will-change: contents;
-  transform: translateZ(0);
+  will-change: transform;
   contain: layout style;
 }
 
@@ -648,7 +489,6 @@ body {
   /* original size */
   /* GPU acceleration for smooth filter option interactions */
   will-change: transform, background-color;
-  transform: translateZ(0);
   backface-visibility: hidden;
   font-weight: 500;
   cursor: pointer;
@@ -674,19 +514,14 @@ body {
   pointer-events: none;
   border-radius: inherit;
   padding: 1px;
-  background:
-    conic-gradient(from 220deg at 50% 50%,
-      rgba(255, 255, 255, 0.55) 0deg,
-      rgba(255, 255, 255, 0.10) 70deg,
-      rgba(0, 0, 0, 0.18) 140deg,
-      rgba(255, 255, 255, 0.12) 220deg,
-      rgba(255, 255, 255, 0.55) 360deg);
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
+  background: conic-gradient(from 220deg at 50% 50%,
+    rgba(255, 255, 255, 0.55) 0deg,
+    rgba(255, 255, 255, 0.10) 70deg,
+    rgba(0, 0, 0, 0.18) 140deg,
+    rgba(255, 255, 255, 0.12) 220deg,
+    rgba(255, 255, 255, 0.55) 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   opacity: 0.75;
@@ -867,7 +702,7 @@ body {
   transform: translateZ(0);
 }
 
-.domain-select:focus {
+.domain-select:focus-visible {
   border-color: var(--accent-color);
 }
 
@@ -1095,7 +930,7 @@ body {
   /* Slightly more padding for premium feel */
   border-radius: 16px;
   /* More rounded for modern look */
-
+  --toast-shimmer: inset 0 1px 0 rgba(255, 255, 255, 0.4);
   /* Enhanced glassmorphism styling - benchmark quality */
   background: linear-gradient(135deg,
       rgba(255, 255, 255, 0.25) 0%,
@@ -1104,7 +939,7 @@ body {
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.12),
     0 2px 8px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    var(--toast-shimmer);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
 
@@ -1204,10 +1039,7 @@ body {
       rgba(52, 199, 89, 0.05) 50%,
       rgba(255, 255, 255, 0.15) 100%);
   border: 1px solid rgba(52, 199, 89, 0.15);
-  box-shadow:
-    0 8px 32px rgba(52, 199, 89, 0.06),
-    0 2px 8px rgba(52, 199, 89, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px rgba(52, 199, 89, 0.06), 0 2px 8px rgba(52, 199, 89, 0.04), var(--toast-shimmer);
 }
 
 .toast.error {
@@ -1216,10 +1048,7 @@ body {
       rgba(255, 59, 48, 0.05) 50%,
       rgba(255, 255, 255, 0.15) 100%);
   border: 1px solid rgba(255, 59, 48, 0.15);
-  box-shadow:
-    0 8px 32px rgba(255, 59, 48, 0.06),
-    0 2px 8px rgba(255, 59, 48, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px rgba(255, 59, 48, 0.06), 0 2px 8px rgba(255, 59, 48, 0.04), var(--toast-shimmer);
 }
 
 .toast.warning {
@@ -1228,10 +1057,7 @@ body {
       rgba(255, 149, 0, 0.05) 50%,
       rgba(255, 255, 255, 0.15) 100%);
   border: 1px solid rgba(255, 149, 0, 0.15);
-  box-shadow:
-    0 8px 32px rgba(255, 149, 0, 0.06),
-    0 2px 8px rgba(255, 149, 0, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px rgba(255, 149, 0, 0.06), 0 2px 8px rgba(255, 149, 0, 0.04), var(--toast-shimmer);
 }
 
 .toast.info {
@@ -1240,10 +1066,7 @@ body {
       rgba(0, 122, 255, 0.05) 50%,
       rgba(255, 255, 255, 0.15) 100%);
   border: 1px solid rgba(0, 122, 255, 0.15);
-  box-shadow:
-    0 8px 32px rgba(0, 122, 255, 0.06),
-    0 2px 8px rgba(0, 122, 255, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 122, 255, 0.06), 0 2px 8px rgba(0, 122, 255, 0.04), var(--toast-shimmer);
 }
 
 /* Notification icon styling */
@@ -1313,7 +1136,7 @@ body {
   -webkit-overflow-scrolling: touch;
   /* iOS smooth scrolling */
   /* GPU acceleration for smooth note list scrolling */
-  will-change: scroll-position, contents;
+  will-change: scroll-position;
   transform: translateZ(0);
   contain: layout style paint;
   overscroll-behavior: contain;
@@ -1441,7 +1264,6 @@ html[data-compact="1"] .notes-list {
   height: 100%;
   position: relative;
   /* GPU acceleration for smooth note content rendering */
-  will-change: contents;
   transform: translateZ(0);
   contain: layout style;
 }
@@ -1474,7 +1296,9 @@ html[data-compact="1"] .notes-list {
   display: flex;
   gap: 4px;
   margin-top: 2px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .note-tag-inline {
@@ -1838,6 +1662,7 @@ html[data-compact="1"] .domain-notes-list {
 }
 
 /* Add glass outline to individual note items inside domain groups */
+.note-item::after,
 .domain-notes-list .note-item::after {
   content: "";
   position: absolute;
@@ -1845,54 +1670,19 @@ html[data-compact="1"] .domain-notes-list {
   border-radius: inherit;
   pointer-events: none;
   padding: 1px;
-  background:
-    conic-gradient(from 200deg at 50% 50%,
-      rgba(255, 255, 255, 0.55) 0deg,
-      rgba(255, 255, 255, 0.10) 70deg,
-      rgba(0, 0, 0, 0.18) 140deg,
-      rgba(255, 255, 255, 0.12) 220deg,
-      rgba(255, 255, 255, 0.55) 360deg);
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
+  background: conic-gradient(from 200deg at 50% 50%,
+    rgba(255, 255, 255, 0.55) 0deg,
+    rgba(255, 255, 255, 0.10) 70deg,
+    rgba(0, 0, 0, 0.18) 140deg,
+    rgba(255, 255, 255, 0.12) 220deg,
+    rgba(255, 255, 255, 0.55) 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   mix-blend-mode: normal;
   opacity: 0.9;
   z-index: 2;
-  /* Ensure outline is above note content */
-}
-
-/* Ensure all note items have the glass outline effect with variations */
-.note-item::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  padding: 1px;
-  background:
-    conic-gradient(from 200deg at 50% 50%,
-      rgba(255, 255, 255, 0.55) 0deg,
-      rgba(255, 255, 255, 0.10) 70deg,
-      rgba(0, 0, 0, 0.18) 140deg,
-      rgba(255, 255, 255, 0.12) 220deg,
-      rgba(255, 255, 255, 0.55) 360deg);
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  mix-blend-mode: normal;
-  opacity: 0.9;
-  z-index: 2;
-  /* Ensure outline is above note content */
 }
 
 /* Vary glass outline for different note positions to avoid identical look */
@@ -2474,7 +2264,6 @@ html[data-view="site"] .note-item:hover::after {
   /* Force new stacking context */
   isolation: isolate;
   /* GPU acceleration for smooth dialog content */
-  will-change: contents;
   transform: translateZ(0);
   contain: layout style paint;
 }
@@ -2797,7 +2586,6 @@ html[data-view="site"] .note-item:hover::after {
   /* Ensure dropdown container has highest z-index in extension */
   z-index: 2147483646;
   /* GPU acceleration for smooth dropdown interactions */
-  will-change: contents;
   transform: translateZ(0);
   contain: layout style;
 }
@@ -3210,7 +2998,6 @@ html[data-view="site"] .note-item:hover::after {
   z-index: 1;
   /* GPU acceleration for smooth style option interactions */
   will-change: transform, background-color, border-color;
-  transform: translateZ(0);
   backface-visibility: hidden;
 }
 

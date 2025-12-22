@@ -3,10 +3,8 @@
  * Provides safe DOM manipulation methods using DOMPurify
  */
 
-// Load DOMPurify if not already loaded
 if (typeof DOMPurify === 'undefined') {
   // DOMPurify should be loaded via script tag in popup.html
-  console.error('DOMPurify not loaded - XSS prevention may not work properly');
 }
 
 class XSSPrevention {
@@ -86,14 +84,12 @@ class XSSPrevention {
    */
   sanitizeRichText(html) {
     if (!this.isReady) {
-      console.warn('DOMPurify not available, falling back to basic sanitization');
       return this.fallbackSanitize(html);
     }
 
     try {
       return DOMPurify.sanitize(html, this.richTextConfig);
     } catch (error) {
-      console.error('DOMPurify sanitization failed:', error);
       return this.fallbackSanitize(html);
     }
   }
@@ -110,7 +106,6 @@ class XSSPrevention {
     try {
       return DOMPurify.sanitize(html, this.basicConfig);
     } catch (error) {
-      console.error('DOMPurify sanitization failed:', error);
       return this.fallbackSanitize(html);
     }
   }
@@ -205,7 +200,6 @@ class XSSPrevention {
     
     for (const pattern of suspiciousPatterns) {
       if (pattern.test(input)) {
-        console.warn('Suspicious content detected and rejected:', input.substring(0, 100));
         return '';
       }
     }
@@ -263,7 +257,6 @@ class XSSPrevention {
    */
   runSecurityTests() {
     if (!this.isReady) {
-      console.warn('Cannot run security tests - DOMPurify not available');
       return false;
     }
 
@@ -281,14 +274,11 @@ class XSSPrevention {
     ];
 
     let allTestsPassed = true;
-    
-    console.log('Running XSS prevention security tests...');
-    
+
     maliciousPayloads.forEach((payload, index) => {
       const sanitized = this.sanitizeRichText(payload);
-      
-      // Check if dangerous content was removed
-      const hasDangerousContent = 
+
+      const hasDangerousContent =
         sanitized.includes('<script') ||
         sanitized.includes('javascript:') ||
         sanitized.includes('onerror=') ||
@@ -296,21 +286,12 @@ class XSSPrevention {
         sanitized.includes('onload=') ||
         sanitized.includes('<iframe') ||
         sanitized.includes('<object');
-      
+
       if (hasDangerousContent) {
-        console.error(`Security test ${index + 1} FAILED:`, payload, '→', sanitized);
         allTestsPassed = false;
-      } else {
-        console.log(`Security test ${index + 1} PASSED:`, payload, '→', sanitized);
       }
     });
-    
-    if (allTestsPassed) {
-      console.log('✅ All XSS prevention tests passed');
-    } else {
-      console.error('❌ Some XSS prevention tests failed');
-    }
-    
+
     return allTestsPassed;
   }
 }

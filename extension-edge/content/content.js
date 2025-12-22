@@ -10,6 +10,8 @@
   let highlightToolbar = null;
   let isSelecting = false;
   let selectionStart = null;
+  let hoveredParagraph = null;
+  let paragraphClickTimeout = null;
 
   // Get current page information
   function getCurrentPageInfo() {
@@ -135,7 +137,9 @@
     document.addEventListener('mousedown', handleMouseDown);
     document.addEventListener('mouseup', handleMouseUp);
     document.addEventListener('keydown', handleKeyDown);
-
+    document.addEventListener('mouseover', handleParagraphHover);
+    document.addEventListener('mouseout', handleParagraphOut);
+    document.addEventListener('click', handleParagraphClick);
     // Add visual indicator with GPU acceleration
     document.body.style.cursor = 'crosshair';
     document.body.classList.add('url-notes-multi-highlight-mode');
@@ -158,6 +162,25 @@
           transition: all 0.15s ease;
           pointer-events: none;
         }
+             
+        /* Paragraph hover effect - dotted outline like Obsidian */
+        .url-notes-paragraph-hover {
+          outline: 2px dashed rgba(59, 130, 246, 0.6) !important;
+          outline-offset: 2px !important;
+          background: rgba(59, 130, 246, 0.05) !important;
+          transition: outline 0.15s ease, background 0.15s ease !important;
+          border-radius: 4px !important;
+        }
+        
+        /* Paragraph captured animation */
+        @keyframes paragraph-capture {
+          0% { background: rgba(34, 197, 94, 0.2); }
+          100% { background: rgba(34, 197, 94, 0); }
+        }
+        
+        .url-notes-paragraph-captured {
+          animation: paragraph-capture 0.3s ease !important;
+        }
       `;
       document.head.appendChild(bodyStyle);
     }
@@ -174,6 +197,9 @@
     document.removeEventListener('mousedown', handleMouseDown);
     document.removeEventListener('mouseup', handleMouseUp);
     document.removeEventListener('keydown', handleKeyDown);
+    document.removeEventListener('mouseover', handleParagraphHover);
+    document.removeEventListener('mouseout', handleParagraphOut);
+    document.removeEventListener('click', handleParagraphClick);
 
     // Remove visual indicator and GPU acceleration class
     document.body.style.cursor = '';
@@ -199,13 +225,18 @@
       };
       isSelecting = true;
     }
+      // Start timer to detect if this is a click (not drag)
+    paragraphClickTimeout = setTimeout(() => {
+      paragraphClickTimeout = null;
+    }, 200);
   }
 
   // Handle mouse up for text selection
   function handleMouseUp(e) {
-    if (!multiHighlightMode || !isSelecting) return;
-
-    isSelecting = false;
+    if (!multiHighlightMode) return;
+    // If user dragged to select text, handle it
+    if (isSelecting) {
+      isSelecting = false;
 
     const selection = window.getSelection();
     if (selection.rangeCount > 0) {
@@ -255,6 +286,7 @@
 
     selectionStart = null;
   }
+  }
 
   // Handle keyboard shortcuts
   function handleKeyDown(e) {
@@ -277,6 +309,403 @@
       toggleMultiHighlightMode();
       e.preventDefault();
     }
+  }
+  // Handle paragraph hover - show dotted outline and tooltip
+  function handleParagraphHover(e) {
+    if (!multiHighlightMode) return;
+
+    // Don't show hover if user is actively selecting text
+    if (isSelecting) return;
+
+    const target = e.target;
+
+    // Find the closest paragraph-like element
+    const paragraph = findParagraphElement(target);
+
+    if (paragraph && paragraph !== hoveredParagraph) {
+      // Remove hover from previous paragraph
+      if (hoveredParagraph) {
+        hoveredParagraph.classList.remove('url-notes-paragraph-hover');
+        removeTooltip();
+      }
+
+      // Add hover to new paragraph
+      hoveredParagraph = paragraph;
+      hoveredParagraph.classList.add('url-notes-paragraph-hover');
+
+      // Show tooltip
+      showTooltip(e.clientX, e.clientY);
+    }
+  }
+
+  // Handle paragraph mouse out
+  function handleParagraphOut(e) {
+    if (!multiHighlightMode) return;
+
+    const target = e.target;
+
+    // Only remove hover if we're leaving the hovered paragraph
+    if (hoveredParagraph && !hoveredParagraph.contains(e.relatedTarget)) {
+      hoveredParagraph.classList.remove('url-notes-paragraph-hover');
+      hoveredParagraph = null;
+      removeTooltip();
+    }
+  }
+
+  // Show tooltip near cursor
+  function showTooltip(x, y) {
+    removeTooltip(); // Remove any existing tooltip
+
+    const tooltip = document.createElement('div');
+    tooltip.id = 'url-notes-paragraph-tooltip';
+    if (!hoveredParagraph) return;
+
+    tooltip.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+        <path d="M9 3v18M15 3v18"/>
+      </svg>
+      Shift+Click to select
+    `;
+
+    // Get paragraph position
+    const rect = hoveredParagraph.getBoundingClientRect();
+
+    tooltip.style.cssText = `
+      position: fixed;
+      left: ${rect.left}px;
+      top: ${rect.top - 32}px;
+      background: rgba(59, 130, 246, 0.95);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      z-index: 10001;
+      pointer-events: none;
+      white-space: nowrap;
+      box-shadow: 0 2px 12px rgba(59, 130, 246, 0.4);
+      animation: tooltip-fade-in 0.2s ease;
+      display: flex;
+      align-items: center;
+    `;
+
+    // Add animation styles if not already present
+    if (!document.getElementById('url-notes-tooltip-style')) {
+      const style = document.createElement('style');
+      style.id = 'url-notes-tooltip-style';
+      style.textContent = `
+        @keyframes tooltip-fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(-5px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    document.body.appendChild(tooltip);
+  }
+
+  // Remove tooltip
+  function removeTooltip() {
+    const tooltip = document.getElementById('url-notes-paragraph-tooltip');
+    if (tooltip && tooltip.parentNode) {
+      tooltip.parentNode.removeChild(tooltip);
+    }
+  }
+
+  // Handle paragraph click - capture whole paragraph or remove if already highlighted (Shift+Click)
+  function handleParagraphClick(e) {
+    if (!multiHighlightMode) return;
+
+    // Only trigger on Shift+Click
+    if (!e.shiftKey) return;
+
+    const paragraph = findParagraphElement(e.target);
+    if (!paragraph) return;
+
+    // Prevent default shift+click behavior (text selection extension)
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Clear any existing selection that shift+click might have created
+    const selection = window.getSelection();
+    if (selection) {
+      selection.removeAllRanges();
+    }
+
+    // Check if paragraph was fully highlighted via click (not partial manual selection)
+    const existingHighlights = paragraph.querySelectorAll('mark[data-url-notes-highlight]');
+
+    if (existingHighlights.length > 0) {
+      // Only allow deselection if the entire paragraph is highlighted
+      // Check if highlights cover most of the paragraph text
+      const paragraphText = getParagraphText(paragraph);
+      const highlightedText = Array.from(existingHighlights)
+        .map(mark => mark.textContent || '')
+        .join(' ')
+        .trim();
+
+      // If highlighted text is at least 80% of paragraph text, allow deselection
+      const coverageRatio = highlightedText.length / paragraphText.length;
+
+      if (coverageRatio >= 0.8) {
+        // Remove all highlights in this paragraph
+        existingHighlights.forEach(mark => {
+          const highlightId = mark.getAttribute('data-highlight-id');
+          if (highlightId) {
+            const index = highlights.findIndex(h => h.id === parseFloat(highlightId));
+            if (index !== -1) {
+              removeHighlight(index);
+            }
+          }
+        });
+
+        // Visual feedback for removal
+        paragraph.style.transition = 'background 0.3s ease';
+        paragraph.style.background = 'rgba(239, 68, 68, 0.2)';
+        setTimeout(() => {
+          paragraph.style.background = '';
+        }, 300);
+
+        return;
+      }
+      // If less than 80% is highlighted, don't deselect (user made partial selection)
+    }
+
+    // Get the text content of the paragraph (XSS-safe)
+    const paragraphText = getParagraphText(paragraph);
+
+    if (paragraphText && paragraphText.length > 0) {
+      // Create a range for only the text nodes in the paragraph (skip style/script tags)
+      try {
+        const range = createTextOnlyRange(paragraph);
+        if (!range) return;
+
+        addHighlight(range, paragraphText);
+
+        // Visual feedback
+        paragraph.classList.add('url-notes-paragraph-captured');
+        setTimeout(() => {
+          paragraph.classList.remove('url-notes-paragraph-captured');
+        }, 300);
+      } catch (error) {
+        // Silently handle capture errors
+      }
+    }
+  }
+
+  // Find the closest paragraph-like element (XSS-safe)
+  function findParagraphElement(element) {
+    if (!element || element === document.body) return null;
+
+    // Paragraph-like elements (prioritize semantic text containers)
+    const paragraphTags = ['P', 'ARTICLE', 'BLOCKQUOTE', 'PRE', 'LI', 'TD', 'TH'];
+    const containerTags = ['DIV', 'SECTION']; // Only use these if they have substantial text
+
+    // Skip problematic elements and UI components
+    const skipTags = ['SCRIPT', 'STYLE', 'NOSCRIPT', 'IFRAME', 'OBJECT', 'EMBED', 'BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'NAV', 'HEADER', 'FOOTER', 'ASIDE'];
+
+    // Skip common sidebar/UI class patterns
+    const skipClassPatterns = ['sidebar', 'nav', 'menu', 'header', 'footer', 'toolbar', 'widget', 'ad', 'banner', 'popup', 'modal', 'infobox'];
+
+    let current = element;
+
+    while (current && current !== document.body) {
+      // Skip if it's a problematic element
+      if (skipTags.includes(current.tagName)) {
+        return null;
+      }
+
+      // Skip elements with UI-related classes
+      const className = (current.className || '').toLowerCase();
+      if (skipClassPatterns.some(pattern => className.includes(pattern))) {
+        current = current.parentElement;
+        continue;
+      }
+
+      // Check if it's a paragraph-like element with meaningful text
+      if (paragraphTags.includes(current.tagName)) {
+        const text = current.textContent?.trim() || '';
+
+        // Must have at least 50 characters to be considered a real paragraph
+        if (text.length >= 50) {
+          return current;
+        }
+      }
+
+      // For DIV/SECTION, require more substantial text content
+      if (containerTags.includes(current.tagName)) {
+        const text = current.textContent?.trim() || '';
+
+        // Must have at least 100 characters and not be too nested with other containers
+        if (text.length >= 100) {
+          // Check if this container has mostly text vs nested containers
+          const childContainers = current.querySelectorAll('div, section').length;
+          const textDensity = text.length / Math.max(1, childContainers);
+
+          // If text density is high enough, consider it a paragraph
+          if (textDensity >= 50) {
+            return current;
+          }
+        }
+      }
+
+      current = current.parentElement;
+    }
+
+    return null;
+  }
+
+  // Get paragraph text safely (XSS-safe)
+  function getParagraphText(paragraph) {
+    if (!paragraph) return '';
+
+    // Clone the paragraph to avoid modifying the original
+    const clone = paragraph.cloneNode(true);
+
+    // Remove style, script, and other non-content elements
+    const elementsToRemove = clone.querySelectorAll('style, script, noscript, svg, canvas');
+    elementsToRemove.forEach(el => el.remove());
+
+    // Use textContent to safely extract text (auto-escapes HTML)
+    const text = clone.textContent || '';
+
+    // Trim and normalize whitespace
+    return text.trim().replace(/\s+/g, ' ');
+  }
+
+  // Create a range that only includes text nodes, skipping style/script tags
+  function createTextOnlyRange(paragraph) {
+    if (!paragraph) return null;
+
+    const range = document.createRange();
+
+    // Find first and last text nodes, skipping style/script elements
+    const walker = document.createTreeWalker(
+      paragraph,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: (node) => {
+          // Skip empty text nodes
+          if (!node.textContent || !node.textContent.trim()) {
+            return NodeFilter.FILTER_REJECT;
+          }
+
+          // Skip text nodes inside style, script, etc.
+          let parent = node.parentElement;
+          while (parent && parent !== paragraph) {
+            const tag = parent.tagName;
+            if (tag === 'STYLE' || tag === 'SCRIPT' || tag === 'NOSCRIPT' || tag === 'SVG' || tag === 'CANVAS') {
+              return NodeFilter.FILTER_REJECT;
+            }
+            parent = parent.parentElement;
+          }
+
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      }
+    );
+
+    const firstTextNode = walker.nextNode();
+    if (!firstTextNode) return null;
+
+    // Find last text node
+    let lastTextNode = firstTextNode;
+    let node;
+    while (node = walker.nextNode()) {
+      lastTextNode = node;
+    }
+
+    try {
+      range.setStart(firstTextNode, 0);
+      range.setEnd(lastTextNode, lastTextNode.length);
+      return range;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  // Walk through range and wrap each text node individually (for complex ranges)
+  function wrapTextNodesInRange(range, highlightId) {
+    const marks = [];
+
+    // Create a tree walker to find all text nodes in the range
+    const walker = document.createTreeWalker(
+      range.commonAncestorContainer,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: (node) => {
+          // Skip empty text nodes
+          if (!node.textContent || !node.textContent.trim()) {
+            return NodeFilter.FILTER_REJECT;
+          }
+
+          // Check if this text node intersects with our range
+          if (!range.intersectsNode(node)) {
+            return NodeFilter.FILTER_REJECT;
+          }
+
+          // Skip text nodes inside script, style, etc.
+          let parent = node.parentElement;
+          while (parent) {
+            const tag = parent.tagName;
+            if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT') {
+              return NodeFilter.FILTER_REJECT;
+            }
+            parent = parent.parentElement;
+          }
+
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      }
+    );
+
+    // Collect all text nodes first (to avoid modifying while iterating)
+    const textNodes = [];
+    let node;
+    while (node = walker.nextNode()) {
+      textNodes.push(node);
+    }
+
+    // Wrap each text node
+    textNodes.forEach(textNode => {
+      try {
+        const mark = document.createElement('mark');
+        mark.setAttribute('data-url-notes-highlight', '');
+        mark.setAttribute('data-highlight-id', highlightId);
+        mark.style.backgroundColor = '#ffeb3b';
+        mark.style.padding = '2px 4px';
+        mark.style.borderRadius = '3px';
+        mark.style.boxShadow = '0 0 0 2px rgba(255,235,59,0.35)';
+        mark.style.cursor = 'pointer';
+
+        // Add click to remove functionality
+        mark.addEventListener('click', () => {
+          const index = highlights.findIndex(h => h.id === highlightId);
+          if (index !== -1) {
+            removeHighlight(index);
+          }
+        });
+
+        // Create a range for this specific text node
+        const nodeRange = document.createRange();
+        nodeRange.selectNodeContents(textNode);
+
+        // Wrap this text node
+        nodeRange.surroundContents(mark);
+        marks.push(mark);
+      } catch (error) {
+        // Skip nodes that can't be wrapped (e.g., already inside a mark)
+      }
+    });
+
+    return marks;
   }
 
   // Add a new highlight
@@ -428,35 +857,20 @@
         }
 
       } catch (wrapError) {
-        // Standard wrap failed, trying alternative approach
-
-        // For complex selections, use a simpler approach that doesn't manipulate the original content
+        // Standard wrap failed, trying walk-and-wrap approach for complex ranges
         try {
+          const marks = wrapTextNodesInRange(range, highlight.id);
 
-          // Create a simple span element with the text content
-          const span = document.createElement('span');
-          span.setAttribute('data-url-notes-highlight', '');
-          span.setAttribute('data-highlight-id', highlight.id);
-          span.style.backgroundColor = '#ffeb3b';
-          span.style.padding = '2px 4px';
-          span.style.borderRadius = '3px';
-          span.style.boxShadow = '0 0 0 2px rgba(255,235,59,0.35)';
-          span.style.cursor = 'pointer';
-          span.textContent = text;
-          span.addEventListener('click', () => {
-            const index = highlights.findIndex(h => h.id === highlight.id);
-            if (index !== -1) {
-              removeHighlight(index);
-            }
-          });
-
-          // Insert the span at the start of the selection
-          range.collapse(true);
-          range.insertNode(span);
-
-          highlightElement = span;
-
-        } catch (simpleError) {
+          if (marks && marks.length > 0) {
+            // Store first mark as the primary element
+            highlightElement = marks[0];
+            // Store all marks for proper cleanup
+            highlight.elements = marks;
+          } else {
+            return; // Couldn't wrap any nodes
+          }
+        } catch (walkError) {
+   
           return; // Give up on this highlight
         }
       }
@@ -479,24 +893,28 @@
 
     const highlight = highlights[index];
 
-    // Remove visual element with animation
-    if (highlight.element && highlight.element.parentNode) {
-      const parent = highlight.element.parentNode;
-      
-      // Add removal animation class for smooth GPU-accelerated exit
-      highlight.element.classList.add('removing');
-      
-      // Wait for animation to complete before removing element
-      setTimeout(() => {
-        if (highlight.element && highlight.element.parentNode) {
-          while (highlight.element.firstChild) {
-            parent.insertBefore(highlight.element.firstChild, highlight.element);
+        // Handle multiple elements (from walk-and-wrap) or single element
+    const elementsToRemove = highlight.elements || (highlight.element ? [highlight.element] : []);
+
+    elementsToRemove.forEach(element => {
+      if (element && element.parentNode) {
+        const parent = element.parentNode;
+
+        // Add removal animation class for smooth GPU-accelerated exit
+        element.classList.add('removing');
+
+        // Wait for animation to complete before removing element
+        setTimeout(() => {
+          if (element && element.parentNode) {
+            while (element.firstChild) {
+              parent.insertBefore(element.firstChild, element);
+            }
+            parent.removeChild(element);
+            parent.normalize();
           }
-          parent.removeChild(highlight.element);
-          parent.normalize();
-        }
-      }, 300); // Match animation duration
-    }
+        }, 300); // Match animation duration
+      }
+    });
 
     // Remove from array immediately (don't wait for animation)
     highlights.splice(index, 1);
@@ -509,14 +927,19 @@
   function clearAllHighlights() {
     const count = highlights.length;
     highlights.forEach(highlight => {
-      if (highlight.element && highlight.element.parentNode) {
-        const parent = highlight.element.parentNode;
-        while (highlight.element.firstChild) {
-          parent.insertBefore(highlight.element.firstChild, highlight.element);
+         // Handle multiple elements (from walk-and-wrap) or single element
+      const elementsToRemove = highlight.elements || (highlight.element ? [highlight.element] : []);
+
+      elementsToRemove.forEach(element => {
+        if (element && element.parentNode) {
+          const parent = element.parentNode;
+          while (element.firstChild) {
+            parent.insertBefore(element.firstChild, element);
+          }
+          parent.removeChild(element);
+          parent.normalize();
         }
-        parent.removeChild(highlight.element);
-        parent.normalize();
-      }
+      });    
     });
 
     highlights = [];
@@ -720,14 +1143,16 @@
     updateHighlightToolbar();
     
     // Add animation to count display
-    const countElement = highlightToolbar.querySelector('div[style*="margin-bottom: 12px"]');
-    if (countElement) {
-      countElement.classList.add('highlight-count', 'updating');
+    if (highlightToolbar) {
+      const countElement = highlightToolbar.querySelector('div[style*="margin-bottom: 12px"]');
+      if (countElement) {
+        countElement.classList.add('highlight-count', 'updating');
       
-      // Remove animation class after animation completes
-      setTimeout(() => {
-        countElement.classList.remove('updating');
-      }, 400);
+        // Remove animation class after animation completes
+        setTimeout(() => {
+          countElement.classList.remove('updating');
+        }, 400);
+      }
     }
   }
 

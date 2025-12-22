@@ -218,13 +218,7 @@ class StorageManager {
 
         importedNotes.forEach(note => {
           if (note && note.id) {
-            // Check if note already exists
             const existingNote = notesMap.get(note.id);
-
-            // If existing note is deleted with pending sync, we'll overwrite it
-            if (existingNote && existingNote.is_deleted && existingNote.sync_pending) {
-              console.log(`Overwriting deleted note ${note.id} with imported version`);
-            }
 
             // Add timestamp if missing
             if (!note.createdAt) {

@@ -1,9 +1,4 @@
-// Context menu now uses the same storage system as the main extension
-// No separate storage abstraction needed
-
-// Background script loaded
-
-// Keyboard commands
+// Keyboard shortcuts
 try {
   chrome.commands.onCommand.addListener(async (command) => {
     if (command === 'create_new_note') {
@@ -30,11 +25,8 @@ try {
     }
   });
 } catch (_) { /* noop */ }
-// Anchored Extension - Background Script (Service Worker)
 
-// --- Main Event Listeners ---
-
-// Extension installation and updates
+// Handle extension installation and updates
 chrome.runtime.onInstalled.addListener(async (details) => {
   setupContextMenus();
 
@@ -61,10 +53,10 @@ chrome.runtime.onStartup.addListener(() => {
   setupContextMenus();
 });
 
-// Also ensure context menus exist when the service worker starts
+// Ensure context menus exist when service worker starts
 setupContextMenus();
 
-// Handle context menu clicks
+// Listen for context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'addSelectionToNewNote') {
     addSelectionToNewNote(info, tab);
@@ -84,9 +76,6 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
     updateUninstallUrl();
   }
 });
-
-
-// --- Feature Implementations ---
 
 // Setup context menus for text selection
 function setupContextMenus() {

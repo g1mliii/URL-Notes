@@ -8,11 +8,9 @@ class EditorManager {
 
   }
 
-  // Create a new note
   createNewNote(currentSite) {
-    // Handle case where currentSite might be null (e.g., extension opened from management page)
+    // Handle null currentSite (e.g., extension opened from management page)
     if (!currentSite) {
-      // Remove verbose logging
       currentSite = {
         domain: 'general',
         url: 'chrome://extensions',
@@ -38,14 +36,12 @@ class EditorManager {
     return newNote;
   }
 
-  // Open existing note
   openNote(note) {
     this.currentNote = { ...note };
     this.openEditor();
     this.populateEditor();
   }
 
-  // Populate editor with note data
   populateEditor() {
     try {
       if (!this.currentNote) return;
@@ -55,34 +51,29 @@ class EditorManager {
       const tagsInput = document.getElementById('tagsInput');
       const dateSpan = document.getElementById('noteDate');
 
-      // Populate title
       if (titleHeader) {
         titleHeader.value = this.currentNote.title || '';
       }
 
-      // Populate content with XSS protection
       if (contentInput) {
         const safeContent = this.buildContentHtml(this.currentNote.content || '');
         if (window.safeDOM) {
+          // Use XSS-safe DOM manipulation
           window.safeDOM.setInnerHTML(contentInput, safeContent, true);
         } else {
-          // Fallback for safety
           contentInput.textContent = this.currentNote.content || '';
         }
       }
 
-      // Populate tags
       if (tagsInput) {
         tagsInput.value = (this.currentNote.tags || []).join(', ');
       }
 
-      // Populate date
       if (dateSpan) {
         dateSpan.textContent = this.currentNote.createdAt ?
           new Date(this.currentNote.createdAt).toLocaleDateString() : '';
       }
 
-      // Update character count
       this.updateCharCount();
 
     } catch (error) {
@@ -90,7 +81,6 @@ class EditorManager {
     }
   }
 
-  // Open the note editor
   async openEditor(focusContent = false) {
     const editor = document.getElementById('noteEditor');
     const notesContainer = document.querySelector('.notes-container');
@@ -102,27 +92,23 @@ class EditorManager {
       return;
     }
 
-    // Hide notes list and show editor
     notesContainer.style.display = 'none';
     searchContainer.style.display = 'none';
 
-    // Show editor and trigger slide-in animation
     editor.style.display = 'flex';
     editor.classList.add('open');
 
-    // Small delay to ensure display change is applied before animation
     setTimeout(() => {
       editor.classList.add('slide-in');
     }, 10);
 
-    // Focus the editor
     if (focusContent) {
       const contentInput = document.getElementById('noteContentInput');
       if (contentInput) {
         contentInput.focus();
-        // Move cursor to end of content
         const content = contentInput.textContent || '';
         if (content.length > 0) {
+          // Move cursor to end of content
           const range = document.createRange();
           const selection = window.getSelection();
           range.selectNodeContents(contentInput);
@@ -136,30 +122,24 @@ class EditorManager {
       if (titleHeader) titleHeader.focus();
     }
 
-    // Toggle premium-only controls (AI button) based on premium access
     try {
       const premiumStatus = await getPremiumStatus();
       const isPremium = premiumStatus.isPremium;
       if (aiRewriteBtn) aiRewriteBtn.style.display = isPremium ? 'flex' : 'none';
     } catch (_) {
-      // Hide AI button if premium check fails
       if (aiRewriteBtn) aiRewriteBtn.style.display = 'none';
     }
 
-    // Update premium UI to hide/show ads appropriately
     try {
       if (window.urlNotesApp && window.urlNotesApp.updatePremiumUI) {
         await window.urlNotesApp.updatePremiumUI();
       }
     } catch (error) {
-      // Remove verbose logging
     }
 
-    // Emit editor opened event
     window.eventBus?.emit('editor:opened');
   }
 
-  // Close the note editor
   closeEditor(options = { clearDraft: false }) {
     const editor = document.getElementById('noteEditor');
     const notesContainer = document.querySelector('.notes-container');
@@ -170,22 +150,17 @@ class EditorManager {
       return;
     }
 
-    // Add slide-out animation
     editor.classList.add('slide-out');
 
     setTimeout(() => {
-      // Hide editor and show notes
       editor.style.display = 'none';
-      notesContainer.style.display = ''; // Remove inline style to let CSS flex take over
-      searchContainer.style.display = ''; // Remove inline style to let CSS flex take over
+      notesContainer.style.display = ''; // Let CSS flex take over
+      searchContainer.style.display = ''; // Let CSS flex take over
 
-      // Remove animation classes
       editor.classList.remove('open', 'slide-in', 'slide-out', 'editor-fade-in');
 
-      // If requested, clear cached draft; otherwise keep cached but mark not open
       if (options && options.clearDraft) {
         this.clearEditorState();
-        // Only when explicitly clearing the draft do we drop currentNote reference
         this.currentNote = null;
       } else {
         // Cache latest draft immediately on close to avoid losing unsaved edits
@@ -197,7 +172,6 @@ class EditorManager {
     }, 240);
   }
 
-  // Render markdown/plain text to minimal HTML for the contenteditable editor
   buildContentHtml(content) {
     try {
       const escapeHtml = (s) => (s || '')
@@ -206,35 +180,29 @@ class EditorManager {
         .replace(/>/g, '&gt;');
 
       let text = content || '';
-
-      // Process line by line to handle links with formatting properly
       const lines = text.split(/\r?\n/);
       const mdLink = /\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g;
-      
+
       const htmlLines = lines.map(line => {
         let processedLine = line;
-        
-        // First, extract and process links to handle formatting within link text
         const linkReplacements = [];
         let linkMatch;
-        mdLink.lastIndex = 0; // Reset regex
-        
+        mdLink.lastIndex = 0;
+
         while ((linkMatch = mdLink.exec(line)) !== null) {
           const linkText = linkMatch[1];
           const url = linkMatch[2];
           const href = this.sanitizeUrl(url);
-          
+
           if (href) {
-            // Process formatting within link text
             let formattedLinkText = linkText;
-            
-            // Apply formatting to link text (same order as below)
+
+            // Apply formatting to link text
             formattedLinkText = formattedLinkText.replace(/\*\*([^*]*(?:\*(?!\*)[^*]*)*)\*\*/g, '<b>$1</b>');
             formattedLinkText = formattedLinkText.replace(/\*([^*]+)\*/g, '<i>$1</i>');
             formattedLinkText = formattedLinkText.replace(/__([^_]*(?:_(?!_)[^_]*)*?)__/g, '<u>$1</u>');
             formattedLinkText = formattedLinkText.replace(/~~([^~]*(?:~(?!~)[^~]*)*?)~~/g, '<s>$1</s>');
-            
-            // Handle color formatting in link text
+
             formattedLinkText = formattedLinkText.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, (match, color, content) => {
               const safeColor = this.sanitizeColor(color);
               if (safeColor) {
@@ -242,24 +210,21 @@ class EditorManager {
               }
               return content;
             });
-            
-            // Handle citation formatting in link text
+
             formattedLinkText = formattedLinkText.replace(/\{citation\}([^{]*)\{\/citation\}/g, '<span style="font-style: italic; color: var(--text-secondary)">$1</span>');
-            
+
             const placeholder = `__LINK_PLACEHOLDER_${linkReplacements.length}__`;
             linkReplacements.push({
               placeholder,
               replacement: `<a href="${href}" target="_blank" rel="noopener noreferrer">${formattedLinkText}</a>`
             });
-            
+
             processedLine = processedLine.replace(linkMatch[0], placeholder);
           } else {
-            // If URL is unsafe, just show the text
             processedLine = processedLine.replace(linkMatch[0], escapeHtml(linkText));
           }
         }
-        
-        // Now apply formatting to the rest of the line (outside of links)
+
         // Bold: **text** -> <b>text</b> (process first - outermost)
         processedLine = processedLine.replace(/\*\*([^*]*(?:\*(?!\*)[^*]*)*)\*\*/g, '<b>$1</b>');
 
@@ -283,13 +248,11 @@ class EditorManager {
 
         // Citation: {citation}text{/citation} -> <span style="font-style: italic; color: var(--text-secondary)">text</span>
         processedLine = processedLine.replace(/\{citation\}([^{]*)\{\/citation\}/g, '<span style="font-style: italic; color: var(--text-secondary)">$1</span>');
-        
-        // Restore processed links
+
         linkReplacements.forEach(({ placeholder, replacement }) => {
           processedLine = processedLine.replace(placeholder, replacement);
         });
-        
-        // Escape any remaining HTML in non-link, non-formatted content
+
         return this.escapeHtmlExceptTags(processedLine);
       });
       
@@ -299,15 +262,13 @@ class EditorManager {
     }
   }
 
-  // Helper method to escape HTML but preserve our formatting tags
   escapeHtmlExceptTags(text) {
-    // First escape all HTML
     let escaped = text
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
 
-    // Then unescape our allowed formatting tags
+    // Unescape our allowed formatting tags
     escaped = escaped
       .replace(/&lt;(\/?(?:b|i|u|s|span[^&]*))&gt;/gi, '<$1>')
       .replace(/&lt;span style=&quot;([^&]*)&quot;&gt;/gi, '<span style="$1">');
@@ -439,7 +400,6 @@ class EditorManager {
     tmp.querySelectorAll('u').forEach(el => {
       const innerHTML = el.innerHTML;
       const md = document.createElement('span');
-      // Use safe DOM manipulation
       if (window.safeDOM) {
         window.safeDOM.setInnerHTML(md, `__${innerHTML}__`, true);
       } else {
@@ -451,11 +411,9 @@ class EditorManager {
       el.remove();
     });
 
-    // Italics tags
     tmp.querySelectorAll('i, em').forEach(el => {
       const innerHTML = el.innerHTML;
       const md = document.createElement('span');
-      // Use safe DOM manipulation
       if (window.safeDOM) {
         window.safeDOM.setInnerHTML(md, `*${innerHTML}*`, true);
       } else {
@@ -471,7 +429,6 @@ class EditorManager {
     tmp.querySelectorAll('b, strong').forEach(el => {
       const innerHTML = el.innerHTML;
       const md = document.createElement('span');
-      // Use safe DOM manipulation
       if (window.safeDOM) {
         window.safeDOM.setInnerHTML(md, `**${innerHTML}**`, true);
       } else {
@@ -483,22 +440,19 @@ class EditorManager {
       el.remove();
     });
 
-    // Citation spans (preserve with special formatting) - process BEFORE color spans
+    // Process citations (before color spans to avoid conflicts)
     tmp.querySelectorAll('span[style*="font-style: italic"][style*="color"]').forEach(el => {
       const text = el.textContent;
-      // Check if this looks like a citation (italic + secondary color)
       const style = el.getAttribute('style');
       if (style.includes('font-style: italic') && style.includes('var(--text-secondary)')) {
-        // Mark as citation with special syntax
         const md = document.createTextNode(`{citation}${text}{/citation}`);
         el.replaceWith(md);
       } else {
-        // Just unwrap if not a citation
         el.replaceWith(document.createTextNode(text));
       }
     });
 
-    // Color spans (process AFTER citation spans to avoid conflicts)
+    // Process color spans (after citations to avoid conflicts)
     tmp.querySelectorAll('span[style*="color"]').forEach(el => {
       const text = el.textContent;
       const style = el.getAttribute('style');
@@ -508,12 +462,10 @@ class EditorManager {
         const md = document.createTextNode(`{color:${color}}${text}{/color}`);
         el.replaceWith(md);
       } else {
-        // If no color found, just unwrap
         el.replaceWith(document.createTextNode(text));
       }
     });
 
-    // Replace anchors with [text](href)
     tmp.querySelectorAll('a[href]').forEach(a => {
       const text = a.textContent || a.getAttribute('href');
       const href = a.getAttribute('href');

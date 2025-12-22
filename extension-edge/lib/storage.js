@@ -561,15 +561,21 @@ class NotesStorage {
 
   // Start periodic cleanup of soft deleted notes
   startCleanupTask() {
+    // Store interval IDs for cleanup
+    if (!this._cleanupIntervals) {
+      this._cleanupIntervals = [];
+    }
     // Clean up soft deleted notes every hour
-    setInterval(() => {
+    const deletedNotesInterval = setInterval(() => {
       this.cleanupSyncedDeletedNotes();
     }, 60 * 60 * 1000); // 1 hour
+    this._cleanupIntervals.push(deletedNotesInterval);
 
     // Clean up old versions every 6 hours
-    setInterval(() => {
+    const oldVersionsInterval = setInterval(() => {
       this.cleanupAllOldVersions();
     }, 6 * 60 * 60 * 1000); // 6 hours
+    this._cleanupIntervals.push(oldVersionsInterval);
 
     // Also clean up on first run
     setTimeout(() => {

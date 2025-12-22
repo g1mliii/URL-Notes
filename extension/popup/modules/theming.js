@@ -1,36 +1,33 @@
-/**
- * Theming and Accent Color Management Module
- */
+// Theming and favicon-based accent color management
 class ThemeManager {
   constructor() {
-    this.themeMode = 'auto'; // 'auto' | 'light' | 'dark'
+    this.themeMode = 'auto';
+    // Memory leak prevention: Track listeners for cleanup
+    this._mediaQueryList = null;
+    this._mediaQueryHandler = null;
+    this._themeToggleHandler = null;
   }
 
-  // Derive accent color from favicon (with safe fallbacks)
   async applyAccentFromFavicon(currentSite) {
     try {
       const domain = currentSite?.domain;
       const accent = await this.deriveAccentColor(currentSite?.favicon, domain);
       if (!domain) return;
       const cached = await this.getCachedAccent(domain);
-      // If accent couldn't be derived, do nothing (keep cached or neutral background)
       if (!accent) return;
       if (!this.isSameAccent(cached, accent)) {
         this.setAccentVariables(accent);
         await this.setCachedAccent(domain, accent);
       }
     } catch (e) {
-      // No-op on failure to avoid any flash or unwanted fallback
     }
   }
 
   async deriveAccentColor(faviconUrl, domain) {
-    // If no favicon, do not change colors
     if (!faviconUrl) {
       return null;
     }
 
-    // Attempt to load image with CORS
     const img = new Image();
     img.crossOrigin = 'anonymous';
     const loadPromise = new Promise((resolve, reject) => {
@@ -40,7 +37,6 @@ class ThemeManager {
     img.src = faviconUrl;
     await loadPromise;
 
-    // Draw to canvas and sample pixels
     const size = 24;
     const canvas = document.createElement('canvas');
     canvas.width = size; canvas.height = size;
@@ -48,19 +44,16 @@ class ThemeManager {
     try {
       ctx.drawImage(img, 0, 0, size, size);
       const { data } = ctx.getImageData(0, 0, size, size);
-      // Simple average color with slight saturation bias
       let r = 0, g = 0, b = 0, count = 0;
       for (let i = 0; i < data.length; i += 4) {
         const alpha = data[i + 3];
-        if (alpha < 16) continue; // ignore transparent
+        if (alpha < 16) continue; // Skip transparent pixels
         r += data[i]; g += data[i + 1]; b += data[i + 2];
         count++;
       }
       if (!count) throw new Error('Empty favicon pixels');
       r = Math.round(r / count); g = Math.round(g / count); b = Math.round(b / count);
-      // Convert to HSL and normalize to tasteful accent
       const { h, s, l } = this.rgbToHsl(r, g, b);
-      // Tune saturation/lightness for better legibility in UI
       const accent = {
         h,
         s: Math.max(0.35, Math.min(0.65, s * 0.9)),
@@ -68,7 +61,6 @@ class ThemeManager {
       };
       return accent;
     } catch (err) {
-      // Canvas tainted or other error — do not change colors
       return null;
     }
   }
@@ -100,7 +92,6 @@ class ThemeManager {
     return { h: h * 360, s, l };
   }
 
-  // Accent cache helpers
   async getCachedAccent(domain) {
     if (!domain) return null;
     const { accentCache } = await chrome.storage.local.get(['accentCache']);
@@ -128,14 +119,12 @@ class ThemeManager {
     return dh < 1 && ds < 0.01 && dl < 0.01;
   }
 
-  // Detect system theme and manage override (auto/light/dark)
   async setupThemeDetection() {
     const mql = window.matchMedia('(prefers-color-scheme: dark)');
     const root = document.documentElement;
 
-    // Load preference
     const { themeMode } = await chrome.storage.local.get(['themeMode']);
-    this.themeMode = themeMode || 'auto'; // 'auto' | 'light' | 'dark'
+    this.themeMode = themeMode || 'auto';
 
     const updateAuto = () => {
       const isDark = mql.matches;
@@ -155,23 +144,43 @@ class ThemeManager {
       }
     };
 
-    // Listen to system changes only in auto mode
     const onChange = () => {
       if (this.themeMode === 'auto') updateAuto();
     };
+    this._mediaQueryList = mql;
+    this._mediaQueryHandler = onChange;
     mql.addEventListener('change', onChange);
 
-    // Wire toggle
     const btn = document.getElementById('themeToggleBtn');
     if (btn) {
-      btn.addEventListener('click', async () => {
+      this._themeToggleHandler = async () => {
         this.themeMode = this.themeMode === 'auto' ? 'light' : this.themeMode === 'light' ? 'dark' : 'auto';
         await chrome.storage.local.set({ themeMode: this.themeMode });
         applyTheme();
-      });
+      };
+      btn.addEventListener('click', this._themeToggleHandler);
     }
 
     applyTheme();
+  }
+
+  cleanup() {
+    try {
+      if (this._mediaQueryList && this._mediaQueryHandler) {
+        this._mediaQueryList.removeEventListener('change', this._mediaQueryHandler);
+        this._mediaQueryList = null;
+        this._mediaQueryHandler = null;
+      }
+
+      if (this._themeToggleHandler) {
+        const btn = document.getElementById('themeToggleBtn');
+        if (btn) {
+          btn.removeEventListener('click', this._themeToggleHandler);
+        }
+        this._themeToggleHandler = null;
+      }
+    } catch (error) {
+    }
   }
 
   updateThemeToggleTitle(mode) {
@@ -183,5 +192,4 @@ class ThemeManager {
   }
 }
 
-// Export for use in other modules
 window.ThemeManager = ThemeManager;

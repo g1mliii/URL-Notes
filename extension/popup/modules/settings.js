@@ -51,6 +51,11 @@ class SettingsManager {
     this.currentFont = 'Default';
     this.currentFontSize = 12;
 
+    // Memory leak prevention: Track observers for cleanup
+    this._resizeObserver = null;
+    this._mutationObserver = null;
+    this._eventListeners = [];
+
     // Initialize backup reminder system
     this.initBackupReminders();
 
@@ -66,18 +71,15 @@ class SettingsManager {
     }
   }
 
-  // ===== Auth UI and handlers =====
   async updateAuthUI() {
     try {
       const isAuthed = window.supabaseClient?.isAuthenticated?.() || false;
       const user = window.supabaseClient?.getCurrentUser?.();
       const actions = document.getElementById('authActions');
       const syncManagement = document.getElementById('syncManagement');
-      // Helper to toggle element visibility
       const show = (el, on = true) => { if (el) el.style.display = on ? 'block' : 'none'; };
 
       if (isAuthed && user) {
-        // Show compact logged-in state: only status + Sign Out
         if (this.authStatusText) {
           this.authStatusText.textContent = `Logged in as ${user.email || 'user'}`;
           this.authStatusText.style.display = '';
@@ -90,26 +92,20 @@ class SettingsManager {
         show(this.authPasswordInput, false);
         show(this.authTogglePwBtn, false);
         show(this.authRow, false);
-        show(this.oauthSection, false); // Hide OAuth section when logged in
-        show(this.refreshPremiumStatusBtn, true); // Show refresh button when logged in
+        show(this.oauthSection, false);
+        show(this.refreshPremiumStatusBtn, true);
         if (this.authEmailInput) this.authEmailInput.value = user.email || '';
         if (this.authPasswordInput) this.authPasswordInput.value = '';
         if (actions) {
           actions.style.gridTemplateColumns = '1fr';
         }
 
-        // Show sync management for premium users
-        // Looking for syncManagement element
         if (syncManagement) {
           try {
             const status = await window.supabaseClient?.getSubscriptionStatus?.();
-            // Remove verbose logging
             const shouldShow = status?.active && status?.tier !== 'free';
-            // Remove verbose logging
             show(syncManagement, shouldShow);
-            // Sync management display updated
 
-            // Update storage usage if sync is visible
             if (shouldShow) {
               this.updateStorageUsage();
             }
@@ -121,7 +117,6 @@ class SettingsManager {
           console.error('Settings: syncManagement element not found!');
         }
       } else {
-        // Show full account area; remove "Not signed in" copy
         if (this.authStatusText) {
           this.authStatusText.textContent = '';
           this.authStatusText.style.display = 'none';
@@ -132,16 +127,12 @@ class SettingsManager {
         show(this.authTogglePwBtn, true);
         show(this.authRow, true);
         show(this.authForgotPwBtn, true);
-        show(this.oauthSection, true); // Show OAuth section when not logged in
-        show(this.refreshPremiumStatusBtn, false); // Hide refresh button when not logged in
-        // Hide sync management for non-authenticated users
+        show(this.oauthSection, true);
+        show(this.refreshPremiumStatusBtn, false);
         show(syncManagement, false);
-        // Swap buttons: Sign In on left, Sign Up on right
         if (actions && this.authSignInBtn && this.authSignUpBtn) {
-          // Ensure correct visual order in CSS Grid by DOM reordering
           this.authSignInBtn.style.display = 'inline-flex';
           this.authSignUpBtn.style.display = 'inline-flex';
-          // Put Sign In first, then Sign Up
           actions.prepend(this.authSignInBtn);
           actions.appendChild(this.authSignUpBtn);
         }
@@ -214,25 +205,18 @@ class SettingsManager {
     }
   }
 
-  // Shared post-authentication logic for both email and Google sign-in
   async handleSuccessfulSignIn(successMessage) {
     this.showNotification(successMessage, 'success');
-
-    // Update settings UI immediately
     await this.updateAuthUI();
 
-    // Email login triggers refresh directly (OAuth uses background flag mechanism)
     if (successMessage.includes('Signed in successfully')) {
       setTimeout(() => {
         this.handleRefreshPremiumStatus();
       }, 1500);
     }
-    // Note: Google OAuth refresh is handled by background flag mechanism
   }
 
   async handleManualSync() {
-    // Manual sync button clicked
-
     if (!window.syncEngine) {
       this.showNotification('Sync engine not available', 'error');
       return;
@@ -628,21 +612,30 @@ class SettingsManager {
 
     // Update indicators on scroll
     settingsContent.addEventListener('scroll', updateScrollIndicators);
+    this._eventListeners.push({ target: settingsContent, event: 'scroll', handler: updateScrollIndicators });
 
     // Update indicators on resize or content change
-    const resizeObserver = new ResizeObserver((entries) => {
+    // Disconnect previous observer if exists
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
+    }
+    this._resizeObserver = new ResizeObserver((entries) => {
       // Use requestAnimationFrame to prevent ResizeObserver loops
       requestAnimationFrame(() => {
         updateScrollIndicators();
       });
     });
-    resizeObserver.observe(settingsContent);
+    this._resizeObserver.observe(settingsContent);
 
     // Initial update
     setTimeout(updateScrollIndicators, 100);
 
     // Also update when settings panel becomes visible
-    const observer = new MutationObserver((mutations) => {
+    // Disconnect previous observer if exists
+    if (this._mutationObserver) {
+      this._mutationObserver.disconnect();
+    }
+    this._mutationObserver = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
           const panel = mutation.target;
@@ -655,7 +648,7 @@ class SettingsManager {
 
     const settingsPanel = document.getElementById('settingsPanel');
     if (settingsPanel) {
-      observer.observe(settingsPanel, { attributes: true });
+      this._mutationObserver.observe(settingsPanel, { attributes: true });
     }
   }
 
@@ -1630,6 +1623,35 @@ class SettingsManager {
       if (window.showToast) {
         window.showToast('Export failed. Please try again.', 'error');
       }
+    }
+  }
+
+  // Cleanup method to prevent memory leaks
+  cleanup() {
+    try {
+      // Disconnect ResizeObserver
+      if (this._resizeObserver) {
+        this._resizeObserver.disconnect();
+        this._resizeObserver = null;
+      }
+
+      // Disconnect MutationObserver
+      if (this._mutationObserver) {
+        this._mutationObserver.disconnect();
+        this._mutationObserver = null;
+      }
+
+      // Remove tracked event listeners
+      if (this._eventListeners && Array.isArray(this._eventListeners)) {
+        this._eventListeners.forEach(({ target, event, handler }) => {
+          if (target && event && handler) {
+            target.removeEventListener(event, handler);
+          }
+        });
+        this._eventListeners = [];
+      }
+    } catch (error) {
+      console.warn('SettingsManager cleanup error:', error);
     }
   }
 }

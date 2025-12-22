@@ -499,7 +499,7 @@
           paragraph.classList.remove('url-notes-paragraph-captured');
         }, 300);
       } catch (error) {
-        console.error('Error capturing paragraph:', error);
+        // Silently handle capture errors
       }
     }
   }

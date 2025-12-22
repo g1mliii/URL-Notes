@@ -30,6 +30,12 @@ class URLNotesApp {
     this._lastCacheClear = 0; // Rate limit cache clearing
     this._aiRewriteJustCompleted = false; // Flag to track if AI rewrite just completed
 
+    // Memory leak prevention: Track all event listeners and timers for cleanup
+    this._eventListeners = [];
+    this._timeouts = [];
+    this._intervals = [];
+    this._messageListener = null;
+
     // Use IndexedDB storage instead of Chrome storage for sync compatibility
     this.storageManager = window.notesStorage || new StorageManager();
 
@@ -337,7 +343,7 @@ class URLNotesApp {
     }
 
     // Listen for background sync timer messages
-    chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+    this._messageListener = async (message, sender, sendResponse) => {
       if (message.action === 'sync-timer-triggered') {
 
         // Background timer fired, check if we can sync
@@ -386,7 +392,8 @@ class URLNotesApp {
           chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
         }
       }
-    });
+    };
+    chrome.runtime.onMessage.addListener(this._messageListener);
 
     // Check for overdue sync when popup opens
     try {
@@ -1651,7 +1658,7 @@ class URLNotesApp {
     });
 
     // Persist editor/filter state when popup is about to close
-    window.addEventListener('pagehide', () => {
+    const pagehideHandler = () => {
       try {
         // Save draft if we have a current note
         if (this.currentNote) {
@@ -1672,7 +1679,9 @@ class URLNotesApp {
           }
         });
       } catch (_) { }
-    });
+    };
+    window.addEventListener('pagehide', pagehideHandler);
+    this._eventListeners.push({ target: window, event: 'pagehide', handler: pagehideHandler });
   }
 
   initSettings() {
@@ -5619,6 +5628,90 @@ class URLNotesApp {
     }
   }
 
+  // Helper to track setTimeout calls for cleanup
+  _setTimeout(callback, delay) {
+    const timeoutId = setTimeout(() => {
+      callback();
+      // Remove from tracking after execution
+      const index = this._timeouts.indexOf(timeoutId);
+      if (index > -1) this._timeouts.splice(index, 1);
+    }, delay);
+    this._timeouts.push(timeoutId);
+    return timeoutId;
+  }
+
+  // Helper to track setInterval calls for cleanup
+  _setInterval(callback, delay) {
+    const intervalId = setInterval(callback, delay);
+    this._intervals.push(intervalId);
+    return intervalId;
+  }
+
+  // Cleanup method to prevent memory leaks
+  cleanup() {
+    try {
+      // Clear all tracked timeouts
+      if (this._timeouts && Array.isArray(this._timeouts)) {
+        this._timeouts.forEach(timeoutId => {
+          if (timeoutId) clearTimeout(timeoutId);
+        });
+        this._timeouts = [];
+      }
+
+      // Clear all tracked intervals
+      if (this._intervals && Array.isArray(this._intervals)) {
+        this._intervals.forEach(intervalId => {
+          if (intervalId) clearInterval(intervalId);
+        });
+        this._intervals = [];
+      }
+
+      // Remove all tracked event listeners
+      if (this._eventListeners && Array.isArray(this._eventListeners)) {
+        this._eventListeners.forEach(({ target, event, handler }) => {
+          if (target && event && handler) {
+            target.removeEventListener(event, handler);
+          }
+        });
+        this._eventListeners = [];
+      }
+
+      // Remove chrome message listener
+      if (this._messageListener) {
+        chrome.runtime.onMessage.removeListener(this._messageListener);
+        this._messageListener = null;
+      }
+
+      // Clear autosave interval if exists
+      if (this.autosaveInterval) {
+        clearInterval(this.autosaveInterval);
+        this.autosaveInterval = null;
+      }
+
+      // Cleanup theme manager
+      if (this.themeManager && typeof this.themeManager.cleanup === 'function') {
+        this.themeManager.cleanup();
+      }
+
+      // Cleanup settings manager
+      if (this.settingsManager && typeof this.settingsManager.cleanup === 'function') {
+        this.settingsManager.cleanup();
+      }
+
+      // Cleanup notes manager
+      if (this.notesManager && typeof this.notesManager.cleanup === 'function') {
+        this.notesManager.cleanup();
+      }
+
+      // Cleanup editor manager
+      if (this.editorManager && typeof this.editorManager.cleanup === 'function') {
+        this.editorManager.cleanup();
+      }
+    } catch (error) {
+      console.warn('Error during cleanup:', error);
+    }
+  }
+
 }
 
 // Get premium status from storage or default to false
@@ -5709,6 +5802,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Expose the app globally so modules (e.g., editor.js) can read premiumStatus
   window.urlNotesApp = new URLNotesApp();
+
+  // Cleanup on popup unload to prevent memory leaks
+  window.addEventListener('unload', () => {
+    if (window.urlNotesApp && window.urlNotesApp.cleanup) {
+      window.urlNotesApp.cleanup();
+    }
+  });
 
   // Expose notesManager globally for version history functionality
   if (window.urlNotesApp && window.urlNotesApp.notesManager) {

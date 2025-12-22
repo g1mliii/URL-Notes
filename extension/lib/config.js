@@ -1,6 +1,4 @@
-// URL Notes - Config loader for Supabase settings
-// Allows overriding supabaseUrl and supabaseAnonKey via chrome.storage.local
-
+// Config loader for Supabase settings
 (function(){
   const DEFAULTS = {
     supabaseUrl: 'https://kqjcorjjvunmyrnzvqgr.supabase.co',
@@ -15,12 +13,10 @@
         supabaseAnonKey: supabaseAnonKey || DEFAULTS.supabaseAnonKey,
       };
     } catch (e) {
-      console.warn('config.loadConfig failed, using defaults:', e);
       return { ...DEFAULTS };
     }
   }
 
-  // Expose globally so api.js can call window.urlNotesConfig.loadConfig()
   window.urlNotesConfig = {
     loadConfig
   };
