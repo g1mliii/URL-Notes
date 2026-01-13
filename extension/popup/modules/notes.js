@@ -1,27 +1,22 @@
 // NotesManager: handles notes rendering and filter list UI
-// Loaded as a plain script; exposes NotesManager as a global class.
 
 class NotesManager {
   constructor(app) {
-    this.app = app; // reference to URLNotesApp
+    this.app = app;
 
-    // Listen for decryption retry success events
     if (window.eventBus) {
       window.eventBus.on('notes:decryption_retry_success', this.handleDecryptionRetrySuccess.bind(this));
     }
   }
 
-  // Handle successful decryption retry
   handleDecryptionRetrySuccess(event) {
     const { successful, failed, total } = event;
     console.log(`NotesManager: Decryption retry successful for ${successful}/${total} notes`);
 
-    // Refresh the notes display to show decrypted content
     if (this.app && this.app.loadAllNotes) {
       this.app.loadAllNotes().then(() => {
         this.render();
 
-        // Show notification about successful decryption
         if (this.app.showNotification) {
           this.app.showNotification(`Decrypted ${successful} notes`, 'success');
         }
@@ -31,7 +26,6 @@ class NotesManager {
     }
   }
 
-  // Public entry: render notes list based on current filter and search
   async render() {
     const { app } = this;
     const notesList = document.getElementById('notesList');
@@ -39,17 +33,14 @@ class NotesManager {
     const notesCount = document.getElementById('notesCount');
     if (!notesList) return;
 
-    // Use DocumentFragment for smoother rendering
     const fragment = document.createDocumentFragment();
 
-    // Show empty state if no notes exist
     if (!app.allNotes || app.allNotes.length === 0) {
       this.showEmptyState(notesList, 'No notes yet', 'Create your first note to get started!');
       if (notesCount) notesCount.style.display = 'none';
       return;
     }
 
-    // Only clear if we have notes to clear
     if (notesList.children.length > 0) {
       if (window.safeDOM) {
         window.safeDOM.clearContent(notesList);
@@ -58,38 +49,31 @@ class NotesManager {
       }
     }
 
-    // Safety check: ensure allNotes is available
     if (!app.allNotes || !Array.isArray(app.allNotes)) {
       this.showEmptyState(notesList, 'Loading notes...');
       if (notesCount) notesCount.style.display = 'none';
       return;
     }
 
-    // 1) Filter
     let filteredNotes = [];
 
     if (app.filterMode === 'site') {
-      // Only filter by site if we have a valid currentSite with domain
       if (app.currentSite && app.currentSite.domain && app.currentSite.domain !== 'localhost') {
         filteredNotes = app.allNotes.filter(n => n.domain === app.currentSite.domain);
       } else {
-        // If no valid currentSite, show all notes instead of empty state to prevent pop-in
         filteredNotes = app.allNotes;
       }
     } else if (app.filterMode === 'page') {
-      // Only filter by page if we have a valid currentSite with URL
       if (app.currentSite && app.currentSite.url && app.currentSite.url !== 'http://localhost') {
         const currentKey = app.normalizePageKey(app.currentSite.url);
         filteredNotes = app.allNotes.filter(n => app.normalizePageKey(n.url) === currentKey);
       } else {
-        // If no valid currentSite URL, show all notes instead of empty state to prevent pop-in
         filteredNotes = app.allNotes;
       }
     } else {
       filteredNotes = app.allNotes;
     }
 
-    // 2) Search with simple scoring
     const q = (app.searchQuery || '').toLowerCase();
     if (q) {
       filteredNotes = filteredNotes
@@ -106,23 +90,19 @@ class NotesManager {
         .map(x => x.note);
     }
 
-    // 3) Render list or empty state
     if (filteredNotes.length === 0) {
       this.showEmptyState(notesList, 'No notes found', 'Try a different filter or create a new note.');
       if (notesCount) notesCount.style.display = 'none';
       return;
     }
 
-    // Show counter inline with notes title
     if (notesCount) {
       notesCount.style.display = 'inline';
 
-      // Show note limit for free users
       const isPremium = app.premiumStatus?.isPremium || false;
       const FREE_NOTE_LIMIT = 50;
 
       if (!isPremium && app.allNotes && app.allNotes.length >= FREE_NOTE_LIMIT * 0.8) {
-        // Show limit warning when at 80% (40 notes)
         const remaining = FREE_NOTE_LIMIT - app.allNotes.length;
         notesCount.textContent = `(${filteredNotes.length}/${FREE_NOTE_LIMIT})`;
         notesCount.style.color = remaining <= 5 ? 'var(--error-color, #ef4444)' : 'var(--warning-color, #f59e0b)';
@@ -134,75 +114,56 @@ class NotesManager {
       }
     }
 
-    // Don't clear again - already cleared at the beginning
-
-    // Search placeholder is now handled centrally in popup.js to prevent caching conflicts
-    // No need to update it here anymore
-
     if (app.filterMode === 'all_notes') {
       await this.renderGroupedNotes(filteredNotes, notesList);
     } else {
-      // Check premium status once for all notes using cached function
       const premiumStatus = await getPremiumStatus();
       const isPremium = premiumStatus.isPremium;
 
-      // Use DocumentFragment for smoother rendering
       for (const note of filteredNotes) {
         const el = await this.createNoteElement(note, isPremium);
         fragment.appendChild(el);
       }
 
-      // Append all notes at once for better performance
       notesList.appendChild(fragment);
     }
   }
 
-  // Render notes grouped by domain for 'All Notes' view
   async renderGroupedNotes(notes, container) {
     if (!notes || !Array.isArray(notes) || notes.length === 0) {
       if (window.safeDOM) {
         window.safeDOM.setInnerHTML(container, '<div class="empty-state">No notes found</div>', false);
       } else {
-        if (window.safeDOM) {
-          window.safeDOM.setInnerHTML(container, '<div class="empty-state">No notes found</div>', false);
-        } else {
-          container.innerHTML = '<div class="empty-state">No notes found</div>';
-        }
+        container.innerHTML = '<div class="empty-state">No notes found</div>';
       }
       const notesCount = document.getElementById('notesCount');
       if (notesCount) notesCount.style.display = 'none';
       return;
     }
 
-    // Show counter for grouped notes
     const notesCount = document.getElementById('notesCount');
     if (notesCount) {
       notesCount.style.display = 'inline';
       notesCount.textContent = `(${notes.length})`;
     }
 
-    // Check premium status once for all notes using cached function
     const premiumStatus = await getPremiumStatus();
     const isPremium = premiumStatus.isPremium;
 
     const grouped = this.groupNotesByDomain(notes);
     const sortedDomains = Object.keys(grouped).sort();
 
-    // Clear container for new content
     if (window.safeDOM) {
       window.safeDOM.clearContent(container);
     } else {
       container.innerHTML = '';
     }
-    // Don't add container-level animation for All Notes view since individual notes have stagger animation
 
-    // Load saved open domains to prevent visual shift
     let openSet = new Set();
     try {
       const { allNotesOpenDomains } = await chrome.storage.local.get(['allNotesOpenDomains']);
       openSet = new Set(Array.isArray(allNotesOpenDomains) ? allNotesOpenDomains : []);
     } catch (_) {
-      // Fallback: empty set
     }
 
     for (const domain of sortedDomains) {
@@ -211,7 +172,6 @@ class NotesManager {
       domainGroup.className = 'domain-group';
       domainGroup.setAttribute('data-domain', domain);
 
-      // Set open state based on cached value
       domainGroup.open = openSet.has(domain);
 
       const rightDomainTagsHtml = (tags && tags.length > 0) ? `
@@ -252,7 +212,6 @@ class NotesManager {
       const openDomainBtn = domainGroup.querySelector('.open-domain-btn');
       const domainNotesList = domainGroup.querySelector('.domain-notes-list');
 
-      // Two-tap delete confirmation - updated for simplified sync
       deleteDomainBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         e.preventDefault();
@@ -267,12 +226,10 @@ class NotesManager {
         });
       }
 
-      // Persist open/close state
       domainGroup.addEventListener('toggle', () => {
         this.saveOpenDomains(container);
       });
 
-      // Process notes sequentially
       for (const n of domainNotes) {
         const noteEl = await this.createNoteElement(n, isPremium);
         noteEl.classList.add('note-item-stagger');
@@ -281,12 +238,9 @@ class NotesManager {
 
       container.appendChild(domainGroup);
     }
-
-    // Grouped notes rendered successfully
   }
 
   groupNotesByDomain(notes) {
-    // Safety check: ensure notes is an array
     if (!notes || !Array.isArray(notes)) {
       console.warn('NotesManager.groupNotesByDomain: notes is not an array');
       return {};
@@ -320,22 +274,7 @@ class NotesManager {
     const pageIndicator = (app.filterMode !== 'page' && app.isCurrentPageNote(note)) ?
       '<span class="page-indicator" data-tooltip="Current page note">•</span>' : '';
 
-    // Use passed premium status instead of checking again
     const hasVersionHistory = isPremium;
-
-
-
-    // Only log debug info in development mode
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      console.log('Creating note element:', {
-        noteId: note.id,
-        notesStorage: !!window.notesStorage,
-        hasCheckPremiumAccess: !!window.notesStorage?.checkPremiumAccess,
-        isVersionHistoryAvailableResult: hasVersionHistory,
-        premiumStatus: isPremium,
-        supabaseClient: !!window.supabaseClient
-      });
-    }
 
     el.innerHTML = `
       <div class="note-content">
@@ -386,14 +325,10 @@ class NotesManager {
       });
     }
 
-    // Add version history button event listener
     const versionBtn = el.querySelector('.version-history-btn');
     if (versionBtn) {
       versionBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        console.log('Version history button clicked for note:', note.id);
-        console.log('this.showVersionHistory exists:', !!this.showVersionHistory);
-        console.log('this context:', this);
         this.showVersionHistory(note);
       });
     }
@@ -435,13 +370,11 @@ class NotesManager {
     }
   }
 
-  // Add method to show version history
   async showVersionHistory(note) {
     try {
       const versions = await window.notesStorage.getVersionHistory(note.id);
 
       if (versions.length === 0) {
-        // Use the app's notification method instead of window.showToast
         if (this.app && this.app.showNotification) {
           this.app.showNotification('No version history available', 'info');
         } else {
@@ -450,7 +383,6 @@ class NotesManager {
         return;
       }
 
-      // Create version history dialog
       const dialog = document.createElement('div');
       dialog.className = 'version-history-dialog';
       dialog.innerHTML = `
@@ -475,7 +407,6 @@ class NotesManager {
         </div>
       `;
 
-      // Add event listeners
       dialog.querySelector('.close-btn').addEventListener('click', () => {
         document.body.removeChild(dialog);
       });
@@ -492,7 +423,6 @@ class NotesManager {
 
     } catch (error) {
       console.error('Failed to show version history:', error);
-      // Use the app's notification method instead of window.showToast
       if (this.app && this.app.showNotification) {
         this.app.showNotification('Failed to load version history', 'error');
       } else {
@@ -501,7 +431,6 @@ class NotesManager {
     }
   }
 
-  // Add method to restore a version
   async restoreVersion(noteId, versionNum) {
     try {
       const versions = await window.notesStorage.getVersionHistory(noteId);
@@ -511,34 +440,23 @@ class NotesManager {
         throw new Error('Version not found');
       }
 
-      // Get current note
       const currentNote = await window.notesStorage.getNote(noteId);
       if (!currentNote) {
         throw new Error('Note not found');
       }
 
-      // Instead of saving, open the restored content as a draft
-      // This allows the user to review and manually save if they want to keep it
       const restoredContent = {
         ...currentNote,
         title: targetVersion.title,
         content: targetVersion.content,
-        // Don't increment version - this is just a draft
-        // Don't update updatedAt - this will happen when they manually save
         isDraft: true,
         draftSource: `Restored from version ${versionNum}`,
         draftTimestamp: new Date().toISOString()
       };
 
-      // Dialog will be closed by the click handler - don't remove it here to avoid the error
-
-      // Set the current note to the restored content
       this.app.currentNote = restoredContent;
-
-      // Open the editor
       await this.app.openEditor(true);
 
-      // CRITICAL: Override the content after editor opens (to bypass draft restoration)
       setTimeout(() => {
         const titleHeader = document.getElementById('noteTitleHeader');
         const contentInput = document.getElementById('noteContentInput');
@@ -556,18 +474,15 @@ class NotesManager {
           }
         }
 
-        // Save this as a draft so it persists
         this.app.saveEditorDraft();
       }, 150);
 
-      // Show notification
       if (this.app && this.app.showNotification) {
         this.app.showNotification('Version restored as draft - save to keep changes', 'info');
       }
 
     } catch (error) {
       console.error('Failed to restore version:', error);
-      // Use the app's notification method instead of window.showToast
       if (this.app && this.app.showNotification) {
         this.app.showNotification('Failed to restore version', 'error');
       }
@@ -605,7 +520,6 @@ class NotesManager {
     }
   }
 
-  // Helper method to show empty state
   showEmptyState(notesList, title = 'No notes found', message = 'Try a different filter or create a new note.') {
     let emptyState = document.getElementById('emptyState');
     if (!emptyState) {
@@ -632,14 +546,12 @@ class NotesManager {
         emptyState.innerHTML = emptyStateHtml;
       }
     } else {
-      // Update existing empty state
       const titleEl = emptyState.querySelector('h4');
       const messageEl = emptyState.querySelector('p');
       if (titleEl) titleEl.textContent = title;
       if (messageEl) messageEl.textContent = message;
     }
 
-    // Only clear if there are other children to prevent unnecessary clearing
     if (notesList.children.length > 0 && !notesList.querySelector('#emptyState')) {
       if (window.safeDOM) {
         window.safeDOM.clearContent(notesList);
@@ -651,7 +563,6 @@ class NotesManager {
     emptyState.style.display = 'flex';
   }
 
-  // Save open domains state
   saveOpenDomains(container) {
     try {
       const currentlyOpen = Array.from(container.querySelectorAll('details.domain-group'))
@@ -662,14 +573,10 @@ class NotesManager {
     } catch (_) { }
   }
 
-
-
-  // Delete domain notes individually (for simplified sync)
   async deleteDomainNotesIndividually(domainNotes) {
     try {
       let deletedCount = 0;
 
-      // Delete each note individually
       for (const note of domainNotes) {
         try {
           await this.app.storageManager.deleteNote(note.id);
@@ -679,10 +586,8 @@ class NotesManager {
         }
       }
 
-      // Show success message
       if (deletedCount > 0) {
         this.app.showNotification(`${deletedCount} notes deleted`, 'success');
-        // Refresh the notes display
         this.render();
       }
 
@@ -692,6 +597,3 @@ class NotesManager {
     }
   }
 }
-
-// Debug: Check if NotesManager is defined
-// NotesManager loaded successfully
