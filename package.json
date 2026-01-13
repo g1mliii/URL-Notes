@@ -31,10 +31,10 @@
     "cache:test": "node scripts/test-cache-busting.js"
   },
   "devDependencies": {
-    "dompurify": "^3.3.1",
+    "dompurify": "^3.2.7",
     "supabase": "^2.34.3"
   },
   "engines": {
-    "node": ">=24.13.0"
+    "node": ">=18.0.0"
   }
 }

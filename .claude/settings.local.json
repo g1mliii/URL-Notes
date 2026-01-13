@@ -8,10 +8,7 @@
       "Bash(dir)",
       "Bash(7z a:*)",
       "Bash(dir:*)",
-      "Bash(7z l:*)",
-      "Bash(find:*)",
-      "Bash(node --version:*)",
-      "Bash(npm audit:*)"
+      "Bash(7z l:*)"
     ]
   }
 }

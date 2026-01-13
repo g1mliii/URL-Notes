@@ -373,48 +373,81 @@ class SettingsManager {
   }
 
   setupEventListeners() {
+    // Settings panel toggle
     this.settingsBtn?.addEventListener('click', () => this.openSettings());
     this.settingsBackBtn?.addEventListener('click', () => this.closeSettings());
+
+    // Setup scroll indicators for settings content
     this.setupScrollIndicators();
+
+    // Font settings
     this.fontSelector?.addEventListener('change', (e) => this.handleFontChange(e.target.value));
     this.fontSizeSlider?.addEventListener('input', (e) => this.handleFontSizeChange(parseInt(e.target.value)));
+
+    // Data management
     this.exportNotesBtn?.addEventListener('click', () => this.handleExportNotes());
     this.importNotesBtn?.addEventListener('click', () => this.importNotesInput?.click());
     this.importNotesInput?.addEventListener('change', (e) => this.handleImportNotes(e));
+
+    // Sync management
     this.manualSyncBtn?.addEventListener('click', () => this.handleManualSync());
+
+    // Premium status refresh
     this.refreshPremiumStatusBtn?.addEventListener('click', () => this.handleRefreshPremiumStatus());
+
+
+
+    // Shortcut settings
     this.changeShortcutBtn?.addEventListener('click', () => this.openShortcutEditor());
+
+    // Auth handlers
     this.authTogglePwBtn?.addEventListener('click', () => this.togglePasswordVisibility());
     this.authSignUpBtn?.addEventListener('click', () => this.openSignUp());
     this.authSignInBtn?.addEventListener('click', () => this.handleSignIn());
     this.authSignOutBtn?.addEventListener('click', () => this.handleSignOut());
     this.authGoogleBtn?.addEventListener('click', () => this.handleGoogleSignIn());
+    // Forgot password handler
     this.authForgotPwBtn?.addEventListener('click', () => this.openForgotPassword());
+    // Press Enter to sign in from either field
     this.authEmailInput?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); this.handleSignIn(); }
     });
     this.authPasswordInput?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); this.handleSignIn(); }
     });
+
+    // Open onboarding
     this.openOnboardingBtn?.addEventListener('click', () => this.openOnboarding());
+
+    // Add manual trigger for onboarding tooltips (for testing/re-showing)
     const showTooltipsBtn = document.getElementById('showTooltipsBtn');
     if (showTooltipsBtn) {
       showTooltipsBtn.addEventListener('click', () => this.showOnboardingTooltips());
     }
+
+    // Open advertising disclosure
     this.adDisclaimerBtn?.addEventListener('click', () => this.openAdDisclosure());
+
+    // Website link button
     this.websiteLinkBtn?.addEventListener('click', () => this.openWebsite());
+
+    // Ad disclaimer link in ad container
     const adDisclaimerLink = document.getElementById('adDisclaimerLink');
     adDisclaimerLink?.addEventListener('click', (e) => {
       e.preventDefault();
       this.openAdDisclosure();
     });
 
+
+
+    // React to global auth and tier changes
     try {
       window.eventBus?.on('auth:changed', () => this.updateAuthUI());
       window.eventBus?.on('tier:changed', () => this.updateAuthUI());
     } catch (_) { }
   }
 
+  // Open settings panel
   openSettings() {
     const notesList = document.querySelector('.notes-container');
     const noteEditor = document.getElementById('noteEditor');
@@ -423,24 +456,38 @@ class SettingsManager {
     if (noteEditor) noteEditor.style.display = 'none';
     if (this.settingsPanel) {
       this.settingsPanel.style.display = 'block';
+      // Reset scroll position to top when opening
       const settingsContent = this.settingsPanel.querySelector('.settings-content');
       if (settingsContent) {
         settingsContent.scrollTop = 0;
       }
     }
+    // Refresh shortcut display when opening settings
     this.loadShortcutDisplay();
+    // Refresh auth UI
     this.updateAuthUI();
+    // Setup scroll indicators after panel is visible
     setTimeout(() => this.setupScrollIndicators(), 50);
   }
 
+
+
+  // Close settings panel
   closeSettings() {
     const notesList = document.querySelector('.notes-container');
     const noteEditor = document.getElementById('noteEditor');
 
     if (this.settingsPanel) this.settingsPanel.style.display = 'none';
+    // Restore notes container to its stylesheet-defined display (flex),
+    // instead of forcing 'block' which changes layout/background.
     if (notesList) notesList.style.removeProperty('display');
+
+
+
+    // Don't automatically show editor - let the main app handle state
   }
 
+  // Load font settings from storage
   async loadFontSetting() {
     try {
       const { fontFamily, fontSize } = await chrome.storage.local.get(['fontFamily', 'fontSize']);
@@ -448,6 +495,7 @@ class SettingsManager {
       this.currentFont = fontFamily || 'Default';
       this.currentFontSize = fontSize || 12;
 
+      // Update UI controls
       if (this.fontSelector) {
         this.fontSelector.value = this.currentFont;
       }
@@ -458,18 +506,21 @@ class SettingsManager {
         this.fontSizeValue.textContent = `${this.currentFontSize}px`;
       }
 
+      // Apply font settings
       this.applyFontSettings();
     } catch (error) {
       console.error('Error loading font settings:', error);
     }
   }
 
+  // Handle font family change
   async handleFontChange(fontFamily) {
     this.currentFont = fontFamily;
     await chrome.storage.local.set({ fontFamily });
     this.applyFontSettings();
   }
 
+  // Handle font size change
   async handleFontSizeChange(fontSize) {
     this.currentFontSize = fontSize;
     if (this.fontSizeValue) {
@@ -479,27 +530,32 @@ class SettingsManager {
     this.applyFontSettings();
   }
 
+  // Apply font settings to the UI
   applyFontSettings() {
     const fontFamily = this.currentFont === 'Default' ? 'inherit' : this.currentFont;
     const fontSize = `${this.currentFontSize}px`;
 
+    // Apply to editor content
     const noteContentInput = document.getElementById('noteContentInput');
     if (noteContentInput) {
       noteContentInput.style.fontFamily = fontFamily;
       noteContentInput.style.fontSize = fontSize;
     }
 
+    // Apply to preview
     const noteContentPreview = document.getElementById('noteContentPreview');
     if (noteContentPreview) {
       noteContentPreview.style.fontFamily = fontFamily;
       noteContentPreview.style.fontSize = fontSize;
     }
 
+    // Apply to font preview
     if (this.fontPreviewText) {
       this.fontPreviewText.style.fontFamily = fontFamily;
       this.fontPreviewText.style.fontSize = fontSize;
     }
 
+    // Apply to notes list content
     const notesList = document.getElementById('notesList');
     if (notesList) {
       const noteContents = notesList.querySelectorAll('.note-content');
@@ -510,17 +566,24 @@ class SettingsManager {
     }
   }
 
+  // Initialize settings UI
   initSettings() {
+    // Ensure font preview is properly styled
     if (this.fontPreviewText) {
       this.applyFontSettings();
     }
 
+    // Set up any other initial settings UI state
     this.updateFontPreview();
+    // Initialize shortcut display
     this.loadShortcutDisplay();
+    // Initialize auth UI
     this.updateAuthUI();
+    // Setup scroll indicators
     this.setupScrollIndicators();
   }
 
+  // Setup scroll indicators for better UX
   setupScrollIndicators() {
     const settingsContent = document.querySelector('.settings-content');
     if (!settingsContent) return;
@@ -528,15 +591,18 @@ class SettingsManager {
     const updateScrollIndicators = () => {
       const { scrollTop, scrollHeight, clientHeight } = settingsContent;
 
+      // Check if content is scrollable
       const isScrollable = scrollHeight > clientHeight;
       settingsContent.setAttribute('data-scrollable', isScrollable.toString());
 
+      // Add 'scrolled' class if user has scrolled down
       if (scrollTop > 10) {
         settingsContent.classList.add('scrolled');
       } else {
         settingsContent.classList.remove('scrolled');
       }
 
+      // Add 'has-more' class if there's more content below
       if (scrollTop + clientHeight < scrollHeight - 10) {
         settingsContent.classList.add('has-more');
       } else {
@@ -544,21 +610,28 @@ class SettingsManager {
       }
     };
 
+    // Update indicators on scroll
     settingsContent.addEventListener('scroll', updateScrollIndicators);
     this._eventListeners.push({ target: settingsContent, event: 'scroll', handler: updateScrollIndicators });
 
+    // Update indicators on resize or content change
+    // Disconnect previous observer if exists
     if (this._resizeObserver) {
       this._resizeObserver.disconnect();
     }
     this._resizeObserver = new ResizeObserver((entries) => {
+      // Use requestAnimationFrame to prevent ResizeObserver loops
       requestAnimationFrame(() => {
         updateScrollIndicators();
       });
     });
     this._resizeObserver.observe(settingsContent);
 
+    // Initial update
     setTimeout(updateScrollIndicators, 100);
 
+    // Also update when settings panel becomes visible
+    // Disconnect previous observer if exists
     if (this._mutationObserver) {
       this._mutationObserver.disconnect();
     }
@@ -579,6 +652,7 @@ class SettingsManager {
     }
   }
 
+  // Update font preview display
   updateFontPreview() {
     if (this.fontPreviewText) {
       const fontFamily = this.currentFont === 'Default' ? 'inherit' : this.currentFont;
@@ -587,6 +661,7 @@ class SettingsManager {
     }
   }
 
+  // Load and display current keyboard shortcut for _execute_action
   async loadShortcutDisplay() {
     try {
       if (!chrome.commands || !chrome.commands.getAll) return;
@@ -596,10 +671,12 @@ class SettingsManager {
       const openShortcut = action && action.shortcut ? action.shortcut : 'Not set';
       const newShortcut = create && create.shortcut ? create.shortcut : 'Not set';
 
+      // Settings panel values
       if (this.shortcutValue) this.shortcutValue.textContent = openShortcut;
       const newNoteEl = document.getElementById('newNoteShortcutValue');
       if (newNoteEl) newNoteEl.textContent = newShortcut;
 
+      // Header hints
       const headerOpen = document.getElementById('shortcutOpenValue');
       if (headerOpen) headerOpen.textContent = openShortcut;
       const headerNew = document.getElementById('shortcutNewValue');
@@ -616,19 +693,25 @@ class SettingsManager {
     }
   }
 
+  // Open Chrome's extension shortcuts page for user to change shortcut
   openShortcutEditor() {
     try {
+      // Try chrome.tabs first
       if (chrome?.tabs?.create) {
         chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }).catch(() => {
+          // Fallback to window.open
           try { window.open('chrome://extensions/shortcuts', '_blank', 'noopener,noreferrer'); } catch (_) { }
         });
       } else {
+        // Fallback
         window.open('chrome://extensions/shortcuts', '_blank', 'noopener,noreferrer');
       }
     } catch (_) { /* noop */ }
   }
 
+  // Open onboarding in new tab (same as new install flow)
   openOnboarding() {
+    // Always open in new tab to match new user onboarding experience
     try {
       const url = chrome?.runtime?.getURL ? chrome.runtime.getURL('onboarding.html') : 'onboarding.html';
       if (chrome?.tabs?.create) {
@@ -643,6 +726,7 @@ class SettingsManager {
     }
   }
 
+  // Open Anchored website in new tab
   openWebsite() {
     try {
       const websiteUrl = 'https://anchored.site';
@@ -658,6 +742,7 @@ class SettingsManager {
     }
   }
 
+  // Open signup page on website (reuses openWebsite logic)
   openSignUp() {
     try {
       const signupUrl = 'https://anchored.site/?signup=true';
@@ -673,6 +758,7 @@ class SettingsManager {
     }
   }
 
+  // Open forgot password page on website (reuses openWebsite logic)
   openForgotPassword() {
     try {
       const forgotUrl = 'https://anchored.site/?forgot=true';
@@ -688,11 +774,15 @@ class SettingsManager {
     }
   }
 
+
+
+  // Open advertising disclosure dialog
   openAdDisclosure() {
     const dialog = document.getElementById('adDisclosureDialog');
     if (dialog) {
       dialog.style.display = 'block';
 
+      // Setup close button handlers
       const closeBtn = document.getElementById('adDisclosureCloseBtn');
       const okBtn = document.getElementById('adDisclosureOkBtn');
 
@@ -708,6 +798,7 @@ class SettingsManager {
         okBtn.onclick = closeDialog;
       }
 
+      // Close on outside click
       dialog.onclick = (e) => {
         if (e.target === dialog) {
           closeDialog();
@@ -716,9 +807,11 @@ class SettingsManager {
     }
   }
 
+  // Show onboarding tooltips manually
   showOnboardingTooltips() {
     try {
       if (window.urlNotesApp && window.urlNotesApp.onboardingTooltips) {
+        // Force show main tooltips
         window.urlNotesApp.onboardingTooltips.forceShowTooltips();
       }
     } catch (error) {
@@ -726,22 +819,34 @@ class SettingsManager {
     }
   }
 
+
+
+  // Show notification helper
   showNotification(message, type = 'info') {
     try {
+      // Use the Utils.showToast system
       if (typeof Utils !== 'undefined' && Utils.showToast) {
         Utils.showToast(message, type);
       }
     } catch (error) {
+      // Fallback notification handling
     }
   }
 
+
+
+
+
+  // Handle export notes
   async handleExportNotes() {
     try {
       const exportData = await this.storageManager.exportNotes();
 
+      // Get selected format
       const formatSelect = document.getElementById('exportFormatSelect');
       const selectedFormat = formatSelect ? formatSelect.value : 'json';
 
+      // Show export selection dialog
       this.showExportSelectionDialog(exportData, selectedFormat);
     } catch (error) {
       console.error('Error exporting notes:', error);
@@ -749,6 +854,7 @@ class SettingsManager {
     }
   }
 
+  // Show export selection dialog
   showExportSelectionDialog(exportData, selectedFormat) {
     const dialog = document.getElementById('exportSelectionDialog');
     const domainsList = document.getElementById('exportDomainsList');
@@ -756,29 +862,35 @@ class SettingsManager {
 
     if (!dialog || !domainsList) return;
 
+    // Store export data and format for later use
     this.pendingExportData = exportData;
     this.pendingExportFormat = selectedFormat;
     this.exportSelection = {};
 
+    // Clear previous content
     domainsList.textContent = '';
 
+    // Build domain list (skip metadata)
     for (const domain in exportData) {
       if (domain === '_anchored') continue;
 
       const notes = exportData[domain];
       if (!Array.isArray(notes) || notes.length === 0) continue;
 
+      // Initialize selection (all selected by default)
       this.exportSelection[domain] = {
         selected: true,
         notes: notes.map(note => ({ id: note.id, selected: true, title: note.title || 'Untitled' }))
       };
 
+      // Create domain group
       const domainGroup = document.createElement('div');
       domainGroup.className = 'export-domain-group';
 
       const domainHeader = document.createElement('div');
       domainHeader.className = 'export-domain-header';
 
+      // Domain checkbox
       const domainCheckbox = document.createElement('input');
       domainCheckbox.type = 'checkbox';
       domainCheckbox.className = 'export-domain-checkbox';
@@ -786,6 +898,7 @@ class SettingsManager {
       domainCheckbox.dataset.domain = domain;
       domainCheckbox.addEventListener('change', (e) => this.handleDomainCheckboxChange(e, domain));
 
+      // Domain info
       const domainInfo = document.createElement('div');
       domainInfo.className = 'export-domain-info';
 
@@ -800,6 +913,7 @@ class SettingsManager {
       domainInfo.appendChild(domainName);
       domainInfo.appendChild(domainCount);
 
+      // Toggle button
       const toggleBtn = document.createElement('button');
       toggleBtn.className = 'export-domain-toggle';
       toggleBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>';
@@ -814,6 +928,7 @@ class SettingsManager {
       domainHeader.appendChild(domainInfo);
       domainHeader.appendChild(toggleBtn);
 
+      // Notes list
       const notesList = document.createElement('div');
       notesList.className = 'export-notes-list';
 
@@ -843,10 +958,13 @@ class SettingsManager {
       domainsList.appendChild(domainGroup);
     }
 
+    // Update stats
     this.updateExportStats();
 
+    // Setup event listeners (remove old ones first to prevent duplicates)
     selectAllCheckbox.checked = true;
 
+    // Clone and replace elements to remove all old event listeners
     const closeBtn = document.getElementById('exportSelectionClose');
     const cancelBtn = document.getElementById('exportSelectionCancel');
     const confirmBtn = document.getElementById('exportSelectionConfirm');
@@ -859,33 +977,40 @@ class SettingsManager {
     cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
     confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
 
+    // Add fresh event listeners
     selectAllCheckbox.addEventListener('change', (e) => this.handleSelectAllChange(e));
     newCloseBtn.addEventListener('click', () => this.closeExportSelectionDialog());
     newCancelBtn.addEventListener('click', () => this.closeExportSelectionDialog());
     newConfirmBtn.addEventListener('click', () => this.confirmExportSelection());
 
+    // Show dialog
     dialog.classList.add('show');
   }
 
+  // Handle domain checkbox change
   handleDomainCheckboxChange(event, domain) {
     const checked = event.target.checked;
     this.exportSelection[domain].selected = checked;
 
+    // Update all note checkboxes in this domain
     this.exportSelection[domain].notes.forEach(note => {
       note.selected = checked;
     });
 
+    // Update UI checkboxes
     const noteCheckboxes = document.querySelectorAll(`input[data-domain="${domain}"][data-note-id]`);
     noteCheckboxes.forEach(cb => cb.checked = checked);
 
     this.updateExportStats();
   }
 
+  // Handle note checkbox change
   handleNoteCheckboxChange(event, domain, noteId) {
     const checked = event.target.checked;
     const note = this.exportSelection[domain].notes.find(n => n.id === noteId);
     if (note) note.selected = checked;
 
+    // Update domain checkbox if all notes are unchecked
     const allUnchecked = this.exportSelection[domain].notes.every(n => !n.selected);
     const allChecked = this.exportSelection[domain].notes.every(n => n.selected);
 
@@ -899,9 +1024,11 @@ class SettingsManager {
     this.updateExportStats();
   }
 
+  // Handle select all change
   handleSelectAllChange(event) {
     const checked = event.target.checked;
 
+    // Update all selections
     for (const domain in this.exportSelection) {
       this.exportSelection[domain].selected = checked;
       this.exportSelection[domain].notes.forEach(note => {
@@ -909,6 +1036,7 @@ class SettingsManager {
       });
     }
 
+    // Update all UI checkboxes
     document.querySelectorAll('.export-domain-checkbox, .export-note-checkbox').forEach(cb => {
       cb.checked = checked;
     });
@@ -916,6 +1044,7 @@ class SettingsManager {
     this.updateExportStats();
   }
 
+  // Update export stats
   updateExportStats() {
     let selectedDomains = 0;
     let selectedNotes = 0;
@@ -931,12 +1060,14 @@ class SettingsManager {
     document.getElementById('exportSelectedDomains').textContent = selectedDomains;
     document.getElementById('exportSelectedNotes').textContent = selectedNotes;
 
+    // Enable/disable export button
     const confirmBtn = document.getElementById('exportSelectionConfirm');
     if (confirmBtn) {
       confirmBtn.disabled = selectedNotes === 0;
     }
   }
 
+  // Close export selection dialog
   closeExportSelectionDialog() {
     const dialog = document.getElementById('exportSelectionDialog');
     if (dialog) {
@@ -947,8 +1078,10 @@ class SettingsManager {
     }
   }
 
+  // Confirm export selection
   async confirmExportSelection() {
     try {
+      // Filter export data based on selection
       const filteredData = { _anchored: this.pendingExportData._anchored };
 
       for (const domain in this.exportSelection) {
@@ -963,9 +1096,11 @@ class SettingsManager {
         }
       }
 
+      // Use ExportFormats class to convert data
       const exportFormats = new ExportFormats();
       const exportResult = exportFormats.exportToFormat(filteredData, this.pendingExportFormat);
 
+      // Create and download file
       const blob = new Blob([exportResult.content], { type: exportResult.mimeType });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -976,13 +1111,16 @@ class SettingsManager {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
+      // Calculate selected count and get format info BEFORE closing dialog
       const selectedCount = Object.values(filteredData).reduce((sum, notes) =>
         sum + (Array.isArray(notes) ? notes.length : 0), 0
       );
       const formatInfo = exportFormats.getSupportedFormats()[this.pendingExportFormat];
 
+      // Close dialog (this clears pendingExportFormat)
       this.closeExportSelectionDialog();
 
+      // Show success message with format info
       if (formatInfo) {
         this.showNotification(`Exported ${selectedCount} notes as ${formatInfo.name}`, 'success');
       } else {
@@ -994,24 +1132,29 @@ class SettingsManager {
     }
   }
 
+  // Handle import notes
   async handleImportNotes(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     try {
+      // Validate file type
       if (!file.name.toLowerCase().endsWith('.json')) {
         throw new Error('Please select a JSON file (.json)');
       }
 
-      const maxSize = 50 * 1024 * 1024;
+      // Validate file size (max 50MB)
+      const maxSize = 50 * 1024 * 1024; // 50MB
       if (file.size > maxSize) {
         throw new Error('File is too large. Maximum size is 50MB.');
       }
 
+      // Show loading state
       this.showNotification('Importing notes...', 'info');
 
       const text = await file.text();
 
+      // Validate JSON format
       let importData;
       try {
         importData = JSON.parse(text);
@@ -1019,6 +1162,7 @@ class SettingsManager {
         throw new Error('Invalid JSON file. Please check the file format.');
       }
 
+      // Validate import data structure
       const validation = this.validateImportData(importData);
       if (!validation.isValid) {
         throw new Error(`Invalid import format: ${validation.error}`);
@@ -1026,6 +1170,7 @@ class SettingsManager {
 
       const result = await this.storageManager.importNotes(importData);
 
+      // Handle different return formats from different storage managers
       let success = false;
       let imported = 0;
       let updated = 0;
@@ -1033,9 +1178,11 @@ class SettingsManager {
       let errorMessage = '';
 
       if (typeof result === 'number') {
+        // IndexedDB storage manager returns just a count
         success = result >= 0;
         imported = result;
       } else if (typeof result === 'object' && result !== null) {
+        // Chrome storage manager returns an object
         success = result.success;
         imported = result.imported || 0;
         updated = result.updated || 0;
@@ -1057,6 +1204,7 @@ class SettingsManager {
 
         this.showNotification(message, 'success');
 
+        // Trigger notes reload in main app
         if (window.urlNotesApp) {
           if (typeof window.urlNotesApp.loadNotes === 'function') {
             await window.urlNotesApp.loadNotes();
@@ -1072,20 +1220,25 @@ class SettingsManager {
       console.error('Error importing notes:', error);
       this.showNotification('Failed to import notes: ' + error.message, 'error');
     } finally {
+      // Clear the file input
       event.target.value = '';
     }
   }
 
+  // Comprehensive validation of import data
   validateImportData(importData) {
     try {
+      // Check if data is an object
       if (!importData || typeof importData !== 'object') {
         return { isValid: false, error: 'Import data must be a JSON object' };
       }
 
+      // Check if it's empty
       if (Object.keys(importData).length === 0) {
         return { isValid: false, error: 'Import file is empty' };
       }
 
+      // Check for Anchored export identifier
       if (!importData._anchored) {
         return {
           isValid: false,
@@ -1093,6 +1246,7 @@ class SettingsManager {
         };
       }
 
+      // Validate Anchored metadata
       const anchored = importData._anchored;
       if (!anchored.version || !anchored.format || anchored.format !== 'anchored-notes') {
         return {
@@ -1104,21 +1258,26 @@ class SettingsManager {
       let totalNotes = 0;
       let validDomains = 0;
 
+      // Validate each domain (skip the _anchored metadata)
       for (const [domain, notes] of Object.entries(importData)) {
+        // Skip metadata and non-note data
         if (domain === '_anchored' || domain === 'themeMode' || !Array.isArray(notes)) {
           continue;
         }
 
+        // Validate domain format
         if (!this.isValidDomain(domain)) {
           return { isValid: false, error: `Invalid domain format: ${domain}` };
         }
 
         validDomains++;
 
+        // Validate notes array
         for (let i = 0; i < notes.length; i++) {
           const note = notes[i];
           const noteLocation = `${domain}[${i}]`;
 
+          // Validate note structure
           const noteValidation = this.validateNoteStructure(note, noteLocation);
           if (!noteValidation.isValid) {
             return noteValidation;
@@ -1128,10 +1287,12 @@ class SettingsManager {
         }
       }
 
+      // Check if we found any valid notes
       if (validDomains === 0 || totalNotes === 0) {
         return { isValid: false, error: 'No valid notes found in import file' };
       }
 
+      // Check reasonable limits
       if (totalNotes > 10000) {
         return { isValid: false, error: `Too many notes (${totalNotes}). Maximum is 10,000 notes per import.` };
       }
@@ -1149,11 +1310,14 @@ class SettingsManager {
     }
   }
 
+  // Enhanced note structure validation
   validateNoteStructure(note, location) {
+    // Check if note is an object
     if (!note || typeof note !== 'object') {
       return { isValid: false, error: `Invalid note at ${location}: not an object` };
     }
 
+    // Validate required ID field with UUID format
     if (!note.id || typeof note.id !== 'string') {
       return { isValid: false, error: `Invalid note at ${location}: missing or invalid ID` };
     }
@@ -1162,6 +1326,7 @@ class SettingsManager {
       return { isValid: false, error: `Invalid note at ${location}: ID must be a valid UUID format` };
     }
 
+    // Validate required domain field
     if (!note.domain || typeof note.domain !== 'string') {
       return { isValid: false, error: `Invalid note at ${location}: missing or invalid domain` };
     }
@@ -1170,6 +1335,7 @@ class SettingsManager {
       return { isValid: false, error: `Invalid note at ${location}: invalid domain format` };
     }
 
+    // Validate string fields (all optional except id and domain)
     const stringFields = ['title', 'content', 'url', 'pageTitle'];
     for (const field of stringFields) {
       if (note[field] !== undefined && typeof note[field] !== 'string') {
@@ -1177,31 +1343,37 @@ class SettingsManager {
       }
     }
 
+    // Validate URL format if present
     if (note.url && !this.isValidURL(note.url)) {
       return { isValid: false, error: `Invalid note at ${location}: invalid URL format` };
     }
 
+    // Validate tags array
     if (note.tags !== undefined) {
       if (!Array.isArray(note.tags)) {
         return { isValid: false, error: `Invalid note at ${location}: tags must be an array` };
       }
 
+      // Validate each tag is a string
       for (let j = 0; j < note.tags.length; j++) {
         if (typeof note.tags[j] !== 'string') {
           return { isValid: false, error: `Invalid note at ${location}: tag[${j}] must be a string` };
         }
 
+        // Validate tag length and format
         if (note.tags[j].length === 0 || note.tags[j].length > 50) {
           return { isValid: false, error: `Invalid note at ${location}: tag[${j}] must be 1-50 characters` };
         }
       }
 
+      // Check for duplicate tags
       const uniqueTags = new Set(note.tags);
       if (uniqueTags.size !== note.tags.length) {
         return { isValid: false, error: `Invalid note at ${location}: duplicate tags not allowed` };
       }
     }
 
+    // Validate timestamp fields
     const timestampFields = ['createdAt', 'updatedAt'];
     for (const field of timestampFields) {
       if (note[field] !== undefined) {
@@ -1215,6 +1387,7 @@ class SettingsManager {
       }
     }
 
+    // Validate content length limits (reasonable limits for import)
     if (note.title && note.title.length > 500) {
       return { isValid: false, error: `Invalid note at ${location}: title too long (max 500 characters)` };
     }
@@ -1226,17 +1399,22 @@ class SettingsManager {
     return { isValid: true };
   }
 
+  // UUID validation (RFC 4122 format)
   isValidUUID(uuid) {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return uuidRegex.test(uuid);
   }
 
+  // Domain validation
   isValidDomain(domain) {
     if (!domain || typeof domain !== 'string') return false;
+
+    // Basic domain format validation
     const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
     return domainRegex.test(domain) && domain.length <= 253;
   }
 
+  // URL validation
   isValidURL(url) {
     if (!url || typeof url !== 'string') return false;
 
@@ -1248,13 +1426,20 @@ class SettingsManager {
     }
   }
 
+  // ISO timestamp validation (flexible for different ISO formats)
   isValidTimestamp(timestamp) {
     if (!timestamp || typeof timestamp !== 'string') return false;
 
     try {
       const date = new Date(timestamp);
+      // Check if it's a valid date
       if (isNaN(date.getTime())) return false;
 
+      // Allow various ISO 8601 formats:
+      // - 2024-01-16T16:00:00Z
+      // - 2024-01-16T16:00:00.000Z  
+      // - 2024-01-16T16:00:00+00:00
+      // - 2024-01-16T16:00:00.646882+00:00
       const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$/;
       return isoRegex.test(timestamp);
     } catch {
@@ -1262,19 +1447,24 @@ class SettingsManager {
     }
   }
 
+  // Legacy method for backward compatibility
   isValidImportFormat(importData) {
     const validation = this.validateImportData(importData);
     return validation.isValid;
   }
 
+  // Show notification message using unified toast system
   showNotification(message, type = 'info') {
+    // Use the unified Utils.showToast instead of custom notification
     if (window.Utils && typeof window.Utils.showToast === 'function') {
       window.Utils.showToast(message, type);
     } else {
+      // Fallback to console if Utils not available
       console.log(`${type.toUpperCase()}: ${message}`);
     }
   }
 
+  // Get current settings
   getSettings() {
     return {
       fontFamily: this.currentFont,
@@ -1282,12 +1472,14 @@ class SettingsManager {
     };
   }
 
+  // Apply settings to new elements (called when notes are rendered)
   applySettingsToElement(element) {
     if (!element) return;
 
     const fontFamily = this.currentFont === 'Default' ? 'inherit' : this.currentFont;
     const fontSize = `${this.currentFontSize}px`;
 
+    // Apply to note content within the element
     const noteContents = element.querySelectorAll('.note-content');
     noteContents.forEach(content => {
       content.style.fontFamily = fontFamily;
@@ -1295,15 +1487,19 @@ class SettingsManager {
     });
   }
 
+  // Initialize backup reminder system
   async initBackupReminders() {
     try {
+      // Check if user has notes and hasn't backed up recently
       await this.checkBackupReminder();
 
+      // Set up periodic backup reminders (every 30 days)
       chrome.alarms.create('backupReminder', {
-        delayInMinutes: 60 * 24 * 30,
-        periodInMinutes: 60 * 24 * 30
+        delayInMinutes: 60 * 24 * 30, // 30 days
+        periodInMinutes: 60 * 24 * 30  // Repeat every 30 days
       });
 
+      // Listen for backup reminder alarms
       chrome.alarms.onAlarm.addListener((alarm) => {
         if (alarm.name === 'backupReminder') {
           this.showBackupReminder();
@@ -1314,23 +1510,28 @@ class SettingsManager {
     }
   }
 
+  // Check if user needs a backup reminder
   async checkBackupReminder() {
     try {
+      // Only show backup reminders for FREE users
       const premiumStatus = await getPremiumStatus();
       if (premiumStatus.isPremium) {
-        return;
+        return; // Premium users have cloud sync, no backup needed
       }
 
       const notes = await this.storageManager.getAllNotes();
       const activeNotes = notes.filter(note => !note.is_deleted);
 
-      if (activeNotes.length === 0) return;
+      if (activeNotes.length === 0) return; // No notes to backup
 
+      // Check last backup date
       const { lastBackupDate } = await chrome.storage.local.get(['lastBackupDate']);
       const now = Date.now();
       const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
 
+      // Show reminder if never backed up or last backup was over 30 days ago
       if (!lastBackupDate || lastBackupDate < thirtyDaysAgo) {
+        // Don't show immediately on first install, wait 7 days
         const { installDate } = await chrome.storage.local.get(['installDate']);
         const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
 
@@ -1343,11 +1544,13 @@ class SettingsManager {
     }
   }
 
+  // Show backup reminder notification (FREE USERS ONLY)
   async showBackupReminder() {
     try {
+      // Double-check this is a free user
       const premiumStatus = await getPremiumStatus();
       if (premiumStatus.isPremium) {
-        return;
+        return; // Premium users don't need backup reminders
       }
 
       const notes = await this.storageManager.getAllNotes();
@@ -1355,6 +1558,7 @@ class SettingsManager {
 
       if (activeNotes.length === 0) return;
 
+      // Create notification for FREE users
       chrome.notifications.create('backupReminder', {
         type: 'basic',
         iconUrl: '../assets/icons/icon128x128.png',
@@ -1366,15 +1570,19 @@ class SettingsManager {
         ]
       });
 
+      // Handle notification clicks
       chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
         if (notificationId === 'backupReminder') {
           if (buttonIndex === 0) {
+            // Open Extension Settings - open popup and navigate to settings
             chrome.action.openPopup();
+            // Set flag to show settings panel with export highlighted
             chrome.storage.local.set({
               showSettingsOnOpen: true,
               highlightExport: true
             });
           } else {
+            // Get Premium - open website
             chrome.tabs.create({ url: 'https://anchored.site/?upgrade=true' });
           }
           chrome.notifications.clear(notificationId);
@@ -1386,6 +1594,7 @@ class SettingsManager {
     }
   }
 
+  // Mark backup as completed (call this after successful export)
   async markBackupCompleted() {
     try {
       await chrome.storage.local.set({
@@ -1396,11 +1605,16 @@ class SettingsManager {
     }
   }
 
+  // Enhanced export function that marks backup as completed
   async exportNotesWithBackupTracking() {
     try {
+      // Call the existing export function
       await this.exportNotes();
+
+      // Mark backup as completed
       await this.markBackupCompleted();
 
+      // Show success message
       if (window.showToast) {
         window.showToast('Notes exported and backup recorded!', 'success');
       }
@@ -1412,18 +1626,22 @@ class SettingsManager {
     }
   }
 
+  // Cleanup method to prevent memory leaks
   cleanup() {
     try {
+      // Disconnect ResizeObserver
       if (this._resizeObserver) {
         this._resizeObserver.disconnect();
         this._resizeObserver = null;
       }
 
+      // Disconnect MutationObserver
       if (this._mutationObserver) {
         this._mutationObserver.disconnect();
         this._mutationObserver = null;
       }
 
+      // Remove tracked event listeners
       if (this._eventListeners && Array.isArray(this._eventListeners)) {
         this._eventListeners.forEach(({ target, event, handler }) => {
           if (target && event && handler) {
