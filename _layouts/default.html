@@ -84,6 +84,12 @@
     <link rel="stylesheet" href="{{ '/css/responsive.css' | relative_url }}?v={{ site.time | date: '%Y%m%d%H%M%S' }}">
 </head>
 <body>
+    <!-- Deployment verification -->
+    <script>
+        console.log('🚀 Anchored deployment verified - Version: 2025.01.13.TEST - Timestamp:', new Date().toISOString());
+        console.log('✅ GitHub Pages deployment is working despite Actions showing "cancelled"');
+    </script>
+
     {{ content }}
     
     <!-- Cloudflare Turnstile -->
