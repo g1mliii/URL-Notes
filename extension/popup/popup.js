@@ -11,35 +11,31 @@ window.addEventListener('error', (e) => {
 
 class URLNotesApp {
   constructor() {
-    this.filterMode = 'site'; // 'site', 'page', or 'all_notes'
+    this.filterMode = 'site';
     this.currentSite = null;
     this.notes = [];
-    this.allNotes = []; // For the 'All Notes' view
+    this.allNotes = [];
     this.currentNote = null;
     this.searchQuery = '';
     this.isJotMode = false;
     this.premiumStatus = null;
     this.autosaveInterval = null;
-    this.generatedTags = []; // Store AI-generated tags
+    this.generatedTags = [];
     this.dialog = new CustomDialog();
     this.themeManager = new ThemeManager();
-    // Rate limiting for AI usage calls
     this._lastAIUsageCall = 0;
     this._cachedAIUsage = null;
-    this._isApplyingAIRewrite = false; // Flag to prevent draft saving during AI rewrite
-    this._lastCacheClear = 0; // Rate limit cache clearing
-    this._aiRewriteJustCompleted = false; // Flag to track if AI rewrite just completed
+    this._isApplyingAIRewrite = false;
+    this._lastCacheClear = 0;
+    this._aiRewriteJustCompleted = false;
 
-    // Memory leak prevention: Track all event listeners and timers for cleanup
     this._eventListeners = [];
     this._timeouts = [];
     this._intervals = [];
     this._messageListener = null;
 
-    // Use IndexedDB storage instead of Chrome storage for sync compatibility
     this.storageManager = window.notesStorage || new StorageManager();
 
-    // Ensure EditorManager is available before creating instance
     if (typeof EditorManager === 'undefined') {
       console.error('EditorManager not available, delaying initialization');
       setTimeout(() => this.constructor(), 100);
@@ -48,20 +44,13 @@ class URLNotesApp {
 
     this.editorManager = new EditorManager(this.storageManager);
     this.settingsManager = new SettingsManager(this.storageManager);
-    // Notes list/render manager (modularized)
     this.notesManager = new NotesManager(this);
-    // Debounced draft saver for editorState caching
     this.saveDraftDebounced = Utils.debounce(() => this.saveEditorDraft(), 150);
-    // Create a flush method to wait for pending saves to complete
     this.flushDraftSave = async () => {
-      // Wait a bit longer than the debounce delay to ensure any pending save completes
       await new Promise(resolve => setTimeout(resolve, 300));
-      // Then save the current editor state to ensure we have the latest
       return this.saveEditorDraft();
     };
-    // Debounced AI usage checker to prevent rate limiting
     this.getAIUsageDebounced = Utils.debounce(() => this.getCurrentAIUsage(), 2000);
-    // Enable compact layout to ensure everything fits without scroll/clipping
     try { document.documentElement.setAttribute('data-compact', '1'); } catch { }
 
     this.init();
@@ -293,11 +282,9 @@ class URLNotesApp {
   }
 
   async init() {
-    // Wait for IndexedDB storage to be ready
     if (window.notesStorage && typeof window.notesStorage.init === 'function') {
       try {
         await window.notesStorage.init();
-        // Note: Removed verbose logging for cleaner console
       } catch (error) {
         console.warn('Failed to initialize IndexedDB storage, falling back to Chrome storage:', error);
         this.storageManager = new StorageManager();
@@ -305,13 +292,9 @@ class URLNotesApp {
     }
 
     this.premiumStatus = await getPremiumStatus();
-    // Apply premium-dependent UI immediately
     try { await this.updatePremiumUI(); } catch (_) { }
 
-    // Check if OAuth just completed (popup was closed during OAuth flow)
     await this.checkOAuthCompletion();
-
-    // RESTORE CACHED VALUES IMMEDIATELY to prevent visual shifts
     await this.restoreCachedUIState();
 
     await this.loadCurrentSite();
@@ -320,20 +303,16 @@ class URLNotesApp {
     if (this.currentSite) {
       await this.themeManager.applyAccentFromFavicon(this.currentSite);
     }
-    // Initialize Supabase session from storage so auth UI persists across popup reopen
     try {
       if (window.supabaseClient && typeof window.supabaseClient.init === 'function') {
         await window.supabaseClient.init();
-        // Note: Premium status already loaded above, no need to refresh
       }
     } catch (e) {
       console.warn('Supabase init failed:', e);
     }
 
-    // Check if user needs to re-authenticate (expired session)
     await this.checkReauthRequired();
 
-    // Initialize sync engine for timer-based sync
     try {
       if (window.syncEngine && typeof window.syncEngine.init === 'function') {
         await window.syncEngine.init();
@@ -342,162 +321,109 @@ class URLNotesApp {
       console.warn('Failed to initialize sync engine:', error);
     }
 
-    // Listen for background sync timer messages
     this._messageListener = async (message, sender, sendResponse) => {
       if (message.action === 'sync-timer-triggered') {
-
-        // Background timer fired, check if we can sync
         if (window.syncEngine) {
           try {
             const canSyncResult = await window.syncEngine.canSync();
-
-
             if (canSyncResult && canSyncResult.canSync) {
-              // Double-check encryption readiness for timer-triggered sync
               if (window.encryptionManager && typeof window.encryptionManager.isEncryptionReady === 'function') {
                 const encryptionReady = await window.encryptionManager.isEncryptionReady();
                 if (!encryptionReady) {
-
                   chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
                   return;
                 }
               }
-
               try {
-
                 await window.syncEngine.manualSync();
-
-                // After sync completes, restart the background timer for next cycle
                 chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
               } catch (syncError) {
                 console.error('Popup: Automatic sync failed:', syncError);
-
-                // Even if sync fails, restart timer for next cycle
                 chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
               }
             } else {
-              // Can't sync, restart timer anyway for next cycle
               chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
             }
           } catch (error) {
             console.error('Popup: Error checking sync capability:', error);
-
-            // Error checking sync capability, restart timer for next cycle
             chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
           }
         } else {
           console.warn('Popup: Sync engine not available');
-
-          // Sync engine not available, restart timer for next cycle
           chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
         }
       }
     };
     chrome.runtime.onMessage.addListener(this._messageListener);
 
-    // Check for overdue sync when popup opens
     try {
       const response = await chrome.runtime.sendMessage({ action: 'popup-opened' });
       if (response && response.shouldSync) {
         if (window.syncEngine) {
           try {
-            // Add a small delay to ensure encryption is fully initialized after login
             await new Promise(resolve => setTimeout(resolve, 500));
-
             const canSyncResult = await window.syncEngine.canSync();
-
-
             if (canSyncResult && canSyncResult.canSync) {
-              // Double-check encryption readiness for overdue sync after login
               if (window.encryptionManager && typeof window.encryptionManager.isEncryptionReady === 'function') {
                 const encryptionReady = await window.encryptionManager.isEncryptionReady();
                 if (!encryptionReady) {
-
                   chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
                   return;
                 }
               }
-
               try {
-
                 await window.syncEngine.manualSync();
-
                 chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
               } catch (syncError) {
                 console.error('Popup: Overdue sync failed:', syncError);
-
                 chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
               }
             } else {
-
               chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
             }
           } catch (error) {
             console.error('Popup: Error checking sync capability for overdue sync:', error);
-
             chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
           }
         } else {
           console.warn('Popup: Sync engine not available for overdue sync');
-
           chrome.runtime.sendMessage({ action: 'restart-sync-timer' }).catch(() => { });
         }
-      } else if (response) {
-        const timeRemainingMinutes = Math.round(response.timeRemaining / (1000 * 60));
       }
     } catch (error) {
       console.error('Popup: Error checking for overdue sync:', error);
     }
 
-    // Listen for global auth/tier changes
     try {
       window.eventBus?.on('auth:changed', (payload) => this.handleAuthChanged(payload));
       window.eventBus?.on('tier:changed', (status) => this.handleTierChanged(status));
     } catch (_) { }
 
-    // Note: Sync event listeners removed - sync only happens on timer or manual button press
-
-    // Listen for context menu messages from background script
     try {
       chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === 'context_menu_note_saved') {
           this.handleContextMenuNote(message.note);
-          // Note: context_menu_draft_updated now handled via lastAction mechanism for better timing
         } else if (message.action === 'multi_highlight_note_updated') {
-          // Handle multi-highlight note updates
           this.handleMultiHighlightNoteUpdate(message.note, message.type);
         }
       });
     } catch (_) { }
 
-    // Setup conflict banner event listeners
     this.setupConflictBannerListeners();
 
-    // Load notes first, before any rendering
     this.allNotes = await this.loadNotes();
-
-    // Check current multi-highlight state
     await this.checkMultiHighlightState();
 
     await this.settingsManager.loadFontSetting();
-    // Initialize settings UI once (font controls, preview, etc.)
     this.settingsManager.initSettings();
     Utils.checkStorageQuota();
     this.maybeShowQuotaWarning();
-    // Note: These methods don't exist in editorManager, they're in the popup class
-    // this.updateCharCount();
-    // this.updateNotePreview();
 
-    // Restore last UI state (filter + possibly open editor)
     try {
       const { lastFilterMode, editorState, lastAction, lastSearchQuery } = await chrome.storage.local.get(['lastFilterMode', 'editorState', 'lastAction', 'lastSearchQuery']);
       if (lastFilterMode === 'site' || lastFilterMode === 'page' || lastFilterMode === 'all_notes') {
         this.filterMode = lastFilterMode;
       }
-
-      // Note: Draft clearing moved to restoration logic to allow proper auto-restore
-
-      // Mark popup as open for context menu detection
       if (editorState) {
         editorState.open = true;
         // Preserve wasEditorOpen flag for auto-restore logic
@@ -586,14 +512,12 @@ class URLNotesApp {
         // Find the note that was created by multi-highlight
         let createdNote = this.allNotes.find(n => n.id === lastAction.noteId);
 
-        // If not found in IndexedDB, check chrome.storage.local
         if (!createdNote) {
           try {
             const allData = await chrome.storage.local.get(null);
             for (const [key, value] of Object.entries(allData)) {
               if (key.startsWith('note_') && value && value.id === lastAction.noteId) {
                 createdNote = value;
-                console.log('Found multi-highlight note in chrome.storage.local:', createdNote);
                 break;
               }
             }
@@ -603,17 +527,11 @@ class URLNotesApp {
         }
 
         if (createdNote) {
-          // Move note from chrome.storage.local to IndexedDB if needed
           if (createdNote.domain && createdNote.content) {
             try {
               await window.notesStorage.saveNote(createdNote);
-              console.log('Moved multi-highlight note to IndexedDB:', createdNote.id);
-
-              // Remove from chrome.storage.local
               const key = `note_${createdNote.id}`;
               await chrome.storage.local.remove(key);
-
-              // Reload notes to include the new one
               this.allNotes = await this.loadNotes();
             } catch (error) {
               console.error('Failed to move multi-highlight note to IndexedDB:', error);
@@ -629,37 +547,25 @@ class URLNotesApp {
         }
       }
 
-      // Priority 0.6.5: context menu appended to draft note - open editor with updated draft
       if (lastAction && lastAction.type === 'append_selection' && lastAction.isDraft) {
-        console.log('🎯 Context menu appended to draft, opening updated draft in editor');
-
-        // Get the updated draft from storage
         const { editorState } = await chrome.storage.local.get(['editorState']);
         if (editorState && editorState.noteDraft && editorState.noteDraft.id === lastAction.noteId) {
-          // Set the updated draft as current note and open editor
           this.currentNote = { ...editorState.noteDraft };
           await this.openEditor(true);
-
         }
-
-        // Remove action so it doesn't re-trigger
         chrome.storage.local.remove('lastAction');
         return;
       }
 
-      // Priority 0.7: multi-highlight appended to existing note - refresh and show
       if (lastAction && lastAction.type === 'append_multi_highlights') {
-        // Find the note that was updated by multi-highlight
         let updatedNote = this.allNotes.find(n => n.id === lastAction.noteId);
 
-        // If not found in IndexedDB, check chrome.storage.local
         if (!updatedNote) {
           try {
             const allData = await chrome.storage.local.get(null);
             for (const [key, value] of Object.entries(allData)) {
               if (key.startsWith('note_') && value && value.id === lastAction.noteId) {
                 updatedNote = value;
-                console.log('Found updated multi-highlight note in chrome.storage.local:', updatedNote);
                 break;
               }
             }
@@ -669,17 +575,11 @@ class URLNotesApp {
         }
 
         if (updatedNote) {
-          // Move note from chrome.storage.local to IndexedDB if needed
           if (updatedNote.domain && updatedNote.content) {
             try {
               await window.notesStorage.saveNote(updatedNote);
-              console.log('Moved updated multi-highlight note to IndexedDB:', updatedNote.id);
-
-              // Remove from chrome.storage.local
               const key = `note_${updatedNote.id}`;
               await chrome.storage.local.remove(key);
-
-              // Reload notes to include the updated one
               this.allNotes = await this.loadNotes();
             } catch (error) {
               console.error('Failed to move updated multi-highlight note to IndexedDB:', error);
@@ -810,10 +710,8 @@ class URLNotesApp {
     }
   }
 
-  // NEW: Restore cached UI state immediately to prevent visual shifts
   async restoreCachedUIState() {
     try {
-      // 1. Restore filter mode and search query immediately
       const { lastFilterMode, lastSearchQuery } = await chrome.storage.local.get(['lastFilterMode', 'lastSearchQuery']);
       if (lastFilterMode === 'site' || lastFilterMode === 'page' || lastFilterMode === 'all_notes') {
         this.filterMode = lastFilterMode;
@@ -822,7 +720,6 @@ class URLNotesApp {
         this.searchQuery = lastSearchQuery;
       }
 
-      // 2. Set search placeholder immediately based on filter mode
       const searchInput = document.querySelector('.search-input');
       if (searchInput) {
         const placeholder =
@@ -832,17 +729,13 @@ class URLNotesApp {
         searchInput.setAttribute('placeholder', placeholder);
       }
 
-      // 3. Restore search input value immediately if exists
       if (this.searchQuery && searchInput) {
         searchInput.value = this.searchQuery;
         const searchClearEl = document.getElementById('searchClear');
         if (searchClearEl) searchClearEl.style.display = 'block';
       }
 
-      // 4. Restore extension shortcuts immediately
       await this.restoreShortcutsImmediately();
-
-      // 5. Set filter buttons active state immediately
       this.updateFilterButtonStates();
 
     } catch (error) {
@@ -850,10 +743,8 @@ class URLNotesApp {
     }
   }
 
-  // NEW: Restore shortcuts immediately to prevent visual shift
   async restoreShortcutsImmediately() {
     try {
-      // Try to get shortcuts from storage first (faster)
       const { cachedShortcuts } = await chrome.storage.local.get(['cachedShortcuts']);
       if (cachedShortcuts && cachedShortcuts.open && cachedShortcuts.new) {
         const openEl = document.getElementById('shortcutOpenValue');
@@ -863,12 +754,10 @@ class URLNotesApp {
         if (newEl) newEl.textContent = cachedShortcuts.new;
       }
 
-      // Then get fresh shortcuts from chrome.commands
       const actions = await chrome.commands.getAll();
       const openAction = actions.find(a => a.name === '_execute_action');
       const createAction = actions.find(a => a.name === '_execute_browser_action');
 
-      // Update shortcut display elements
       const openShortcut = openAction && openAction.shortcut ? openAction.shortcut : 'Not set';
       const newShortcut = createAction && createAction.shortcut ? createAction.shortcut : 'Not set';
 
@@ -878,14 +767,12 @@ class URLNotesApp {
       if (openEl) openEl.textContent = openShortcut;
       if (newEl) newEl.textContent = newShortcut;
 
-      // Cache the shortcuts for next time
       await chrome.storage.local.set({
         cachedShortcuts: { open: openShortcut, new: newShortcut }
       });
 
     } catch (error) {
       console.warn('Failed to restore shortcuts immediately:', error);
-      // Only set fallback if no cached values were loaded
       const { cachedShortcuts } = await chrome.storage.local.get(['cachedShortcuts']);
       if (!cachedShortcuts || !cachedShortcuts.open || !cachedShortcuts.new) {
         const openEl = document.getElementById('shortcutOpenValue');
@@ -897,17 +784,14 @@ class URLNotesApp {
     }
   }
 
-  // NEW: Update filter button states immediately
   updateFilterButtonStates() {
     try {
-      // Remove active class and ARIA attributes from all filter buttons
       document.querySelectorAll('.filter-option').forEach(btn => {
         btn.classList.remove('active');
         btn.setAttribute('aria-selected', 'false');
         btn.removeAttribute('aria-current');
       });
 
-      // Add active class and ARIA attributes to current filter button
       const buttonId = {
         'site': 'showAllBtn',
         'page': 'showPageBtn',
@@ -923,7 +807,6 @@ class URLNotesApp {
         }
       }
 
-      // Set data-view on root for view-specific styling
       document.documentElement.setAttribute('data-view', this.filterMode);
 
     } catch (error) {
@@ -931,24 +814,16 @@ class URLNotesApp {
     }
   }
 
-  // Handle auth change: refresh premium from storage (set by api.js) and update UI
   async handleAuthChanged(payload) {
     try {
-      // Clear local AI usage tracking on auth changes
       await this.clearLocalAIUsage();
-
-      // Refresh premium status from both storage and Supabase client
       this.premiumStatus = await getPremiumStatus();
       await this.updatePremiumUI();
-
-      // Update settings UI to reflect auth changes
       await this.settingsManager.updateAuthUI();
 
-      // If this is a status refresh, also refresh notes to show any decrypted content
       if (payload && payload.statusRefresh) {
         await this.refreshNotesFromStorage();
       } else {
-        // Also refresh notes to show version history buttons if premium
         if (this.premiumStatus?.isPremium) {
           this.render();
         }
@@ -958,53 +833,36 @@ class URLNotesApp {
     }
   }
 
-  // Handle tier change from api.js with status payload { active, tier }
   async handleTierChanged(status) {
     try {
-      // Clear local AI usage tracking on tier changes (free vs premium have different limits)
       await this.clearLocalAIUsage();
-
       const isPremium = !!(status && status.active && (status.tier || 'premium') !== 'free');
       this.premiumStatus = { isPremium };
       await this.updatePremiumUI();
-
-      // Force refresh of AI usage data to get updated limits immediately
       await this.getAIUsageDebounced();
-
-      // Update usage display in UI
       await this.loadUsageInfo();
-
-      // Update settings UI to reflect tier changes
       await this.settingsManager.updateAuthUI();
-
-      // Refresh notes display to show/hide premium features
       await this.refreshNotesFromStorage();
     } catch (error) {
       console.error('Error handling tier change:', error);
     }
   }
 
-  // Check if OAuth just completed (called during popup initialization)
   async checkOAuthCompletion() {
     try {
       const { oauthJustCompleted } = await chrome.storage.local.get(['oauthJustCompleted']);
 
       if (oauthJustCompleted && oauthJustCompleted !== null && oauthJustCompleted.success) {
-        // Check if this completion is recent (within last 30 seconds)
         const timeSinceCompletion = Date.now() - oauthJustCompleted.timestamp;
 
         if (timeSinceCompletion < 30000) {
-          // Clear the flag so we don't trigger again
           await chrome.storage.local.set({ oauthJustCompleted: null });
-
-          // Trigger refresh after a short delay to ensure UI is ready
           setTimeout(() => {
             if (this.settingsManager && this.settingsManager.handleRefreshPremiumStatus) {
               this.settingsManager.handleRefreshPremiumStatus();
             }
           }, 1500);
         } else {
-          // Old completion, clear it
           await chrome.storage.local.set({ oauthJustCompleted: null });
         }
       }
@@ -1013,17 +871,13 @@ class URLNotesApp {
     }
   }
 
-  // Check if user needs to re-authenticate due to expired session
   async checkReauthRequired() {
     try {
       const storage = typeof browser !== 'undefined' ? browser.storage.local : chrome.storage.local;
       const { needsReauth } = await storage.get(['needsReauth']);
 
       if (needsReauth) {
-        // Clear the flag
         await storage.remove(['needsReauth']);
-
-        // Show notification to user
         this.showNotification('Authentication expired. Go to Settings to sign in again.', 'warning');
       }
     } catch (error) {
@@ -1055,17 +909,12 @@ class URLNotesApp {
 
   // Note: Draft updates from context menu now handled via lastAction mechanism in init()
 
-  // Handle multi-highlight note updates from background script
   async handleMultiHighlightNoteUpdate(note, type) {
     try {
-      // Save the note using the proper storage system
       await window.notesStorage.saveNote(note);
-
-      // Refresh the notes list
       this.allNotes = await this.loadNotes();
       this.render();
 
-      // Show appropriate success message based on type
       if (type === 'append_multi_highlights') {
         Utils.showToast('Highlights added to existing note', 'success');
       } else if (type === 'new_from_multi_highlight') {
@@ -1074,11 +923,8 @@ class URLNotesApp {
         Utils.showToast('Note updated with highlights', 'success');
       }
 
-      // If we have a current note open and it's the same one, update it
       if (this.currentNote && this.currentNote.id === note.id) {
         this.currentNote = { ...note };
-
-        // Update the editor content to show the new content
         const contentInput = document.getElementById('noteContentInput');
         if (contentInput) {
           const safeContent = this.buildContentHtml(note.content || '');
@@ -1095,55 +941,38 @@ class URLNotesApp {
     }
   }
 
-  // Toggle multi-highlight mode on the current webpage
   async toggleMultiHighlightMode() {
     if (!this.currentSite || !this.currentSite.url) {
-      console.warn('No current site to toggle multi-highlight mode');
       return;
     }
 
     try {
-      // Get current tab to send message
       const tab = await this.getCurrentTab();
       if (!tab) {
-        console.warn('No active tab found');
         return;
       }
 
-      // First check if content script is ready by sending a ping message
       try {
         await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
-        console.log('Content script is ready');
       } catch (error) {
-        console.warn('Content script not ready, attempting to inject:', error);
-        // Try to inject the content script if it's not loaded
         try {
-          console.log('Attempting to inject content script...');
-
-          // Check if we have permission to inject
           if (!chrome.scripting) {
             throw new Error('Scripting API not available');
           }
 
-          // Try to inject the content script
           await chrome.scripting.executeScript({
             target: { tabId: tab.id },
             files: ['content/content.js']
           });
 
-          console.log('Content script injection successful, waiting for initialization...');
-
-          // Wait longer for the script to initialize and try multiple ping attempts
           let pingSuccess = false;
           for (let attempt = 1; attempt <= 3; attempt++) {
             try {
-              await new Promise(resolve => setTimeout(resolve, 300 * attempt)); // Progressive delay
+              await new Promise(resolve => setTimeout(resolve, 300 * attempt));
               await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
-              console.log(`Content script ping successful on attempt ${attempt}`);
               pingSuccess = true;
               break;
             } catch (pingError) {
-              console.log(`Ping attempt ${attempt} failed:`, pingError);
               if (attempt === 3) {
                 throw new Error('Content script not responding after multiple attempts');
               }
@@ -1154,12 +983,9 @@ class URLNotesApp {
             throw new Error('Content script not responding after injection');
           }
 
-          console.log('Content script injected and ready');
-
         } catch (injectError) {
           console.error('Failed to inject content script:', injectError);
 
-          // Provide more specific error messages
           if (injectError.message.includes('Cannot access')) {
             Utils.showToast('Cannot access this page - Try refreshing or use a regular webpage', 'error');
           } else if (injectError.message.includes('Scripting API not available')) {
@@ -1171,7 +997,6 @@ class URLNotesApp {
         }
       }
 
-      // Now send the toggle message with a timeout
       const response = await Promise.race([
         chrome.tabs.sendMessage(tab.id, { action: 'toggleMultiHighlight' }),
         new Promise((_, reject) =>
@@ -1180,28 +1005,21 @@ class URLNotesApp {
       ]);
 
       if (response && response.enabled) {
-        // Update button state to show active
         const btn = document.getElementById('multiHighlightBtn');
         if (btn) {
           btn.classList.add('active');
           btn.title = 'Multi-Highlight Mode Active (Click to Exit)';
         }
-
-        // Show notification
         Utils.showToast('Multi-highlight enabled - Select text on the page to highlight', 'success');
-
-        // Close popup to let user interact with the webpage
         setTimeout(() => {
           window.close();
         }, 1500);
       } else {
-        // Update button state to show inactive
         const btn = document.getElementById('multiHighlightBtn');
         if (btn) {
           btn.classList.remove('active');
           btn.title = 'Toggle Multi-Highlight Mode';
         }
-
         Utils.showToast('Multi-highlight mode disabled.', 'info');
       }
     } catch (error) {
@@ -1217,7 +1035,6 @@ class URLNotesApp {
     }
   }
 
-  // Check current multi-highlight state
   async checkMultiHighlightState() {
     if (!this.currentSite || !this.currentSite.url) return;
 
@@ -1225,12 +1042,9 @@ class URLNotesApp {
       const tab = await this.getCurrentTab();
       if (!tab) return;
 
-      // First check if content script is ready
       try {
         await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
       } catch (error) {
-        // Content script not ready, that's okay - just return
-        console.debug('Content script not ready for multi-highlight state check:', error);
         return;
       }
 
@@ -1248,8 +1062,7 @@ class URLNotesApp {
         }
       }
     } catch (error) {
-      // Content script might not be ready yet, that's okay
-      console.debug('Could not check multi-highlight state:', error);
+      // silently fail
     }
   }
 
@@ -1401,48 +1214,38 @@ class URLNotesApp {
       try { chrome.storage.local.remove('lastSearchQuery'); } catch (_) { }
     });
 
-    // Add new note
     document.getElementById('addNoteBtn').addEventListener('click', async () => {
-      // Use the main createNewNote method which has better error handling
       await this.createNewNote();
     });
 
-
-    // Editor controls
-    // Shared save handler to avoid duplication across Back and Save buttons
     const saveStandard = () => this.saveCurrentNote({
       clearDraftAfterSave: false,
       closeEditorAfterSave: false,
       showToast: true,
-      switchFilterAfterSave: false // Keep current filter
+      switchFilterAfterSave: false
     }).catch(() => { });
+
     document.getElementById('backBtn').addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      // Back button: Save note and clear draft (same as save button)
       const notesContainer = document.querySelector('.notes-container');
       this.editorManager.closeEditor({ clearDraft: true });
-      // Animate notes list entrance
       if (notesContainer) {
         notesContainer.classList.add('panel-fade-in');
         setTimeout(() => notesContainer.classList.remove('panel-fade-in'), 220);
       }
-      // Save the note
       saveStandard();
     });
 
     document.getElementById('saveNoteBtn').addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      // Same functionality as back button: save and close editor
       const notesContainer = document.querySelector('.notes-container');
       this.editorManager.closeEditor({ clearDraft: true });
-      // Animate notes list entrance
       if (notesContainer) {
         notesContainer.classList.add('panel-fade-in');
         setTimeout(() => notesContainer.classList.remove('panel-fade-in'), 220);
       }
-      // Use same save path as Back button
       saveStandard();
     });
 
@@ -1454,7 +1257,6 @@ class URLNotesApp {
       this.exportCurrentNote();
     });
 
-    // Editor inputs
     document.getElementById('noteTitleHeader').addEventListener('input', () => {
       this.saveDraftDebounced();
     });
@@ -1462,17 +1264,13 @@ class URLNotesApp {
     const contentInput = document.getElementById('noteContentInput');
     contentInput.addEventListener('input', (e) => {
       this.editorManager.updateCharCount();
-
-      // Skip draft saving during AI rewrite to prevent content reset
       if (!this._isApplyingAIRewrite) {
         this.saveDraftDebounced();
       }
     });
-    // Paste sanitization: allow only text, links, and line breaks
+
     contentInput.addEventListener('paste', (e) => this.handleEditorPaste(e));
-    // Intercept link clicks inside the editor (use capture phase to handle before contenteditable)
     contentInput.addEventListener('click', (e) => this.handleEditorLinkClick(e), true);
-    // Also handle mousedown to prevent selection issues with links
     contentInput.addEventListener('mousedown', (e) => {
       if (e.target.tagName === 'A') {
         e.preventDefault();
@@ -1481,55 +1279,37 @@ class URLNotesApp {
       }
     }, true);
 
-    // Handle Enter key for list creation
     contentInput.addEventListener('keydown', (e) => this.editorManager.handleEditorKeyDown(e));
-
-    // Skip textarea-specific key handling; editor is now contenteditable
 
     document.getElementById('tagsInput').addEventListener('input', () => {
       this.saveDraftDebounced();
     });
 
-    // Settings button simply opens the settings panel
     document.getElementById('settingsBtn').addEventListener('click', () => {
       this.openSettings();
     });
 
-    // Multi-highlight button toggles multi-highlight mode on the current webpage
     document.getElementById('multiHighlightBtn').addEventListener('click', () => {
       this.toggleMultiHighlightMode();
     });
 
-
-
-    // Import functionality is handled by SettingsManager
-    // No need to add duplicate event listeners here
-
     document.getElementById('aiRewriteBtn').addEventListener('click', async () => {
-      // Toggle AI dropdown
       await this.toggleAIDropdown();
     });
 
-    // AI Summary button click handler
     const aiSummaryBtn = document.getElementById('aiSummaryBtn');
     if (aiSummaryBtn) {
       aiSummaryBtn.addEventListener('click', () => {
         this.showAISummaryModal();
       });
-    } else {
-      console.warn('AI Summary button not found in setupEventListeners');
     }
 
     document.getElementById('listBtn').addEventListener('click', () => {
       this.editorManager.createList();
     });
 
-    // Initialize formatting controls (bold, underline, strikethrough, color)
     this.editorManager.initializeFormattingControls();
 
-    // Developer tools removed: mock data generation/cleanup and storage stress tools
-
-    // Font selector
     document.getElementById('fontSelector').addEventListener('change', (e) => {
       this.saveFontSetting(e.target.value);
     });
@@ -1727,23 +1507,18 @@ class URLNotesApp {
     fontSizeSelect.addEventListener('change', (e) => {
       let size = parseInt(e.target.value, 10);
       if (Number.isNaN(size)) size = 12;
-      // Clamp to [8, 18]
       size = Math.max(8, Math.min(18, size));
       const fontName = fontSelector.value;
-      // Do not apply to editor while settings is open; preview only
       updateFontPreview(fontName, size);
       chrome.storage.local.set({ editorFontSize: String(size) });
     });
 
-    // Load saved font settings
     chrome.storage.local.get(['editorFont', 'editorFontSize'], ({ editorFont, editorFontSize }) => {
-      // Normalize legacy 'System' to 'Default'
       const normalizedFont = editorFont === 'System' ? 'Default' : (editorFont || 'Default');
       fontSelector.value = normalizedFont;
       if (editorFont === 'System') {
         chrome.storage.local.set({ editorFont: 'Default' });
       }
-      // Determine size with default 12 and clamp within [8, 18]
       let sizeToUse = parseInt(editorFontSize || fontSizeSelect.value || '12', 10);
       if (Number.isNaN(sizeToUse)) sizeToUse = 12;
       sizeToUse = Math.max(8, Math.min(18, sizeToUse));
@@ -1754,29 +1529,21 @@ class URLNotesApp {
   }
 
 
-  // Switch between different note filters
-  // options.persist: whether to store lastFilterMode (default: true)
   async switchFilter(filter, options = { persist: true, render: true }) {
-    // Prevent rapid filter switching
     if (this.filterMode === filter) return;
 
-    // Set flag to prevent other renders during filter transition
     this._isFilterTransitioning = true;
-
     this.filterMode = filter;
 
-    // Clear search when switching filters since results may not be relevant
     if (this.searchQuery) {
       this.searchQuery = '';
       const searchInput = document.getElementById('searchInput') || document.querySelector('.search-input');
       if (searchInput) searchInput.value = '';
       const searchClear = document.getElementById('searchClear');
       if (searchClear) searchClear.style.display = 'none';
-      // Clear from storage
       try { chrome.storage.local.remove('lastSearchQuery'); } catch (_) { }
     }
 
-    // Update filter UI
     document.querySelectorAll('.filter-option').forEach(btn => {
       btn.classList.remove('active');
       btn.setAttribute('aria-selected', 'false');
@@ -1794,39 +1561,26 @@ class URLNotesApp {
       filterBtn.setAttribute('aria-current', 'page');
     }
 
-    // Set data-view on root for view-specific styling (compact site/page)
     document.documentElement.setAttribute('data-view', filter);
 
-    // Search placeholder is now handled centrally in restoreCachedUIState to prevent caching conflicts
-    // No need to update it here anymore
-
-    // Ensure notes are loaded before rendering to prevent pop-in effect
     if (options.render !== false) {
-      // Load notes first if not already loaded
       if (!this.allNotes || !Array.isArray(this.allNotes)) {
         await this.loadNotes();
       }
-      // Now render with fresh data
       this.render();
     }
 
-    // Persist last chosen filter unless suppressed
     if (!options || options.persist !== false) {
       chrome.storage.local.set({ lastFilterMode: this.filterMode });
     }
 
-    // Clear filter transition flag after a delay
     setTimeout(() => {
       this._isFilterTransitioning = false;
     }, 300);
   }
 
-  // Delegate notes rendering to NotesManager (modularized)
   render() {
-    const t0 = (window.performance && performance.now) ? performance.now() : Date.now();
     this.notesManager.render();
-    const t1 = (window.performance && performance.now) ? performance.now() : Date.now();
-    // Note: Removed verbose render timing logging for cleaner console
   }
 
   // Proactive, non-blocking storage warnings using toast only (no dialog to avoid API mismatch)
@@ -1849,7 +1603,6 @@ class URLNotesApp {
     } catch (_) { /* noop */ }
   }
 
-  // Group notes by domain, including aggregated tags
   groupNotesByDomain(notes) {
     const grouped = notes.reduce((acc, note) => {
       const domain = note.domain || 'No Domain';
@@ -1865,7 +1618,6 @@ class URLNotesApp {
       return acc;
     }, {});
 
-    // Get top 5 tags for each domain
     for (const domain in grouped) {
       grouped[domain].tags = Object.entries(grouped[domain].tagCounts)
         .sort(([, countA], [, countB]) => countB - countA)
@@ -1876,14 +1628,12 @@ class URLNotesApp {
     return grouped;
   }
 
-  // Render notes grouped by domain for 'All Notes' view
   renderGroupedNotes(notes) {
     const notesList = document.getElementById('notesList');
     notesList.setAttribute('aria-busy', 'true');
     const groupedData = this.groupNotesByDomain(notes);
     const sortedDomains = Object.keys(groupedData).sort();
 
-    // Only clear if there are other children to prevent unnecessary clearing
     if (notesList.children.length > 0) {
       if (window.safeDOM) {
         window.safeDOM.clearContent(notesList);
@@ -1898,11 +1648,8 @@ class URLNotesApp {
 
       const domainGroup = document.createElement('details');
       domainGroup.className = 'domain-group';
-      // Expand top two results only when searching
       const domainIndex = sortedDomains.indexOf(domain);
       domainGroup.open = this.searchQuery && domainIndex < 2;
-
-      // Domain group created
 
       const rightDomainTagsHtml = (domainTags && domainTags.length > 0) ? `
         <div class="domain-tags domain-tags-right">
@@ -1940,8 +1687,6 @@ class URLNotesApp {
         domainGroup.innerHTML = domainGroupHtml;
       }
 
-      // No pre-open suppression; restore original behavior
-
       const deleteDomainBtn = domainGroup.querySelector('.delete-domain-btn');
       const openDomainBtn = domainGroup.querySelector('.open-domain-btn');
       const actionsContainer = domainGroup.querySelector('.domain-actions');
@@ -1963,7 +1708,6 @@ class URLNotesApp {
         });
       }
 
-      // Append note elements as DOM nodes so their event listeners remain active
       domainNotes.forEach(n => {
         const el = this.createNoteElement(n);
         el.classList.add('note-item-stagger');
@@ -1975,20 +1719,16 @@ class URLNotesApp {
     notesList.setAttribute('aria-busy', 'false');
   }
 
-  // Create a note element
   createNoteElement(note) {
     const noteDiv = document.createElement('div');
     noteDiv.className = 'note-item';
     noteDiv.addEventListener('click', () => this.openNote(note));
 
-    // Build preview HTML that makes markdown links clickable (first line only)
     const previewHtml = this.buildPreviewHtml(note.content);
 
-    // Show page indicator for current page notes when not in page filter mode
     const pageIndicator = (this.filterMode !== 'page' && this.isCurrentPageNote(note)) ?
       '<span class="page-indicator" data-tooltip="Current page note">•</span>' : '';
 
-    // Check if user has premium access for version history button
     const hasVersionHistory = this.premiumStatus?.isPremium || false;
 
     const noteHtml = `
@@ -2037,7 +1777,6 @@ class URLNotesApp {
       noteDiv.innerHTML = noteHtml;
     }
 
-    // Add open button event listener (only present in non-page views)
     const openBtn = noteDiv.querySelector('.open-page-btn');
     if (openBtn) {
       openBtn.addEventListener('click', (e) => {
@@ -2047,25 +1786,19 @@ class URLNotesApp {
       });
     }
 
-    // Add version history button event listener
     const versionBtn = noteDiv.querySelector('.version-history-btn');
     if (versionBtn) {
       versionBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        // Note: Removed verbose logging for cleaner console
-        // Call the version history method from notes.js module
         if (window.notesManager && window.notesManager.showVersionHistory) {
           window.notesManager.showVersionHistory(note);
-        } else {
-          console.warn('Version history functionality not available');
         }
       });
     }
 
-    // Add delete button event listener (two-tap confirm on same icon)
     const deleteBtn = noteDiv.querySelector('.delete-note-btn');
     deleteBtn.addEventListener('click', (e) => {
-      e.stopPropagation(); // Prevent opening the note
+      e.stopPropagation();
       this.handleTwoTapDelete(deleteBtn, () => {
         this.deleteNoteFromList(note.id, true);
       });
@@ -2074,12 +1807,10 @@ class URLNotesApp {
     return noteDiv;
   }
 
-  // Lightweight two-tap delete: first tap arms, second within timeout confirms
   handleTwoTapDelete(btn, onConfirm) {
     try {
       const armed = btn.getAttribute('data-armed') === 'true';
       if (armed) {
-        // Confirmed
         btn.removeAttribute('data-armed');
         btn.classList.remove('confirm');
         if (btn._confirmTimer) {
@@ -2089,13 +1820,11 @@ class URLNotesApp {
         onConfirm && onConfirm();
         return;
       }
-      // Arm
       btn.setAttribute('data-armed', 'true');
       btn.classList.add('confirm');
       const prevTitle = btn.getAttribute('title') || '';
       btn.setAttribute('data-prev-title', prevTitle);
       btn.setAttribute('title', 'Click again to delete');
-      // Auto-disarm after 1.6s
       btn._confirmTimer = setTimeout(() => {
         btn.removeAttribute('data-armed');
         btn.classList.remove('confirm');
@@ -2103,42 +1832,34 @@ class URLNotesApp {
         if (pt !== null) btn.setAttribute('title', pt);
       }, 1600);
     } catch (_) {
-      // Fallback: direct confirm
       onConfirm && onConfirm();
     }
   }
 
-  // Convert first line of note content to preview HTML with clickable links
   buildPreviewHtml(content) {
     try {
       const firstLine = (content || '').split('\n')[0];
       if (!firstLine) return '';
-      // Escape HTML except simple markdown links we convert below
       const escapeHtml = (s) => s
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 
-      // Extract optional leading bullet "- " then markdown link [text](url)
       const bulletMatch = firstLine.match(/^\s*-\s*(.*)$/);
       const line = bulletMatch ? bulletMatch[1] : firstLine;
 
-      // Replace markdown links with plain text (no anchors in list preview)
       const mdLink = /\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g;
       let replaced = '';
       let lastIndex = 0;
       let match;
       while ((match = mdLink.exec(line)) !== null) {
-        // Append escaped text before the match
         replaced += escapeHtml(line.slice(lastIndex, match.index));
         const text = escapeHtml(match[1]);
-        // Only include the display text; do not render as a link in previews
         replaced += `${text}`;
         lastIndex = mdLink.lastIndex;
       }
       replaced += escapeHtml(line.slice(lastIndex));
 
-      // Add a bullet visually if original started with "- "
       const bulletPrefix = bulletMatch ? '&#8226; ' : '';
       return `${bulletPrefix}${replaced}`;
     } catch (e) {
@@ -2146,7 +1867,6 @@ class URLNotesApp {
     }
   }
 
-  // Render markdown/plain text to minimal HTML for the contenteditable editor
   buildContentHtml(content) {
     try {
       const escapeHtml = (s) => (s || '')
@@ -2160,7 +1880,7 @@ class URLNotesApp {
       // Bold: **text** -> <b>text</b> (process first - outermost)
       text = text.replace(/\*\*([^*]*(?:\*(?!\*)[^*]*)*)\*\*/g, '<b>$1</b>');
 
-      // Italics: *text* -> <i>text</i> (avoid conflict with bold)
+      // Italics: *text* -> <i>text</i> 
       text = text.replace(/\*([^*]+)\*/g, '<i>$1</i>');
 
       // Underline: __text__ -> <u>text</u>
@@ -2202,7 +1922,6 @@ class URLNotesApp {
 
   // Helper method to escape HTML but preserve our formatting tags
   escapeHtmlExceptTags(text) {
-    // First escape all HTML
     let escaped = text
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
@@ -2240,7 +1959,7 @@ class URLNotesApp {
             el.parentNode.insertBefore(document.createElement('br'), el);
           }
         }
-        // Unwrap: move children out in place
+      
         let lastChild = null;
         while (el.firstChild) {
           lastChild = el.firstChild;
@@ -2277,7 +1996,7 @@ class URLNotesApp {
       el.remove();
     });
 
-    // Underline tags
+    
     tmp.querySelectorAll('u').forEach(el => {
       const innerHTML = el.innerHTML;
       const md = document.createElement('span');
@@ -2377,7 +2096,7 @@ class URLNotesApp {
     return decode.value;
   }
 
-  // --- Caret/Selection utilities ---
+ 
   getSelectionOffsets(container) {
     try {
       const sel = window.getSelection();
@@ -2396,7 +2115,6 @@ class URLNotesApp {
         };
         // If container itself is text node, handle differently
         if (node.nodeType === Node.TEXT_NODE) {
-          // Not typical for our container; fallback to length
           return Math.min(targetOffset, node.nodeValue.length);
         }
         while (current) {
@@ -2408,14 +2126,14 @@ class URLNotesApp {
             }
             break;
           }
-          // Dive into children first
+         
           if (current.firstChild) {
             current = current.firstChild;
             continue;
           }
-          // Process node
+         
           advance(current);
-          // Move to next sibling or ascend
+          
           while (current && !current.nextSibling && current !== node) {
             current = current.parentNode;
           }
@@ -2465,7 +2183,7 @@ class URLNotesApp {
           pos += len;
         }
 
-        // Traverse depth-first
+        
         if (current.firstChild) {
           current = current.firstChild;
           continue;
@@ -2663,11 +2381,11 @@ class URLNotesApp {
         chrome.tabs.sendMessage(targetTab.id, { action: 'highlightText', href: absoluteHref, text }).catch(() => { });
       }
     } catch (err) {
-      // Fallback: open normally
+      
       try {
         window.open(href, '_blank', 'noopener,noreferrer');
       } catch (fallbackError) {
-        // Even fallback failed
+      
       }
     }
   }
@@ -2705,7 +2423,7 @@ class URLNotesApp {
       return false;
     }
 
-    // Show warning when approaching limit (at 45 notes)
+    
     if (currentNoteCount === 45) {
       Utils.showToast(`You have ${FREE_NOTE_LIMIT - currentNoteCount} notes left on the free plan`, 'warning');
     }
@@ -2715,7 +2433,7 @@ class URLNotesApp {
 
   // Show upgrade prompt when note limit is reached
   showNoteLimitUpgradePrompt(currentCount, limit) {
-    // Sanitize limit to ensure it's a safe number
+    
     const safeLimit = parseInt(limit) || 50;
 
     // Use the dialog system for a more prominent message
@@ -2734,7 +2452,6 @@ class URLNotesApp {
         }
       });
     } else {
-      // Fallback to toast if dialog not available (Utils.showToast is XSS safe)
       Utils.showToast(`Note limit reached (${safeLimit} max). Upgrade to Premium for unlimited notes!`, 'warning');
       // Open settings after a delay
       setTimeout(() => {
@@ -2745,10 +2462,10 @@ class URLNotesApp {
 
   // Create a new note (hybrid - always save both domain and URL)
   async createNewNote() {
-    // Check note limit before creating new note
+    
     const canCreate = await this.checkNoteLimitBeforeCreate();
     if (!canCreate) {
-      return; // User hit the limit, prompt was shown
+      return;
     }
 
     this.isJotMode = false;
@@ -2788,7 +2505,7 @@ class URLNotesApp {
     // Check if we have a valid currentSite context
     if (!this.currentSite || !this.currentSite.domain) {
       // Note: Removed verbose logging for cleaner console
-      // Create a general note when no site context is available
+      
       noteContext = {
         domain: 'general',
         url: 'chrome://extensions',
@@ -2817,7 +2534,7 @@ class URLNotesApp {
 
   // Open existing note
   async openNote(note) {
-    // Create a deep copy to avoid reference issues
+    
     this.currentNote = JSON.parse(JSON.stringify(note));
 
     // CRITICAL FIX: Clear ALL cached editor state to prevent caching issues
@@ -2837,7 +2554,7 @@ class URLNotesApp {
     }
 
     // Additional safety: Clear any existing editor state from storage
-    // This prevents drafts from previous notes from appearing
+    
     try {
       const { editorState } = await chrome.storage.local.get(['editorState']);
       if (editorState && editorState.noteDraft) {
@@ -2892,11 +2609,11 @@ class URLNotesApp {
 
     // Show premium features - use robust premium checking
     try {
-      // Use cached premium status instead of direct calls
+      
       const premiumStatus = await getPremiumStatus();
       const isPremium = premiumStatus.isPremium;
 
-      // Note: Removed verbose logging for cleaner console
+     
 
       // Temporarily show AI rewrite button for all users
       aiRewriteBtn.style.display = 'flex';
@@ -2931,7 +2648,7 @@ class URLNotesApp {
       }, 100);
     }
 
-    // Focus appropriately and try to restore caret from cached draft (if present)
+   
     setTimeout(() => {
       const focusContentNow = (focusContent || this.isJotMode);
       if (focusContentNow) {
@@ -2939,7 +2656,7 @@ class URLNotesApp {
       } else {
         titleHeader.focus();
       }
-      // Attempt to restore caret from editorState
+      
       try {
         chrome.storage.local.get(['editorState']).then(({ editorState }) => {
           if (!editorState || !editorState.noteDraft) return;
@@ -3003,7 +2720,7 @@ class URLNotesApp {
       return;
     }
 
-    // Wait for any pending draft saves to ensure we have the latest content
+   
     if (!this._isApplyingAIRewrite) {
       await this.flushDraftSave();
     }
@@ -3026,7 +2743,6 @@ class URLNotesApp {
     // This was causing existing notes to change their URL/pageTitle when saved from different sites
     // The note should preserve its original URL and pageTitle
 
-    // Don't save empty notes (title, content, and tags all empty)
     const isTitleEmpty = !this.currentNote.title;
     const isContentEmpty = (this.currentNote.content || '').trim() === '';
     const areTagsEmpty = (this.currentNote.tags || []).length === 0;
@@ -3047,8 +2763,6 @@ class URLNotesApp {
       // Show "Note Saved" popup
       this.showNoteSavedPopup('Note saved locally');
 
-      // NO automatic sync - notes are saved locally only
-      // Sync will happen on timer (every 5 minutes) or manual button press
 
       // Check for user engagement opportunities after successful save
       if (this.userEngagement) {
@@ -3071,12 +2785,9 @@ class URLNotesApp {
     }
 
     if (opts.switchFilterAfterSave) {
-      // After saving, switch to This Page filter
       this.switchFilter('page');
-      // Re-render from memory (switchFilter already renders)
       Utils.checkStorageQuota();
     } else {
-      // Re-render to show the saved note while keeping current filter
       this.render();
     }
   }
@@ -3088,13 +2799,13 @@ class URLNotesApp {
 
     switch (type) {
       case 'sync':
-        toastType = 'warning'; // Orange for syncing in progress
+        toastType = 'warning'; 
         break;
       case 'synced':
-        toastType = 'success'; // Green for successful sync
+        toastType = 'success'; 
         break;
       case 'sync-error':
-        toastType = 'error'; // Red for sync errors
+        toastType = 'error'; 
         break;
       case 'error':
         toastType = 'error';
@@ -3115,7 +2826,7 @@ class URLNotesApp {
       return;
     }
 
-    // If it's a new, unsaved note, just close the editor
+    // If it's a new, unsaved note, close the editor
     const isNewNote = !this.allNotes.some(n => n.id === this.currentNote.id);
     if (isNewNote) {
       this.editorManager.closeEditor();
@@ -3134,7 +2845,6 @@ class URLNotesApp {
     await this.loadNotes();
 
     Utils.showToast('Note deleted', 'success');
-    // Clear draft cache and close editor
     this.editorManager.closeEditor({ clearDraft: true });
     await this.postDeleteRefresh();
   }
@@ -3152,7 +2862,7 @@ class URLNotesApp {
         [this.currentNote.domain]: [this.currentNote]
       };
 
-      // Use TXT format for single note export
+      
       const exportFormats = new ExportFormats();
       const exportResult = exportFormats.exportToFormat(singleNoteData, 'txt', true);
 
@@ -3167,7 +2877,7 @@ class URLNotesApp {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      // Show success message
+      
       Utils.showToast('Note exported as Plain Text', 'success');
     } catch (error) {
       console.error('Error exporting note:', error);
@@ -3180,9 +2890,7 @@ class URLNotesApp {
     const note = this.allNotes.find(n => n.id === noteId);
     if (!note) return;
 
-    // This function is now only called directly when confirmed, so no need for dialog.
-    // The inline confirmation is handled by the click listener in `createNoteElement`.
-
+   
     // Delete note using storage manager
     await this.storageManager.deleteNote(noteId);
 
@@ -3255,11 +2963,11 @@ class URLNotesApp {
 
       if (isOpen) {
         // Set wasEditorOpen flag to true when editor is opened by user
-        // This helps distinguish between popup opening and actual editor opening
+       
         state.wasEditorOpen = true;
       } else {
         // Clear wasEditorOpen flag when editor is closed by user
-        // This ensures we don't auto-open on next popup open
+     
         state.wasEditorOpen = false;
       }
 
@@ -3328,12 +3036,12 @@ class URLNotesApp {
         return;
       }
 
-      // Skip draft saving during AI rewrite operations to prevent content reset
+     
       if (this._isApplyingAIRewrite) {
         return;
       }
 
-      // Be extra careful if AI rewrite just completed
+      
       if (this._aiRewriteJustCompleted) {
         // Add a small delay to ensure DOM is stable
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -3379,7 +3087,7 @@ class URLNotesApp {
         createdAt: this.currentNote.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         // CRITICAL FIX: Always preserve the original note's domain and URL
-        // Don't use currentSite domain/URL as it can change when editing from different sites
+        
         domain: this.currentNote.domain,
         url: this.currentNote.url,
         pageTitle: this.currentNote.pageTitle,
@@ -3398,7 +3106,6 @@ class URLNotesApp {
     }
   }
 
-  // NEW: Clean up old drafts to prevent unwanted auto-opening
   async cleanupOldDrafts() {
     try {
       const { editorState } = await chrome.storage.local.get(['editorState']);
@@ -3417,7 +3124,6 @@ class URLNotesApp {
     }
   }
 
-  // Restore editor draft from storage
   async restoreEditorDraft() {
     try {
       // Skip draft restoration during AI rewrite operations
@@ -3513,12 +3219,10 @@ class URLNotesApp {
       if (!userConfirmed) return;
     }
 
-    // Delete notes using storage manager
     await this.storageManager.deleteNotesByDomain(domain);
 
     // Clear draft if it belongs to the deleted domain
     if (this.currentNote && this.currentNote.domain === domain) {
-      // If the current note belongs to the deleted domain, close editor and clear draft
       this.editorManager.closeEditor({ clearDraft: true });
     } else {
       // Check if there's a draft for this domain and clear it
@@ -3533,7 +3237,6 @@ class URLNotesApp {
       }
     }
 
-    // Refresh notes list from storage to ensure consistency
     await this.loadNotes();
 
     await this.postDeleteRefresh();
@@ -3589,8 +3292,6 @@ class URLNotesApp {
     this.render();
   }
 
-
-  // AI Rewrite (placeholder)
   aiRewrite() {
     Utils.showToast('AI Rewrite coming soon!', 'info');
   }
@@ -3604,27 +3305,25 @@ class URLNotesApp {
       // Update the instance property so version history button can access it
       this.premiumStatus = premiumStatus;
 
-      // AI button visibility - temporarily show for all users
+
       const aiBtn = document.getElementById('aiRewriteBtn');
       if (aiBtn) {
-        aiBtn.style.display = 'flex'; // Show for all users temporarily
+        aiBtn.style.display = 'flex'; // 
       }
 
-      // AI Summary button visibility - temporarily show for all users
+      // AI Summary button visibility
       const aiSummaryBtn = document.getElementById('aiSummaryBtn');
       if (aiSummaryBtn) {
-        aiSummaryBtn.style.display = 'flex'; // Show for all users temporarily
+        aiSummaryBtn.style.display = 'flex'; // 
       } else {
         console.warn('updatePremiumUI: AI Summary button not found');
       }
 
-      // Ads container visibility
       const ad = document.getElementById('adContainer');
       if (ad) {
         ad.style.display = isPremium ? 'none' : 'block';
       }
 
-      // Always allow All Notes view
       const allNotesBtn = document.getElementById('showAllNotesBtn');
       if (allNotesBtn) {
         allNotesBtn.classList.remove('premium-feature');
@@ -3661,7 +3360,7 @@ class URLNotesApp {
   handleEditorLinkClick_legacy(e) {
     if (e.target.tagName === 'A') {
       e.preventDefault();
-      e.stopPropagation(); // Prevent contenteditable from handling the click
+      e.stopPropagation(); 
       const url = e.target.href;
 
       // Check if the URL is already open in a tab (flexible matching)
@@ -3696,7 +3395,6 @@ class URLNotesApp {
     }
   }
 
-  // Save font setting
   async saveFontSetting(fontFamily) {
     try {
       await chrome.storage.local.set({ fontFamily });
@@ -3707,7 +3405,6 @@ class URLNotesApp {
     }
   }
 
-  // AI rewrite functionality
   async aiRewrite() {
     // Check if we have a current note (including drafts)
     if (!this.currentNote) {
@@ -3716,12 +3413,10 @@ class URLNotesApp {
     }
 
     // Check if note has content (either saved or draft)
-    // Get content from editor inputs first (for drafts), then fall back to note data
     const noteContentInput = document.getElementById('noteContentInput');
     const noteTitleHeader = document.getElementById('noteTitleHeader');
 
     // Fix: For contenteditable elements, use innerHTML to preserve links and formatting
-    // This is important for maintaining clickable links generated from context menu
     const draftContent = noteContentInput ? (noteContentInput.innerHTML || '') : '';
     const draftTitle = noteTitleHeader ? (noteTitleHeader.value || '') : '';
 
@@ -3741,7 +3436,7 @@ class URLNotesApp {
       // Optionally open settings to guide them to sign up
       setTimeout(() => {
         this.showSettings();
-      }, 2000); // Show settings after 2 seconds
+      }, 2000); 
       return;
     }
 
@@ -3800,7 +3495,6 @@ class URLNotesApp {
 
   // Handle style selection
   async handleStyleSelection(style) {
-    // Update active button
     const styleBtns = document.querySelectorAll('.rewrite-style-btn');
     styleBtns.forEach(btn => {
       btn.classList.remove('active');
@@ -3845,7 +3539,6 @@ class URLNotesApp {
 
   // Apply AI rewrite directly to the note
   async applyAIRewriteToNote(rewrittenContent, style) {
-    // Get the content input element
     const contentInput = document.getElementById('noteContentInput');
 
     if (contentInput && rewrittenContent) {
@@ -3853,12 +3546,10 @@ class URLNotesApp {
         // Set flag to prevent draft saving during content update
         this._isApplyingAIRewrite = true;
 
-        // Cancel any pending debounced saves to prevent interference
         if (this.saveDraftDebounced.cancel) {
           this.saveDraftDebounced.cancel();
         }
 
-        // Update the current note object with AI content FIRST
         if (this.currentNote) {
           this.currentNote.content = rewrittenContent;
           this.currentNote.updatedAt = new Date().toISOString();
@@ -3867,7 +3558,6 @@ class URLNotesApp {
         // Apply the rewritten content to the editor
         const htmlContent = this.buildContentHtml(rewrittenContent);
 
-        // Set up a mutation observer to protect against content changes
         const observer = new MutationObserver((mutations) => {
           mutations.forEach((mutation) => {
             if (mutation.type === 'childList' || mutation.type === 'characterData') {
@@ -3876,7 +3566,6 @@ class URLNotesApp {
           });
         });
 
-        // Use safe DOM manipulation for AI rewrite content
         if (window.safeDOM) {
           window.safeDOM.setInnerHTML(contentInput, htmlContent, true);
         } else {
@@ -3899,13 +3588,13 @@ class URLNotesApp {
           }
         };
 
-        // Check and protect the content a few times during the critical period
+      
         setTimeout(protectContent, 50);
         setTimeout(protectContent, 150);
         setTimeout(protectContent, 300);
         setTimeout(protectContent, 500);
 
-        // Disable protection after 1 second
+        
         setTimeout(() => {
           protectionActive = false;
           observer.disconnect();
@@ -3918,8 +3607,6 @@ class URLNotesApp {
           characterData: true
         });
 
-
-
         // Update character count
         this.editorManager.updateCharCount();
 
@@ -3928,7 +3615,6 @@ class URLNotesApp {
           this.applyGeneratedTags();
         }
 
-        // Set up tag protection using the same mechanism as content protection
         const tagsInput = document.getElementById('tagsInput');
         const finalTagsValue = tagsInput ? tagsInput.value : '';
         const finalTagsArray = this.currentNote ? [...(this.currentNote.tags || [])] : [];
@@ -3947,13 +3633,11 @@ class URLNotesApp {
           }
         };
 
-        // Protect tags at the same intervals as content
         setTimeout(protectTags, 50);
         setTimeout(protectTags, 150);
         setTimeout(protectTags, 300);
         setTimeout(protectTags, 500);
 
-        // Immediately save the AI rewritten content to prevent it from being overwritten
         await this.saveAIRewrittenContent();
 
         // Wait longer to ensure everything is stable before clearing flag
@@ -3997,18 +3681,11 @@ class URLNotesApp {
       }
     });
 
-    // Update the tags input
     tagsInput.value = mergedTags.join(', ');
-
-    // Update the current note object
     this.currentNote.tags = mergedTags;
-
-    // Show notification about added tags
     const newTagsCount = this.generatedTags.length;
     const tagText = newTagsCount === 1 ? '1 new tag' : `${newTagsCount} new tags`;
     Utils.showToast(`Added ${tagText} to your note`, 'success');
-
-    // Clear generated tags after applying
     this.generatedTags = [];
   }
 
@@ -4017,7 +3694,6 @@ class URLNotesApp {
     const dialog = document.getElementById('aiRewriteDialog');
     if (dialog) {
       dialog.style.display = 'none';
-      // Reset state
       this.showStyleSelection();
     }
   }
@@ -4025,22 +3701,19 @@ class URLNotesApp {
   // Call AI rewrite API
   async callAIRewriteAPI(content, style, userContext = '') {
     try {
-      // Check if user is authenticated
       if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
         throw new Error('User not authenticated');
       }
 
-      // Prepare context information
       const context = {
         domain: this.currentNote.domain || 'general',
         noteTitle: this.currentNote.title || 'Untitled Note',
         userIntent: this.getUserIntentFromContent(content),
         writingStyle: this.analyzeWritingStyle(content),
-        userContext: userContext, // Add user-provided context
-        feature: 'rewrite' // Specify feature for usage tracking
+        userContext: userContext, 
+        feature: 'rewrite' 
       };
 
-      // Get the current user and access token from custom client
       if (!window.supabaseClient.isAuthenticated()) {
         throw new Error('Please create an account to use AI Rewrite. Free users get 30 rewrites/month!');
       }
@@ -4050,7 +3723,6 @@ class URLNotesApp {
         throw new Error('Please create an account to use AI Rewrite. Free users get 30 rewrites/month!');
       }
 
-      // Call our Edge Function which handles Gemini API
       const apiUrl = `${window.supabaseClient.supabaseUrl}/functions/v1/hyper-api`;
       const requestBody = {
         content: content,
@@ -4059,8 +3731,6 @@ class URLNotesApp {
         generateTags: true,
         existingTags: this.currentNote.tags || []
       };
-
-
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -4081,9 +3751,6 @@ class URLNotesApp {
           errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
         }
 
-
-
-        // Show user-friendly error message
         if (response.status === 401) {
           Utils.showToast('Please sign in to use AI rewrite.', 'error');
         } else if (response.status === 429) {
@@ -4102,7 +3769,6 @@ class URLNotesApp {
 
       const data = await response.json();
 
-      // Track local AI usage (1 credit for rewrite)
       await this.trackLocalAIUsage(1);
 
       // Show remaining calls info
@@ -4111,14 +3777,12 @@ class URLNotesApp {
         Utils.showToast(`AI rewrite complete! ${remainingText} left this month`, 'success');
       }
 
-      // Store generated tags for later use
       if (data.generatedTags && data.generatedTags.length > 0) {
         this.generatedTags = data.generatedTags;
       }
 
       return data.rewrittenContent;
     } catch (error) {
-      // Don't log "content too large" errors as they're user errors, not system errors
       if (!error.message.includes('Content too large')) {
         console.error('AI rewrite API call failed:', error);
       }
@@ -4203,7 +3867,6 @@ class URLNotesApp {
     return transform(content);
   }
 
-  // Toggle AI dropdown
   async toggleAIDropdown() {
     const dropdown = document.getElementById('aiDropdownMenu');
     if (dropdown) {
@@ -4212,7 +3875,7 @@ class URLNotesApp {
       if (isVisible) {
         this.hideAIDropdown();
       } else {
-        // Flush any pending draft saves to ensure we work with current content
+
         if (this.currentNote && !this._isApplyingAIRewrite) {
           await this.flushDraftSave();
         }
@@ -4237,46 +3900,35 @@ class URLNotesApp {
       const dropdownWidth = 240; // Width from CSS
       const dropdownHeight = 300; // Approximate height
       const margin = 8;
-
-      // Calculate position
       let left = triggerRect.left;
       let top = triggerRect.bottom + margin;
 
-      // Check if dropdown would go off the right edge
       if (left + dropdownWidth > window.innerWidth) {
         left = window.innerWidth - dropdownWidth - margin;
       }
 
-      // Check if dropdown would go off the left edge
       if (left < margin) {
         left = margin;
       }
 
-      // Check if dropdown would go off the bottom edge
       if (top + dropdownHeight > window.innerHeight) {
         top = triggerRect.top - dropdownHeight - margin;
       }
 
-      // Apply positioning
       dropdown.style.position = 'fixed';
       dropdown.style.left = left + 'px';
       dropdown.style.top = top + 'px';
-      dropdown.style.right = 'auto'; // Reset right positioning
+      dropdown.style.right = 'auto'; 
 
-      // Show dropdown
       dropdown.classList.add('show');
-
-      // Setup event listeners
       this.setupDropdownEventListeners();
 
-      // Close dropdown when clicking outside
       setTimeout(() => {
         document.addEventListener('click', this.handleOutsideClick.bind(this), { once: true });
       }, 100);
     }
   }
 
-  // Hide AI dropdown
   hideAIDropdown() {
     const dropdown = document.getElementById('aiDropdownMenu');
     if (dropdown) {
@@ -4306,7 +3958,6 @@ class URLNotesApp {
     }
   }
 
-  // Handle clicks outside dropdown
   handleOutsideClick(event) {
     const dropdown = document.getElementById('aiDropdownMenu');
     const trigger = document.getElementById('aiRewriteBtn');
@@ -4317,7 +3968,6 @@ class URLNotesApp {
     }
   }
 
-  // Show AI Summary modal
   async showAISummaryModal() {
     const modal = document.getElementById('ai-summary-modal');
 
@@ -4326,20 +3976,16 @@ class URLNotesApp {
       await this.loadSummaryUsageInfo();
       await this.populateDomainDropdown();
 
-      // Show modal
       modal.classList.add('show');
 
-      // Setup modal event listeners
       this.setupModalEventListeners();
 
-      // Initialize site content button state
       this.updateSiteContentButtonState();
     } else {
       console.warn('AI Summary modal not found!');
     }
   }
 
-  // Hide AI Summary modal
   hideAISummaryModal() {
     const modal = document.getElementById('ai-summary-modal');
     if (modal) {
@@ -4349,13 +3995,11 @@ class URLNotesApp {
 
   // Setup modal event listeners
   setupModalEventListeners() {
-    // Close button
     const closeBtn = document.getElementById('aiSummaryCloseBtn');
     if (closeBtn) {
       closeBtn.onclick = () => this.hideAISummaryModal();
     }
 
-    // Close on outside click
     const modal = document.getElementById('ai-summary-modal');
     if (modal) {
       modal.onclick = (e) => {
@@ -4384,7 +4028,6 @@ class URLNotesApp {
     }
   }
 
-  // Update site content button state
   updateSiteContentButtonState() {
     const siteContentBtn = document.getElementById('siteContentSummaryBtn');
     if (siteContentBtn) {
@@ -4400,10 +4043,8 @@ class URLNotesApp {
     }
   }
 
-  // Load summary usage info
   async loadSummaryUsageInfo() {
     try {
-      // Check if user is authenticated
       if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
         const usageCount = document.getElementById('summaryUsageCount');
         if (usageCount) {
@@ -4421,7 +4062,6 @@ class URLNotesApp {
         return;
       }
 
-      // Get current usage from Supabase using the shared function
       const usageData = await this.getCurrentAIUsage();
 
       if (!usageData) {
@@ -4438,8 +4078,6 @@ class URLNotesApp {
       }
 
 
-
-      // Update UI with note summary tokens (individual tokens for note summaries)
       const noteSummaryUsageCount = document.getElementById('noteSummaryUsageCount');
       if (noteSummaryUsageCount) {
         noteSummaryUsageCount.textContent = usageData.remainingCalls || 0;
@@ -4450,7 +4088,6 @@ class URLNotesApp {
         noteSummaryUsageLimit.textContent = usageData.monthlyLimit || 500;
       }
 
-      // Update UI with site summary uses (each site summary costs 20 tokens)
       const siteSummaryUsageCount = document.getElementById('siteSummaryUsageCount');
       if (siteSummaryUsageCount) {
         // Calculate remaining site summary uses (divide by 20, floor the result)
@@ -4496,7 +4133,6 @@ class URLNotesApp {
             allNotes = allNotes.concat(allData[key]);
           }
         }
-        // Sort by most recently updated
         allNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
         filteredNotes = allNotes;
       }
@@ -4583,9 +4219,8 @@ class URLNotesApp {
     }
   }
 
-  // Setup dropdown event listeners
+
   setupDropdownEventListeners() {
-    // Style selection
     const styleOptions = document.querySelectorAll('.style-option');
     styleOptions.forEach(option => {
       option.onclick = (e) => {
@@ -4605,7 +4240,6 @@ class URLNotesApp {
         const currentLength = userContextInput.value.length;
         charCount.textContent = currentLength;
 
-        // Visual feedback when approaching limit
         if (currentLength > 250) {
           charCount.style.color = '#ff6b6b';
         } else if (currentLength > 200) {
@@ -4616,13 +4250,11 @@ class URLNotesApp {
       });
     }
 
-    // Execute AI rewrite button
     const executeBtn = document.getElementById('executeAIRewrite');
     if (executeBtn) {
       executeBtn.onclick = () => this.executeAIRewrite();
+
     }
-
-
   }
 
   // Execute AI rewrite from dropdown
@@ -4635,7 +4267,6 @@ class URLNotesApp {
 
     const style = activeStyle.dataset.style;
 
-    // Get current content from editor only - don't use saved note content
     const contentInput = document.getElementById('noteContentInput');
     const titleInput = document.getElementById('noteTitleHeader');
 
@@ -4653,7 +4284,6 @@ class URLNotesApp {
       return;
     }
 
-    // Check if user is authenticated (same pattern as AI summary)
     if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
       Utils.showToast('Sign in to use AI Rewrite - Free users get 30 rewrites per month!', 'info');
       return;
@@ -4669,13 +4299,9 @@ class URLNotesApp {
       // Get user context if provided
       const userContextInput = document.getElementById('userContextInput');
       const userContext = userContextInput ? userContextInput.value.trim() : '';
-
-      // Call AI rewrite API with user context
       const rewrittenContent = await this.callAIRewriteAPI(combinedContent, style, userContext);
 
-      // Check if API call was successful
       if (rewrittenContent === null) {
-        // API call failed due to authentication
         return;
       }
 
@@ -4696,7 +4322,6 @@ class URLNotesApp {
 
   // Execute AI summary from modal
   async executeAISummary() {
-    // Check if user is authenticated (same pattern as AI rewrite)
     if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
       Utils.showToast('Please create an account to use AI Summary. Free users get 30 summaries/month!', 'info');
       return;
@@ -4708,9 +4333,6 @@ class URLNotesApp {
       return;
     }
 
-    // AI Summary is now available to all users (free and premium)
-    // No premium check needed
-
     const domainSelect = document.getElementById('summaryDomainSelect');
     if (!domainSelect || !domainSelect.value) {
       Utils.showToast('Please select a domain to summarize.', 'warning');
@@ -4718,26 +4340,21 @@ class URLNotesApp {
     }
 
     const selectedDomain = domainSelect.value;
-
-    // Get all notes for the selected domain from local storage
     const domainNotes = await this.getNotesForDomain(selectedDomain);
 
     if (!domainNotes || domainNotes.length === 0) {
       Utils.showToast('No notes found for the selected domain.', 'warning');
       return;
     }
-
-    // Check if user has enough tokens for domain summary (1 token per note)
+ 
     const currentUsage = await this.getCurrentAIUsage();
     if (!currentUsage || currentUsage.remainingCalls < domainNotes.length) {
       Utils.showToast(`Not enough tokens for note summary. You need ${domainNotes.length} tokens (1 per note) but only have ${currentUsage?.remainingCalls || 0} remaining.`, 'warning');
       return;
     }
 
-    // Hide modal
+  
     this.hideAISummaryModal();
-
-    // Show loading state
     Utils.showToast('AI is generating a summary...', 'info');
 
     try {
@@ -4746,11 +4363,10 @@ class URLNotesApp {
         `Title: ${note.title || 'Untitled'}\nContent: ${note.content || ''}\nTags: ${(note.tags || []).join(', ')}\n---`
       ).join('\n');
 
-      // Call AI summary API
       const summaryContent = await this.callAISummaryAPI(combinedContent, selectedDomain, domainNotes.length);
 
       if (summaryContent === null) {
-        return; // API call failed
+        return; 
       }
 
       // Create a new summary note
@@ -4768,7 +4384,6 @@ class URLNotesApp {
     }
   }
 
-  // Get notes for a specific domain from local storage
   async getNotesForDomain(domain) {
     try {
       // Use filtered notes (excluding deleted notes) for consistency
@@ -4798,14 +4413,13 @@ class URLNotesApp {
     }
   }
 
-  // Call AI summary API
   async callAISummaryAPI(content, domain, noteCount) {
     try {
       const apiUrl = `${window.supabaseClient.supabaseUrl}/functions/v1/hyper-api`;
 
       const requestBody = {
         content: content,
-        style: 'concise', // Use concise style for summaries
+        style: 'concise',
         generateTags: true,
         existingTags: [],
         context: {
@@ -4815,12 +4429,10 @@ class URLNotesApp {
         }
       };
 
-      // Get access token safely - use same pattern as AI rewrite
       let accessToken = '';
       if (window.supabaseClient && window.supabaseClient.isAuthenticated()) {
         const user = window.supabaseClient.getCurrentUser();
         if (user) {
-          // Use accessToken directly like AI rewrite function
           accessToken = window.supabaseClient.accessToken || '';
         }
       }
@@ -4854,7 +4466,6 @@ class URLNotesApp {
     }
   }
 
-  // Create a new summary note
   async createSummaryNote(summaryContent, domain, noteCount) {
     try {
       const summaryNote = {
@@ -4869,13 +4480,10 @@ class URLNotesApp {
         isEncrypted: false
       };
 
-      // Save the summary note
       await this.storageManager.saveNote(summaryNote);
 
-      // Refresh the notes list
       await this.loadNotes();
 
-      // Switch to the new note
       this.openNote(summaryNote);
 
     } catch (error) {
@@ -4886,7 +4494,6 @@ class URLNotesApp {
 
   // Execute site content summary
   async executeSiteContentSummary() {
-    // Check if user is authenticated
     if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
       Utils.showToast('Please create an account to use AI Summary. Free users get 30 summaries/month!', 'info');
       return;
@@ -4913,20 +4520,15 @@ class URLNotesApp {
       return;
     }
 
-    // Hide modal
     this.hideAISummaryModal();
-
-    // Show loading state
     Utils.showToast('Extracting page content for AI summary...', 'info');
 
     try {
-      // Get the current tab
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tab || !tab.id) {
         throw new Error('No active tab found');
       }
 
-      // Try to extract page content using content script
       let response = null;
 
       try {
@@ -4944,8 +4546,6 @@ class URLNotesApp {
 
           // Wait a moment for script to initialize
           await new Promise(resolve => setTimeout(resolve, 100));
-
-          // Try message again
           response = await chrome.tabs.sendMessage(tab.id, { action: 'extractPageContent' });
         } catch (injectionError) {
           console.error('Failed to inject content script:', injectionError);
@@ -4970,13 +4570,11 @@ class URLNotesApp {
       const summaryContent = await this.callSiteContentSummaryAPI(pageContent, this.currentSite.domain, this.currentSite.title);
 
       if (summaryContent === null) {
-        return; // API call failed
+        return; 
       }
 
       // Create a new summary note for the page content
       await this.createSiteContentSummaryNote(summaryContent, this.currentSite);
-
-      // Track local AI usage (20 credits for site content summary)
       await this.trackLocalAIUsage(20);
 
       // Show success message
@@ -4992,7 +4590,6 @@ class URLNotesApp {
     }
   }
 
-  // Call AI summary API for site content (uses 20 credits per page)
   async callSiteContentSummaryAPI(content, domain, pageTitle) {
     try {
       const apiUrl = `${window.supabaseClient.supabaseUrl}/functions/v1/hyper-api`;
@@ -5006,11 +4603,10 @@ class URLNotesApp {
           domain: domain,
           noteTitle: pageTitle,
           feature: 'summarize',
-          noteCount: 20 // Site content summary uses 20 note summary credits (equivalent to 1 usage)
+          noteCount: 20
         }
       };
 
-      // Get access token
       let accessToken = '';
       if (window.supabaseClient && window.supabaseClient.isAuthenticated()) {
         const user = window.supabaseClient.getCurrentUser();
@@ -5067,13 +4663,8 @@ class URLNotesApp {
         isEncrypted: false
       };
 
-      // Save the summary note
       await this.storageManager.saveNote(summaryNote);
-
-      // Refresh the notes list
       await this.loadNotes();
-
-      // Switch to the new note
       this.openNote(summaryNote);
 
     } catch (error) {
@@ -5082,17 +4673,14 @@ class URLNotesApp {
     }
   }
 
-  // Display context information
   async displayContextInfo() {
     if (!this.currentNote) return;
 
-    // Update dropdown context tags
     const contextDomain = document.getElementById('contextDomain');
     const contextIntent = document.getElementById('contextIntent');
     const contextStyle = document.getElementById('contextStyle');
 
     if (contextDomain && contextIntent && contextStyle) {
-      // Domain context
       const domain = this.currentNote.domain || 'general';
       contextDomain.textContent = `🌐 ${domain}`;
 
@@ -5112,24 +4700,17 @@ class URLNotesApp {
 
       const intent = this.getUserIntentFromContent(combinedText);
       contextIntent.textContent = `🎯 ${intent}`;
-
-      // Style context - analyze current content
       const style = this.analyzeWritingStyle(combinedText);
       contextStyle.textContent = `✍️ ${style}`;
     }
   }
 
-  // Load and display usage info
   async loadUsageInfo() {
     try {
-      // Use the global cached premium status function instead of direct calls
       const premiumStatus = await getPremiumStatus();
       const isPremium = premiumStatus.isPremium;
-
-      // Update dropdown usage badge based on actual usage data
       const remainingCalls = document.getElementById('aiDropdownRemainingCalls');
       if (remainingCalls) {
-        // Check authentication state first
         const isAuthenticated = window.supabaseClient?.isAuthenticated?.() || false;
         const user = window.supabaseClient?.getCurrentUser?.();
 
@@ -5171,21 +4752,17 @@ class URLNotesApp {
         }
       }
 
-      // Display context info
       await this.displayContextInfo();
     } catch (error) {
       console.error('Error loading usage info:', error);
     }
   }
 
-  // Force update AI usage display immediately
   async forceUpdateAIUsageDisplay() {
     try {
-      // Get fresh usage data
       const currentUsage = await this.getCurrentAIUsage();
 
       if (currentUsage) {
-        // Update AI dropdown display
         const aiDropdownElement = document.getElementById('aiDropdownRemainingCalls');
         if (aiDropdownElement) {
           const newText = `${currentUsage.remainingCalls}/${currentUsage.monthlyLimit}`;
@@ -5215,7 +4792,6 @@ class URLNotesApp {
     try {
       // Don't clear cache - reuse existing data if available
 
-      // Update AI dropdown display
       const aiDropdownRemainingCalls = document.getElementById('aiDropdownRemainingCalls');
       if (aiDropdownRemainingCalls) {
         const currentUsage = await this.getCurrentAIUsage();
@@ -5225,7 +4801,6 @@ class URLNotesApp {
         }
       }
 
-      // Update other usage displays (note summary, site summary)
       const noteSummaryUsageCount = document.getElementById('noteSummaryUsageCount');
       if (noteSummaryUsageCount) {
         const currentUsage = await this.getCurrentAIUsage();
@@ -5248,7 +4823,6 @@ class URLNotesApp {
     }
   }
 
-  // Get current AI usage with local tracking
   async getCurrentAIUsage(featureName = 'overall') {
     try {
       if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
@@ -5258,39 +4832,35 @@ class URLNotesApp {
       const user = window.supabaseClient.getCurrentUser();
       if (!user) return null;
 
-      // Rate limiting: prevent multiple calls within 5 seconds
       const rateLimitKey = `aiUsageRateLimit_${user.id}`;
       const now = Date.now();
       const lastCall = this._lastAIUsageCall || 0;
 
-      if (now - lastCall < 5000) { // 5 second rate limit
-        // Return cached result if available
-        if (this._cachedAIUsage && this._cachedAIUsage.timestamp > now - 300000) { // 5 minute cache
+      if (now - lastCall < 5000) { 
+        if (this._cachedAIUsage && this._cachedAIUsage.timestamp > now - 300000) { 
           return this._cachedAIUsage.data;
         }
       }
 
       this._lastAIUsageCall = now;
 
-      // Get cached server data and local usage tracking
       const cacheKey = 'cachedAIUsage';
       const localUsageKey = 'localAIUsage';
       const result = await chrome.storage.local.get([cacheKey, localUsageKey]);
 
-      // Check if we have valid cached server data
       let serverData = null;
       if (result[cacheKey]) {
         const { data, timestamp } = result[cacheKey];
         const now = Date.now();
         const cacheAge = now - timestamp;
-        const cacheExpiry = 60 * 60 * 1000; // 1 hour cache
+        const cacheExpiry = 60 * 60 * 1000; 
 
         if (cacheAge < cacheExpiry) {
           serverData = data;
         }
       }
 
-      // If no valid cache, fetch from server
+
       if (!serverData) {
         try {
           await window.supabaseClient.refreshSession();
@@ -5307,7 +4877,6 @@ class URLNotesApp {
           // Handle rate limit errors specifically
           if (error.message && error.message.includes('rate limit')) {
             console.warn('Rate limit reached for AI usage check, using cached data');
-            // Return cached data if available, or default values
             return this._cachedAIUsage?.data || {
               remainingCalls: 0,
               monthlyLimit: 30,
@@ -5320,7 +4889,6 @@ class URLNotesApp {
 
         serverData = usageData;
 
-        // Cache the server result
         await chrome.storage.local.set({
           [cacheKey]: {
             data: serverData,
@@ -5338,10 +4906,8 @@ class URLNotesApp {
         });
       }
 
-      // Get local usage tracking
       let localUsage = result[localUsageKey];
       if (!localUsage || localUsage.userId !== user.id) {
-        // Initialize local usage for this user
         localUsage = {
           userId: user.id,
           usageCount: 0,
@@ -5359,7 +4925,6 @@ class URLNotesApp {
         localUsageCount: localUsage.usageCount
       };
 
-      // Cache the result
       this._cachedAIUsage = {
         data: usageResult,
         timestamp: Date.now()
@@ -5373,7 +4938,6 @@ class URLNotesApp {
     }
   }
 
-  // Track local AI usage
   async trackLocalAIUsage(usageAmount = 1) {
     try {
       if (!window.supabaseClient || !window.supabaseClient.isAuthenticated()) {
@@ -5395,7 +4959,6 @@ class URLNotesApp {
         };
       }
 
-      // Increment local usage
       localUsage.usageCount += usageAmount;
       localUsage.timestamp = Date.now();
 
@@ -5407,12 +4970,10 @@ class URLNotesApp {
     }
   }
 
-  // Clear local AI usage tracking (on auth changes)
   async clearLocalAIUsage() {
     try {
-      // Rate limit cache clearing to prevent excessive clearing
       const now = Date.now();
-      if (this._lastCacheClear && now - this._lastCacheClear < 10000) { // 10 second rate limit
+      if (this._lastCacheClear && now - this._lastCacheClear < 10000) {
         return;
       }
       this._lastCacheClear = now;
@@ -5430,7 +4991,6 @@ class URLNotesApp {
   // Check premium status
   async checkPremiumStatus() {
     try {
-      // Use the global cached premium status function instead of direct calls
       const premiumStatus = await getPremiumStatus();
       return premiumStatus.isPremium;
     } catch (error) {
@@ -5461,7 +5021,6 @@ class URLNotesApp {
         upgradeMsg.innerHTML = upgradeHtml;
       }
 
-      // Replace the usage badge content
       if (window.safeDOM) {
         window.safeDOM.clearContent(usageBadge);
       } else {
@@ -5479,7 +5038,6 @@ class URLNotesApp {
     }
   }
 
-  // Apply AI rewrite to current note
   async applyAIRewrite() {
     const previewContent = document.getElementById('previewContent');
     if (previewContent && this.currentNote) {
@@ -5497,34 +5055,22 @@ class URLNotesApp {
         }
       }
 
-      // Save note
       await this.saveNote();
-
-      // Close dialog
       this.hideAIRewriteDialog();
-
       Utils.showToast('AI rewrite applied successfully!', 'success');
     }
   }
 
-  // Export notes
   async exportNotes() {
-    // SettingsManager exposes handleExportNotes()
     if (this.settingsManager && typeof this.settingsManager.handleExportNotes === 'function') {
       this.settingsManager.handleExportNotes();
     } else if (this.storageManager && typeof this.storageManager.exportNotes === 'function') {
-      // Fallback to storage manager export if settings module isn't wired
       try {
         const exportData = await this.storageManager.exportNotes();
-
-        // Get selected format (default to JSON if not available)
         const formatSelect = document.getElementById('exportFormatSelect');
         const selectedFormat = formatSelect ? formatSelect.value : 'json';
-
-        // Use ExportFormats class to convert data
         const exportFormats = new ExportFormats();
         const exportResult = exportFormats.exportToFormat(exportData, selectedFormat);
-
         const blob = new Blob([exportResult.content], { type: exportResult.mimeType });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -5551,29 +5097,22 @@ class URLNotesApp {
     this.settingsManager.openSettings();
   }
 
-  // Post-delete refresh functionality
   async postDeleteRefresh() {
     try {
       // Re-render the notes list
       this.render();
-      // Update storage quota display
       Utils.checkStorageQuota();
     } catch (error) {
       console.error('Error in post-delete refresh:', error);
     }
   }
 
-
-
-  // Generate a unique ID for new notes
   generateId() {
     try {
-      // Use crypto.randomUUID if available (modern browsers)
       if (typeof crypto !== 'undefined' && crypto.randomUUID) {
         return crypto.randomUUID();
       }
 
-      // Fallback for older browsers
       return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
         const r = Math.random() * 16 | 0;
         const v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -5581,12 +5120,10 @@ class URLNotesApp {
       });
     } catch (error) {
       console.error('Failed to generate ID:', error);
-      // Final fallback
       return Date.now().toString(36) + Math.random().toString(36).substr(2);
     }
   }
 
-  // Apply font settings to editor
   applyFont(fontName, size) {
     try {
       const contentInput = document.getElementById('noteContentInput');
@@ -5602,7 +5139,6 @@ class URLNotesApp {
     }
   }
 
-  // Close settings panel
   closeSettings() {
     try {
       const settingsPanel = document.getElementById('settingsPanel');
@@ -5623,7 +5159,6 @@ class URLNotesApp {
     if (window.Utils && typeof window.Utils.showToast === 'function') {
       window.Utils.showToast(message, type);
     } else {
-      // Fallback to console if Utils not available
       console.log(`${type.toUpperCase()}: ${message}`);
     }
   }
@@ -5632,7 +5167,6 @@ class URLNotesApp {
   _setTimeout(callback, delay) {
     const timeoutId = setTimeout(() => {
       callback();
-      // Remove from tracking after execution
       const index = this._timeouts.indexOf(timeoutId);
       if (index > -1) this._timeouts.splice(index, 1);
     }, delay);
@@ -5650,7 +5184,6 @@ class URLNotesApp {
   // Cleanup method to prevent memory leaks
   cleanup() {
     try {
-      // Clear all tracked timeouts
       if (this._timeouts && Array.isArray(this._timeouts)) {
         this._timeouts.forEach(timeoutId => {
           if (timeoutId) clearTimeout(timeoutId);
@@ -5658,7 +5191,6 @@ class URLNotesApp {
         this._timeouts = [];
       }
 
-      // Clear all tracked intervals
       if (this._intervals && Array.isArray(this._intervals)) {
         this._intervals.forEach(intervalId => {
           if (intervalId) clearInterval(intervalId);
@@ -5666,7 +5198,6 @@ class URLNotesApp {
         this._intervals = [];
       }
 
-      // Remove all tracked event listeners
       if (this._eventListeners && Array.isArray(this._eventListeners)) {
         this._eventListeners.forEach(({ target, event, handler }) => {
           if (target && event && handler) {
@@ -5676,34 +5207,28 @@ class URLNotesApp {
         this._eventListeners = [];
       }
 
-      // Remove chrome message listener
       if (this._messageListener) {
         chrome.runtime.onMessage.removeListener(this._messageListener);
         this._messageListener = null;
       }
 
-      // Clear autosave interval if exists
       if (this.autosaveInterval) {
         clearInterval(this.autosaveInterval);
         this.autosaveInterval = null;
       }
 
-      // Cleanup theme manager
       if (this.themeManager && typeof this.themeManager.cleanup === 'function') {
         this.themeManager.cleanup();
       }
 
-      // Cleanup settings manager
       if (this.settingsManager && typeof this.settingsManager.cleanup === 'function') {
         this.settingsManager.cleanup();
       }
 
-      // Cleanup notes manager
       if (this.notesManager && typeof this.notesManager.cleanup === 'function') {
         this.notesManager.cleanup();
       }
 
-      // Cleanup editor manager
       if (this.editorManager && typeof this.editorManager.cleanup === 'function') {
         this.editorManager.cleanup();
       }

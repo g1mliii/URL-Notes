@@ -13,17 +13,12 @@ class ExportFormats {
     };
   }
 
-  // Clean note data by removing encryption and internal fields
   cleanNoteData(note) {
     const cleanNote = { ...note };
-
-    // Remove encryption-related fields
     delete cleanNote.title_encrypted;
     delete cleanNote.content_encrypted;
     delete cleanNote.tags_encrypted;
     delete cleanNote.content_hash;
-
-    // Remove internal storage fields
     delete cleanNote.is_deleted;
     delete cleanNote.deleted_at;
     delete cleanNote.version;
@@ -32,7 +27,6 @@ class ExportFormats {
     delete cleanNote.decryption_error;
     delete cleanNote.last_synced_at;
 
-    // Ensure we have plain text versions
     if (!cleanNote.title && cleanNote.title_encrypted) {
       cleanNote.title = 'Encrypted Title';
     }
@@ -43,15 +37,12 @@ class ExportFormats {
       cleanNote.tags = [];
     }
 
-    // Ensure tags is always an array
     if (!Array.isArray(cleanNote.tags)) {
       cleanNote.tags = [];
     }
-
     return cleanNote;
   }
 
-  // Convert internal formatting to target format
   convertContentForFormat(content, targetFormat) {
     if (!content) return '';
 
@@ -68,11 +59,10 @@ class ExportFormats {
       case 'notion':
         return this.convertToNotionMarkdown(content);
       default:
-        return content; // Return as-is for JSON and other formats
+        return content;
     }
   }
 
-  // Convert internal formatting to Markdown
   convertToMarkdown(content) {
     if (!content) return '';
 
@@ -112,28 +102,20 @@ class ExportFormats {
     return text;
   }
 
-  // Convert internal formatting to HTML
   convertToHtml(content) {
     if (!content) return '';
 
     let text = content;
-
-    // First escape all HTML to prevent XSS
     text = this.escapeHtml(text);
-
     // Convert our internal formatting to HTML (now safe since content is escaped)
     // Bold: **text** -> <strong>text</strong>
     text = text.replace(/\*\*([^*]*(?:\*(?!\*)[^*]*)*)\*\*/g, '<strong>$1</strong>');
-
     // Italic: *text* -> <em>text</em>
     text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-
     // Underline: __text__ -> <u>text</u>
     text = text.replace(/__([^_]*(?:_(?!_)[^_]*)*?)__/g, '<u>$1</u>');
-
     // Strikethrough: ~~text~~ -> <s>text</s>
     text = text.replace(/~~([^~]*(?:~(?!~)[^~]*)*?)~~/g, '<s>$1</s>');
-
     // Color: {color:#ff0000}text{/color} -> <span style="color:#ff0000">text</span>
     // Sanitize color values to prevent XSS
     text = text.replace(/\{color:([^}]+)\}([^{]*)\{\/color\}/g, (match, color, content) => {
@@ -146,7 +128,6 @@ class ExportFormats {
 
     // Citation: {citation}text{/citation} -> <blockquote><em>text</em></blockquote>
     text = text.replace(/\{citation\}([^{]*)\{\/citation\}/g, '<blockquote><em>$1</em></blockquote>');
-
     // Links: [text](url) -> <a href="url" target="_blank" rel="noopener noreferrer">text</a>
     // Sanitize URLs to prevent XSS
     text = text.replace(/\[(.+?)\]\(([^\s)]+)\)/g, (match, linkText, url) => {
@@ -163,7 +144,6 @@ class ExportFormats {
     return text;
   }
 
-  // Convert internal formatting to plain text
   convertToPlainText(content) {
     if (!content) return '';
 
@@ -194,13 +174,12 @@ class ExportFormats {
       if (safeUrl) {
         return `${linkText} (${safeUrl})`;
       }
-      return linkText; // If URL is unsafe, just show the text
+      return linkText;
     });
 
     return text;
   }
 
-  // Convert internal formatting to Notion-compatible Markdown
   convertToNotionMarkdown(content) {
     if (!content) return '';
 
@@ -237,11 +216,9 @@ class ExportFormats {
       }
       return linkText;
     });
-
     return text;
   }
 
-  // Security helper functions
   escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -249,7 +226,6 @@ class ExportFormats {
     return div.innerHTML;
   }
 
-  // Sanitize color values to prevent XSS
   sanitizeColor(color) {
     if (!color) return null;
 
@@ -286,31 +262,25 @@ class ExportFormats {
       return trimmedColor;
     }
 
-    return null; // Unsafe color
+    return null; 
   }
 
-  // Sanitize URLs to prevent XSS
   sanitizeUrl(url) {
     if (!url) return null;
 
     try {
       const urlObj = new URL(url);
-      // Only allow http and https protocols
       if (urlObj.protocol === 'http:' || urlObj.protocol === 'https:') {
         return url;
       }
     } catch (e) {
-      // Invalid URL
     }
 
-    return null; // Unsafe URL
+    return null; 
   }
 
-  // Convert notes data to JSON format (Anchored Backup format, cleaned)
   toJSON(notesData) {
     const cleanedData = {};
-
-    // Preserve _anchored metadata if it exists
     if (notesData._anchored) {
       cleanedData._anchored = notesData._anchored;
     }
@@ -324,12 +294,9 @@ class ExportFormats {
     return JSON.stringify(cleanedData, null, 2);
   }
 
-  // Convert notes data to Markdown format with domain organization
   toMarkdown(notesData) {
     let markdown = `# Anchored Export\n\n`;
     markdown += `*Exported on ${new Date().toLocaleString()}*\n\n`;
-
-    // Calculate totals for overview (exclude _anchored metadata)
     const totalDomains = Object.keys(notesData).filter(key => key !== '_anchored').length;
     const totalNotes = Object.entries(notesData)
       .filter(([key]) => key !== '_anchored')
@@ -417,7 +384,6 @@ class ExportFormats {
       });
     });
 
-    // Add footer with export info
     markdown += `## Export Information\n\n`;
     markdown += `- **Generated by:** Anchored Extension\n`;
     markdown += `- **Export Date:** ${new Date().toLocaleString()}\n`;
@@ -427,12 +393,9 @@ class ExportFormats {
     return markdown;
   }
 
-  // Convert notes data to Obsidian format with hierarchical domain organization
   toObsidian(notesData) {
     const obsidianFiles = [];
     const domainHubs = {};
-
-    // Sort notes by date within each domain
     const sortedNotesData = {};
     for (const domain in notesData) {
       if (Array.isArray(notesData[domain]) && notesData[domain].length > 0) {
@@ -442,14 +405,12 @@ class ExportFormats {
       }
     }
 
-    // Create individual note files and collect domain info
     for (const domain in sortedNotesData) {
       const domainNotes = [];
 
       sortedNotesData[domain].forEach(note => {
         const cleanNote = this.cleanNoteData(note);
 
-        // Create safe filename with date prefix for chronological sorting
         const datePrefix = new Date(cleanNote.createdAt).toISOString().split('T')[0];
         const safeTitle = (cleanNote.title || 'Untitled Note')
           .replace(/[<>:"/\\|?*]/g, '-')
@@ -459,7 +420,6 @@ class ExportFormats {
 
         const filename = `${domain}/${datePrefix} - ${safeTitle}.md`;
 
-        // Create note content with enhanced YAML frontmatter
         let noteContent = '';
         noteContent += `---\n`;
         noteContent += `title: "${cleanNote.title || 'Untitled Note'}"\n`;
@@ -472,7 +432,7 @@ class ExportFormats {
           cleanNote.tags.forEach(tag => {
             noteContent += `  - "${tag}"\n`;
           });
-          // Add domain tag for organization
+
           noteContent += `  - "domain/${domain}"\n`;
         } else {
           noteContent += `tags:\n  - "domain/${domain}"\n`;
@@ -481,11 +441,8 @@ class ExportFormats {
         noteContent += `updated: "${cleanNote.updatedAt}"\n`;
         noteContent += `source: "Anchored"\n`;
         noteContent += `---\n\n`;
-
-        // Add navigation links
         noteContent += `← [[${domain} - Domain Hub|Back to ${domain}]] | [[Anchored - Master Index|Home]]\n\n`;
 
-        // Add source information as callout
         if (cleanNote.url) {
           noteContent += `> [!info] Source Information\n`;
           noteContent += `> **URL:** [${cleanNote.url}](${cleanNote.url})\n`;
@@ -496,7 +453,6 @@ class ExportFormats {
           noteContent += `> **Created:** ${new Date(cleanNote.createdAt).toLocaleDateString()}\n\n`;
         }
 
-        // Main content
         if (cleanNote.content) {
           noteContent += `## Content\n\n`;
           noteContent += `${this.convertContentForFormat(cleanNote.content, 'obsidian')}\n\n`;
@@ -506,7 +462,6 @@ class ExportFormats {
         noteContent += `## Related Notes\n\n`;
         noteContent += `*Use Obsidian's graph view to discover related notes by tags and domain.*\n\n`;
 
-        // Add metadata footer
         noteContent += `---\n\n`;
         noteContent += `**Metadata**  \n`;
         noteContent += `Created: ${new Date(cleanNote.createdAt).toLocaleString()}  \n`;
@@ -521,7 +476,6 @@ class ExportFormats {
           title: cleanNote.title || 'Untitled Note'
         });
 
-        // Collect info for domain hub
         domainNotes.push({
           filename: filename,
           title: cleanNote.title || 'Untitled Note',
@@ -569,7 +523,6 @@ class ExportFormats {
 
       hubContent += `## Notes by Month\n\n`;
 
-      // Sort months in reverse chronological order
       const sortedMonths = Object.keys(notesByMonth).sort((a, b) =>
         new Date(b + ' 1') - new Date(a + ' 1')
       );
@@ -590,7 +543,6 @@ class ExportFormats {
         hubContent += `\n`;
       });
 
-      // Add tag cloud for this domain
       const allTags = notes.flatMap(note => note.tags || []);
       const tagCounts = {};
       allTags.forEach(tag => {
@@ -609,7 +561,6 @@ class ExportFormats {
         hubContent += `\n\n`;
       }
 
-      // Add quick actions
       hubContent += `## Quick Actions\n\n`;
       hubContent += `- Use graph view to explore connections\n`;
       hubContent += `- Search within domain: \`tag:#domain/${domain}\`\n`;
@@ -627,7 +578,6 @@ class ExportFormats {
       });
     }
 
-    // Create master index file
     let masterIndex = '';
     masterIndex += `---\n`;
     masterIndex += `title: "Anchored - Master Index"\n`;
@@ -638,17 +588,14 @@ class ExportFormats {
     masterIndex += `created: "${new Date().toISOString()}"\n`;
     masterIndex += `source: "Anchored"\n`;
     masterIndex += `---\n\n`;
-
     masterIndex += `# Anchored - Master Index\n\n`;
     masterIndex += `*Exported on ${new Date().toLocaleString()}*\n\n`;
-
     masterIndex += `> [!tip] Welcome to Your Anchored Vault\n`;
     masterIndex += `> This vault contains ${obsidianFiles.filter(f => f.type !== 'hub').length} notes from ${Object.keys(domainHubs).length} domains.\n`;
     masterIndex += `> Each domain has its own hub for easy navigation.\n\n`;
 
     masterIndex += `## Domain Hubs\n\n`;
 
-    // Sort domains by note count
     const sortedDomains = Object.entries(domainHubs)
       .sort(([, a], [, b]) => b.length - a.length);
 
@@ -676,13 +623,11 @@ class ExportFormats {
     masterIndex += `- **By Domain:** Use the domain hubs above\n`;
     masterIndex += `- **Graph View:** Explore connections between notes\n`;
     masterIndex += `- **Search:** Use global search to find specific content\n\n`;
-
     masterIndex += `## Import Instructions\n\n`;
     masterIndex += `1. Create a new Obsidian vault or open an existing one\n`;
     masterIndex += `2. Copy the folder structure and files from this export\n`;
     masterIndex += `3. Maintain the domain-based folder structure for best organization\n`;
     masterIndex += `4. Use the domain hubs as starting points for exploration\n\n`;
-
     masterIndex += `---\n\n`;
     masterIndex += `*Generated by Anchored Extension - ${new Date().toLocaleString()}*\n`;
 
@@ -692,13 +637,11 @@ class ExportFormats {
       type: 'master_index'
     });
 
-    // For single note export (fallback)
     if (obsidianFiles.filter(f => !f.type).length === 1) {
       const singleNote = obsidianFiles.find(f => !f.type);
       return singleNote.content;
     }
 
-    // Return structured format for multiple files
     return JSON.stringify({
       type: 'obsidian-vault',
       files: obsidianFiles.map(f => ({
@@ -713,19 +656,13 @@ class ExportFormats {
     }, null, 2);
   }
 
-  // Convert notes data to Notion-compatible CSV format with domain organization
   toNotion(notesData) {
-    // Enhanced CSV format optimized for Notion database import
-    // Columns: Title, Content, Tags, URL, Domain, Page Title, Created, Updated, Domain Group, Month Created, Year Created
-
     let csv = 'Title,Content,Tags,URL,Domain,Page Title,Created,Updated,Domain Group,Month Created,Year Created\n';
 
-    // Collect all notes and sort by domain, then by date
     const allNotes = [];
 
     for (const domain in notesData) {
       if (Array.isArray(notesData[domain]) && notesData[domain].length > 0) {
-        // Sort notes within domain by creation date (newest first)
         const sortedNotes = [...notesData[domain]].sort((a, b) =>
           new Date(b.createdAt) - new Date(a.createdAt)
         );
@@ -740,7 +677,6 @@ class ExportFormats {
       }
     }
 
-    // Sort all notes by domain, then by date
     allNotes.sort((a, b) => {
       if (a.domain !== b.domain) {
         return a.domain.localeCompare(b.domain);
@@ -748,9 +684,8 @@ class ExportFormats {
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
 
-    // Generate CSV rows
+
     allNotes.forEach(note => {
-      // Escape CSV values and handle quotes
       const escapeCSV = (value) => {
         if (!value) return '';
         const stringValue = String(value);
@@ -787,7 +722,6 @@ class ExportFormats {
     return csv;
   }
 
-  // Alternative Notion format: Markdown with proper structure
   toNotionMarkdown(notesData) {
     let markdown = `# Anchored Export\n\n`;
     markdown += `*Exported on ${new Date().toLocaleString()}*\n\n`;
@@ -801,8 +735,6 @@ class ExportFormats {
 
           // Use Notion-style page structure
           markdown += `### ${cleanNote.title || 'Untitled Note'}\n\n`;
-
-          // Add properties as a table (Notion recognizes this format)
           markdown += `| Property | Value |\n`;
           markdown += `|----------|-------|\n`;
           if (cleanNote.url) {
@@ -819,7 +751,6 @@ class ExportFormats {
           markdown += `| Updated | ${new Date(cleanNote.updatedAt).toLocaleString()} |\n`;
           markdown += `\n`;
 
-          // Content section
           if (cleanNote.content) {
             markdown += `**Content:**\n\n`;
             markdown += `${this.convertContentForFormat(cleanNote.content, 'markdown')}\n\n`;
@@ -833,11 +764,9 @@ class ExportFormats {
     return markdown;
   }
 
-  // Convert notes data to plain text format with domain organization
   toTXT(notesData, isSingleNote = false) {
     let text = '';
 
-    // For single note export, use minimal formatting
     if (isSingleNote) {
       for (const domain in notesData) {
         if (Array.isArray(notesData[domain]) && notesData[domain].length > 0) {
@@ -969,7 +898,6 @@ class ExportFormats {
       text += `\n${'='.repeat(60)}\n\n`;
     });
 
-    // Footer
     text += `EXPORT INFORMATION\n`;
     text += `${'-'.repeat(30)}\n`;
     text += `Generated by: Anchored Extension\n`;
@@ -977,11 +905,9 @@ class ExportFormats {
     text += `Character Encoding: UTF-8\n`;
     text += `Organization: Domain-first, chronologically sorted\n`;
     text += `\nEnd of Export\n`;
-
     return text;
   }
 
-  // HTML escaping function to prevent XSS
   escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -989,9 +915,7 @@ class ExportFormats {
     return div.innerHTML;
   }
 
-  // Convert notes data to DOCX format with domain organization (HTML for Word/Google Docs)
   toDOCX(notesData) {
-    // Calculate totals for overview (exclude _anchored metadata)
     const totalDomains = Object.keys(notesData).filter(key => key !== '_anchored').length;
     const totalNotes = Object.entries(notesData)
       .filter(([key]) => key !== '_anchored')
