@@ -4,7 +4,6 @@
  */
 
 if (typeof DOMPurify === 'undefined') {
-  // DOMPurify should be loaded via script tag in popup.html
 }
 
 class XSSPrevention {
@@ -12,7 +11,6 @@ class XSSPrevention {
     this.isReady = typeof DOMPurify !== 'undefined';
     
     if (this.isReady) {
-      // Configure DOMPurify for rich text editing
       this.richTextConfig = {
         ALLOWED_TAGS: [
           'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'span', 'a', 'br', 'img', 'div'
@@ -24,14 +22,11 @@ class XSSPrevention {
         ALLOW_DATA_ATTR: false,
         SANITIZE_DOM: true,
         KEEP_CONTENT: true,
-        // Allow specific style properties for color formatting
         ALLOWED_CSS_PROPERTIES: ['color'],
-        // Custom hook to validate style attributes
         HOOKS: {
           beforeSanitizeAttributes: (node) => {
             if (node.hasAttribute('style')) {
               const style = node.getAttribute('style');
-              // Only allow color styles that match our format
               if (!/^color:\s*[#a-zA-Z0-9\(\),\s\.]+$/.test(style)) {
                 node.removeAttribute('style');
               }
@@ -56,7 +51,6 @@ class XSSPrevention {
         }
       };
 
-      // Basic config for simple content (no rich text)
       this.basicConfig = {
         ALLOWED_TAGS: ['br', 'img', 'div', 'button', 'strong', 'p'],
         ALLOWED_ATTR: ['src', 'alt', 'class', 'id', 'loading'],
@@ -64,10 +58,8 @@ class XSSPrevention {
         KEEP_CONTENT: true,
         HOOKS: {
           beforeSanitizeAttributes: (node) => {
-            // Allow safe image sources for ads
             if (node.tagName === 'IMG' && node.hasAttribute('src')) {
               const src = node.getAttribute('src');
-              // Allow extension assets and https images
               if (!src.startsWith('../assets/') && !src.startsWith('https://') && !src.startsWith('data:image/')) {
                 node.removeAttribute('src');
               }
@@ -117,18 +109,12 @@ class XSSPrevention {
   fallbackSanitize(html) {
     if (!html) return '';
     
-    // Create a temporary element to parse HTML
     const temp = document.createElement('div');
     temp.innerHTML = html;
-    
-    // Remove script tags and their content
     const scripts = temp.querySelectorAll('script');
     scripts.forEach(script => script.remove());
-    
-    // Remove dangerous attributes
     const allElements = temp.querySelectorAll('*');
     allElements.forEach(el => {
-      // Remove event handlers
       const attributes = [...el.attributes];
       attributes.forEach(attr => {
         if (attr.name.startsWith('on') || 
@@ -184,12 +170,10 @@ class XSSPrevention {
       return '';
     }
     
-    // Truncate if too long
     if (input.length > maxLength) {
       input = input.substring(0, maxLength);
     }
     
-    // Basic validation - reject if contains suspicious patterns
     const suspiciousPatterns = [
       /<script[^>]*>.*?<\/script>/gi,
       /javascript:/gi,
@@ -213,14 +197,12 @@ class XSSPrevention {
   createSafeElement(tagName, textContent = '', attributes = {}) {
     const element = document.createElement(tagName);
     
-    // Set text content safely
     if (textContent) {
       element.textContent = textContent;
     }
     
     // Set safe attributes
     for (const [key, value] of Object.entries(attributes)) {
-      // Only allow safe attributes
       const safeAttributes = ['class', 'id', 'title', 'href', 'target', 'rel', 'data-*'];
       const isSafe = safeAttributes.some(safe => 
         safe.endsWith('*') ? key.startsWith(safe.slice(0, -1)) : key === safe

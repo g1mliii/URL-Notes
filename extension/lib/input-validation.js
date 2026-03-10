@@ -9,7 +9,7 @@ class InputValidator {
             title: 500,
             content: 50000,
             tag: 50,
-            tags: 20, // max number of tags
+            tags: 20, 
             url: 2048,
             domain: 253
         };
@@ -19,7 +19,6 @@ class InputValidator {
             url: /^https?:\/\/.+/,
             domain: /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/,
             tag: /^[a-zA-Z0-9\s\-_]+$/,
-            // Suspicious patterns that might indicate XSS attempts
             suspicious: [
                 /<script[^>]*>/gi,
                 /javascript:/gi,
@@ -52,16 +51,12 @@ class InputValidator {
             return result;
         }
 
-        // Trim whitespace
         let sanitized = title.trim();
-
-        // Check length
         if (sanitized.length > this.maxLengths.title) {
             sanitized = sanitized.substring(0, this.maxLengths.title);
             result.errors.push(`Title truncated to ${this.maxLengths.title} characters`);
         }
 
-        // Check for suspicious patterns
         const suspiciousFound = this.patterns.suspicious.some(pattern => pattern.test(sanitized));
         if (suspiciousFound) {
             result.isValid = false;
@@ -69,7 +64,6 @@ class InputValidator {
             return result;
         }
 
-        // Basic HTML escaping for titles (should be plain text)
         sanitized = this.escapeHtml(sanitized);
 
         result.sanitized = sanitized;
@@ -94,17 +88,14 @@ class InputValidator {
 
         let sanitized = content;
 
-        // Check length
         if (sanitized.length > this.maxLengths.content) {
             sanitized = sanitized.substring(0, this.maxLengths.content);
             result.errors.push(`Content truncated to ${this.maxLengths.content} characters`);
         }
 
-        // Use XSS prevention if available
         if (window.xssPrevention) {
             sanitized = window.xssPrevention.sanitizeRichText(sanitized);
         } else {
-            // Fallback: check for suspicious patterns
             const suspiciousFound = this.patterns.suspicious.some(pattern => pattern.test(sanitized));
             if (suspiciousFound) {
                 result.isValid = false;
@@ -133,7 +124,6 @@ class InputValidator {
             return result;
         }
 
-        // Check number of tags
         if (tags.length > this.maxLengths.tags) {
             result.errors.push(`Too many tags, limited to ${this.maxLengths.tags}`);
             tags = tags.slice(0, this.maxLengths.tags);
@@ -149,34 +139,28 @@ class InputValidator {
 
             let sanitizedTag = tag.trim();
 
-            // Check length
             if (sanitizedTag.length > this.maxLengths.tag) {
                 sanitizedTag = sanitizedTag.substring(0, this.maxLengths.tag);
                 result.errors.push(`Tag "${tag}" truncated`);
             }
 
-            // Skip empty tags
             if (sanitizedTag.length === 0) {
                 continue;
             }
 
-            // Validate tag pattern
             if (!this.patterns.tag.test(sanitizedTag)) {
                 result.errors.push(`Invalid tag format: "${sanitizedTag}"`);
                 continue;
             }
 
-            // Check for suspicious patterns
             const suspiciousFound = this.patterns.suspicious.some(pattern => pattern.test(sanitizedTag));
             if (suspiciousFound) {
                 result.errors.push(`Tag contains potentially malicious content: "${sanitizedTag}"`);
                 continue;
             }
 
-            // Escape HTML
             sanitizedTag = this.escapeHtml(sanitizedTag);
 
-            // Avoid duplicates
             if (!sanitizedTags.includes(sanitizedTag)) {
                 sanitizedTags.push(sanitizedTag);
             }
@@ -203,22 +187,16 @@ class InputValidator {
         }
 
         let sanitized = url.trim();
-
-        // Check length
         if (sanitized.length > this.maxLengths.url) {
             result.isValid = false;
             result.errors.push(`URL too long (max ${this.maxLengths.url} characters)`);
             return result;
         }
-
-        // Check URL pattern
         if (!this.patterns.url.test(sanitized)) {
             result.isValid = false;
             result.errors.push('Invalid URL format');
             return result;
         }
-
-        // Check for suspicious patterns
         const suspiciousFound = this.patterns.suspicious.some(pattern => pattern.test(sanitized));
         if (suspiciousFound) {
             result.isValid = false;
@@ -227,10 +205,7 @@ class InputValidator {
         }
 
         try {
-            // Validate with URL constructor
             const urlObj = new URL(sanitized);
-
-            // Only allow http and https protocols
             if (!['http:', 'https:'].includes(urlObj.protocol)) {
                 result.isValid = false;
                 result.errors.push('Only HTTP and HTTPS URLs are allowed');
@@ -265,22 +240,16 @@ class InputValidator {
         }
 
         let sanitized = domain.trim().toLowerCase();
-
-        // Check length
         if (sanitized.length > this.maxLengths.domain) {
             result.isValid = false;
             result.errors.push(`Domain too long (max ${this.maxLengths.domain} characters)`);
             return result;
         }
-
-        // Check domain pattern
         if (!this.patterns.domain.test(sanitized)) {
             result.isValid = false;
             result.errors.push('Invalid domain format');
             return result;
         }
-
-        // Check for suspicious patterns
         const suspiciousFound = this.patterns.suspicious.some(pattern => pattern.test(sanitized));
         if (suspiciousFound) {
             result.isValid = false;
@@ -309,15 +278,11 @@ class InputValidator {
         }
 
         let sanitized = email.trim().toLowerCase();
-
-        // Check email pattern
         if (!this.patterns.email.test(sanitized)) {
             result.isValid = false;
             result.errors.push('Invalid email format');
             return result;
         }
-
-        // Check for suspicious patterns
         const suspiciousFound = this.patterns.suspicious.some(pattern => pattern.test(sanitized));
         if (suspiciousFound) {
             result.isValid = false;
@@ -344,15 +309,11 @@ class InputValidator {
             result.errors.push('Note must be an object');
             return result;
         }
-
-        // Validate each field
         const titleResult = this.validateTitle(note.title || '');
         const contentResult = this.validateContent(note.content || '');
         const tagsResult = this.validateTags(note.tags || []);
         const urlResult = this.validateUrl(note.url || '');
         const domainResult = this.validateDomain(note.domain || '');
-
-        // Combine results
         result.isValid = titleResult.isValid && contentResult.isValid &&
             tagsResult.isValid && urlResult.isValid && domainResult.isValid;
 
@@ -420,13 +381,9 @@ class InputValidator {
 
         return () => {
             const now = Date.now();
-
-            // Remove old calls outside the window
             while (calls.length > 0 && calls[0] < now - windowMs) {
                 calls.shift();
             }
-
-            // Check if we've exceeded the limit
             if (calls.length >= maxCalls) {
                 return false;
             }

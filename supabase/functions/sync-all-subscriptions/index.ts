@@ -7,12 +7,44 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+    try {
+        const parts = token.split('.')
+        if (parts.length < 2) return null
+        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+        const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
+        return JSON.parse(atob(padded))
+    } catch {
+        return null
+    }
+}
+
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
 
     try {
+        const authHeader = req.headers.get('Authorization') ?? ''
+        if (!authHeader.startsWith('Bearer ')) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            })
+        }
+
+        const token = authHeader.slice('Bearer '.length).trim()
+        const jwtPayload = decodeJwtPayload(token)
+        const jwtRole = typeof jwtPayload?.role === 'string' ? jwtPayload.role : ''
+
+        // Defense in depth: this endpoint is intended for service-role cron usage only.
+        if (jwtRole !== 'service_role') {
+            return new Response(JSON.stringify({ error: 'Forbidden' }), {
+                status: 403,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            })
+        }
+
         console.log('🔄 Starting daily subscription sync...')
 
         // Initialize Supabase client with service role (for cron job)

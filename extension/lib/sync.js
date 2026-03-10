@@ -32,7 +32,6 @@ class SyncEngine {
 
       const syncCheck = await this.canSync();
       if (syncCheck.canSync && !this.syncIntervalActive) {
-        // Don't send auth-changed message here - it's not an actual auth change
         this.startPeriodicSync();
       }
 
@@ -56,7 +55,6 @@ class SyncEngine {
     });
 
     window.eventBus?.on('notes:deleted', (payload) => {
-      // NO automatic sync - only timer-based or manual
     });
 
     window.eventBus?.on('tier:changed', (status) => {
@@ -98,7 +96,6 @@ class SyncEngine {
           statusRefresh: payload.statusRefresh || false
         }).catch(() => { });
 
-        // Don't perform initial sync automatically - just start periodic sync
         this.startPeriodicSync();
       } else {
         chrome.runtime.sendMessage({ action: 'auth-changed', user: null }).catch(() => { });
@@ -125,7 +122,6 @@ class SyncEngine {
     }
   }
 
-  // Check if encryption key is available (prevents placeholder content)
   async isEncryptionReady() {
     try {
       if (!window.noteEncryption) {
@@ -298,7 +294,7 @@ class SyncEngine {
 
       if (!Array.isArray(localDeletions)) {
         console.error('Sync engine: localDeletions is not an array:', typeof localDeletions, localDeletions);
-        localDeletions = []; // Fallback to empty array
+        localDeletions = [];
       }
 
       const notesToSync = this.lastSyncTime
@@ -340,7 +336,6 @@ class SyncEngine {
               const deletionTime = new Date(localNote.deleted_at || 0);
 
               if (serverNoteTime > deletionTime) {
-                // Server note is newer than deletion - restore it
                 serverNote.is_deleted = false;
                 serverNote.deleted_at = null;
                 await window.notesStorage.saveNote(serverNote);
@@ -378,19 +373,14 @@ class SyncEngine {
 
   // Start periodic sync (now handled by background script)
   startPeriodicSync() {
-    // Timer logic moved to background script for persistence
-    // This method is kept for compatibility but doesn't start timers
     this.syncIntervalActive = true;
   }
 
   // Stop periodic sync (now handled by background script)
   stopPeriodicSync() {
-    // Timer logic moved to background script for persistence
-    // This method is kept for compatibility but doesn't stop timers
     this.syncIntervalActive = false;
   }
 
-  // Clear sync state on sign out
   clearSyncState() {
     this.stopPeriodicSync();
     this.stopEventListeners();
@@ -452,23 +442,18 @@ class SyncEngine {
   handleNoteUpdate(event) {
     const { noteId, note } = event;
     this.lastVersionUpdateTime = Date.now();
-    // NO automatic sync - only timer-based or manual
   }
 
   handleNoteDeletion(event) {
     const { noteId, note } = event;
-    // NO automatic sync - only timer-based or manual
   }
 
   handleDomainDeletion(event) {
     const { domain, deletedCount } = event;
-    // NO automatic sync - only timer-based or manual
   }
 
   startEventListeners() {
     if (window.eventBus) {
-      // These events are for tracking only - NO automatic sync
-      // Sync only happens on timer or manual button press
       window.eventBus.on('notes:updated', this.handleNoteUpdate.bind(this));
       window.eventBus.on('notes:deleted', this.handleNoteDeletion.bind(this));
       window.eventBus.on('notes:domain_deleted', this.handleDomainDeletion.bind(this));

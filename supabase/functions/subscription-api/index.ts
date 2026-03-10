@@ -15,22 +15,33 @@ serve(async (req) => {
   }
 
   try {
-    // Initialize Supabase client with service role to bypass RLS
-    const supabaseClient = createClient(
+    const authHeader = req.headers.get('Authorization') ?? ''
+    if (!authHeader.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // User-scoped client for JWT validation only
+    const authClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
+          headers: { Authorization: authHeader },
         },
       }
     )
 
-    // Get the user from the JWT token
+    // Validate caller identity from the user JWT
     const {
       data: { user },
       error: userError,
-    } = await supabaseClient.auth.getUser()
+    } = await authClient.auth.getUser()
 
     if (userError || !user) {
       return new Response(
@@ -41,6 +52,12 @@ serve(async (req) => {
         }
       )
     }
+
+    // Admin client for privileged DB writes
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
 
     // Initialize Stripe
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {

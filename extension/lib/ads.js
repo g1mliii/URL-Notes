@@ -7,9 +7,9 @@ class AdManager {
     this.adLoaded = false;
     this.adConfig = {
       maxAdsPerHour: 5,
-      cooldownMs: 12 * 60 * 1000, // 12 minutes between ads
-      displayDurationMs: 6 * 1000, // 6 seconds display time
-      nextAdDelayMs: 30 * 1000, // 30 seconds until next ad
+      cooldownMs: 12 * 60 * 1000,
+      displayDurationMs: 6 * 1000, 
+      nextAdDelayMs: 30 * 1000, 
     };
     this.lastAdTime = 0;
     this.adsShownThisHour = 0;
@@ -19,7 +19,6 @@ class AdManager {
     this.storageKey = 'adTrackingData';
   }
 
-  // Load ad tracking data from storage
   async loadAdTrackingData() {
     try {
       const result = await chrome.storage.local.get([this.storageKey]);
@@ -30,7 +29,6 @@ class AdManager {
         this.adsShownThisHour = data.adsShownThisHour || 0;
         this.hourlyResetTime = data.hourlyResetTime || (Date.now() + (60 * 60 * 1000));
 
-        // Check if we need to reset the hourly counter
         const now = Date.now();
         if (now > this.hourlyResetTime) {
           this.adsShownThisHour = 0;
@@ -59,7 +57,7 @@ class AdManager {
     }
   }
 
-  // Initialize ad system
+
   async init() {
     this.adContainer = document.getElementById('adContainer');
     if (!this.adContainer) {
@@ -69,21 +67,19 @@ class AdManager {
     // Load persistent ad tracking data first
     await this.loadAdTrackingData();
 
-    // Check if user should see ads
     const shouldShowAds = await this.shouldShowAds();
     if (!shouldShowAds) {
       this.hideAdContainer();
       return;
     }
 
-    // Show first ad after a delay
-    setTimeout(() => this.showAd(), 3000); // 3 seconds initial delay
+    setTimeout(() => this.showAd(), 3000);
   }
 
   // Check if user should see ads (free tier, ads enabled, reached engagement tier)
   async shouldShowAds() {
     try {
-      // Check cached premium status first to avoid API calls
+    
       const result = await chrome.storage.local.get([
         'settings', 
         'userTier', 
@@ -93,24 +89,24 @@ class AdManager {
       ]);
       const settings = result.settings || {};
 
-      // Check cached premium status
+     
       let isPremium = false;
       if (result.premiumStatus && result.lastPremiumCheck) {
         const cacheAge = Date.now() - result.lastPremiumCheck;
-        const cacheValid = cacheAge < (24 * 60 * 60 * 1000); // 24 hours
+        const cacheValid = cacheAge < (24 * 60 * 60 * 1000); 
 
         if (cacheValid) {
           isPremium = result.premiumStatus.tier === 'premium' || result.premiumStatus.tier === 'pro';
         }
       }
 
-      // Fallback to userTier if no cached premium status
+      
       if (!result.premiumStatus) {
         const userTier = result.userTier || 'free';
         isPremium = userTier === 'premium' || userTier === 'pro';
       }
 
-      // Check if user has reached first engagement tier (3 notes)
+      
       const noteCount = result.userEngagement_noteCount || 0;
       const hasReachedEngagementTier = noteCount >= 3;
 
@@ -124,95 +120,72 @@ class AdManager {
   }
 
 
-
-  // Show an ad
   async showAd() {
     if (!await this.canShowAd()) {
       return;
     }
 
     try {
-      // Reset hourly counter if needed
       const now = Date.now();
       if (now > this.hourlyResetTime) {
         this.adsShownThisHour = 0;
         this.hourlyResetTime = now + (60 * 60 * 1000);
       }
 
-      // Show ad container with animation
       if (this.adContainer) {
         this.adContainer.style.display = 'block';
         this.adContainer.classList.add('show');
       }
 
-      // Load ad content
       await this.loadAd();
-
-      // Update tracking
       this.lastAdTime = now;
       this.adsShownThisHour++;
-
-      // Save tracking data to persistent storage
       await this.saveAdTrackingData();
-
-      // Schedule ad to hide after display duration
       this.scheduleAdHide();
 
     } catch (error) {
       this.showFallbackAd();
-      // Still update tracking and save for fallback ads
       const now = Date.now();
       this.lastAdTime = now;
       this.adsShownThisHour++;
       await this.saveAdTrackingData();
-      // Still schedule hide even for fallback ads
       this.scheduleAdHide();
     }
   }
 
-  // Check if we can show an ad
+
   async canShowAd() {
     const now = Date.now();
-
-    // Check if we need to reset the hourly counter
     if (now > this.hourlyResetTime) {
       this.adsShownThisHour = 0;
       this.hourlyResetTime = now + (60 * 60 * 1000);
       await this.saveAdTrackingData();
     }
 
-    // Check minimum cooldown (display duration + next ad delay)
     const minCooldown = this.adConfig.displayDurationMs + this.adConfig.nextAdDelayMs;
     if (now - this.lastAdTime < minCooldown) {
       return false;
     }
 
-    // Check hourly limit
     if (this.adsShownThisHour >= this.adConfig.maxAdsPerHour) {
       return false;
     }
 
-    // Check user preferences
     return await this.shouldShowAds();
   }
 
-  // Load actual ad content
   async loadAd() {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    // Use our static ad system (NordVPN + upgrade ads)
     this.showFallbackAd();
   }
 
 
-
-  // Show fallback ad
   showFallbackAd() {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    // Rotate between four ads: Upgrade (50%), NordVPN (16.7%), Vrbo (16.7%), New Banner (16.6%)
     const random = Math.random();
     let adType;
 
@@ -231,15 +204,12 @@ class AdManager {
     }
   }
 
-  // Show NordVPN affiliate ad
   showNordVPNAd() {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    // Clear existing content
     adContent.textContent = '';
     
-    // Create elements safely without XSS prevention (trusted extension content)
     const adDiv = document.createElement('div');
     adDiv.className = 'nordvpn-ad';
     adDiv.id = 'nordvpnAdBanner';
@@ -253,7 +223,6 @@ class AdManager {
     adDiv.appendChild(img);
     adContent.appendChild(adDiv);
 
-    // Add click event listener (CSP compliant)
     const nordvpnAd = document.getElementById('nordvpnAdBanner');
     if (nordvpnAd) {
       nordvpnAd.addEventListener('click', () => {
@@ -264,15 +233,12 @@ class AdManager {
     this.addNordVPNStyles();
   }
 
-  // Show Vrbo affiliate ad
   showVrboAd() {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    // Clear existing content
     adContent.textContent = '';
     
-    // Create elements safely without XSS prevention (trusted extension content)
     const adDiv = document.createElement('div');
     adDiv.className = 'vrbo-ad';
     adDiv.id = 'vrboAdBanner';
@@ -285,8 +251,6 @@ class AdManager {
     
     adDiv.appendChild(img);
     adContent.appendChild(adDiv);
-
-    // Add click event listener (CSP compliant)
     const vrboAd = document.getElementById('vrboAdBanner');
     if (vrboAd) {
       vrboAd.addEventListener('click', () => {
@@ -297,15 +261,13 @@ class AdManager {
     this.addVrboStyles();
   }
 
-  // Show new banner affiliate ad
+
   showNewBannerAd() {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    // Clear existing content
     adContent.textContent = '';
-    
-    // Create elements safely without XSS prevention (trusted extension content)
+
     const adDiv = document.createElement('div');
     adDiv.className = 'newbanner-ad';
     adDiv.id = 'newBannerAdBanner';
@@ -319,7 +281,6 @@ class AdManager {
     adDiv.appendChild(img);
     adContent.appendChild(adDiv);
 
-    // Add click event listener (CSP compliant)
     const newBannerAd = document.getElementById('newBannerAdBanner');
     if (newBannerAd) {
       newBannerAd.addEventListener('click', () => {
@@ -330,15 +291,13 @@ class AdManager {
     this.addNewBannerStyles();
   }
 
-  // Show upgrade ad
+
   showUpgradeAd() {
     const adContent = document.getElementById('adContent');
     if (!adContent) return;
 
-    // Clear existing content
     adContent.textContent = '';
     
-    // Create elements safely without XSS prevention (trusted extension content)
     const adDiv = document.createElement('div');
     adDiv.className = 'fallback-ad';
     
@@ -363,7 +322,6 @@ class AdManager {
     adDiv.appendChild(button);
     adContent.appendChild(adDiv);
 
-    // Add click event listener (CSP compliant)
     const upgradeBtn = document.getElementById('upgradeAdButton');
     if (upgradeBtn) {
       upgradeBtn.addEventListener('click', () => {
@@ -374,7 +332,7 @@ class AdManager {
     this.addFallbackStyles();
   }
 
-  // Add NordVPN ad styles
+
   addNordVPNStyles() {
     if (document.getElementById('nordvpn-ad-styles')) return;
 
@@ -409,7 +367,7 @@ class AdManager {
     document.head.appendChild(style);
   }
 
-  // Add Vrbo ad styles
+
   addVrboStyles() {
     if (document.getElementById('vrbo-ad-styles')) return;
 
@@ -444,7 +402,7 @@ class AdManager {
     document.head.appendChild(style);
   }
 
-  // Add new banner ad styles
+
   addNewBannerStyles() {
     if (document.getElementById('newbanner-ad-styles')) return;
 
@@ -479,7 +437,7 @@ class AdManager {
     document.head.appendChild(style);
   }
 
-  // Add fallback ad styles
+
   addFallbackStyles() {
     if (document.getElementById('fallback-ad-styles')) return;
 
@@ -525,16 +483,12 @@ class AdManager {
     document.head.appendChild(style);
   }
 
-  // Schedule ad to hide after display duration
+
   scheduleAdHide() {
-    // Clear any existing timeout
     if (this.currentAdTimeout) {
       clearTimeout(this.currentAdTimeout);
     }
 
-
-
-    // Schedule ad to hide after display duration
     this.currentAdTimeout = setTimeout(() => {
 
       this.hideAdContainer();
@@ -543,18 +497,15 @@ class AdManager {
     }, this.adConfig.displayDurationMs);
   }
 
-  // Schedule next ad to show
+
   scheduleNextAd() {
-    // Clear any existing timeout
     if (this.nextAdTimeout) {
       clearTimeout(this.nextAdTimeout);
     }
 
 
-    // Schedule next ad after delay
-    this.nextAdTimeout = setTimeout(async () => {
 
-      // Check if we can still show ads
+    this.nextAdTimeout = setTimeout(async () => {
       if (await this.canShowAd()) {
         this.showAd();
       } else {
@@ -563,21 +514,19 @@ class AdManager {
     }, this.adConfig.nextAdDelayMs);
   }
 
-  // Hide ad container
+
   hideAdContainer() {
     if (this.adContainer) {
       this.adContainer.classList.remove('show');
-      // Hide after animation completes
       setTimeout(() => {
         this.adContainer.style.display = 'none';
       }, 300);
     }
   }
 
-  // Track ad impression for analytics
+
   trackAdImpression() {
     try {
-      // Send impression data to analytics (optional - won't break if background script isn't ready)
       chrome.runtime.sendMessage({
         action: 'trackAdImpression',
         data: {
@@ -585,16 +534,13 @@ class AdManager {
           domain: window.location?.hostname || 'unknown'
         }
       }).catch(() => {
-        // Silently ignore messaging errors
       });
     } catch (error) {
-      // Silently ignore tracking errors to prevent breaking ad display
     }
   }
 
-  // Handle upgrade button click
+
   openUpgrade() {
-    // Check if user is authenticated to determine redirect destination
     let targetUrl = 'https://anchored.site'; // Default to main page
 
     try {
@@ -603,7 +549,6 @@ class AdManager {
         targetUrl = 'https://anchored.site/account';
       }
     } catch (error) {
-      // Fall back to main page if there's an error
     }
 
     chrome.tabs.create({
@@ -611,36 +556,32 @@ class AdManager {
     });
   }
 
-  // Handle NordVPN affiliate click
+
   openNordVPN() {
     chrome.tabs.create({
       url: 'https://go.nordvpn.net/aff_c?offer_id=15&aff_id=130711&url_id=902'
     });
   }
 
-  // Handle Vrbo affiliate click
   openVrbo() {
     chrome.tabs.create({
       url: 'https://www.jdoqocy.com/click-101532226-13820699'
     });
   }
 
-  // Handle new banner affiliate click
   openNewBanner() {
     chrome.tabs.create({
       url: 'https://www.tkqlhce.com/click-101532226-15575456'
     });
   }
 
-  // Handle ad click
   onAdClick(adType = 'unknown') {
-    // No tracking needed for static ads
+
   }
 
-  // Track ad click
+
   trackAdClick(adType = 'unknown') {
     try {
-      // Send click data to analytics (optional - won't break if background script isn't ready)
       chrome.runtime.sendMessage({
         action: 'trackAdClick',
         data: {
@@ -648,16 +589,13 @@ class AdManager {
           adType: adType
         }
       }).catch(() => {
-        // Silently ignore messaging errors
       });
     } catch (error) {
-      // Silently ignore tracking errors to prevent breaking ad functionality
     }
   }
 
-  // Refresh ad (called when popup is reopened)
+
   async refreshAd() {
-    // Clear any existing timeouts to avoid conflicts
     if (this.currentAdTimeout) {
       clearTimeout(this.currentAdTimeout);
       this.currentAdTimeout = null;
@@ -667,18 +605,16 @@ class AdManager {
       this.nextAdTimeout = null;
     }
 
-    // Load current tracking data
     await this.loadAdTrackingData();
 
-    // Check if we can show an ad
     if (await this.canShowAd()) {
       setTimeout(() => this.showAd(), 1000);
     }
   }
 
-  // Clean up
+
   destroy() {
-    // Clear any scheduled timeouts
+
     if (this.currentAdTimeout) {
       clearTimeout(this.currentAdTimeout);
       this.currentAdTimeout = null;
@@ -691,5 +627,4 @@ class AdManager {
   }
 }
 
-// Export singleton instance
 window.adManager = new AdManager();

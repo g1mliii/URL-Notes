@@ -50,16 +50,14 @@
       if (request.action === 'getPageInfo') {
         const pageInfo = getCurrentPageInfo();
         sendResponse(pageInfo);
-        return false; // No async response needed
+        return false;
       }
 
-      // Check if content script is ready
       if (request.action === 'ping') {
         sendResponse({ status: 'ready', timestamp: Date.now() });
-        return false; // No async response needed
+        return false; 
       }
 
-      // Highlight requested text on the page
       if (request.action === 'highlightText') {
         const fragText = extractTextFragment(request.href || '');
         const text = (fragText || request.text || '').trim();
@@ -72,7 +70,6 @@
         return false;
       }
 
-      // Toggle multi-highlight mode
       if (request.action === 'toggleMultiHighlight') {
         try {
           toggleMultiHighlightMode();
@@ -81,10 +78,9 @@
         } catch (error) {
           sendResponse({ enabled: false, error: error.message });
         }
-        return true; // Keep message channel open for async response
+        return true; 
       }
 
-      // Get current multi-highlight state
       if (request.action === 'getMultiHighlightState') {
         try {
           const response = {
@@ -95,10 +91,9 @@
         } catch (error) {
           sendResponse({ enabled: false, highlightCount: 0, error: error.message });
         }
-        return false; // No async response needed
+        return false; 
       }
 
-      // Extract page content for AI summarization
       if (request.action === 'extractPageContent') {
         try {
           const content = extractPageContent();
@@ -106,10 +101,9 @@
         } catch (error) {
           sendResponse({ success: false, error: error.message });
         }
-        return true; // Keep message channel open for async response
+        return true; 
       }
 
-      // Unknown action
       sendResponse({ error: 'Unknown action' });
       return false;
     } catch (error) {
@@ -118,7 +112,7 @@
     }
   });
 
-  // Toggle multi-highlight mode
+
   function toggleMultiHighlightMode() {
     multiHighlightMode = !multiHighlightMode;
 
@@ -128,11 +122,9 @@
       disableMultiHighlightMode();
     }
 
-    // Update extension badge
     updateExtensionBadge();
   }
 
-  // Enable multi-highlight mode
   function enableMultiHighlightMode() {
     document.addEventListener('mousedown', handleMouseDown);
     document.addEventListener('mouseup', handleMouseUp);
@@ -140,12 +132,9 @@
     document.addEventListener('mouseover', handleParagraphHover);
     document.addEventListener('mouseout', handleParagraphOut);
     document.addEventListener('click', handleParagraphClick);
-
-    // Add visual indicator with GPU acceleration
     document.body.style.cursor = 'crosshair';
     document.body.classList.add('url-notes-multi-highlight-mode');
 
-    // Inject body GPU acceleration styles if not already present
     if (!document.getElementById('url-notes-body-style')) {
       const bodyStyle = document.createElement('style');
       bodyStyle.id = 'url-notes-body-style';
@@ -186,14 +175,10 @@
       document.head.appendChild(bodyStyle);
     }
 
-    // Add visual overlay indicator
     addMultiHighlightIndicator();
-
-    // Show floating toolbar
     showHighlightToolbar();
   }
 
-  // Disable multi-highlight mode
   function disableMultiHighlightMode() {
     document.removeEventListener('mousedown', handleMouseDown);
     document.removeEventListener('mouseup', handleMouseUp);
@@ -201,21 +186,14 @@
     document.removeEventListener('mouseover', handleParagraphHover);
     document.removeEventListener('mouseout', handleParagraphOut);
     document.removeEventListener('click', handleParagraphClick);
-
-    // Remove visual indicator and GPU acceleration class
     document.body.style.cursor = '';
     document.body.classList.remove('url-notes-multi-highlight-mode');
-
-    // Remove visual overlay indicator
     removeMultiHighlightIndicator();
-
-    // Hide floating toolbar
     hideHighlightToolbar();
   }
 
-  // Handle mouse down for text selection
   function handleMouseDown(e) {
-    if (!multiHighlightMode || e.button !== 0) return; // Only left click
+    if (!multiHighlightMode || e.button !== 0) return; 
 
     const selection = window.getSelection();
     if (selection.rangeCount > 0) {
@@ -227,17 +205,15 @@
       isSelecting = true;
     }
 
-    // Start timer to detect if this is a click (not drag)
     paragraphClickTimeout = setTimeout(() => {
       paragraphClickTimeout = null;
     }, 200);
   }
 
-  // Handle mouse up for text selection
+
   function handleMouseUp(e) {
     if (!multiHighlightMode) return;
 
-    // If user dragged to select text, handle it
     if (isSelecting) {
       isSelecting = false;
 
@@ -247,25 +223,19 @@
         const selectedText = selection.toString().trim();
 
         if (selectedText && selectedText.length > 0) {
-          // Validate range before proceeding
           try {
-            // Check if range is valid and contains text nodes
             const contents = range.cloneContents();
             if (!contents.textContent || contents.textContent.trim().length === 0) {
               return;
             }
 
-            // Check if range boundaries are valid
             if (!range.startContainer || !range.endContainer) {
               return;
             }
 
-            // Allow cross-element selections but skip problematic elements
-            // Only skip if selection includes script, style, or other non-content elements
             const rangeContainer = range.commonAncestorContainer;
             const skipTags = ['SCRIPT', 'STYLE', 'NOSCRIPT', 'IFRAME', 'OBJECT', 'EMBED'];
 
-            // Check if the range contains any problematic elements
             if (rangeContainer.nodeType === Node.ELEMENT_NODE) {
               const hasProblematicElements = skipTags.some(tag =>
                 rangeContainer.tagName === tag || rangeContainer.querySelector(tag)
@@ -275,14 +245,12 @@
               }
             }
 
-            // Additional safety check: ensure we have meaningful text content
             if (selectedText.length < 2) {
               return;
             }
 
             addHighlight(range, selectedText);
           } catch (error) {
-            // Invalid range for highlighting - silently handled
           }
         }
       }
@@ -291,53 +259,44 @@
     }
   }
 
-  // Handle keyboard shortcuts
   function handleKeyDown(e) {
     if (!multiHighlightMode) return;
 
-    // Escape to exit mode
     if (e.key === 'Escape') {
       toggleMultiHighlightMode();
       e.preventDefault();
     }
 
-    // Ctrl+Enter to add all highlights to note
     if (e.ctrlKey && e.key === 'Enter') {
       addAllHighlightsToNote();
       e.preventDefault();
     }
 
-    // Ctrl+Shift+H to toggle multi-highlight mode
     if (e.ctrlKey && e.shiftKey && e.key === 'H') {
       toggleMultiHighlightMode();
       e.preventDefault();
     }
   }
 
-  // Handle paragraph hover - show dotted outline and tooltip
+
   function handleParagraphHover(e) {
     if (!multiHighlightMode) return;
-
-    // Don't show hover if user is actively selecting text
     if (isSelecting) return;
 
     const target = e.target;
 
-    // Find the closest paragraph-like element
     const paragraph = findParagraphElement(target);
 
     if (paragraph && paragraph !== hoveredParagraph) {
-      // Remove hover from previous paragraph
+      
       if (hoveredParagraph) {
         hoveredParagraph.classList.remove('url-notes-paragraph-hover');
         removeTooltip();
       }
 
-      // Add hover to new paragraph
       hoveredParagraph = paragraph;
       hoveredParagraph.classList.add('url-notes-paragraph-hover');
 
-      // Show tooltip
       showTooltip(e.clientX, e.clientY);
     }
   }
@@ -348,7 +307,6 @@
 
     const target = e.target;
 
-    // Only remove hover if we're leaving the hovered paragraph
     if (hoveredParagraph && !hoveredParagraph.contains(e.relatedTarget)) {
       hoveredParagraph.classList.remove('url-notes-paragraph-hover');
       hoveredParagraph = null;
@@ -356,9 +314,9 @@
     }
   }
 
-  // Show tooltip near cursor
+
   function showTooltip(x, y) {
-    removeTooltip(); // Remove any existing tooltip
+    removeTooltip();
 
     const tooltip = document.createElement('div');
     tooltip.id = 'url-notes-paragraph-tooltip';
@@ -415,7 +373,6 @@
     document.body.appendChild(tooltip);
   }
 
-  // Remove tooltip
   function removeTooltip() {
     const tooltip = document.getElementById('url-notes-paragraph-tooltip');
     if (tooltip && tooltip.parentNode) {
@@ -423,32 +380,23 @@
     }
   }
 
-  // Handle paragraph click - capture whole paragraph or remove if already highlighted (Shift+Click)
   function handleParagraphClick(e) {
     if (!multiHighlightMode) return;
 
-    // Only trigger on Shift+Click
     if (!e.shiftKey) return;
 
     const paragraph = findParagraphElement(e.target);
     if (!paragraph) return;
-
-    // Prevent default shift+click behavior (text selection extension)
     e.preventDefault();
     e.stopPropagation();
-
-    // Clear any existing selection that shift+click might have created
     const selection = window.getSelection();
     if (selection) {
       selection.removeAllRanges();
     }
 
-    // Check if paragraph was fully highlighted via click (not partial manual selection)
     const existingHighlights = paragraph.querySelectorAll('mark[data-url-notes-highlight]');
 
     if (existingHighlights.length > 0) {
-      // Only allow deselection if the entire paragraph is highlighted
-      // Check if highlights cover most of the paragraph text
       const paragraphText = getParagraphText(paragraph);
       const highlightedText = Array.from(existingHighlights)
         .map(mark => mark.textContent || '')
@@ -459,7 +407,6 @@
       const coverageRatio = highlightedText.length / paragraphText.length;
 
       if (coverageRatio >= 0.8) {
-        // Remove all highlights in this paragraph
         existingHighlights.forEach(mark => {
           const highlightId = mark.getAttribute('data-highlight-id');
           if (highlightId) {
@@ -470,7 +417,6 @@
           }
         });
 
-        // Visual feedback for removal
         paragraph.style.transition = 'background 0.3s ease';
         paragraph.style.background = 'rgba(239, 68, 68, 0.2)';
         setTimeout(() => {
@@ -479,81 +425,56 @@
 
         return;
       }
-      // If less than 80% is highlighted, don't deselect (user made partial selection)
     }
 
-    // Get the text content of the paragraph (XSS-safe)
     const paragraphText = getParagraphText(paragraph);
 
     if (paragraphText && paragraphText.length > 0) {
-      // Create a range for only the text nodes in the paragraph (skip style/script tags)
+      
       try {
         const range = createTextOnlyRange(paragraph);
         if (!range) return;
-
         addHighlight(range, paragraphText);
-
-        // Visual feedback
         paragraph.classList.add('url-notes-paragraph-captured');
         setTimeout(() => {
           paragraph.classList.remove('url-notes-paragraph-captured');
         }, 300);
       } catch (error) {
-        // Silently handle capture errors
       }
     }
   }
 
-  // Find the closest paragraph-like element (XSS-safe)
   function findParagraphElement(element) {
     if (!element || element === document.body) return null;
-
-    // Paragraph-like elements (prioritize semantic text containers)
     const paragraphTags = ['P', 'ARTICLE', 'BLOCKQUOTE', 'PRE', 'LI', 'TD', 'TH'];
-    const containerTags = ['DIV', 'SECTION']; // Only use these if they have substantial text
-
-    // Skip problematic elements and UI components
+    const containerTags = ['DIV', 'SECTION']; 
     const skipTags = ['SCRIPT', 'STYLE', 'NOSCRIPT', 'IFRAME', 'OBJECT', 'EMBED', 'BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'NAV', 'HEADER', 'FOOTER', 'ASIDE'];
-
-    // Skip common sidebar/UI class patterns
     const skipClassPatterns = ['sidebar', 'nav', 'menu', 'header', 'footer', 'toolbar', 'widget', 'ad', 'banner', 'popup', 'modal', 'infobox'];
-
     let current = element;
 
     while (current && current !== document.body) {
-      // Skip if it's a problematic element
       if (skipTags.includes(current.tagName)) {
         return null;
       }
-
-      // Skip elements with UI-related classes
       const className = (current.className || '').toLowerCase();
       if (skipClassPatterns.some(pattern => className.includes(pattern))) {
         current = current.parentElement;
         continue;
       }
 
-      // Check if it's a paragraph-like element with meaningful text
       if (paragraphTags.includes(current.tagName)) {
         const text = current.textContent?.trim() || '';
-
-        // Must have at least 50 characters to be considered a real paragraph
         if (text.length >= 50) {
           return current;
         }
       }
 
-      // For DIV/SECTION, require more substantial text content
       if (containerTags.includes(current.tagName)) {
         const text = current.textContent?.trim() || '';
 
-        // Must have at least 100 characters and not be too nested with other containers
         if (text.length >= 100) {
-          // Check if this container has mostly text vs nested containers
           const childContainers = current.querySelectorAll('div, section').length;
           const textDensity = text.length / Math.max(1, childContainers);
-
-          // If text density is high enough, consider it a paragraph
           if (textDensity >= 50) {
             return current;
           }
@@ -566,42 +487,27 @@
     return null;
   }
 
-  // Get paragraph text safely (XSS-safe)
   function getParagraphText(paragraph) {
     if (!paragraph) return '';
-
-    // Clone the paragraph to avoid modifying the original
     const clone = paragraph.cloneNode(true);
-
-    // Remove style, script, and other non-content elements
     const elementsToRemove = clone.querySelectorAll('style, script, noscript, svg, canvas');
     elementsToRemove.forEach(el => el.remove());
-
-    // Use textContent to safely extract text (auto-escapes HTML)
     const text = clone.textContent || '';
-
-    // Trim and normalize whitespace
     return text.trim().replace(/\s+/g, ' ');
   }
 
-  // Create a range that only includes text nodes, skipping style/script tags
   function createTextOnlyRange(paragraph) {
     if (!paragraph) return null;
 
     const range = document.createRange();
-
-    // Find first and last text nodes, skipping style/script elements
     const walker = document.createTreeWalker(
       paragraph,
       NodeFilter.SHOW_TEXT,
       {
         acceptNode: (node) => {
-          // Skip empty text nodes
           if (!node.textContent || !node.textContent.trim()) {
             return NodeFilter.FILTER_REJECT;
           }
-
-          // Skip text nodes inside style, script, etc.
           let parent = node.parentElement;
           while (parent && parent !== paragraph) {
             const tag = parent.tagName;
@@ -618,8 +524,6 @@
 
     const firstTextNode = walker.nextNode();
     if (!firstTextNode) return null;
-
-    // Find last text node
     let lastTextNode = firstTextNode;
     let node;
     while (node = walker.nextNode()) {
@@ -635,11 +539,8 @@
     }
   }
 
-  // Walk through range and wrap each text node individually (for complex ranges)
   function wrapTextNodesInRange(range, highlightId) {
     const marks = [];
-
-    // Create a tree walker to find all text nodes in the range
     const walker = document.createTreeWalker(
       range.commonAncestorContainer,
       NodeFilter.SHOW_TEXT,
@@ -655,7 +556,6 @@
             return NodeFilter.FILTER_REJECT;
           }
 
-          // Skip text nodes inside script, style, etc.
           let parent = node.parentElement;
           while (parent) {
             const tag = parent.tagName;
@@ -670,14 +570,12 @@
       }
     );
 
-    // Collect all text nodes first (to avoid modifying while iterating)
     const textNodes = [];
     let node;
     while (node = walker.nextNode()) {
       textNodes.push(node);
     }
 
-    // Wrap each text node
     textNodes.forEach(textNode => {
       try {
         const mark = document.createElement('mark');
@@ -688,65 +586,47 @@
         mark.style.borderRadius = '3px';
         mark.style.boxShadow = '0 0 0 2px rgba(255,235,59,0.35)';
         mark.style.cursor = 'pointer';
-
-        // Add click to remove functionality
         mark.addEventListener('click', () => {
           const index = highlights.findIndex(h => h.id === highlightId);
           if (index !== -1) {
             removeHighlight(index);
           }
         });
-
-        // Create a range for this specific text node
         const nodeRange = document.createRange();
         nodeRange.selectNodeContents(textNode);
-
-        // Wrap this text node
         nodeRange.surroundContents(mark);
         marks.push(mark);
       } catch (error) {
-        // Skip nodes that can't be wrapped (e.g., already inside a mark)
       }
     });
 
     return marks;
   }
 
-  // Add a new highlight
+
   function addHighlight(range, text) {
-    if (text.length < 3) return; // Skip very short selections
-
-    // Check if this exact text is already highlighted at the same location
-    // We allow the same text to be highlighted multiple times if it's in different locations
+    if (text.length < 3) return; 
     const existingIndex = highlights.findIndex(h => {
-      // Check if text matches AND if the range overlaps significantly
       if (h.text !== text) return false;
-
       try {
-        // Check if ranges overlap by comparing their boundaries
         const hRange = h.range;
         if (!hRange || !range) return false;
 
-        // If ranges are at the same position, consider it a duplicate
         if (hRange.startContainer === range.startContainer &&
           hRange.startOffset === range.startOffset &&
           hRange.endContainer === range.endContainer &&
           hRange.endOffset === range.endOffset) {
           return true;
         }
-
-        // If ranges overlap significantly, consider it a duplicate
         const hStart = hRange.startOffset;
         const hEnd = hRange.endOffset;
         const newStart = range.startOffset;
         const newEnd = range.endOffset;
 
-        // Check if ranges overlap (simplified overlap detection)
         if (hRange.startContainer === range.startContainer &&
           hRange.endContainer === range.endContainer) {
           const overlap = Math.min(hEnd, newEnd) - Math.max(hStart, newStart);
           if (overlap > 0) {
-            // If overlap is more than 50% of either range, consider it a duplicate
             const hLength = hEnd - hStart;
             const newLength = newEnd - newStart;
             if (overlap > hLength * 0.5 || overlap > newLength * 0.5) {
@@ -781,7 +661,6 @@
         return;
       }
 
-      // Check if any parent nodes are highlights
       let parent = startNode.parentNode;
       while (parent && parent !== document.body) {
         if (parent.hasAttribute && parent.hasAttribute('data-url-notes-highlight')) {
@@ -790,27 +669,23 @@
         parent = parent.parentNode;
       }
 
-      // Check if the selection is too close to existing highlights
       const existingHighlights = document.querySelectorAll('[data-url-notes-highlight]');
       for (const existing of existingHighlights) {
         try {
           const existingRect = existing.getBoundingClientRect();
           const selectionRect = range.getBoundingClientRect();
 
-          // If highlights are very close to each other (within 5px), skip this one
           if (Math.abs(existingRect.left - selectionRect.left) < 5 &&
             Math.abs(existingRect.top - selectionRect.top) < 5) {
             return;
           }
         } catch (error) {
-          // Ignore errors in proximity checking
         }
       }
     } catch (error) {
       return;
     }
 
-    // Create highlight object
     const highlight = {
       id: Date.now() + Math.random(),
       text: text,
@@ -819,18 +694,15 @@
       timestamp: Date.now()
     };
 
-    // Create visual highlight element
     let highlightElement = null;
 
     try {
-      // Check if range is valid and can be wrapped
       if (!range || range.collapsed) {
         return;
       }
 
       // Try to wrap the range contents, but handle cases where it might fail
       try {
-        // First, try the standard approach with better range validation
         const mark = document.createElement('mark');
         mark.setAttribute('data-url-notes-highlight', '');
         mark.setAttribute('data-highlight-id', highlight.id);
@@ -840,7 +712,6 @@
         mark.style.boxShadow = '0 0 0 2px rgba(255,235,59,0.35)';
         mark.style.cursor = 'pointer';
 
-        // Add click to remove functionality
         mark.addEventListener('click', () => {
           const index = highlights.findIndex(h => h.id === highlight.id);
           if (index !== -1) {
@@ -852,33 +723,27 @@
         if (range.startContainer.nodeType === Node.TEXT_NODE &&
           range.endContainer.nodeType === Node.TEXT_NODE &&
           range.startContainer.parentNode === range.endContainer.parentNode) {
-          // Simple case: same text node, can wrap safely
           range.surroundContents(mark);
           highlightElement = mark;
         } else {
-          // Complex case: range crosses element boundaries
           throw new Error('Range crosses element boundaries');
         }
 
       } catch (wrapError) {
-        // Standard wrap failed, trying walk-and-wrap approach for complex ranges
         try {
           const marks = wrapTextNodesInRange(range, highlight.id);
 
-          if (marks && marks.length > 0) {
-            // Store first mark as the primary element
+          if (marks && marks.length > 0) {          
             highlightElement = marks[0];
-            // Store all marks for proper cleanup
             highlight.elements = marks;
           } else {
-            return; // Couldn't wrap any nodes
+            return; 
           }
         } catch (walkError) {
-          return; // Give up on this highlight
+          return; 
         }
       }
 
-      // If we successfully created a highlight element, add it to the highlights array
       if (highlightElement) {
         highlight.element = highlightElement;
         highlights.push(highlight);
@@ -886,27 +751,21 @@
       }
 
     } catch (error) {
-      // Don't add to highlights array if visual creation failed
     }
   }
 
-  // Remove a highlight with smooth GPU-accelerated animation
+
   function removeHighlight(index) {
     if (index < 0 || index >= highlights.length) return;
 
     const highlight = highlights[index];
-
-    // Handle multiple elements (from walk-and-wrap) or single element
     const elementsToRemove = highlight.elements || (highlight.element ? [highlight.element] : []);
 
     elementsToRemove.forEach(element => {
       if (element && element.parentNode) {
         const parent = element.parentNode;
-
-        // Add removal animation class for smooth GPU-accelerated exit
         element.classList.add('removing');
 
-        // Wait for animation to complete before removing element
         setTimeout(() => {
           if (element && element.parentNode) {
             while (element.firstChild) {
@@ -915,22 +774,19 @@
             parent.removeChild(element);
             parent.normalize();
           }
-        }, 300); // Match animation duration
+        }, 300); 
       }
     });
 
-    // Remove from array immediately (don't wait for animation)
     highlights.splice(index, 1);
 
-    // Update toolbar with count animation
     updateHighlightToolbarWithAnimation();
   }
 
-  // Clear all highlights
+
   function clearAllHighlights() {
     const count = highlights.length;
     highlights.forEach(highlight => {
-      // Handle multiple elements (from walk-and-wrap) or single element
       const elementsToRemove = highlight.elements || (highlight.element ? [highlight.element] : []);
 
       elementsToRemove.forEach(element => {
@@ -949,7 +805,6 @@
     updateHighlightToolbar();
   }
 
-  // Show floating toolbar
   function showHighlightToolbar() {
     if (highlightToolbar) return;
 
@@ -981,7 +836,6 @@
       animation: toolbar-slide-in 0.3s ease-out;
     `;
 
-    // Inject toolbar-specific GPU acceleration styles
     if (!document.getElementById('url-notes-toolbar-style')) {
       const toolbarStyle = document.createElement('style');
       toolbarStyle.id = 'url-notes-toolbar-style';
@@ -1045,7 +899,6 @@
     document.body.appendChild(highlightToolbar);
   }
 
-  // Hide floating toolbar
   function hideHighlightToolbar() {
     if (highlightToolbar && highlightToolbar.parentNode) {
       highlightToolbar.parentNode.removeChild(highlightToolbar);
@@ -1053,57 +906,39 @@
     }
   }
 
-  // Update toolbar content
   function updateHighlightToolbar() {
     if (!highlightToolbar) return;
 
     const count = highlights.length;
-
-    // Create toolbar content safely using DOM methods (content script doesn't have access to safeDOM)
-    const safeCount = Math.max(0, Math.min(1000, parseInt(count) || 0)); // Limit count to reasonable range
-
-    // Clear existing content
+    const safeCount = Math.max(0, Math.min(1000, parseInt(count) || 0)); 
     highlightToolbar.textContent = '';
-
-    // Create header div
     const headerDiv = document.createElement('div');
     headerDiv.style.cssText = 'margin-bottom: 8px; font-weight: 600; display: flex; align-items: center; gap: 8px;';
-
     const titleSpan = document.createElement('span');
     titleSpan.textContent = '📝 Multi-Highlight Mode';
     headerDiv.appendChild(titleSpan);
-
     const exitButton = document.createElement('button');
     exitButton.id = 'exit-highlight-mode';
     exitButton.style.cssText = 'background: #e74c3c; border: none; color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;';
     exitButton.textContent = 'Exit';
     headerDiv.appendChild(exitButton);
-
-    // Create count div
     const countDiv = document.createElement('div');
     countDiv.style.cssText = 'margin-bottom: 12px; color: #bdc3c7;';
     countDiv.textContent = `${safeCount} highlight${safeCount !== 1 ? 's' : ''} selected`;
-
-    // Create buttons div
     const buttonsDiv = document.createElement('div');
     buttonsDiv.style.cssText = 'display: flex; gap: 8px;';
-
     const addButton = document.createElement('button');
     addButton.id = 'add-highlights-to-note';
     addButton.style.cssText = `background: #3498db; border: none; color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; flex: 1; ${safeCount === 0 ? 'opacity: 0.5; cursor: not-allowed;' : ''}`;
     addButton.textContent = 'Add to Note';
     buttonsDiv.appendChild(addButton);
-
     const clearButton = document.createElement('button');
     clearButton.id = 'clear-all-highlights';
     clearButton.style.cssText = `background: #95a5a6; border: none; color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; ${safeCount === 0 ? 'opacity: 0.5; cursor: not-allowed;' : ''}`;
     clearButton.textContent = 'Clear All';
     buttonsDiv.appendChild(clearButton);
-
-    // Create instructions div
     const instructionsDiv = document.createElement('div');
     instructionsDiv.style.cssText = 'margin-top: 8px; font-size: 12px; color: #bdc3c7;';
-
     const instructions = [
       '• Drag to highlight text',
       '• Shift+Click to select paragraph',
@@ -1118,13 +953,10 @@
       instructionsDiv.appendChild(instructionDiv);
     });
 
-    // Append all elements to toolbar
     highlightToolbar.appendChild(headerDiv);
     highlightToolbar.appendChild(countDiv);
     highlightToolbar.appendChild(buttonsDiv);
     highlightToolbar.appendChild(instructionsDiv);
-
-    // Add event listeners
     const exitBtn = highlightToolbar.querySelector('#exit-highlight-mode');
     const addBtn = highlightToolbar.querySelector('#add-highlights-to-note');
     const clearBtn = highlightToolbar.querySelector('#clear-all-highlights');
@@ -1135,24 +967,20 @@
     });
     clearBtn.addEventListener('click', clearAllHighlights);
 
-    // Disable buttons if no highlights
     if (count === 0) {
       addBtn.disabled = true;
       clearBtn.disabled = true;
     }
   }
 
-  // Update toolbar content with count animation
+
   function updateHighlightToolbarWithAnimation() {
     updateHighlightToolbar();
 
-    // Add animation to count display
     if (highlightToolbar) {
       const countElement = highlightToolbar.querySelector('div[style*="margin-bottom: 12px"]');
       if (countElement) {
         countElement.classList.add('highlight-count', 'updating');
-
-        // Remove animation class after animation completes
         setTimeout(() => {
           countElement.classList.remove('updating');
         }, 400);
@@ -1160,7 +988,7 @@
     }
   }
 
-  // Add all highlights to a note
+
   function addAllHighlightsToNote() {
 
     if (highlights.length === 0) {
@@ -1173,17 +1001,12 @@
       timestamp: h.timestamp
     }));
 
-    // Send message to background script to create note
-
-    // First check if background script is responsive
     chrome.runtime.sendMessage({ action: 'ping' }, (pingResponse) => {
       if (chrome.runtime.lastError) {
         return;
       }
 
-      // Add a timeout to the message sending
       const messageTimeout = setTimeout(() => {
-        // Message timeout - background script may not be responding
       }, 5000);
 
       chrome.runtime.sendMessage({
@@ -1199,9 +1022,7 @@
         }
 
         if (response && response.success) {
-          // Clear highlights after adding to note
           clearAllHighlights();
-          // Exit multi-highlight mode
           toggleMultiHighlightMode();
         }
       });
@@ -1217,7 +1038,6 @@
         color: '#3498db'
       }, () => {
         if (chrome.runtime.lastError) {
-          // Badge update error - silently handled
         }
       });
     } else {
@@ -1226,17 +1046,15 @@
         text: '',
         color: ''
       }, () => {
-        if (chrome.runtime.lastError) {
-          // Badge update error - silently handled
+        if (chrome.runtime.lastError) {  
         }
       });
     }
   }
 
-  // Add visual indicator overlay
+
   function addMultiHighlightIndicator() {
     if (document.getElementById('multi-highlight-indicator')) return;
-
     const indicator = document.createElement('div');
     indicator.id = 'multi-highlight-indicator';
     indicator.style.cssText = `
@@ -1257,7 +1075,6 @@
       animation: multi-highlight-pulse 2s ease-in-out infinite;
     `;
 
-    // Add GPU-accelerated CSS animation
     if (!document.getElementById('url-notes-indicator-style')) {
       const style = document.createElement('style');
       style.id = 'url-notes-indicator-style';
@@ -1287,7 +1104,7 @@
     document.body.appendChild(indicator);
   }
 
-  // Remove visual indicator overlay
+
   function removeMultiHighlightIndicator() {
     const indicator = document.getElementById('multi-highlight-indicator');
     if (indicator && indicator.parentNode) {
@@ -1295,7 +1112,6 @@
     }
   }
 
-  // Safe message sender to avoid "Extension context invalidated" errors
   function safeSendMessage(message) {
     try {
       if (!chrome || !chrome.runtime || !chrome.runtime.id) return;
@@ -1305,7 +1121,6 @@
         maybePromise.catch(() => { });
       }
     } catch (_) {
-      // Swallow errors when context is gone (navigation/reload)
     }
   }
 
@@ -1315,9 +1130,6 @@
     pageInfo: getCurrentPageInfo()
   });
 
-  // Also notify that we're ready for multi-highlight messages
-
-  // Monitor for URL changes (for SPAs)
   let currentUrl = window.location.href;
   const observer = new MutationObserver(() => {
     if (window.location.href !== currentUrl) {
@@ -1329,13 +1141,11 @@
     }
   });
 
-  // Start observing
   observer.observe(document.body, {
     childList: true,
     subtree: true
   });
 
-  // Clean up observer when page hides (better for back/forward cache)
   window.addEventListener('pagehide', () => {
     observer.disconnect();
   });
@@ -1357,7 +1167,6 @@
   function injectHighlightStyle() {
     if (document.getElementById('url-notes-highlight-style')) return;
 
-    // Inject GPU-accelerated CSS for multi-highlight functionality
     const style = document.createElement('style');
     style.id = 'url-notes-highlight-style';
     style.textContent = `
@@ -1435,7 +1244,6 @@
     document.documentElement.appendChild(style);
   }
 
-  // Try to highlight text with retries to handle late-loading content (SPAs, async renders)
   function scheduleHighlightAttempts(text) {
     try { clearUrlNotesHighlights(); } catch { }
     const candidates = buildCandidateTexts(text);
@@ -1454,19 +1262,14 @@
       return false;
     };
 
-    // Timed attempts
     attempts.forEach((ms) => setTimeout(() => { if (!done) tryNow(); }, ms));
-
-    // Mutation-driven attempts for dynamic pages (e.g., YouTube SPA)
     const hlObserver = new MutationObserver(() => { tryNow(); });
     try {
       hlObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
     } catch { }
-    // Stop observing after the last attempt window
     setTimeout(() => { if (hlObserver) hlObserver.disconnect(); }, attempts[attempts.length - 1] + 500);
   }
 
-  // Build slight variations of the text to increase chances of a match
   function buildCandidateTexts(text) {
     const t = (text || '').trim();
     const out = new Set();
@@ -1477,7 +1280,6 @@
     out.add(stripOuter);
     out.add(collapsed);
     if (collapsed.length > 140) out.add(collapsed.slice(0, 120));
-    // Token-based variations: drop first/last 1-2 tokens to handle mid-word or context
     const tokens = collapsed.split(/\s+/);
     if (tokens.length >= 3) {
       out.add(tokens.join(' '));
@@ -1493,17 +1295,14 @@
       out.add(tokens.slice(1).join(' '));
     }
 
-    // Add partial matches for short text (like "Also present was a 38")
     if (tokens.length >= 2) {
-      // Try different combinations for short phrases
-      out.add(tokens.slice(0, 2).join(' ')); // First 2 words
-      out.add(tokens.slice(0, 3).join(' ')); // First 3 words
+      out.add(tokens.slice(0, 2).join(' ')); 
+      out.add(tokens.slice(0, 3).join(' ')); 
       if (tokens.length >= 4) {
-        out.add(tokens.slice(0, 4).join(' ')); // First 4 words
+        out.add(tokens.slice(0, 4).join(' ')); 
       }
     }
 
-    // Add variations without numbers (in case numbers are formatted differently)
     const withoutNumbers = collapsed.replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
     if (withoutNumbers && withoutNumbers !== collapsed) {
       out.add(withoutNumbers);
@@ -1517,7 +1316,6 @@
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
       acceptNode(node) {
         if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
-        // Skip in script/style/noscript and hidden containers
         const parent = node.parentElement;
         if (!parent) return NodeFilter.FILTER_REJECT;
         const tag = parent.tagName;
@@ -1528,10 +1326,10 @@
       }
     });
     const normalize = (s) => (s || '')
-      .replace(/[\u2010-\u2015]/g, '-')        // various dashes to hyphen
-      .replace(/[\u2018\u2019\u201B\u2032]/g, "'") // curly/single quotes to '
-      .replace(/[\u201C\u201D\u201F\u2033]/g, '"')  // curly/double quotes to "
-      .replace(/\u00A0/g, ' ')                  // NBSP to space
+      .replace(/[\u2010-\u2015]/g, '-')        
+      .replace(/[\u2018\u2019\u201B\u2032]/g, "'") 
+      .replace(/[\u201C\u201D\u201F\u2033]/g, '"')  
+      .replace(/\u00A0/g, ' ') 
       .replace(/\s+/g, ' ');
     const needle = normalize(caseInsensitive ? query.toLowerCase() : query);
     let node;
@@ -1547,19 +1345,15 @@
           const mark = document.createElement('mark');
           mark.setAttribute('data-url-notes-highlight', '');
           range.surroundContents(mark);
-          // Make focusable briefly for reliable centering in nested scroll containers
           mark.setAttribute('tabindex', '-1');
-          // Scroll and focus to improve visibility
           mark.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
           try { mark.focus({ preventScroll: true }); } catch { }
-          // Flash effect
           mark.animate([
             { boxShadow: '0 0 0 0 rgba(255,235,59,0.8)' },
             { boxShadow: '0 0 0 8px rgba(255,235,59,0)' }
           ], { duration: 600 });
           return true;
         } catch (e) {
-          // If surround fails due to split nodes, fallback to simpler selection
           try {
             const sel = window.getSelection();
             sel.removeAllRanges();
@@ -1576,16 +1370,10 @@
     return false;
   }
 
-  // Extract meaningful page content for AI summarization
   function extractPageContent() {
-    // Remove script and style elements
     const elementsToRemove = document.querySelectorAll('script, style, nav, header, footer, aside, .sidebar, .navigation, .menu, .ads, .advertisement, .social-share, .comments');
     const tempDoc = document.cloneNode(true);
-
-    // Remove unwanted elements from the clone
     tempDoc.querySelectorAll('script, style, nav, header, footer, aside, .sidebar, .navigation, .menu, .ads, .advertisement, .social-share, .comments').forEach(el => el.remove());
-
-    // Try to find main content areas
     const contentSelectors = [
       'main',
       'article',
@@ -1608,21 +1396,16 @@
       }
     }
 
-    // Fallback to body if no main content found
     if (!mainContent) {
       mainContent = tempDoc.body || tempDoc.documentElement;
     }
 
-    // Extract text content
     let text = mainContent.textContent || mainContent.innerText || '';
-
-    // Clean up the text
     text = text
-      .replace(/\s+/g, ' ') // Replace multiple whitespace with single space
-      .replace(/\n\s*\n/g, '\n') // Remove empty lines
+      .replace(/\s+/g, ' ') 
+      .replace(/\n\s*\n/g, '\n') 
       .trim();
 
-    // Limit content length (approximately 8000 characters for reasonable API usage)
     if (text.length > 8000) {
       text = text.substring(0, 8000) + '...';
     }
@@ -1630,14 +1413,11 @@
     return text;
   }
 
-  // Parse :~:text= fragment per Text Fragments spec and return first part
   function extractTextFragment(href) {
     try {
       const u = new URL(href, window.location.origin);
       const hash = u.hash || '';
       const marker = ':~:text=';
-
-      // Handle multiple text fragments by finding all occurrences
       const fragments = [];
       let searchStart = 0;
       let idx;
@@ -1668,7 +1448,6 @@
         return '';
       }
 
-      // Use the last (most specific) fragment
       return fragments[fragments.length - 1];
 
     } catch (error) {
