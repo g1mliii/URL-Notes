@@ -28,11 +28,18 @@
     "cache:bust": "node scripts/update-cache-version.js",
     "cache:deploy": "node scripts/deploy-with-cache-bust.js",
     "cache:deploy:commit": "node scripts/deploy-with-cache-bust.js --commit",
-    "cache:test": "node scripts/test-cache-busting.js"
+    "cache:test": "node scripts/test-cache-busting.js",
+    "security:deps": "node scripts/check-banned-packages.js .",
+    "security:audit": "npm audit --package-lock-only --audit-level=high"
   },
   "devDependencies": {
-    "dompurify": "^3.3.1",
-    "supabase": "^2.34.3"
+    "dompurify": "^3.3.3",
+    "supabase": "^2.84.5"
+  },
+  "overrides": {
+    "axios@1.14.1": "1.14.0",
+    "axios@0.30.4": "0.30.3",
+    "plain-crypto-js@4.2.1": "0.0.1-security.0"
   },
   "engines": {
     "node": ">=24.13.0"

@@ -12,10 +12,19 @@
     "sign:unlisted": "web-ext sign --config=web-ext-config.cjs --channel=unlisted",
     "test": "web-ext run --config=web-ext-config.cjs --start-url about:debugging",
     "package": "npm run lint && npm run build:prod",
-    "validate": "web-ext lint --config=web-ext-config.cjs && echo 'Extension validation passed!'"
+    "validate": "web-ext lint --config=web-ext-config.cjs && echo 'Extension validation passed!'",
+    "security:deps": "node ../scripts/check-banned-packages.js .",
+    "security:audit": "npm audit --package-lock-only --audit-level=high"
   },
   "devDependencies": {
-    "web-ext": "^8.10.0"
+    "web-ext": "^10.1.0"
+  },
+  "overrides": {
+    "axios@1.14.1": "1.14.0",
+    "axios@0.30.4": "0.30.3",
+    "plain-crypto-js@4.2.1": "0.0.1-security.0",
+    "brace-expansion": "1.1.13",
+    "node-forge": "1.4.0"
   },
   "keywords": ["firefox", "extension", "notes", "webextensions"],
   "author": "Anchored",

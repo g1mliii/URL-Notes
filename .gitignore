@@ -5,7 +5,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # Environment variables
-.md
 .env
 .env.local
 .env.development
@@ -55,12 +54,15 @@ build/
 # Version archives and extension builds
 *.zip
 anchored-*.zip
+versioned_zips/
+extension-firefox/web-ext-artifacts/
 
 # Temporary files
 *.tmp
 *.temp
 temp/
 tmp/
+.preview-site/
 
 # Chrome extension development
 extension/web-accessible-resources/
